@@ -248,38 +248,13 @@
                     <button type="submit" id="register-button"
                         class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                            <i class="fas fa-user-plus text-red-500 group-hover:text-blue-400"></i>
+                            <i class="fas fa-user-plus text-red-500 group-hover:text-red-400"></i>
                         </span>
                         <span id="register-button-text" data-translate="register.create_account">Create Account</span>
                         <i id="register-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
                     </button>
                 </div>
 
-                <!-- Social Registration -->
-                <div class="mt-6">
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-gray-300"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-2 bg-gray-50 text-gray-500" data-translate="register.or">Or register with</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 grid grid-cols-2 gap-3">
-                        <button type="button" id="google-register"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <i class="fab fa-google text-red-500"></i>
-                            <span class="ml-2">Google</span>
-                        </button>
-
-                        <button type="button" id="microsoft-register"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <i class="fab fa-microsoft text-red-500"></i>
-                            <span class="ml-2">Microsoft</span>
-                        </button>
-                    </div>
-                </div>
             </form>
         </div>
     </div>
@@ -288,7 +263,7 @@
     <footer class="bg-white border-t border-gray-200">
         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div class="text-center text-sm text-gray-500">
-                <p>&copy; 2024 Van Hool Parts. <span data-translate="footer.rights">All rights reserved.</span></p>
+                <p>&copy; Van Hool Parts. <span data-translate="footer.rights">All rights reserved.</span></p>
                 <div class="mt-2 space-x-4">
                     <a href="gdpr.html" class="hover:text-red-600" data-translate="footer.privacy">Privacy Policy</a>
                     <a href="gdpr.html" class="hover:text-red-600" data-translate="footer.terms">Terms of Service</a>
@@ -507,17 +482,6 @@
                 registerForm.addEventListener('submit', handleRegistration);
             }
 
-            // Social registration
-            const googleRegister = document.getElementById('google-register');
-            const microsoftRegister = document.getElementById('microsoft-register');
-            
-            if (googleRegister) {
-                googleRegister.addEventListener('click', () => handleSocialRegister('google'));
-            }
-            
-            if (microsoftRegister) {
-                microsoftRegister.addEventListener('click', () => handleSocialRegister('microsoft'));
-            }
         });
 
         async function handleRegistration(e) {
@@ -694,18 +658,6 @@
             }
         }
 
-        async function handleSocialRegister(provider) {
-            try {
-                if (typeof authManager !== 'undefined') {
-                    await authManager.loginWithProvider(provider);
-                } else {
-                    console.warn('Social registration not available');
-                }
-            } catch (error) {
-                console.error('Social registration error:', error);
-                showError(`Failed to register with ${provider}. Please try again.`);
-            }
-        }
 
         function showError(message) {
             const errorText = document.getElementById('error-text');
