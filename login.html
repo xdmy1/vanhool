@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Van Hool Parts</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/custom-colors.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 lg:h-20">
+                <!-- Left: Logo -->
+                <div class="flex items-center">
+                    <a href="index.html" class="text-xl lg:text-2xl font-bold text-red-600 flex items-center hover:text-red-700 transition-colors">
+                        <img src="LOGO1 1.svg" alt="Van Hool Parts" class="h-8 lg:h-10 w-auto">
+                        <span class="sm:hidden">VHP</span>
+                    </a>
+                </div>
+                
+                <!-- Center: Navigation -->
+                <div class="flex-1 flex justify-center">
+                    <!-- Desktop Navigation -->
+                    <div class="hidden lg:flex items-center space-x-6">
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50">Catalog</a>
+                        <a href="index.html#about" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50">About</a>
+                    </div>
+                </div>
+                
+                <!-- Right: User Actions -->
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-2 lg:space-x-4">
+                        <!-- Mobile menu button -->
+                        <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        
+                        <!-- Language Switcher -->
+                        <div class="relative group hidden sm:block">
+                            <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                                <span id="current-lang" class="text-sm font-medium">EN</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
+                                <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
+                                <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
+                                <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Register Link -->
+                        <a href="register.html" class="hidden md:block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md">Register</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
+                <div class="px-4 py-4 space-y-2">
+                    <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
+                        <i class="fas fa-th-grid mr-2"></i>Catalog
+                    </a>
+                    <a href="index.html#about" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <i class="fas fa-info-circle mr-2"></i>About
+                    </a>
+                    
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <div class="text-center">
+                <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-100">
+                    <i class="fas fa-user text-red-600 text-xl"></i>
+                </div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    Sign in to your account
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    Don't have an account?
+                    <a href="register.html" class="font-medium text-red-600 hover:text-red-500">
+                        Register here
+                    </a>
+                </p>
+            </div>
+
+            <form id="login-form" class="mt-8 space-y-6">
+                <div class="space-y-4">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                        <input id="email" name="email" type="email" required
+                            class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                            placeholder="Enter your email">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input id="password" name="password" type="password" required
+                            class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                            placeholder="Enter your password">
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div id="error-message" class="hidden rounded-md bg-red-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Login Failed</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <p id="error-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="success-message" class="hidden rounded-md bg-green-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-green-800">Login Successful</h3>
+                            <div class="mt-2 text-sm text-green-700">
+                                <p>Redirecting you...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" id="login-button"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fas fa-sign-in-alt text-red-500 group-hover:text-blue-400"></i>
+                        </span>
+                        <span id="button-text">Sign in</span>
+                        <i id="loading-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔥 Login page loaded');
+        
+        // Use global Supabase client from app-universal.js
+        const supabase = window.supabase;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded, setting up form');
+            
+            // Clear URL parameters for security
+            if (window.location.search) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            
+            const form = document.getElementById('login-form');
+            form.addEventListener('submit', handleLogin);
+        });
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            console.log('🔄 Form submitted, preventing default');
+            
+            // Clear URL immediately
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginButton = document.getElementById('login-button');
+            const buttonText = document.getElementById('button-text');
+            const spinner = document.getElementById('loading-spinner');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            console.log('🔐 Attempting login for:', email);
+            
+            // Show loading
+            loginButton.disabled = true;
+            buttonText.textContent = 'Signing in...';
+            spinner.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                console.log('📡 Login response:', { data, error });
+                
+                if (error) {
+                    console.error('❌ Login failed:', error);
+                    document.getElementById('error-text').textContent = error.message;
+                    errorMessage.classList.remove('hidden');
+                } else if (data.user) {
+                    console.log('✅ Login successful!', data.user.email);
+                    successMessage.classList.remove('hidden');
+                    
+                    // Redirect to requested page or dashboard
+                    setTimeout(() => {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirect = urlParams.get('redirect') || localStorage.getItem('redirect_after_login');
+                        
+                        if (redirect && redirect !== 'login.html') {
+                            // Remove stored redirect
+                            localStorage.removeItem('redirect_after_login');
+                            window.location.href = redirect;
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }, 1000);
+                } else {
+                    document.getElementById('error-text').textContent = 'Login failed - no user returned';
+                    errorMessage.classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('💥 Login error:', error);
+                document.getElementById('error-text').textContent = error.message;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                // Reset loading state
+                loginButton.disabled = false;
+                buttonText.textContent = 'Sign in';
+                spinner.classList.add('hidden');
+            }
+        }
+        
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
+    <script src="js/app-universal.js"></script>
+    <script src="js/categories-dropdown.js"></script>
+</body>
+</html>

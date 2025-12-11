@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Debug Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Cart Debug Tool</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Cart Data -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Cart Data</h2>
+                <div id="cart-data" class="space-y-4"></div>
+                <button onclick="refreshCartData()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Refresh Cart Data
+                </button>
+                <button onclick="clearCart()" class="mt-4 ml-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Clear Cart
+                </button>
+            </div>
+            
+            <!-- LocalStorage Raw Data -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">localStorage Raw Data</h2>
+                <div id="raw-data" class="space-y-4"></div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <h2 class="text-xl font-semibold mb-4">Actions</h2>
+            <div class="space-x-4">
+                <button onclick="addTestProduct()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Add Test Product
+                </button>
+                <button onclick="validateCartItems()" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                    Validate Cart Items
+                </button>
+                <button onclick="fixCartStructure()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    Fix Cart Structure
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CONFIG, UTILS } from './js/config.js';
+
+        // Initialize debugging
+        window.CONFIG = CONFIG;
+        window.UTILS = UTILS;
+
+        function displayCartData() {
+            const cartData = document.getElementById('cart-data');
+            const rawData = document.getElementById('raw-data');
+            
+            // Get cart from cartManager if available
+            let managerCart = null;
+            let cartCount = 0;
+            let uniqueItems = 0;
+            
+            if (window.cartManager) {
+                managerCart = window.cartManager.getCart();
+                cartCount = window.cartManager.getItemCount();
+                uniqueItems = window.cartManager.getUniqueItemCount();
+            }
+            
+            // Get raw localStorage data
+            const rawCartData = localStorage.getItem('autoparts_cart');
+            let parsedRawData = null;
+            try {
+                parsedRawData = JSON.parse(rawCartData);
+            } catch (e) {
+                console.error('Error parsing cart data:', e);
+            }
+            
+            cartData.innerHTML = `
+                <div class="space-y-3">
+                    <div class="border-l-4 border-blue-500 pl-4">
+                        <h3 class="font-semibold">Cart Manager Status</h3>
+                        <p>Available: ${!!window.cartManager}</p>
+                        <p>Total Item Count: ${cartCount}</p>
+                        <p>Unique Items: ${uniqueItems}</p>
+                        <p>Initialized: ${window.cartManager?.isInitialized || 'N/A'}</p>
+                    </div>
+                    
+                    <div class="border-l-4 border-green-500 pl-4">
+                        <h3 class="font-semibold">Cart Structure</h3>
+                        ${managerCart ? `
+                            <p>Items Array Length: ${managerCart.items.length}</p>
+                            <p>Subtotal: ${managerCart.subtotal}</p>
+                            <p>Total: ${managerCart.total}</p>
+                            <p>Version: ${managerCart.version}</p>
+                        ` : '<p class="text-red-500">No cart data available</p>'}
+                    </div>
+                    
+                    <div class="border-l-4 border-yellow-500 pl-4">
+                        <h3 class="font-semibold">Cart Items</h3>
+                        ${managerCart && managerCart.items.length > 0 ? 
+                            managerCart.items.map((item, index) => `
+                                <div class="bg-gray-50 p-2 rounded text-sm">
+                                    <strong>Item ${index + 1}:</strong><br>
+                                    ID: ${item.productId}<br>
+                                    Name: ${item.name}<br>
+                                    Quantity: ${item.quantity}<br>
+                                    Price: ${item.price}<br>
+                                    Valid: ${!!(item.productId && item.name && item.quantity > 0)}
+                                </div>
+                            `).join('') 
+                            : '<p class="text-gray-500">No items</p>'
+                        }
+                    </div>
+                </div>
+            `;
+            
+            rawData.innerHTML = `
+                <div class="space-y-3">
+                    <div class="border-l-4 border-gray-500 pl-4">
+                        <h3 class="font-semibold">Raw localStorage</h3>
+                        <p>Data exists: ${!!rawCartData}</p>
+                        <p>Data length: ${rawCartData?.length || 0}</p>
+                    </div>
+                    
+                    <div class="border-l-4 border-indigo-500 pl-4">
+                        <h3 class="font-semibold">Parsed Data</h3>
+                        ${parsedRawData ? `
+                            <p>Items Array Length: ${parsedRawData.items?.length || 0}</p>
+                            <p>Created: ${parsedRawData.createdAt ? new Date(parsedRawData.createdAt).toLocaleString() : 'N/A'}</p>
+                            <p>Updated: ${parsedRawData.updatedAt ? new Date(parsedRawData.updatedAt).toLocaleString() : 'N/A'}</p>
+                        ` : '<p class="text-red-500">Failed to parse data</p>'}
+                    </div>
+                    
+                    <div class="bg-gray-100 p-3 rounded">
+                        <h4 class="font-semibold mb-2">Raw JSON:</h4>
+                        <pre class="text-xs overflow-auto max-h-40">${rawCartData || 'null'}</pre>
+                    </div>
+                </div>
+            `;
+        }
+        
+        window.refreshCartData = displayCartData;
+        
+        window.clearCart = function() {
+            if (window.cartManager) {
+                window.cartManager.clear();
+                displayCartData();
+                alert('Cart cleared!');
+            } else {
+                localStorage.removeItem('autoparts_cart');
+                displayCartData();
+                alert('Cart localStorage cleared!');
+            }
+        };
+        
+        window.addTestProduct = function() {
+            if (window.cartManager) {
+                const testProduct = {
+                    id: Date.now(),
+                    name: 'Test Product ' + Date.now(),
+                    price: 99.99,
+                    sale_price: 89.99,
+                    part_code: 'TEST' + Date.now(),
+                    image_url: '/images/placeholder.jpg',
+                    is_active: true,
+                    stock_quantity: 10
+                };
+                
+                window.cartManager.addItem(testProduct.id, 1, { productDetails: testProduct })
+                    .then(() => {
+                        displayCartData();
+                        alert('Test product added!');
+                    })
+                    .catch(error => {
+                        alert('Error adding product: ' + error.message);
+                    });
+            } else {
+                alert('CartManager not available');
+            }
+        };
+        
+        window.validateCartItems = async function() {
+            if (window.cartManager && window.cartManager.validateCartItems) {
+                try {
+                    const results = await window.cartManager.validateCartItems();
+                    console.log('Validation results:', results);
+                    
+                    const validItems = results.filter(r => r.valid !== false);
+                    const invalidItems = results.filter(r => r.valid === false);
+                    
+                    alert(`Validation complete!
+Valid items: ${validItems.length}
+Invalid items: ${invalidItems.length}
+Check console for details.`);
+                } catch (error) {
+                    alert('Validation error: ' + error.message);
+                }
+            } else {
+                alert('Validation not available');
+            }
+        };
+        
+        window.fixCartStructure = function() {
+            const rawData = localStorage.getItem('autoparts_cart');
+            if (!rawData) {
+                alert('No cart data to fix');
+                return;
+            }
+            
+            try {
+                const cart = JSON.parse(rawData);
+                
+                // Fix common issues
+                if (!cart.items) cart.items = [];
+                if (!cart.id) cart.id = 'cart_' + Date.now();
+                if (!cart.sessionId) cart.sessionId = 'sess_' + Date.now();
+                if (!cart.version) cart.version = 1;
+                if (!cart.createdAt) cart.createdAt = Date.now();
+                if (!cart.updatedAt) cart.updatedAt = Date.now();
+                
+                // Fix item structures
+                cart.items = cart.items.filter(item => {
+                    return item.productId && item.name && item.quantity > 0;
+                });
+                
+                cart.items.forEach(item => {
+                    if (!item.addedAt) item.addedAt = Date.now();
+                    if (!item.updatedAt) item.updatedAt = Date.now();
+                    if (!item.sku) item.sku = item.part_code || 'N/A';
+                    if (!item.image) item.image = item.image_url || '/images/placeholder.jpg';
+                    if (!item.totalPrice) item.totalPrice = item.price * item.quantity;
+                });
+                
+                // Recalculate totals
+                cart.subtotal = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
+                cart.total = cart.subtotal + (cart.shipping || 0) - (cart.discountAmount || 0);
+                
+                localStorage.setItem('autoparts_cart', JSON.stringify(cart));
+                
+                // Reload cart manager if available
+                if (window.cartManager) {
+                    window.cartManager.cart = cart;
+                    window.cartManager.recalculateCart();
+                    window.cartManager.saveCart();
+                }
+                
+                displayCartData();
+                alert('Cart structure fixed!');
+                
+            } catch (error) {
+                alert('Error fixing cart: ' + error.message);
+            }
+        };
+        
+        // Auto-refresh when cart changes
+        if (window.cartManager) {
+            window.cartManager.addListener(() => {
+                displayCartData();
+            });
+        }
+        
+        // Initial load
+        setTimeout(displayCartData, 500);
+        
+        // Wait for cart manager and then display
+        const checkCartManager = setInterval(() => {
+            if (window.cartManager) {
+                clearInterval(checkCartManager);
+                displayCartData();
+            }
+        }, 100);
+    </script>
+
+    <!-- Load cart system -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/cart.js"></script>
+</body>
+</html>

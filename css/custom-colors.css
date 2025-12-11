@@ -1,0 +1,194 @@
+/* Custom Van Hool Parts Colors */
+:root {
+    --vhp-red: #D04A42;
+    --vhp-red-light: #e87066;
+    --vhp-red-dark: #b8382f;
+    --vhp-red-50: #fdf2f1;
+    --vhp-red-100: #fce4e2;
+    --vhp-red-200: #f9ccca;
+    --vhp-red-300: #f4a6a4;
+    --vhp-red-400: #ec7975;
+    --vhp-red-500: var(--vhp-red);
+    --vhp-red-600: var(--vhp-red);
+    --vhp-red-700: var(--vhp-red-dark);
+    --vhp-red-800: #9d2f27;
+    --vhp-red-900: #822620;
+}
+
+/* Override Tailwind red colors with Van Hool red */
+.text-red-500,
+.text-red-600 {
+    color: var(--vhp-red) !important;
+}
+
+.text-red-700 {
+    color: var(--vhp-red-dark) !important;
+}
+
+.text-red-800 {
+    color: var(--vhp-red-800) !important;
+}
+
+.hover\:text-red-500:hover,
+.hover\:text-red-600:hover {
+    color: var(--vhp-red-dark) !important;
+}
+
+.hover\:text-red-700:hover,
+.hover\:text-red-800:hover {
+    color: var(--vhp-red-800) !important;
+}
+
+/* Background colors */
+.bg-red-50 {
+    background-color: var(--vhp-red-50) !important;
+}
+
+.bg-red-100 {
+    background-color: var(--vhp-red-100) !important;
+}
+
+.bg-red-500,
+.bg-red-600 {
+    background-color: var(--vhp-red) !important;
+}
+
+.bg-red-700 {
+    background-color: var(--vhp-red-dark) !important;
+}
+
+.hover\:bg-red-50:hover {
+    background-color: var(--vhp-red-50) !important;
+}
+
+.hover\:bg-red-600:hover,
+.hover\:bg-red-700:hover {
+    background-color: var(--vhp-red-dark) !important;
+}
+
+/* Border colors */
+.border-red-300 {
+    border-color: var(--vhp-red-300) !important;
+}
+
+.border-red-500,
+.border-red-600 {
+    border-color: var(--vhp-red) !important;
+}
+
+/* Focus ring colors */
+.focus\:ring-red-500:focus,
+.focus\:border-red-500:focus {
+    --tw-ring-color: var(--vhp-red) !important;
+    border-color: var(--vhp-red) !important;
+}
+
+.focus\:ring-red-200:focus {
+    --tw-ring-color: var(--vhp-red-200) !important;
+}
+
+/* Custom gradient classes */
+.bg-vhp-gradient {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+}
+
+.bg-vhp-gradient-soft {
+    background: linear-gradient(135deg, var(--vhp-red-50) 0%, var(--vhp-red-100) 100%);
+}
+
+.bg-vhp-gradient-hero {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 50%, var(--vhp-red-800) 100%);
+}
+
+.bg-vhp-gradient-button {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    transition: all 0.3s ease;
+}
+
+.bg-vhp-gradient-button:hover {
+    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
+}
+
+/* Text gradients */
+.text-vhp-gradient {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Button enhancements */
+.btn-vhp-primary {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(208, 74, 66, 0.2);
+}
+
+.btn-vhp-primary:hover {
+    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
+}
+
+.btn-vhp-outline {
+    background: transparent;
+    border: 2px solid var(--vhp-red);
+    color: var(--vhp-red);
+    transition: all 0.3s ease;
+}
+
+.btn-vhp-outline:hover {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
+}
+
+/* Card enhancements with gradients */
+.card-vhp-gradient {
+    background: linear-gradient(135deg, white 0%, var(--vhp-red-50) 100%);
+    border: 1px solid var(--vhp-red-200);
+}
+
+.card-vhp-gradient:hover {
+    background: linear-gradient(135deg, var(--vhp-red-50) 0%, var(--vhp-red-100) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(208, 74, 66, 0.15);
+}
+
+/* Navigation gradients */
+.nav-vhp-gradient {
+    background: linear-gradient(135deg, white 0%, var(--vhp-red-50) 100%);
+    border-bottom: 2px solid var(--vhp-red-200);
+}
+
+/* Loading spinner with Van Hool colors */
+.spinner-vhp {
+    border: 3px solid var(--vhp-red-200);
+    border-top: 3px solid var(--vhp-red);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
+}
+
+/* Selection color */
+::selection {
+    background-color: var(--vhp-red-200);
+    color: var(--vhp-red-800);
+}
+
+::-moz-selection {
+    background-color: var(--vhp-red-200);
+    color: var(--vhp-red-800);
+}

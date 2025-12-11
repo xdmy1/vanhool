@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - Van Hool Parts</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔥 TEST LOGIN</h1>
+    
+    <div id="status">Loading...</div>
+    
+    <div>
+        <input type="email" id="email" placeholder="Email" value="damian.bobernaga@gmail.com">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="testLogin()" id="loginBtn">LOGIN NOW</button>
+    </div>
+    
+    <div id="messages"></div>
+
+    <script>
+        console.log('🚀 TEST LOGIN PAGE LOADED');
+        
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(
+            'https://iqsfmofoezkdnmhbxwbn.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
+        );
+        
+        console.log('✅ Supabase initialized:', !!supabase);
+        
+        document.getElementById('status').textContent = 'Ready to test login';
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            const messages = document.getElementById('messages');
+            
+            console.log('🔐 Starting login test for:', email);
+            
+            btn.disabled = true;
+            btn.textContent = 'LOGGING IN...';
+            messages.innerHTML = '<div class="message">Attempting login...</div>';
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                console.log('📡 Response:', { data, error });
+                
+                if (error) {
+                    console.error('❌ Error:', error);
+                    messages.innerHTML = `<div class="message error">ERROR: ${error.message}</div>`;
+                } else if (data.user) {
+                    console.log('✅ SUCCESS! User:', data.user.email);
+                    messages.innerHTML = `
+                        <div class="message success">
+                            ✅ LOGIN SUCCESSFUL!<br>
+                            User: ${data.user.email}<br>
+                            Redirecting to catalog...
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = 'catalog.html';
+                    }, 2000);
+                } else {
+                    messages.innerHTML = '<div class="message error">No user returned</div>';
+                }
+                
+            } catch (err) {
+                console.error('💥 Exception:', err);
+                messages.innerHTML = `<div class="message error">EXCEPTION: ${err.message}</div>`;
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'LOGIN NOW';
+        }
+        
+        // Test if already logged in
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                console.log('👤 Already logged in:', session.user.email);
+                document.getElementById('status').textContent = `Already logged in: ${session.user.email}`;
+            }
+        });
+    </script>
+</body>
+</html>

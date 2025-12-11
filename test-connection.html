@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Supabase Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Test Supabase Connection</h1>
+    <div id="status"></div>
+    <div id="tests"></div>
+    
+    <h2>Test Registration</h2>
+    <form id="testForm">
+        <input type="email" id="testEmail" placeholder="damian.bobernaga@gmail.com" value="damian.bobernaga@gmail.com">
+        <input type="password" id="testPassword" placeholder="password123" value="password123">
+        <button type="submit">Test Register</button>
+    </form>
+
+    <script>
+        // Initialize Supabase directly here for testing
+        const SUPABASE_URL = 'https://iqsfmofoezkdnmhbxwbn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const testsDiv = document.getElementById('tests');
+
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.style.color = isError ? 'red' : 'green';
+            div.style.margin = '10px 0';
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            testsDiv.appendChild(div);
+        }
+
+        // Test 1: Check if Supabase is initialized
+        if (supabase) {
+            statusDiv.innerHTML = '<div style="color: green;">✅ Supabase client initialized</div>';
+            log('Supabase client is working');
+            
+            // Test database connection
+            testDatabaseConnection();
+        } else {
+            statusDiv.innerHTML = '<div style="color: red;">❌ Supabase client failed to initialize</div>';
+            log('Supabase client failed to initialize', true);
+        }
+
+        async function testDatabaseConnection() {
+            try {
+                log('Testing database connection...');
+                const { data, error } = await supabase
+                    .from('categories')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    log('Database connection error: ' + error.message, true);
+                } else {
+                    log('Database connection successful');
+                }
+            } catch (err) {
+                log('Database test failed: ' + err.message, true);
+            }
+        }
+
+        // Test registration
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            
+            log('Attempting to register user: ' + email);
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) {
+                    log('Registration error: ' + error.message, true);
+                } else {
+                    log('Registration successful! User: ' + JSON.stringify(data.user));
+                    
+                    // Test creating profile
+                    if (data.user) {
+                        try {
+                            const { data: profileData, error: profileError } = await supabase
+                                .from('profiles')
+                                .insert({
+                                    id: data.user.id,
+                                    email: email,
+                                    first_name: 'Test',
+                                    last_name: 'User'
+                                });
+                            
+                            if (profileError) {
+                                log('Profile creation error: ' + profileError.message, true);
+                            } else {
+                                log('Profile created successfully');
+                            }
+                        } catch (profileErr) {
+                            log('Profile creation failed: ' + profileErr.message, true);
+                        }
+                    }
+                }
+            } catch (err) {
+                log('Registration failed: ' + err.message, true);
+            }
+        });
+
+        // Test current session
+        supabase.auth.onAuthStateChange((event, session) => {
+            log('Auth state changed: ' + event);
+            if (session) {
+                log('Current user: ' + session.user.email);
+            } else {
+                log('No active session');
+            }
+        });
+    </script>
+</body>
+</html>

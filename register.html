@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="register.page_title">Register - Van Hool Parts</title>
+    <meta name="description" data-translate="register.meta_description" content="Create your Van Hool Parts account to access our complete catalog and make purchases.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/custom-colors.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    
+    <!-- Custom font style -->
+    <style>
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+    </style>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 lg:h-20">
+                <!-- Left: Logo -->
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
+                        <img src="LOGO1 1.svg" alt="Van Hool Parts" class="h-8 lg:h-10 w-auto">
+                    </a>
+                </div>
+                
+                <!-- Center: Navigation -->
+                <div class="flex-1 flex justify-center">
+                    <div class="hidden lg:flex items-center space-x-8">
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="nav.catalog">Catalog</a>
+                        <a href="index.html#about" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="nav.about">About</a>
+                    </div>
+                </div>
+                
+                <!-- Right: User Actions -->
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-2 lg:space-x-4">
+                        <!-- Mobile menu button -->
+                        <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        
+                        <!-- Login Link -->
+                        <a href="login.html" class="hidden md:block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md" data-translate="nav.login">Login</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
+                <div class="px-4 py-4 space-y-2">
+                    <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="nav.catalog">
+                        <i class="fas fa-th-grid mr-2"></i>Catalog
+                    </a>
+                    <a href="index.html#about" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="nav.about">
+                        <i class="fas fa-info-circle mr-2"></i>About
+                    </a>
+                    
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <div>
+                <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-100">
+                    <i class="fas fa-user-plus text-red-600 text-xl"></i>
+                </div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900" data-translate="register.title">
+                    Create your account
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    <span data-translate="register.have_account">Already have an account?</span>
+                    <a href="login.html" class="font-medium text-red-600 hover:text-red-500" data-translate="register.login_link">
+                        Sign in here
+                    </a>
+                </p>
+            </div>
+
+            <form id="register-form" class="mt-8 space-y-6">
+                <div class="space-y-4">
+                    <!-- Personal Information -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="first-name" class="block text-sm font-medium text-gray-700" data-translate="register.first_name">First Name</label>
+                            <input id="first-name" name="first-name" type="text" required
+                                class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                                data-translate-placeholder="register.first_name_placeholder">
+                        </div>
+                        <div>
+                            <label for="last-name" class="block text-sm font-medium text-gray-700" data-translate="register.last_name">Last Name</label>
+                            <input id="last-name" name="last-name" type="text" required
+                                class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                                data-translate-placeholder="register.last_name_placeholder">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700" data-translate="register.email">Email address</label>
+                        <input id="email" name="email" type="email" autocomplete="email" required
+                            class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                            data-translate-placeholder="register.email_placeholder">
+                    </div>
+
+                    <!-- Company (Optional) -->
+                    <div>
+                        <label for="company" class="block text-sm font-medium text-gray-700" data-translate="register.company">Company (Optional)</label>
+                        <input id="company" name="company" type="text"
+                            class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                            data-translate-placeholder="register.company_placeholder">
+                    </div>
+
+                    <!-- Phone -->
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700" data-translate="register.phone">Phone Number</label>
+                        <input id="phone" name="phone" type="tel"
+                            class="mt-1 relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                            data-translate-placeholder="register.phone_placeholder">
+                    </div>
+
+                    <!-- Password -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700" data-translate="register.password">Password</label>
+                        <div class="mt-1 relative">
+                            <input id="password" name="password" type="password" autocomplete="new-password" required
+                                class="relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                                data-translate-placeholder="register.password_placeholder">
+                            <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="password-icon"></i>
+                            </button>
+                        </div>
+                        <!-- Password requirements -->
+                        <div class="mt-2">
+                            <div class="text-xs text-gray-500 space-y-1">
+                                <div class="flex items-center" id="length-req">
+                                    <i class="fas fa-times text-red-500 mr-2 w-3"></i>
+                                    <span data-translate="register.password_length">At least 8 characters</span>
+                                </div>
+                                <div class="flex items-center" id="number-req">
+                                    <i class="fas fa-times text-red-500 mr-2 w-3"></i>
+                                    <span data-translate="register.password_number">At least one number</span>
+                                </div>
+                                <div class="flex items-center" id="special-req">
+                                    <i class="fas fa-times text-red-500 mr-2 w-3"></i>
+                                    <span data-translate="register.password_special">At least one special character</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div>
+                        <label for="confirm-password" class="block text-sm font-medium text-gray-700" data-translate="register.confirm_password">Confirm Password</label>
+                        <div class="mt-1 relative">
+                            <input id="confirm-password" name="confirm-password" type="password" autocomplete="new-password" required
+                                class="relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-red-500 focus:border-red-500 focus:z-10 sm:text-sm"
+                                data-translate-placeholder="register.confirm_password_placeholder">
+                            <button type="button" id="toggle-confirm-password" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="confirm-password-icon"></i>
+                            </button>
+                        </div>
+                        <div id="password-match" class="mt-1 text-xs hidden">
+                            <span class="text-red-500" data-translate="register.password_mismatch">Passwords do not match</span>
+                        </div>
+                    </div>
+
+                    <!-- Language Preference -->
+                    <div>
+                        <label for="language-pref" class="block text-sm font-medium text-gray-700" data-translate="register.language">Preferred Language</label>
+                        <select id="language-pref" name="language-pref" 
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                            <option value="en">English</option>
+                            <option value="ro">Română</option>
+                            <option value="ru">Русский</option>
+                        </select>
+                    </div>
+
+                    <!-- Terms and Conditions -->
+                    <div class="flex items-start">
+                        <input id="terms" name="terms" type="checkbox" required
+                            class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded mt-1">
+                        <label for="terms" class="ml-2 block text-sm text-gray-900">
+                            <span data-translate="register.agree">I agree to the</span>
+                            <a href="gdpr.html" class="font-medium text-red-600 hover:text-red-500" data-translate="register.terms">Terms and Conditions</a>
+                            <span data-translate="register.and">and</span>
+                            <a href="gdpr.html" class="font-medium text-red-600 hover:text-red-500" data-translate="register.privacy">Privacy Policy</a>
+                        </label>
+                    </div>
+
+                    <!-- Marketing emails -->
+                    <div class="flex items-start">
+                        <input id="marketing" name="marketing" type="checkbox"
+                            class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded mt-1">
+                        <label for="marketing" class="ml-2 block text-sm text-gray-900" data-translate="register.marketing">
+                            I would like to receive promotional emails about new products and special offers
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error-message" class="hidden rounded-md bg-red-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800" data-translate="register.error_title">Registration Failed</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <p id="error-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div id="success-message" class="hidden rounded-md bg-green-50 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-check-circle text-green-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-green-800" data-translate="register.success">Registration Successful</h3>
+                            <div class="mt-2 text-sm text-green-700">
+                                <p data-translate="register.check_email">Please check your email to verify your account</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" id="register-button"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fas fa-user-plus text-red-500 group-hover:text-blue-400"></i>
+                        </span>
+                        <span id="register-button-text" data-translate="register.create_account">Create Account</span>
+                        <i id="register-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
+                    </button>
+                </div>
+
+                <!-- Social Registration -->
+                <div class="mt-6">
+                    <div class="relative">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-gray-50 text-gray-500" data-translate="register.or">Or register with</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 grid grid-cols-2 gap-3">
+                        <button type="button" id="google-register"
+                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fab fa-google text-red-500"></i>
+                            <span class="ml-2">Google</span>
+                        </button>
+
+                        <button type="button" id="microsoft-register"
+                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fab fa-microsoft text-red-500"></i>
+                            <span class="ml-2">Microsoft</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="text-center text-sm text-gray-500">
+                <p>&copy; 2024 Van Hool Parts. <span data-translate="footer.rights">All rights reserved.</span></p>
+                <div class="mt-2 space-x-4">
+                    <a href="gdpr.html" class="hover:text-red-600" data-translate="footer.privacy">Privacy Policy</a>
+                    <a href="gdpr.html" class="hover:text-red-600" data-translate="footer.terms">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        console.log('🔥 Register page loaded');
+        
+        // Initialize Supabase client properly
+        let supabase = null;
+        
+        function initSupabase() {
+            try {
+                // Check if global Supabase client already exists
+                if (window.supabase && window.supabase.auth) {
+                    supabase = window.supabase;
+                    console.log('✅ Using existing global Supabase client');
+                } else {
+                    // Initialize from CDN library
+                    console.log('⚠️ Initializing Supabase client from library...');
+                    
+                    // Check if Supabase library is loaded
+                    if (typeof window.supabase === 'undefined') {
+                        console.error('❌ Supabase library not loaded');
+                        return;
+                    }
+                    
+                    // Create client using CDN library
+                    const { createClient } = window.supabase;
+                    if (createClient) {
+                        const client = createClient(
+                            'https://iqsfmofoezkdnmhbxwbn.supabase.co',
+                            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
+                        );
+                        supabase = client;
+                        window.supabase = client; // Make it globally available
+                        console.log('✅ Created and stored Supabase client');
+                    } else {
+                        console.error('❌ Supabase createClient function not found');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error initializing Supabase client:', error);
+            }
+        }
+        
+        // Try to initialize immediately
+        initSupabase();
+        
+        // Retry with increasing delays if first attempt failed
+        if (!supabase) {
+            setTimeout(() => {
+                if (!supabase) initSupabase();
+            }, 100);
+            
+            setTimeout(() => {
+                if (!supabase) initSupabase();
+            }, 500);
+            
+            setTimeout(() => {
+                if (!supabase) initSupabase();
+            }, 1000);
+        }
+        
+        console.log('Supabase client ready:', !!supabase);
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+        });
+    </script>
+    <script src="js/app-universal.js"></script>
+    <script src="js/categories-dropdown.js"></script>
+    <script>
+        // Initialize variables
+        let authManager = null;
+        let translationManager = null;
+        
+        // Define functions first (before DOM load event)
+        function setupPasswordToggle(toggleId, inputId, iconId) {
+            const toggle = document.getElementById(toggleId);
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            
+            if (toggle && input && icon) {
+                toggle.addEventListener('click', function() {
+                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', type);
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                });
+            }
+        }
+
+        function validatePassword() {
+            const password = document.getElementById('password').value;
+            const lengthReq = document.getElementById('length-req');
+            const numberReq = document.getElementById('number-req');
+            const specialReq = document.getElementById('special-req');
+            
+            // Length check
+            const hasLength = password.length >= 8;
+            updateRequirement(lengthReq, hasLength);
+            
+            // Number check
+            const hasNumber = /\d/.test(password);
+            updateRequirement(numberReq, hasNumber);
+            
+            // Special character check
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            updateRequirement(specialReq, hasSpecial);
+            
+            validatePasswordMatch();
+            
+            return hasLength && hasNumber && hasSpecial;
+        }
+
+        function validatePasswordMatch() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const matchDiv = document.getElementById('password-match');
+            
+            if (confirmPassword.length > 0) {
+                const matches = password === confirmPassword;
+                if (matches) {
+                    matchDiv.classList.add('hidden');
+                } else {
+                    matchDiv.classList.remove('hidden');
+                }
+                return matches;
+            }
+            
+            matchDiv.classList.add('hidden');
+            return true;
+        }
+
+        function updateRequirement(element, isValid) {
+            const icon = element.querySelector('i');
+            if (isValid) {
+                icon.className = 'fas fa-check text-green-500 mr-2 w-3';
+            } else {
+                icon.className = 'fas fa-times text-red-500 mr-2 w-3';
+            }
+        }
+
+        function showError(message) {
+            const errorText = document.getElementById('error-text');
+            const errorMessage = document.getElementById('error-message');
+            if (errorText) errorText.textContent = message;
+            showMessage(errorMessage);
+        }
+
+        function showMessage(element) {
+            if (element) {
+                element.classList.remove('hidden');
+            }
+        }
+
+        function hideMessage(element) {
+            if (element) {
+                element.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if already logged in
+            setTimeout(async () => {
+                try {
+                    if (supabase) {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                            window.location.href = 'index.html';
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Auth check error:', error);
+                }
+            }, 500);
+
+            // Password visibility toggles
+            setupPasswordToggle('toggle-password', 'password', 'password-icon');
+            setupPasswordToggle('toggle-confirm-password', 'confirm-password', 'confirm-password-icon');
+
+            // Password validation
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirm-password');
+            
+            if (passwordInput) {
+                passwordInput.addEventListener('input', validatePassword);
+            }
+            
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', validatePasswordMatch);
+            }
+
+            // Set language preference to current language
+            const languagePref = document.getElementById('language-pref');
+            if (languagePref && translationManager) {
+                languagePref.value = translationManager.currentLanguage;
+            }
+
+            // Form submission
+            const registerForm = document.getElementById('register-form');
+            if (registerForm) {
+                registerForm.addEventListener('submit', handleRegistration);
+            }
+
+            // Social registration
+            const googleRegister = document.getElementById('google-register');
+            const microsoftRegister = document.getElementById('microsoft-register');
+            
+            if (googleRegister) {
+                googleRegister.addEventListener('click', () => handleSocialRegister('google'));
+            }
+            
+            if (microsoftRegister) {
+                microsoftRegister.addEventListener('click', () => handleSocialRegister('microsoft'));
+            }
+        });
+
+        async function handleRegistration(e) {
+            e.preventDefault();
+            
+            const formData = {
+                email: document.getElementById('email').value.trim(),
+                password: document.getElementById('password').value,
+                confirmPassword: document.getElementById('confirm-password').value,
+                firstName: document.getElementById('first-name').value.trim(),
+                lastName: document.getElementById('last-name').value.trim(),
+                company: document.getElementById('company').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                language: document.getElementById('language-pref').value,
+                acceptTerms: document.getElementById('terms').checked,
+                marketing: document.getElementById('marketing').checked
+            };
+            
+            // Basic validation
+            if (!formData.email) {
+                showError('Email is required.');
+                return;
+            }
+            
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+                showError('Please enter a valid email address.');
+                return;
+            }
+            
+            if (formData.password.length < 8) {
+                showError('Password must be at least 8 characters long.');
+                return;
+            }
+            
+            if (formData.password !== formData.confirmPassword) {
+                showError('Passwords do not match.');
+                return;
+            }
+            
+            if (!formData.firstName || !formData.lastName) {
+                showError('First and last name are required.');
+                return;
+            }
+            
+            if (!formData.acceptTerms) {
+                showError('You must agree to the Terms and Conditions.');
+                return;
+            }
+            
+            const registerButton = document.getElementById('register-button');
+            const buttonText = document.getElementById('register-button-text');
+            const spinner = document.getElementById('register-spinner');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            // Show loading state
+            registerButton.disabled = true;
+            buttonText.style.display = 'none';
+            spinner.classList.remove('hidden');
+            hideMessage(errorMessage);
+            hideMessage(successMessage);
+            
+            try {
+                console.log('🔥 Starting Supabase registration for:', formData.email);
+                
+                // Check if Supabase is available
+                if (!supabase) {
+                    // Try to initialize again
+                    initSupabase();
+                    
+                    if (!supabase) {
+                        throw new Error('Registration service is not available. Please refresh the page and try again.');
+                    }
+                }
+                
+                console.log('Using Supabase client:', !!supabase.auth);
+                
+                // Real Supabase registration
+                const { data, error } = await supabase.auth.signUp({
+                    email: formData.email,
+                    password: formData.password,
+                    options: {
+                        data: {
+                            first_name: formData.firstName,
+                            last_name: formData.lastName,
+                            full_name: `${formData.firstName} ${formData.lastName}`,
+                            phone: formData.phone,
+                            company: formData.company,
+                            language: formData.language,
+                            marketing_consent: formData.marketing
+                        }
+                    }
+                });
+                
+                console.log('Supabase response:', { data, error });
+                
+                if (error) {
+                    console.error('Supabase registration error:', error);
+                    
+                    // Handle specific Supabase errors
+                    let errorMsg = 'Registration failed. Please try again.';
+                    
+                    if (error.message.includes('User already registered')) {
+                        errorMsg = 'An account with this email already exists. Please try logging in instead.';
+                    } else if (error.message.includes('Invalid API key')) {
+                        errorMsg = 'Service temporarily unavailable. Please try again later.';
+                    } else if (error.message.includes('Password should be at least')) {
+                        errorMsg = 'Password must be at least 8 characters long.';
+                    } else if (error.message.includes('Unable to validate email address')) {
+                        errorMsg = 'Please enter a valid email address.';
+                    } else if (error.message.includes('Email not confirmed')) {
+                        errorMsg = 'Please check your email and confirm your account before trying again.';
+                    } else {
+                        errorMsg = error.message;
+                    }
+                    
+                    throw new Error(errorMsg);
+                }
+                
+                if (data.user) {
+                    console.log('✅ Registration successful for user:', data.user.id);
+                    
+                    // Show success message
+                    showMessage(successMessage);
+                    
+                    // Clear form
+                    document.getElementById('register-form').reset();
+                    
+                    // Try to create user profile in profiles table
+                    try {
+                        const { error: profileError } = await supabase
+                            .from('profiles')
+                            .insert({
+                                id: data.user.id,
+                                email: formData.email,
+                                first_name: formData.firstName,
+                                last_name: formData.lastName,
+                                phone: formData.phone,
+                                company: formData.company,
+                                language: formData.language,
+                                marketing_consent: formData.marketing,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            });
+                        
+                        if (profileError) {
+                            console.warn('Profile creation warning:', profileError.message);
+                            // Don't fail registration if profile creation fails
+                        } else {
+                            console.log('✅ Profile created successfully');
+                        }
+                    } catch (profileErr) {
+                        console.warn('Profile creation failed:', profileErr.message);
+                        // Don't fail registration if profile creation fails
+                    }
+                    
+                    // Redirect to index after delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 3000);
+                    
+                } else {
+                    throw new Error('Registration completed but no user data returned.');
+                }
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError(error.message || 'Registration failed. Please try again.');
+            } finally {
+                // Reset loading state
+                registerButton.disabled = false;
+                buttonText.style.display = 'inline';
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function handleSocialRegister(provider) {
+            try {
+                if (typeof authManager !== 'undefined') {
+                    await authManager.loginWithProvider(provider);
+                } else {
+                    console.warn('Social registration not available');
+                }
+            } catch (error) {
+                console.error('Social registration error:', error);
+                showError(`Failed to register with ${provider}. Please try again.`);
+            }
+        }
+
+        function showError(message) {
+            const errorText = document.getElementById('error-text');
+            const errorMessage = document.getElementById('error-message');
+            if (errorText) errorText.textContent = message;
+            showMessage(errorMessage);
+        }
+
+        function showMessage(element) {
+            if (element) {
+                element.classList.remove('hidden');
+            }
+        }
+
+        function hideMessage(element) {
+            if (element) {
+                element.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

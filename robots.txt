@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /admin/
+Disallow: /cont/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /login
+Disallow: /register
+
+# Allow search but limit crawling of search results
+Disallow: /cautare?*
+Disallow: /search?*
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Allow important pages
+Allow: /
+Allow: /categorie/
+Allow: /produs/
+Allow: /despre-noi
+Allow: /contact
+Allow: /livrare
+Allow: /garantie
+
+# Crawl delay to be respectful
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://autoparts.ro/sitemap.xml

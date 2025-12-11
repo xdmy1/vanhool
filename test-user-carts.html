@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test User-Specific Carts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">User-Specific Cart Test</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Cart Info -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Cart Information</h2>
+                <div id="cart-info" class="space-y-2"></div>
+                <button onclick="refreshCartInfo()" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Refresh Cart Info
+                </button>
+            </div>
+            
+            <!-- Local Storage Debug -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">All Cart Keys in localStorage</h2>
+                <div id="storage-info" class="space-y-2"></div>
+                <button onclick="clearAllCarts()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Clear All Carts
+                </button>
+            </div>
+        </div>
+        
+        <!-- Test Actions -->
+        <div class="bg-white p-6 rounded-lg shadow mt-6">
+            <h2 class="text-xl font-semibold mb-4">Test Actions</h2>
+            <div class="space-x-4">
+                <button onclick="addTestProduct()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Add Test Product to Current Cart
+                </button>
+                <button onclick="simulateLogin('user1')" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    Simulate Login as User1
+                </button>
+                <button onclick="simulateLogin('user2')" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                    Simulate Login as User2
+                </button>
+                <button onclick="simulateLogout()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                    Simulate Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CONFIG, UTILS } from './js/config.js';
+
+        // Mock auth manager for testing
+        window.mockAuthManager = {
+            currentUser: null,
+            isAuthenticated() { return !!this.currentUser; },
+            getUserId() { return this.currentUser?.id; },
+            listeners: [],
+            addListener(callback) { this.listeners.push(callback); },
+            notifyListeners() { this.listeners.forEach(cb => cb()); }
+        };
+
+        function refreshCartInfo() {
+            const cartInfo = document.getElementById('cart-info');
+            const storageInfo = document.getElementById('storage-info');
+            
+            if (window.cartManager) {
+                const cart = window.cartManager.getCart();
+                const cartKey = window.cartManager.cartKey;
+                const currentUserId = window.cartManager.currentUserId;
+                
+                cartInfo.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>Current User:</strong> ${currentUserId || 'Anonymous'}</p>
+                        <p><strong>Cart Key:</strong> ${cartKey}</p>
+                        <p><strong>Items in Cart:</strong> ${cart.items.length}</p>
+                        <p><strong>Total Items:</strong> ${cart.items.reduce((sum, item) => sum + item.quantity, 0)}</p>
+                        <p><strong>Cart Total:</strong> ${cart.total}</p>
+                        <div class="mt-2">
+                            <strong>Items:</strong>
+                            <ul class="list-disc list-inside ml-4">
+                                ${cart.items.map(item => `<li>${item.name} (x${item.quantity})</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            } else {
+                cartInfo.innerHTML = '<p class="text-red-500">Cart Manager not available</p>';
+            }
+            
+            // Show all cart-related keys in localStorage
+            const cartKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('autoparts_cart')) {
+                    const value = localStorage.getItem(key);
+                    try {
+                        const parsed = JSON.parse(value);
+                        cartKeys.push({
+                            key,
+                            itemCount: parsed.items?.length || 0,
+                            total: parsed.total || 0
+                        });
+                    } catch (e) {
+                        cartKeys.push({ key, itemCount: 'Invalid', total: 'Invalid' });
+                    }
+                }
+            }
+            
+            storageInfo.innerHTML = cartKeys.length > 0 
+                ? cartKeys.map(cart => `
+                    <div class="p-2 bg-gray-50 rounded">
+                        <p><strong>${cart.key}</strong></p>
+                        <p>Items: ${cart.itemCount}, Total: ${cart.total}</p>
+                    </div>
+                `).join('')
+                : '<p class="text-gray-500">No carts found in localStorage</p>';
+        }
+        
+        window.refreshCartInfo = refreshCartInfo;
+        
+        window.addTestProduct = function() {
+            if (window.cartManager) {
+                const testProduct = {
+                    id: Date.now(),
+                    name: `Test Product ${Date.now()}`,
+                    price: 99.99,
+                    sale_price: 89.99,
+                    part_code: `TEST${Date.now()}`,
+                    image_url: '/images/placeholder.jpg',
+                    is_active: true,
+                    stock_quantity: 10
+                };
+                
+                window.cartManager.addItem(testProduct.id, 1, { productDetails: testProduct })
+                    .then(() => {
+                        refreshCartInfo();
+                        alert(`Added "${testProduct.name}" to cart`);
+                    })
+                    .catch(error => {
+                        alert('Error adding product: ' + error.message);
+                    });
+            } else {
+                alert('CartManager not available');
+            }
+        };
+        
+        window.simulateLogin = function(userId) {
+            // Set mock user
+            window.mockAuthManager.currentUser = { id: userId };
+            
+            // Replace authManager temporarily
+            window.authManager = window.mockAuthManager;
+            
+            // Dispatch auth state change
+            window.dispatchEvent(new CustomEvent('authStateChange', {
+                detail: { user: { id: userId }, event: 'SIGNED_IN' }
+            }));
+            
+            // Notify auth manager listeners
+            window.mockAuthManager.notifyListeners();
+            
+            setTimeout(() => {
+                refreshCartInfo();
+                alert(`Logged in as ${userId}`);
+            }, 100);
+        };
+        
+        window.simulateLogout = function() {
+            // Clear mock user
+            window.mockAuthManager.currentUser = null;
+            
+            // Dispatch auth state change
+            window.dispatchEvent(new CustomEvent('authStateChange', {
+                detail: { user: null, event: 'SIGNED_OUT' }
+            }));
+            
+            // Notify auth manager listeners
+            window.mockAuthManager.notifyListeners();
+            
+            setTimeout(() => {
+                refreshCartInfo();
+                alert('Logged out');
+            }, 100);
+        };
+        
+        window.clearAllCarts = function() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('autoparts_cart')) {
+                    keys.push(key);
+                }
+            }
+            
+            keys.forEach(key => localStorage.removeItem(key));
+            
+            refreshCartInfo();
+            alert(`Cleared ${keys.length} cart(s)`);
+        };
+        
+        // Initial load
+        setTimeout(() => {
+            refreshCartInfo();
+            
+            // Set up periodic refresh
+            setInterval(refreshCartInfo, 2000);
+        }, 500);
+    </script>
+
+    <!-- Load cart system -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/cart.js"></script>
+</body>
+</html>

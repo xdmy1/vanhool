@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://autoparts.ro/</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Static pages -->
+  <url>
+    <loc>https://autoparts.ro/despre-noi</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/contact</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/livrare</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/garantie</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/gdpr</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+  <!-- Categories (these would be dynamically generated in a real implementation) -->
+  <url>
+    <loc>https://autoparts.ro/categorie/franze-auto</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/categorie/motor</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/categorie/suspensie</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/categorie/transmisie</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/categorie/caroserie</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/categorie/sistem-electric</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Example products (these would be dynamically generated) -->
+  <url>
+    <loc>https://autoparts.ro/produs/placute-frana-spate-mercedes-sprinter-fr-mb-001</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/produs/filtru-aer-volvo-fh16-fa-vo-002</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <url>
+    <loc>https://autoparts.ro/produs/ulei-motor-15w40-synthetic-ul-sy-003</loc>
+    <lastmod>2024-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- 
+  Note: In a production environment, this sitemap should be generated dynamically
+  to include all products and categories from the database. Consider implementing
+  a server-side script or using Supabase Edge Functions to generate this automatically.
+  
+  Example script to add to your deployment process:
+  
+  async function generateSitemap() {
+    const { data: categories } = await supabase.from('categories').select('slug, updated_at');
+    const { data: products } = await supabase.from('products').select('slug, updated_at');
+    
+    // Generate XML with all categories and products
+    // Write to sitemap.xml
+  }
+  -->
+  
+</urlset>

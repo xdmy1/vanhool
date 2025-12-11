@@ -1,0 +1,12 @@
+the login page doesnt redirect pe to homepage.
+
+products don't add correctly to cart
+
+language dropdown doesnt work
+
+can't add new products from admin panel 
+
+adaug to cart from homepage -> cant find product, dar daca apas pe produs si il adaug de pe product.html pai se adauga si merge. 
+
+proiectul nu e unificat, produsele trebuie sa fie la fel pe toate paginile luate din supabase, credentials, categoriile, trebuie sa coincida pe toate paginile si pe admin panel as well.
+

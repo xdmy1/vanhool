@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="product_title">Product Details - Van Hool Parts</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/custom-colors.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg border-b sticky top-0 z-50">
+        <div class="container mx-auto px-4 lg:px-8">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
+                <!-- Left: Logo -->
+                <div class="flex items-center">
+                    <a href="index.html" class="text-xl lg:text-2xl font-bold text-red-600 flex items-center hover:text-red-700 transition-colors">
+                        <img src="LOGO1 1.svg" alt="Van Hool Parts" class="h-8 lg:h-10 w-auto">
+                        <span class="sm:hidden">VHP</span>
+                    </a>
+                </div>
+                    
+                <!-- Center: Navigation -->
+                <div class="flex-1 flex justify-center">
+                    <!-- Desktop Navigation -->
+                    <div class="hidden lg:flex items-center space-x-8">
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
+                        <a href="index.html#about" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                        <a href="index.html#contact" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                    </div>
+
+                    <!-- Tablet Navigation -->
+                    <div class="hidden md:flex lg:hidden items-center space-x-4">
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="catalog">Catalog</a>
+                        <a href="index.html#about" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="about">About</a>
+                    </div>
+                </div>
+                
+                <!-- Right: User Actions -->
+                <div class="flex items-center">
+                    <!-- Right Side Navigation -->
+                    <div class="flex items-center space-x-2 lg:space-x-4">
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                    
+                    <!-- Language Switcher -->
+                    <div class="relative group hidden sm:block">
+                        <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                            <span id="current-lang" class="text-sm font-medium">EN</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
+                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
+                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
+                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Icon -->
+                    <div class="relative">
+                        <button id="cart-toggle" class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-all duration-200 relative">
+                            <i class="fas fa-shopping-cart text-lg"></i>
+                            <span id="cart-count" class="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center absolute -top-1 -right-1 min-w-[20px]">0</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Auth Links -->
+                    <div id="auth-links" class="hidden md:flex items-center space-x-3">
+                        <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
+                        <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md" data-translate="register">Register</a>
+                    </div>
+                </div>
+                </div>
+            </nav>
+            
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
+                <div class="px-4 py-4 space-y-2">
+                    <div class="border-t pt-3 space-y-1">
+                        <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
+                            <i class="fas fa-th-grid mr-2"></i>Catalog
+                        </a>
+                        <a href="index.html#about" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
+                            <i class="fas fa-info-circle mr-2"></i>About
+                        </a>
+                        <a href="index.html#contact" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
+                            <i class="fas fa-envelope mr-2"></i>Contact
+                        </a>
+                    </div>
+                    
+                    
+                    <!-- Mobile Language -->
+                    <div class="border-t pt-3">
+                        <div class="flex justify-center space-x-4">
+                            <button onclick="setLanguage('en')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
+                            <button onclick="setLanguage('ro')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
+                            <button onclick="setLanguage('ru')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Breadcrumb -->
+    <div class="bg-white border-b">
+        <div class="container mx-auto px-4 py-3">
+            <nav class="flex" aria-label="Breadcrumb">
+                <ol class="inline-flex items-center space-x-1 md:space-x-3">
+                    <li class="inline-flex items-center">
+                        <a href="index.html" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-red-600">
+                            <i class="fas fa-home mr-2"></i>Home
+                        </a>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <a href="catalog.html" class="ml-1 text-sm font-medium text-gray-700 hover:text-red-600" data-translate="catalog">Catalog</a>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="flex items-center">
+                            <i class="fas fa-chevron-right text-gray-400 mx-2"></i>
+                            <span class="ml-1 text-sm font-medium text-gray-500" id="breadcrumb-product">Product</span>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="container mx-auto px-4 py-12 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+        <p class="text-gray-600" data-translate="loading">Loading product...</p>
+    </div>
+
+    <!-- Product Not Found -->
+    <div id="not-found" class="hidden container mx-auto px-4 py-12 text-center">
+        <i class="fas fa-search text-gray-400 text-6xl mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h2>
+        <p class="text-gray-600 mb-6">The product you're looking for doesn't exist or has been removed.</p>
+        <a href="catalog.html" class="bg-red-600 text-white px-6 py-3 rounded-md hover:bg-red-700 transition-colors">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Catalog
+        </a>
+    </div>
+
+    <!-- Product Content -->
+    <div id="product-content" class="hidden container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Product Image -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="aspect-w-1 aspect-h-1">
+                    <img id="product-image" src="" alt="" class="w-full h-96 object-cover">
+                </div>
+            </div>
+            
+            <!-- Product Info -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="mb-4">
+                    <span id="product-part-code" class="text-sm font-medium text-red-600 bg-red-50 px-3 py-1 rounded-full"></span>
+                </div>
+                
+                <h1 id="product-name" class="text-3xl font-bold text-gray-900 mb-4"></h1>
+                
+                <div class="flex items-center justify-between mb-6">
+                    <span id="product-price" class="text-3xl font-bold text-gray-900"></span>
+                    <span id="product-stock" class="text-sm font-medium px-3 py-1 rounded-full"></span>
+                </div>
+                
+                <div id="product-description" class="text-gray-600 mb-6"></div>
+                
+                <!-- Add to Cart Section -->
+                <div class="border-t pt-6">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <label class="text-sm font-medium text-gray-700">Quantity:</label>
+                        <div class="flex items-center border border-gray-300 rounded-md">
+                            <button onclick="decreaseQuantity()" class="p-2 hover:bg-gray-100">
+                                <i class="fas fa-minus text-gray-400"></i>
+                            </button>
+                            <input type="number" id="quantity" min="1" max="10" value="1" 
+                                   class="w-16 text-center border-0 focus:ring-0 focus:outline-none">
+                            <button onclick="increaseQuantity()" class="p-2 hover:bg-gray-100">
+                                <i class="fas fa-plus text-gray-600"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button onclick="addProductToCart()" id="add-to-cart-btn"
+                            class="w-full bg-red-600 text-white py-3 px-6 rounded-md font-semibold hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        <i class="fas fa-cart-plus mr-2"></i>
+                        <span data-translate="add_to_cart">Add to Cart</span>
+                    </button>
+                    
+                    <!-- Login Required Message -->
+                    <div id="login-required" class="hidden mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <div class="flex">
+                            <i class="fas fa-info-circle text-yellow-400 mt-0.5"></i>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-800">
+                                    Please <a href="login.html" class="font-medium underline">login</a> to add items to your cart
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Specifications -->
+        <div id="product-specs" class="hidden bg-white rounded-lg shadow-sm p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-4" data-translate="specifications">Specifications</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div id="spec-weight" class="hidden flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-600" data-translate="weight">Weight:</span>
+                    <span class="font-medium" id="weight-value"></span>
+                </div>
+                <div id="spec-dimensions" class="hidden flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-600" data-translate="dimensions">Dimensions:</span>
+                    <span class="font-medium" id="dimensions-value"></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Products -->
+        <div class="mt-12">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6" data-translate="related_products">Related Products</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="related-products">
+                <!-- Related products will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal App System -->
+    <script src="js/app-universal.js"></script>
+    <script src="js/categories-dropdown.js"></script>
+    
+    <script>
+        console.log('🔥 Product page loaded');
+        
+        let currentProduct = null;
+        
+        // Get product ID from URL
+        function getProductIdFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id') || urlParams.get('code');
+        }
+        
+        // Load product details
+        async function loadProduct() {
+            const productId = getProductIdFromUrl();
+            
+            if (!productId) {
+                showNotFound();
+                return;
+            }
+            
+            try {
+                // Try to load from Supabase using standardized query
+                const { data: product, error } = await window.DB_QUERIES.getProduct(productId);
+                
+                if (error || !product) {
+                    // Fallback to demo product
+                    const demoProducts = getDemoProducts();
+                    currentProduct = demoProducts.find(p => p.id === productId || p.part_code === productId);
+                    
+                    if (!currentProduct) {
+                        showNotFound();
+                        return;
+                    }
+                } else {
+                    currentProduct = product;
+                }
+                
+                displayProduct(currentProduct);
+                loadRelatedProducts(currentProduct.category_id);
+                
+            } catch (error) {
+                console.error('Error loading product:', error);
+                showNotFound();
+            }
+        }
+        
+        // Display product
+        function displayProduct(product) {
+            const currentLang = window.VanHoolApp?.currentLanguage || 'en';
+            
+            // Update page title and breadcrumb
+            document.title = `${product[`name_${currentLang}`] || product.name_en} - Van Hool Parts`;
+            document.getElementById('breadcrumb-product').textContent = product[`name_${currentLang}`] || product.name_en;
+            
+            // Product details
+            document.getElementById('product-part-code').textContent = product.part_code;
+            document.getElementById('product-name').textContent = product[`name_${currentLang}`] || product.name_en;
+            document.getElementById('product-price').textContent = `€${product.price}`;
+            
+            // Stock status
+            const stockElement = document.getElementById('product-stock');
+            if (product.stock_quantity > 0) {
+                stockElement.textContent = translate('in_stock');
+                stockElement.className = 'text-sm font-medium px-3 py-1 rounded-full bg-green-100 text-green-800';
+                document.getElementById('add-to-cart-btn').disabled = false;
+            } else {
+                stockElement.textContent = translate('out_of_stock');
+                stockElement.className = 'text-sm font-medium px-3 py-1 rounded-full bg-red-100 text-red-800';
+                document.getElementById('add-to-cart-btn').disabled = true;
+            }
+            
+            // Description
+            const description = product[`description_${currentLang}`] || product.description_en || 'No description available.';
+            document.getElementById('product-description').textContent = description;
+            
+            // Image
+            const imageElement = document.getElementById('product-image');
+            if (product.image_url) {
+                imageElement.src = product.image_url;
+                imageElement.alt = product[`name_${currentLang}`] || product.name_en;
+            } else {
+                imageElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xOTkuOSAyMDBMMTc1IDIyNUwyMjQuOSAyNzVMMjUwIDI0OS45TDI3NSAyMjVMMjQ5LjkgMjAwTDIyNSAxNzVMMjAwIDIwMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                imageElement.alt = 'No image available';
+            }
+            
+            // Specifications
+            if (product.weight || product.dimensions_length || product.dimensions_width || product.dimensions_height) {
+                document.getElementById('product-specs').classList.remove('hidden');
+                
+                if (product.weight) {
+                    document.getElementById('spec-weight').classList.remove('hidden');
+                    document.getElementById('weight-value').textContent = `${product.weight} kg`;
+                }
+                
+                if (product.dimensions_length || product.dimensions_width || product.dimensions_height) {
+                    document.getElementById('spec-dimensions').classList.remove('hidden');
+                    const dimensions = [
+                        product.dimensions_length && `${product.dimensions_length}cm`,
+                        product.dimensions_width && `${product.dimensions_width}cm`, 
+                        product.dimensions_height && `${product.dimensions_height}cm`
+                    ].filter(Boolean).join(' × ');
+                    document.getElementById('dimensions-value').textContent = dimensions;
+                }
+            }
+            
+            // Show product content
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('product-content').classList.remove('hidden');
+        }
+        
+        // Show not found
+        function showNotFound() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('not-found').classList.remove('hidden');
+        }
+        
+        // Demo products (same as other pages)
+        function getDemoProducts() {
+            return [
+                {
+                    id: 'demo-1',
+                    part_code: 'VH-BP-F-AG300-001',
+                    name_en: 'Front Brake Pads Van Hool AG300',
+                    name_ro: 'Plăcuțe Frână Față Van Hool AG300',
+                    name_ru: 'Передние тормозные колодки Van Hool AG300',
+                    description_en: 'Original Van Hool front brake pads for AG300 bus model. Premium quality ceramic compound for optimal braking performance.',
+                    description_ro: 'Plăcuțe de frână originale Van Hool pentru modelul de autobuz AG300. Compus ceramic premium pentru performanță optimă de frânare.',
+                    description_ru: 'Оригинальные передние тормозные колодки Van Hool для автобуса модели AG300. Премиум керамический состав для оптимальной тормозной производительности.',
+                    price: 125.99,
+                    stock_quantity: 15,
+                    weight: 2.5,
+                    dimensions_length: 15,
+                    dimensions_width: 10,
+                    dimensions_height: 2,
+                    category_id: 'brake-system'
+                },
+                {
+                    id: 'demo-2',
+                    part_code: 'VH-AS-R-A330-002',
+                    name_en: 'Rear Air Suspension Van Hool A330',
+                    name_ro: 'Suspensie Pneumatică Spate Van Hool A330',
+                    name_ru: 'Задняя пневмоподвеска Van Hool A330',
+                    description_en: 'Original Van Hool rear air suspension system for A330 coach. Complete assembly with air spring and shock absorber.',
+                    description_ro: 'Sistem original de suspensie pneumatică spate Van Hool pentru autocar A330. Ansamblu complet cu arc pneumatic și amortizor.',
+                    description_ru: 'Оригинальная система задней пневмоподвески Van Hool для автобуса A330. Полная сборка с пневморессорой и амортизатором.',
+                    price: 890.50,
+                    stock_quantity: 8,
+                    weight: 12.5,
+                    dimensions_length: 45,
+                    dimensions_width: 20,
+                    dimensions_height: 25,
+                    category_id: 'chassis-suspension'
+                }
+            ];
+        }
+        
+        // Load related products
+        async function loadRelatedProducts(categoryId) {
+            try {
+                // Use standardized query for related products
+                const relatedQuery = window.DB_QUERIES.getProducts({
+                    categoryId: categoryId,
+                    activeOnly: true,
+                    limit: 5 // Get 5 to ensure we have 4 after excluding current product
+                });
+                
+                const { data: allProducts, error } = await relatedQuery;
+                
+                // Filter out current product
+                const products = allProducts ? allProducts.filter(p => p.id !== currentProduct.id).slice(0, 4) : [];
+                
+                if (error || !products || products.length === 0) {
+                    // Show demo related products
+                    const demoProducts = getDemoProducts().filter(p => p.id !== currentProduct.id).slice(0, 4);
+                    displayRelatedProducts(demoProducts);
+                } else {
+                    displayRelatedProducts(products);
+                }
+                
+            } catch (error) {
+                console.error('Error loading related products:', error);
+            }
+        }
+        
+        // Display related products
+        function displayRelatedProducts(products) {
+            const container = document.getElementById('related-products');
+            const currentLang = window.VanHoolApp?.currentLanguage || 'en';
+            
+            if (products.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center">No related products found.</p>';
+                return;
+            }
+            
+            container.innerHTML = products.map(product => `
+                <a href="product.html?id=${product.id}" class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden border">
+                    <div class="aspect-w-1 aspect-h-1 bg-gray-100">
+                        ${product.image_url ? 
+                            `<img src="${product.image_url}" alt="${product[`name_${currentLang}`] || product.name_en}" class="w-full h-48 object-cover">` :
+                            `<div class="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                <i class="fas fa-image text-gray-400 text-3xl"></i>
+                            </div>`
+                        }
+                    </div>
+                    <div class="p-4">
+                        <div class="text-xs text-red-600 font-medium mb-1">${product.part_code}</div>
+                        <h4 class="font-semibold text-gray-900 text-sm mb-2 line-clamp-2">
+                            ${product[`name_${currentLang}`] || product.name_en}
+                        </h4>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-gray-900">€${product.price}</span>
+                            <span class="text-xs ${product.stock_quantity > 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${product.stock_quantity > 0 ? translate('in_stock') : translate('out_of_stock')}
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+        }
+        
+        // Quantity controls
+        window.increaseQuantity = function() {
+            const input = document.getElementById('quantity');
+            const currentValue = parseInt(input.value);
+            const maxValue = parseInt(input.max);
+            if (currentValue < maxValue) {
+                input.value = currentValue + 1;
+            }
+        };
+        
+        window.decreaseQuantity = function() {
+            const input = document.getElementById('quantity');
+            const currentValue = parseInt(input.value);
+            const minValue = parseInt(input.min);
+            if (currentValue > minValue) {
+                input.value = currentValue - 1;
+            }
+        };
+        
+        // Add to cart
+        window.addProductToCart = async function() {
+            try {
+                // Wait for cart manager to be available
+                if (!window.cartManager) {
+                    console.warn('Cart manager not available yet, waiting...');
+                    await new Promise(resolve => {
+                        const checkCartManager = () => {
+                            if (window.cartManager) {
+                                resolve();
+                            } else {
+                                setTimeout(checkCartManager, 100);
+                            }
+                        };
+                        checkCartManager();
+                    });
+                }
+                
+                const quantity = parseInt(document.getElementById('quantity').value) || 1;
+                
+                if (!currentProduct) {
+                    showNotification('Produsul nu a fost găsit', 'error');
+                    return;
+                }
+                
+                // Add to cart
+                const result = await window.cartManager.addItem(currentProduct.id, quantity, {
+                    productDetails: {
+                        ...currentProduct,
+                        is_active: true,
+                        stock_quantity: currentProduct.stock_quantity || 10
+                    },
+                    name: currentProduct.name_en || currentProduct.name || currentProduct.name_ro || 'Product',
+                    sku: currentProduct.part_code || currentProduct.sku,
+                    price: currentProduct.price,
+                    originalPrice: currentProduct.price,
+                    image: currentProduct.images?.[0] || '/images/placeholder.jpg',
+                    category: currentProduct.categories?.name || currentProduct.category || '',
+                    brand: currentProduct.brands?.name || currentProduct.brand || ''
+                });
+                
+                if (result.success) {
+                    showNotification(result.message || 'Produs adăugat în coș', 'success');
+                    updateCartCounter();
+                } else {
+                    showNotification(result.error || 'Eroare la adăugarea în coș', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showNotification('Eroare la adăugarea în coș', 'error');
+            }
+        };
+        
+        // Update cart counter in navigation
+        function updateCartCounter() {
+            if (window.cartManager) {
+                const itemCount = window.cartManager.getItemCount();
+                const counter = document.getElementById('cart-counter');
+                const mobileCounter = document.getElementById('mobile-cart-counter');
+                
+                if (itemCount > 0) {
+                    if (counter) {
+                        counter.textContent = itemCount;
+                        counter.classList.remove('hidden');
+                    }
+                    if (mobileCounter) {
+                        mobileCounter.textContent = itemCount;
+                        mobileCounter.classList.remove('hidden');
+                    }
+                } else {
+                    if (counter) counter.classList.add('hidden');
+                    if (mobileCounter) mobileCounter.classList.add('hidden');
+                }
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelectorAll('.cart-notification');
+            existing.forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `cart-notification fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 max-w-sm ${
+                type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
+                type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
+                'bg-red-100 border border-blue-400 text-red-700'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas ${
+                        type === 'error' ? 'fa-exclamation-circle' :
+                        type === 'success' ? 'fa-check-circle' :
+                        'fa-info-circle'
+                    } mt-0.5 mr-2 flex-shrink-0"></i>
+                    <div class="flex-1">${message}</div>
+                    <button type="button" class="ml-3 flex-shrink-0 hover:opacity-75" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 4000);
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProduct();
+            
+            // Initialize cart counter
+            setTimeout(updateCartCounter, 1000);
+            
+            // Listen for cart events if cart manager becomes available
+            const checkForCartManager = () => {
+                if (window.cartManager) {
+                    window.cartManager.addListener((event) => {
+                        if (['item_added', 'item_removed', 'item_updated', 'cart_cleared', 'cart_synced'].includes(event)) {
+                            updateCartCounter();
+                        }
+                    });
+                } else {
+                    setTimeout(checkForCartManager, 500);
+                }
+            };
+            checkForCartManager();
+        });
+        
+        // Update translations when language changes
+        window.addEventListener('languageChanged', function() {
+            if (currentProduct) {
+                displayProduct(currentProduct);
+            }
+        });
+        
+        // Mobile menu toggle
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+    </script>
+</body>
+</html>
