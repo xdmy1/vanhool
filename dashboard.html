@@ -135,6 +135,10 @@
                             <p class="mt-1 text-sm text-gray-900" id="user-full-name">Not set</p>
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700">Phone</label>
+                            <p class="mt-1 text-sm text-gray-900" id="user-phone">Not set</p>
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700">Member Since</label>
                             <p class="mt-1 text-sm text-gray-900" id="member-since">Loading...</p>
                         </div>
@@ -170,13 +174,38 @@
     <script>
         console.log('🔥 Dashboard page loaded');
         
-        // Use global Supabase client from app-universal.js
-        const supabase = window.supabase;
-        
         let currentUser = null;
+        let supabase = null;
         
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM loaded, checking auth');
+        // Wait for universal app and config to initialize
+        function waitForUniversalApp() {
+            return new Promise((resolve) => {
+                const checkApp = () => {
+                    if (window.supabase && window.VanHoolApp && window.CONFIG) {
+                        supabase = window.supabase;
+                        console.log('✅ All dependencies loaded:', {
+                            supabase: !!window.supabase,
+                            vanHoolApp: !!window.VanHoolApp,
+                            config: !!window.CONFIG
+                        });
+                        resolve();
+                    } else {
+                        console.log('⏳ Waiting for dependencies:', {
+                            supabase: !!window.supabase,
+                            vanHoolApp: !!window.VanHoolApp,
+                            config: !!window.CONFIG
+                        });
+                        setTimeout(checkApp, 100);
+                    }
+                };
+                checkApp();
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📄 DOM loaded, waiting for universal app...');
+            await waitForUniversalApp();
+            console.log('✅ Universal app ready, checking auth');
             checkAuth();
             setupEventListeners();
         });
@@ -184,9 +213,22 @@
         async function checkAuth() {
             try {
                 console.log('🔐 Checking authentication...');
-                const { data: { session }, error } = await supabase.auth.getSession();
                 
-                if (error || !session) {
+                if (!window.CONFIG || !window.CONFIG.supabase) {
+                    console.error('❌ Supabase not properly initialized');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                const { data: { session }, error } = await window.CONFIG.supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Authentication error:', error);
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                if (!session) {
                     console.log('❌ Not authenticated, redirecting to login');
                     window.location.href = 'login.html';
                     return;
@@ -194,6 +236,7 @@
                 
                 console.log('✅ User authenticated:', session.user.email);
                 currentUser = session.user;
+                supabase = window.CONFIG.supabase; // Update local reference
                 displayUserInfo(currentUser);
                 loadUserData();
                 
@@ -214,22 +257,255 @@
         
         async function loadUserData() {
             try {
+                console.log('📊 Loading user dashboard data...');
+                
                 // Load profile data
+                await loadProfileData();
+                
+                // Load orders data
+                await loadOrdersData();
+                
+                // Load cart data
+                await loadCartData();
+                
+                // Load wishlist data (if exists)
+                await loadWishlistData();
+                
+                // Load recent activity
+                await loadRecentActivity();
+                
+                console.log('✅ Dashboard data loaded successfully');
+                
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+        
+        async function loadProfileData() {
+            try {
+                console.log('📝 Loading profile data...');
                 const { data: profile, error } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', currentUser.id)
                     .single();
                 
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Profile query error:', error);
+                    return;
+                }
+                
                 if (profile) {
-                    if (profile.first_name || profile.last_name) {
-                        document.getElementById('user-full-name').textContent = 
+                    console.log('✅ Profile data loaded:', profile);
+                    // Update full name if available
+                    if (profile.first_name || profile.last_name || profile.full_name) {
+                        const fullName = profile.full_name || 
                             `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+                        const userFullNameEl = document.getElementById('user-full-name');
+                        if (userFullNameEl) {
+                            userFullNameEl.textContent = fullName;
+                        }
                     }
+                    
+                    // Update phone if available
+                    const phoneEl = document.getElementById('user-phone');
+                    if (phoneEl && profile.phone) {
+                        phoneEl.textContent = profile.phone;
+                    }
+                } else {
+                    console.log('📝 No profile data found - user may need to complete profile');
                 }
                 
             } catch (error) {
-                console.error('Error loading user data:', error);
+                console.error('Error loading profile data:', error);
+            }
+        }
+        
+        async function loadOrdersData() {
+            try {
+                console.log('📦 Loading orders data...');
+                const { data: orders, error } = await supabase
+                    .from('orders')
+                    .select('id, order_number, total_amount, status, created_at')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error('Error loading orders:', error);
+                    // Set default state for orders
+                    const ordersCountEl = document.getElementById('orders-count');
+                    if (ordersCountEl) {
+                        ordersCountEl.textContent = '0 orders';
+                    }
+                    return;
+                }
+                
+                // Update orders count
+                const ordersCountEl = document.getElementById('orders-count');
+                if (ordersCountEl) {
+                    const count = orders ? orders.length : 0;
+                    ordersCountEl.textContent = `${count} order${count !== 1 ? 's' : ''}`;
+                }
+                
+                console.log('📦 Loaded', orders?.length || 0, 'orders');
+                
+            } catch (error) {
+                console.error('Error loading orders data:', error);
+                // Set default state for orders
+                const ordersCountEl = document.getElementById('orders-count');
+                if (ordersCountEl) {
+                    ordersCountEl.textContent = '0 orders';
+                }
+            }
+        }
+        
+        async function loadCartData() {
+            try {
+                console.log('🛒 Loading cart data...');
+                const { data: cart, error } = await supabase
+                    .from('carts')
+                    .select(`
+                        id,
+                        cart_items (
+                            quantity
+                        )
+                    `)
+                    .eq('user_id', currentUser.id)
+                    .eq('status', 'active')
+                    .single();
+                
+                if (error && error.code !== 'PGRST116') {
+                    console.error('Error loading cart:', error);
+                    // Set default cart state
+                    const cartCountEl = document.getElementById('cart-count');
+                    if (cartCountEl) {
+                        cartCountEl.textContent = '0';
+                        cartCountEl.classList.add('hidden');
+                    }
+                    return;
+                }
+                
+                // Update cart counter
+                const totalItems = cart?.cart_items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                const cartCountEl = document.getElementById('cart-count');
+                if (cartCountEl) {
+                    cartCountEl.textContent = totalItems;
+                    if (totalItems > 0) {
+                        cartCountEl.classList.remove('hidden');
+                    } else {
+                        cartCountEl.classList.add('hidden');
+                    }
+                }
+                
+                console.log('🛒 Cart items:', totalItems);
+                
+            } catch (error) {
+                console.error('Error loading cart data:', error);
+                // Set default cart state on error
+                const cartCountEl = document.getElementById('cart-count');
+                if (cartCountEl) {
+                    cartCountEl.textContent = '0';
+                    cartCountEl.classList.add('hidden');
+                }
+            }
+        }
+        
+        async function loadWishlistData() {
+            try {
+                // For now, set wishlist to 0 as wishlist functionality isn't implemented yet
+                const wishlistCountEl = document.getElementById('wishlist-count');
+                if (wishlistCountEl) {
+                    wishlistCountEl.textContent = '0 items';
+                }
+                
+            } catch (error) {
+                console.error('Error loading wishlist data:', error);
+            }
+        }
+        
+        async function loadRecentActivity() {
+            try {
+                console.log('📈 Loading recent activity...');
+                // Load recent orders for activity
+                const { data: recentOrders, error } = await supabase
+                    .from('orders')
+                    .select('id, order_number, total_amount, status, created_at')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false })
+                    .limit(3);
+                
+                if (error) {
+                    console.error('Error loading recent activity:', error);
+                    // Still show account creation even if orders fail to load
+                    const activityEl = document.getElementById('recent-activity');
+                    if (activityEl) {
+                        activityEl.innerHTML = `
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-user-plus mr-3 text-green-500"></i>
+                                <span>Account created on ${new Date(currentUser.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div class="text-sm text-gray-500 text-center py-4">
+                                <i class="fas fa-box-open text-3xl mb-2 block"></i>
+                                No recent orders
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+                
+                const activityEl = document.getElementById('recent-activity');
+                if (activityEl) {
+                    let activityHTML = `
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-user-plus mr-3 text-green-500"></i>
+                            <span>Account created on ${new Date(currentUser.created_at).toLocaleDateString()}</span>
+                        </div>
+                    `;
+                    
+                    if (recentOrders && recentOrders.length > 0) {
+                        recentOrders.forEach(order => {
+                            const orderDate = new Date(order.created_at).toLocaleDateString();
+                            const statusIcon = order.status === 'completed' ? 'fas fa-check-circle text-green-500' :
+                                             order.status === 'processing' ? 'fas fa-clock text-yellow-500' :
+                                             'fas fa-shopping-bag text-red-500';
+                            
+                            activityHTML += `
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i class="${statusIcon} mr-3"></i>
+                                    <span>Order #${order.order_number} - €${order.total_amount} (${orderDate})</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        activityHTML += `
+                            <div class="text-sm text-gray-500 text-center py-4">
+                                <i class="fas fa-box-open text-3xl mb-2 block"></i>
+                                No recent orders
+                            </div>
+                        `;
+                    }
+                    
+                    activityEl.innerHTML = activityHTML;
+                }
+                
+                console.log('📈 Recent activity loaded');
+                
+            } catch (error) {
+                console.error('Error loading recent activity:', error);
+                // Show default activity
+                const activityEl = document.getElementById('recent-activity');
+                if (activityEl) {
+                    activityEl.innerHTML = `
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-user-plus mr-3 text-green-500"></i>
+                            <span>Account created</span>
+                        </div>
+                        <div class="text-sm text-gray-500 text-center py-4">
+                            <i class="fas fa-box-open text-3xl mb-2 block"></i>
+                            Unable to load activity
+                        </div>
+                    `;
+                }
             }
         }
         
@@ -292,5 +568,6 @@
     
     <!-- Universal App System -->
     <script src="js/app-universal.js"></script>
+    <script type="module" src="js/config.js"></script>
 </body>
 </html>

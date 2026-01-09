@@ -8,6 +8,38 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/custom-colors.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Custom scrollbar styles for better visibility */
+        .modal-content {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+        
+        /* Ensure proper modal positioning */
+        .modal-wrapper {
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        /* Smooth transitions */
+        .modal-wrapper, .modal-content {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
@@ -43,7 +75,7 @@
             <h2 class="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
             <p class="text-gray-600 mb-6">You don't have admin privileges for this system.</p>
             
-            <div class="bg-red-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
                 <h3 class="font-semibold text-red-800 mb-2">Need Admin Access?</h3>
                 <p class="text-red-700 text-sm mb-3">Admin access is controlled via Supabase Auth metadata. Set your user metadata with <code>role: "admin"</code> or use the admin email.</p>
             </div>
@@ -163,11 +195,11 @@
                 <!-- Categories -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-list text-indigo-600 mr-2"></i>
+                        <i class="fas fa-list text-red-600 mr-2"></i>
                         Categories
                     </h3>
                     <p class="text-gray-600 mb-4">Organize product categories</p>
-                    <button onclick="showCategoriesManagement()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 w-full">
+                    <button onclick="showCategoriesManagement()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
                         Manage Categories
                     </button>
                 </div>
@@ -187,11 +219,11 @@
                 <!-- Quick Add Product -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-plus-circle text-cyan-600 mr-2"></i>
+                        <i class="fas fa-plus-circle text-red-600 mr-2"></i>
                         Quick Add Product
                     </h3>
                     <p class="text-gray-600 mb-4">Add a new part quickly</p>
-                    <button onclick="showAddProductForm()" class="bg-cyan-600 text-white px-4 py-2 rounded hover:bg-cyan-700 w-full">
+                    <button onclick="showAddProductForm()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
                         Add Product
                     </button>
                 </div>
@@ -212,10 +244,10 @@
             
             <!-- Recent Activity -->
             <div class="bg-white rounded-lg shadow-sm">
-                <div class="p-6 border-b border-gray-200">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div id="recent-activity">
                         <p class="text-gray-500 text-center py-8">Loading recent activity...</p>
                     </div>
@@ -228,9 +260,9 @@
     
     <!-- Product Management Modal -->
     <div id="products-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Product Management</h2>
                         <button onclick="closeModal('products-modal')" class="text-gray-400 hover:text-gray-600">
@@ -238,7 +270,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div class="mb-4 flex justify-between items-center">
                         <div class="flex space-x-4">
                             <input type="text" id="product-search" placeholder="Search products..." class="px-4 py-2 border border-gray-300 rounded-lg">
@@ -260,9 +292,9 @@
 
     <!-- Add Product Modal -->
     <div id="add-product-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Add New Product</h2>
                         <button onclick="closeModal('add-product-modal')" class="text-gray-400 hover:text-gray-600">
@@ -270,13 +302,18 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <form id="add-product-form" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Basic Information -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Part Code *</label>
-                                <input type="text" name="part_code" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="VH-BP-F-AG300-001">
+                                <div class="flex space-x-2">
+                                    <input type="text" name="part_code" required class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="VH-BP-F-AG300-001">
+                                    <button type="button" onclick="generatePartCode()" class="px-3 py-2 bg-gray-100 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-200 text-sm">
+                                        Auto
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Main Category *</label>
@@ -295,7 +332,7 @@
                                 <input type="text" name="name_en" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Romanian)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Moldovan)</label>
                                 <input type="text" name="name_ro" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                             </div>
                             <div>
@@ -329,7 +366,7 @@
                                 <textarea name="description_en" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"></textarea>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Description (Romanian)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Description (Moldovan)</label>
                                 <textarea name="description_ro" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"></textarea>
                             </div>
                             <div>
@@ -372,9 +409,9 @@
 
     <!-- Edit Product Modal -->
     <div id="edit-product-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Edit Product</h2>
                         <button onclick="closeModal('edit-product-modal')" class="text-gray-400 hover:text-gray-600">
@@ -382,7 +419,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <form id="edit-product-form" class="space-y-6">
                         <input type="hidden" name="product_id" id="edit-product-id">
                         
@@ -409,7 +446,7 @@
                                 <input type="text" name="name_en" id="edit-name-en" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Brake Pad Set">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Romanian)</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Moldovan)</label>
                                 <input type="text" name="name_ro" id="edit-name-ro" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Set Plăcuțe Frână">
                             </div>
                             <div>
@@ -474,7 +511,7 @@
                                     <textarea name="description_en" id="edit-description-en" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Product description in English"></textarea>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Romanian)</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description (Moldovan)</label>
                                     <textarea name="description_ro" id="edit-description-ro" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Descrierea produsului în română"></textarea>
                                 </div>
                                 <div>
@@ -500,9 +537,9 @@
 
     <!-- Promo Codes Modal -->
     <div id="promo-codes-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Promo Code Management</h2>
                         <button onclick="closeModal('promo-codes-modal')" class="text-gray-400 hover:text-gray-600">
@@ -510,7 +547,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <!-- Create New Promo Code -->
                     <div class="bg-gray-50 rounded-lg p-6 mb-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Create New Promo Code</h3>
@@ -546,9 +583,9 @@
 
     <!-- Orders Modal -->
     <div id="orders-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Order Management</h2>
                         <button onclick="closeModal('orders-modal')" class="text-gray-400 hover:text-gray-600">
@@ -556,7 +593,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div class="mb-4 flex justify-between items-center">
                         <div class="flex space-x-4">
                             <input type="text" id="order-search" placeholder="Search orders..." class="px-4 py-2 border border-gray-300 rounded-lg">
@@ -580,9 +617,9 @@
 
     <!-- Users Modal -->
     <div id="users-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">User Management</h2>
                         <button onclick="closeModal('users-modal')" class="text-gray-400 hover:text-gray-600">
@@ -590,7 +627,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div class="mb-4">
                         <input type="text" id="user-search" placeholder="Search users..." class="px-4 py-2 border border-gray-300 rounded-lg">
                     </div>
@@ -604,9 +641,9 @@
 
     <!-- Analytics Modal -->
     <div id="analytics-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Analytics & Statistics</h2>
                         <button onclick="closeModal('analytics-modal')" class="text-gray-400 hover:text-gray-600">
@@ -614,7 +651,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div id="analytics-content">
                         <!-- Analytics content will be loaded here -->
                     </div>
@@ -625,9 +662,9 @@
 
     <!-- Categories Modal -->
     <div id="categories-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6 border-b border-gray-200">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Category Management</h2>
                         <button onclick="closeModal('categories-modal')" class="text-gray-400 hover:text-gray-600">
@@ -635,7 +672,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6">
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
                     <div id="categories-management-content">
                         <!-- Categories content will be loaded here -->
                     </div>
@@ -644,16 +681,133 @@
         </div>
     </div>
 
+    <!-- Edit Category Modal -->
+    <div id="edit-category-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
+            <div class="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl">
+                <div class="p-6 border-b border-gray-200 flex-shrink-0">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-900">Edit Category</h2>
+                        <button onclick="closeModal('edit-category-modal')" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                    <form id="edit-category-form" class="space-y-6">
+                        <input type="hidden" id="edit-category-id" name="category_id">
+                        
+                        <div class="grid grid-cols-1 gap-6">
+                            <!-- Category Type -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Category Type</label>
+                                <div class="flex space-x-4">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="category_type" value="main" class="mr-2">
+                                        <span>Main Category</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="category_type" value="sub" class="mr-2">
+                                        <span>Subcategory</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Parent Category (for subcategories) -->
+                            <div id="parent-category-section" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Parent Category *</label>
+                                <select id="edit-parent-category" name="parent_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                                    <option value="">Select Parent Category</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Names -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (English) *</label>
+                                <input type="text" id="edit-category-name-en" name="name_en" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Moldovan)</label>
+                                <input type="text" id="edit-category-name-ro" name="name_ro" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Name (Russian)</label>
+                                <input type="text" id="edit-category-name-ru" name="name_ru" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                            </div>
+                            
+                            <!-- Slug -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Slug *</label>
+                                <input type="text" id="edit-category-slug" name="slug" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="category-slug">
+                                <p class="text-xs text-gray-500 mt-1">URL-friendly version (lowercase, no spaces)</p>
+                            </div>
+                            
+                            <!-- Description -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                <textarea id="edit-category-description" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="Category description..."></textarea>
+                            </div>
+                            
+                            <!-- Sort Order -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Sort Order</label>
+                                <input type="number" id="edit-category-sort-order" name="sort_order" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="0">
+                                <p class="text-xs text-gray-500 mt-1">Lower numbers appear first</p>
+                            </div>
+                            
+                            <!-- Status -->
+                            <div class="flex items-center">
+                                <input type="checkbox" id="edit-category-active" name="is_active" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                <label for="edit-category-active" class="ml-2 text-sm text-gray-700">Active</label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-4">
+                            <button type="button" onclick="closeModal('edit-category-modal')" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                            <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                <span class="update-category-text">Update Category</span>
+                                <span class="update-category-loading hidden">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Updating...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Universal App System -->
     <script src="js/app-universal.js"></script>
+    <script type="module" src="js/config.js"></script>
     
     <script>
         console.log('🔥 Admin panel loaded');
         
+        // Helper to get Supabase client
+        async function getSupabaseClient() {
+            let supabaseClient = window.supabase || window.CONFIG?.supabase;
+            let attempts = 0;
+            while (!supabaseClient && attempts < 50) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                supabaseClient = window.supabase || window.CONFIG?.supabase;
+                attempts++;
+            }
+            if (!supabaseClient) {
+                throw new Error('Database connection not available. Please refresh the page.');
+            }
+            return supabaseClient;
+        }
+        
         // Simple admin access check using Supabase Auth
         async function checkAdminAccess() {
             try {
-                const { data: { session }, error } = await window.supabase.auth.getSession();
+                const supabase = await getSupabaseClient();
+                const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (!session || !session.user) {
                     // Not logged in - redirect to login
@@ -735,25 +889,54 @@
                 }
                 document.getElementById('total-products').textContent = productCount;
                 
-                // Get user count from auth.users (requires admin access)
+                // Get user count from profiles table
                 let userCount = 0;
                 try {
-                    // Try to get users from auth
-                    const { data: { users }, error } = await window.supabase.auth.admin.listUsers();
-                    userCount = users ? users.length : 0;
+                    console.log('🔍 Fetching user count from profiles table...');
+                    const { count, error } = await window.supabase
+                        .from('profiles')
+                        .select('*', { count: 'exact', head: true });
+                    
+                    if (error) {
+                        console.error('❌ Error fetching user count:', error);
+                        throw error;
+                    }
+                    
+                    userCount = count || 0;
+                    console.log(`✅ Found ${userCount} users in profiles table`);
+                    
                 } catch (e) {
-                    console.log('Cannot access auth users, trying profiles table');
+                    console.warn('⚠️ Cannot access profiles table, trying alternative methods');
+                    console.error('Error details:', e);
+                    
                     try {
-                        const { count } = await window.supabase
-                            .from('profiles')
-                            .select('*', { count: 'exact', head: true });
-                        userCount = count || 0;
+                        // Fallback: Try to get users from auth.users (requires service role)
+                        console.log('🔍 Trying auth.admin.listUsers as fallback...');
+                        const { data: { users }, error } = await window.supabase.auth.admin.listUsers();
+                        if (error) throw error;
+                        userCount = users ? users.length : 0;
+                        console.log(`✅ Found ${userCount} users via auth admin`);
                     } catch (e2) {
-                        console.log('No user data available');
-                        userCount = 1; // At least the current admin user
+                        console.warn('⚠️ Auth admin access not available');
+                        
+                        // Last resort: count users by querying the actual data
+                        try {
+                            const { data: users, error: dataError } = await window.supabase
+                                .from('profiles')
+                                .select('id');
+                            
+                            if (dataError) throw dataError;
+                            userCount = users ? users.length : 0;
+                            console.log(`✅ Counted ${userCount} users by actual data`);
+                        } catch (e3) {
+                            console.error('❌ All user counting methods failed');
+                            userCount = 0; // Default to 0 if everything fails
+                        }
                     }
                 }
+                
                 document.getElementById('total-users').textContent = userCount;
+                console.log(`📊 Final user count displayed: ${userCount}`);
                 
                 // Get category count
                 let categoryCount = 0;
@@ -967,7 +1150,7 @@
                 
                 // First try to load promo codes with simple query
                 const { data: promoCodes, error } = await window.supabase
-                    .from('promo_codes')
+                    .from('promocodes')
                     .select('*')
                     .order('created_at', { ascending: false });
                 
@@ -1039,73 +1222,82 @@
             try {
                 const { data: orders, error } = await window.supabase
                     .from('orders')
-                    .select(`
-                        *,
-                        profiles (email, first_name, last_name),
-                        order_items (
-                            quantity,
-                            price,
-                            products (part_code, name_en)
-                        )
-                    `)
-                    .order('created_at', { ascending: false });
-                
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) {
+                    console.error('Error loading orders:', error);
+                    throw error;
+                }
+
                 const ordersList = document.getElementById('orders-list');
                 
-                if (error || !orders || orders.length === 0) {
+                if (!orders || orders.length === 0) {
                     ordersList.innerHTML = '<p class="text-gray-500 text-center py-8">No orders found</p>';
                     return;
                 }
-                
-                ordersList.innerHTML = orders.map(order => `
-                    <div class="bg-white border rounded-lg p-4 mb-4">
-                        <div class="flex justify-between items-start mb-4">
-                            <div>
-                                <div class="flex items-center space-x-3 mb-2">
-                                    <span class="text-lg font-bold text-gray-900">Order #${order.id}</span>
-                                    <span class="px-2 py-1 text-sm rounded ${getOrderStatusColor(order.status)}">
-                                        ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                                    </span>
+
+                ordersList.innerHTML = orders.map(order => {
+                    const items = order.items || [];
+                    const totalItems = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+                    
+                    return `
+                        <div class="bg-white border rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer" onclick="viewOrderDetails('${order.id}')">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-4 mb-2">
+                                        <h3 class="font-semibold text-gray-900">#${order.id.slice(-8)}</h3>
+                                        <span class="px-2 py-1 text-xs rounded-full ${getOrderStatusColor(order.status)}">
+                                            ${(order.status || 'pending').charAt(0).toUpperCase() + (order.status || 'pending').slice(1)}
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <h4 class="font-medium text-gray-700">Customer:</h4>
+                                            <p class="text-sm text-gray-600">${order.customer_name || 'N/A'}</p>
+                                            <p class="text-sm text-gray-600">${order.customer_email || 'N/A'}</p>
+                                            <p class="text-sm text-gray-600">${order.customer_phone || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-700">Order Items:</h4>
+                                            ${items.length > 0 ? items.slice(0, 2).map(item => `
+                                                <p class="text-sm text-gray-600">${item.quantity || 1}x ${item.name || 'Product'}</p>
+                                            `).join('') : '<p class="text-sm text-gray-600">No items</p>'}
+                                            ${items.length > 2 ? `<p class="text-sm text-gray-500">...and ${items.length - 2} more</p>` : ''}
+                                        </div>
+                                        <div>
+                                            <h4 class="font-medium text-gray-700">Total:</h4>
+                                            <p class="text-lg font-semibold text-purple-600">€${parseFloat(order.total || 0).toFixed(2)}</p>
+                                            <p class="text-sm text-gray-500">${totalItems} items</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="text-gray-600">Customer: ${order.profiles?.email || 'Unknown'}</p>
-                                <p class="text-sm text-gray-500">
-                                    Ordered: ${new Date(order.created_at).toLocaleDateString()} • 
-                                    Total: €${order.total_amount} • 
-                                    Items: ${order.order_items?.length || 0}
-                                </p>
+                                <div class="flex space-x-2 ml-4">
+                                    <select onchange="updateOrderStatus('${order.id}', this.value); event.stopPropagation();" class="px-3 py-1 text-sm border border-gray-300 rounded">
+                                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                        <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
+                                        <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                                        <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                        <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                    </select>
+                                    <button onclick="viewOrderDetails('${order.id}'); event.stopPropagation();" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                                        Details
+                                    </button>
+                                </div>
                             </div>
-                            <div class="flex space-x-2">
-                                <select onchange="updateOrderStatus('${order.id}', this.value)" class="px-3 py-1 text-sm border border-gray-300 rounded">
-                                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
-                                    <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
-                                    <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
-                                    <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                                </select>
-                                <button onclick="viewOrderDetails('${order.id}')" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
-                                    Details
-                                </button>
+                            
+                            <div class="flex items-center text-sm text-gray-500 space-x-4">
+                                <span><i class="far fa-calendar mr-1"></i>${new Date(order.created_at).toLocaleDateString()}</span>
+                                <span><i class="fas fa-credit-card mr-1"></i>${order.payment_method || 'N/A'}</span>
                             </div>
                         </div>
-                        
-                        ${order.order_items && order.order_items.length > 0 ? `
-                            <div class="border-t pt-3">
-                                <p class="text-sm font-medium text-gray-700 mb-2">Order Items:</p>
-                                <div class="space-y-1">
-                                    ${order.order_items.map(item => `
-                                        <div class="flex justify-between text-sm text-gray-600">
-                                            <span>${item.products?.part_code || 'Unknown'} - ${item.products?.name_en || 'Unknown Product'}</span>
-                                            <span>Qty: ${item.quantity} × €${item.price}</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `).join('');
-                
+                    `;
+                }).join('');
+
             } catch (error) {
                 console.error('Error loading orders:', error);
+                document.getElementById('orders-list').innerHTML = '<p class="text-red-500 text-center py-8">Error loading orders</p>';
             }
         }
         
@@ -1505,7 +1697,7 @@
         window.togglePromoCode = async function(promoId, isActive) {
             try {
                 const { error } = await window.supabase
-                    .from('promo_codes')
+                    .from('promocodes')
                     .update({ is_active: isActive })
                     .eq('id', promoId);
                 
@@ -1521,7 +1713,7 @@
             
             try {
                 const { error } = await window.supabase
-                    .from('promo_codes')
+                    .from('promocodes')
                     .delete()
                     .eq('id', promoId);
                 
@@ -1546,30 +1738,402 @@
             }
         };
         
-        window.viewOrderDetails = function(orderId) {
-            alert(`Order details for #${orderId} - Feature coming soon`);
+        window.viewOrderDetails = async function(orderId) {
+            try {
+                // Get order details from database (simple version)
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+                
+                if (error) {
+                    console.error('Error fetching order details:', error);
+                    alert('Eroare la încărcarea detaliilor comenzii');
+                    return;
+                }
+                
+                const items = order.items || [];
+                
+                // Create modal for order details
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-bold text-gray-800">Detalii Comandă #${order.id.slice(-8)}</h2>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold mb-3">Informații Comandă</h3>
+                                    <div class="space-y-2">
+                                        <p><span class="font-medium">Status:</span> <span class="px-2 py-1 rounded text-sm bg-red-100 text-red-800">${order.status || 'pending'}</span></p>
+                                        <p><span class="font-medium">Data:</span> ${new Date(order.created_at).toLocaleString('ro-RO')}</p>
+                                        <p><span class="font-medium">Total:</span> €${parseFloat(order.total || 0).toFixed(2)}</p>
+                                        <p><span class="font-medium">Subtotal:</span> €${parseFloat(order.subtotal || 0).toFixed(2)}</p>
+                                        <p><span class="font-medium">Reducere:</span> €${parseFloat(order.discount_amount || 0).toFixed(2)}</p>
+                                        <p><span class="font-medium">Livrare:</span> €${parseFloat(order.shipping_cost || 0).toFixed(2)}</p>
+                                        <p><span class="font-medium">Metodă plată:</span> ${order.payment_method || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-semibold mb-3">Date Client</h3>
+                                    <div class="space-y-2">
+                                        <p><span class="font-medium">Nume:</span> ${order.customer_name || 'N/A'}</p>
+                                        <p><span class="font-medium">Email:</span> ${order.customer_email || 'N/A'}</p>
+                                        <p><span class="font-medium">Telefon:</span> ${order.customer_phone || 'N/A'}</p>
+                                        <p><span class="font-medium">Adresă:</span> ${order.customer_address || 'N/A'}</p>
+                                        ${order.notes ? `<p><span class="font-medium">Notițe:</span> ${order.notes}</p>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-lg font-semibold mb-3">Produse Comandate</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Produs</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cantitate</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Preț Unitar</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            ${items.length > 0 ? items.map(item => `
+                                                <tr>
+                                                    <td class="px-4 py-2">
+                                                        <span class="font-medium">${item.name || 'Produs necunoscut'}</span>
+                                                    </td>
+                                                    <td class="px-4 py-2">${item.quantity || 1}</td>
+                                                    <td class="px-4 py-2">€${parseFloat(item.price || 0).toFixed(2)}</td>
+                                                    <td class="px-4 py-2 font-medium">€${parseFloat(item.total || (item.price * item.quantity) || 0).toFixed(2)}</td>
+                                                </tr>
+                                            `).join('') : '<tr><td colspan="4" class="px-4 py-2 text-center">Nu există produse</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                                    Închide
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Error viewing order details:', error);
+                alert('Eroare la afișarea detaliilor comenzii');
+            }
         };
         
         window.toggleUserAdmin = async function(userId, makeAdmin) {
             try {
-                const { error } = await window.supabase
+                console.log(`🔄 Attempting to ${makeAdmin ? 'grant' : 'revoke'} admin access for user:`, userId);
+                
+                // Show loading state
+                const button = event.target;
+                const originalText = button.textContent;
+                button.disabled = true;
+                button.textContent = 'Updating...';
+                
+                // Update user admin status
+                const { data, error } = await window.supabase
                     .from('profiles')
                     .update({ is_admin: makeAdmin })
-                    .eq('id', userId);
+                    .eq('id', userId)
+                    .select();
                 
-                if (error) throw error;
-                loadUsers();
+                if (error) {
+                    console.error('❌ Supabase error details:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    
+                    // Provide user-friendly error messages
+                    let userMessage = error.message;
+                    if (error.code === '42501' || error.message.includes('permission')) {
+                        userMessage = 'Permission denied. You may not have admin privileges to change user roles.';
+                    } else if (error.code === '23503') {
+                        userMessage = 'User not found in the system.';
+                    }
+                    
+                    throw new Error(userMessage);
+                }
+                
+                console.log('✅ Admin status updated successfully:', data);
+                
+                // Show success message
+                const action = makeAdmin ? 'granted admin access to' : 'revoked admin access from';
+                alert(`Successfully ${action} user.`);
+                
+                // Reload users list to reflect changes
+                await loadUsers();
+                
             } catch (error) {
-                console.error('Error updating user admin status:', error);
+                console.error('❌ Error updating user admin status:', error);
+                alert('Failed to update user admin status: ' + error.message);
+                
+                // Reload users to ensure UI is in sync with database
+                await loadUsers();
             }
         };
         
-        window.viewUserDetails = function(userId) {
-            alert(`User details for ${userId} - Feature coming soon`);
+        window.viewUserDetails = async function(userId) {
+            try {
+                // Get user details from database
+                const { data: user, error } = await supabase
+                    .from('profiles')
+                    .select(`
+                        *,
+                        orders (
+                            id,
+                            order_number,
+                            total_amount,
+                            status,
+                            created_at
+                        )
+                    `)
+                    .eq('id', userId)
+                    .single();
+                
+                if (error) {
+                    console.error('Error fetching user details:', error);
+                    alert('Eroare la încărcarea detaliilor utilizatorului');
+                    return;
+                }
+                
+                // Create modal for user details
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-bold text-gray-800">Detalii Utilizator</h2>
+                                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold mb-3">Informații Personale</h3>
+                                    <div class="space-y-3">
+                                        <p><span class="font-medium">Nume complet:</span> ${user.full_name || 'N/A'}</p>
+                                        <p><span class="font-medium">Email:</span> ${user.email}</p>
+                                        <p><span class="font-medium">Telefon:</span> ${user.phone || 'N/A'}</p>
+                                        <p><span class="font-medium">Admin:</span> 
+                                            <span class="px-2 py-1 rounded text-sm ${user.is_admin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                                                ${user.is_admin ? 'Da' : 'Nu'}
+                                            </span>
+                                        </p>
+                                        <p><span class="font-medium">Data înregistrării:</span> ${new Date(user.created_at).toLocaleString('ro-RO')}</p>
+                                        <p><span class="font-medium">Ultima actualizare:</span> ${user.updated_at ? new Date(user.updated_at).toLocaleString('ro-RO') : 'N/A'}</p>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-semibold mb-3">Statistici Comenzi</h3>
+                                    <div class="space-y-3">
+                                        <p><span class="font-medium">Total comenzi:</span> ${user.orders?.length || 0}</p>
+                                        <p><span class="font-medium">Valoare totală:</span> €${user.orders?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0).toFixed(2) || '0.00'}</p>
+                                        <p><span class="font-medium">Ultima comandă:</span> 
+                                            ${user.orders?.length > 0 ? new Date(Math.max(...user.orders.map(o => new Date(o.created_at)))).toLocaleDateString('ro-RO') : 'Niciodată'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${user.orders?.length > 0 ? `
+                            <div>
+                                <h3 class="text-lg font-semibold mb-3">Istoric Comenzi</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nr. Comandă</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acțiuni</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            ${user.orders.map(order => `
+                                                <tr>
+                                                    <td class="px-4 py-2 font-medium">#${order.order_number}</td>
+                                                    <td class="px-4 py-2">${new Date(order.created_at).toLocaleDateString('ro-RO')}</td>
+                                                    <td class="px-4 py-2">
+                                                        <span class="px-2 py-1 rounded text-sm bg-red-100 text-red-800">${order.status}</span>
+                                                    </td>
+                                                    <td class="px-4 py-2">€${order.total_amount}</td>
+                                                    <td class="px-4 py-2">
+                                                        <button onclick="this.closest('.fixed').remove(); viewOrderDetails('${order.id}')" class="text-red-600 hover:text-red-800">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            ` : '<p class="text-gray-500 text-center py-4">Acest utilizator nu are comenzi încă.</p>'}
+                            
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                                    Închide
+                                </button>
+                                ${!user.is_admin ? `
+                                <button onclick="this.closest('.fixed').remove(); toggleUserAdmin('${userId}', true)" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                                    Fă Admin
+                                </button>
+                                ` : `
+                                <button onclick="this.closest('.fixed').remove(); toggleUserAdmin('${userId}', false)" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                                    Elimină Admin
+                                </button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Error viewing user details:', error);
+                alert('Eroare la afișarea detaliilor utilizatorului');
+            }
         };
         
-        window.editCategory = function(categoryId) {
-            alert(`Edit category ${categoryId} - Feature coming soon`);
+        window.editCategory = async function(categoryId) {
+            try {
+                console.log('📝 Opening edit category modal for:', categoryId);
+                
+                // Load category data
+                const { data: category, error } = await window.supabase
+                    .from('categories')
+                    .select('*')
+                    .eq('id', categoryId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (!category) {
+                    alert('Category not found');
+                    return;
+                }
+                
+                console.log('✅ Category data loaded:', category);
+                
+                // Populate form fields
+                document.getElementById('edit-category-id').value = category.id;
+                document.getElementById('edit-category-name-en').value = category.name_en || '';
+                document.getElementById('edit-category-name-ro').value = category.name_ro || '';
+                document.getElementById('edit-category-name-ru').value = category.name_ru || '';
+                document.getElementById('edit-category-slug').value = category.slug || '';
+                document.getElementById('edit-category-description').value = category.description || '';
+                document.getElementById('edit-category-sort-order').value = category.sort_order || 0;
+                document.getElementById('edit-category-active').checked = category.is_active || false;
+                
+                // Set category type
+                const isSubcategory = !!category.parent_id;
+                const categoryTypeRadios = document.querySelectorAll('input[name="category_type"]');
+                categoryTypeRadios.forEach(radio => {
+                    radio.checked = radio.value === (isSubcategory ? 'sub' : 'main');
+                });
+                
+                // Handle parent category section
+                const parentSection = document.getElementById('parent-category-section');
+                if (isSubcategory) {
+                    parentSection.classList.remove('hidden');
+                    await loadParentCategoriesForEdit();
+                    document.getElementById('edit-parent-category').value = category.parent_id;
+                } else {
+                    parentSection.classList.add('hidden');
+                }
+                
+                // Show modal
+                showModal('edit-category-modal');
+                
+            } catch (error) {
+                console.error('❌ Error loading category for edit:', error);
+                alert('Failed to load category data: ' + error.message);
+            }
+        };
+        
+        // Load parent categories for edit form
+        async function loadParentCategoriesForEdit() {
+            try {
+                const { data: parentCategories, error } = await window.supabase
+                    .from('categories')
+                    .select('id, name_en, name_ro, name_ru')
+                    .is('parent_id', null)
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true })
+                    .order('name_en', { ascending: true });
+                
+                if (error) throw error;
+                
+                const select = document.getElementById('edit-parent-category');
+                select.innerHTML = '<option value="">Select Parent Category</option>';
+                
+                parentCategories?.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.name_en || cat.name_ro || cat.name_ru || 'Unnamed Category';
+                    select.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading parent categories:', error);
+            }
+        }
+        
+        // Generate unique part code
+        window.generatePartCode = async function() {
+            try {
+                // Generate a part code with format VH-XXX-YYY-ZZZ
+                const timestamp = Date.now().toString(36).toUpperCase();
+                const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+                const partCode = `VH-${timestamp}-${random}`;
+                
+                // Check if it already exists (very unlikely but just in case)
+                const { data: existing } = await window.supabase
+                    .from('products')
+                    .select('id')
+                    .eq('part_code', partCode)
+                    .single();
+                
+                if (existing) {
+                    // Generate another one if somehow it exists
+                    const fallbackCode = `VH-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                    document.querySelector('input[name="part_code"]').value = fallbackCode;
+                } else {
+                    document.querySelector('input[name="part_code"]').value = partCode;
+                }
+                
+            } catch (error) {
+                console.error('Error generating part code:', error);
+                // Fallback to simple generation
+                const fallbackCode = `VH-${Date.now().toString(36).toUpperCase()}`;
+                document.querySelector('input[name="part_code"]').value = fallbackCode;
+            }
         };
         
         // Form submissions
@@ -1600,9 +2164,13 @@
                     // Generate slug if not provided (backup for database trigger)
                     if (!productData.slug) {
                         const nameForSlug = productData.name_en || productData.part_code || 'product';
-                        productData.slug = nameForSlug.toLowerCase()
+                        const baseSlug = nameForSlug.toLowerCase()
                             .replace(/[^a-z0-9]+/g, '-')
                             .replace(/^-+|-+$/g, '');
+                        
+                        // Add timestamp to make it more unique
+                        const timestamp = Date.now().toString(36);
+                        productData.slug = `${baseSlug}-${timestamp}`;
                     }
                     
                     if (productData.weight) productData.weight = parseFloat(productData.weight);
@@ -1636,12 +2204,39 @@
                             }
                         }
                         
-                        // Validate Supabase connection
-                        if (!window.supabase) {
-                            throw new Error('Database connection not available');
+                        // Wait for CONFIG to be available
+                        let supabaseClient = window.supabase || window.CONFIG?.supabase;
+                        let attempts = 0;
+                        while (!supabaseClient && attempts < 30) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            supabaseClient = window.supabase || window.CONFIG?.supabase;
+                            attempts++;
                         }
                         
-                        const { data, error } = await window.supabase
+                        if (!supabaseClient) {
+                            throw new Error('Database connection not available. Please refresh the page and try again.');
+                        }
+                        
+                        console.log('✅ Supabase client available, checking part code uniqueness...');
+                        
+                        // Check if part code already exists
+                        console.log('🔍 Checking if part code already exists...');
+                        const { data: existingProduct, error: checkError } = await supabaseClient
+                            .from('products')
+                            .select('id, part_code')
+                            .eq('part_code', productData.part_code)
+                            .single();
+                            
+                        if (checkError && checkError.code !== 'PGRST116') {
+                            // PGRST116 is "not found" which is what we want
+                            console.warn('⚠️ Error checking part code:', checkError);
+                        } else if (existingProduct) {
+                            throw new Error(`A product with part code "${productData.part_code}" already exists. Please use a different part code.`);
+                        }
+                        
+                        console.log('✅ Part code is unique, proceeding with product creation...');
+                        
+                        const { data, error } = await supabaseClient
                             .from('products')
                             .insert([productData])
                             .select();
@@ -1657,7 +2252,18 @@
                             // Provide user-friendly error messages
                             let userMessage = error.message;
                             if (error.code === '23505') {
-                                userMessage = 'A product with this part code already exists';
+                                // Unique constraint violation - check which field
+                                if (error.details && error.details.includes('part_code')) {
+                                    userMessage = 'A product with this part code already exists';
+                                } else if (error.details && error.details.includes('slug')) {
+                                    userMessage = 'A product with this name/slug already exists. Please use a different name.';
+                                } else if (error.details && error.details.includes('sku')) {
+                                    userMessage = 'A product with this SKU already exists';
+                                } else {
+                                    // Generic unique constraint message if we can't determine the field
+                                    console.log('🔍 Unique constraint details:', error.details);
+                                    userMessage = 'A product with these details already exists. Please check part code, name, and SKU.';
+                                }
                             } else if (error.code === '23503') {
                                 userMessage = 'Invalid category selected';
                             } else if (error.message.includes('permission')) {
@@ -1730,9 +2336,13 @@
                     // Generate slug if not provided (backup for database trigger)
                     if (!productData.slug) {
                         const nameForSlug = productData.name_en || productData.part_code || 'product';
-                        productData.slug = nameForSlug.toLowerCase()
+                        const baseSlug = nameForSlug.toLowerCase()
                             .replace(/[^a-z0-9]+/g, '-')
                             .replace(/^-+|-+$/g, '');
+                        
+                        // Add timestamp to make it more unique
+                        const timestamp = Date.now().toString(36);
+                        productData.slug = `${baseSlug}-${timestamp}`;
                     }
                     
                     if (productData.weight) productData.weight = parseFloat(productData.weight);
@@ -1771,6 +2381,105 @@
                 });
             }
             
+            // Edit category form
+            const editCategoryForm = document.getElementById('edit-category-form');
+            if (editCategoryForm) {
+                editCategoryForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(e.target);
+                    const categoryData = Object.fromEntries(formData);
+                    const categoryId = categoryData.category_id;
+                    delete categoryData.category_id;
+                    
+                    // Handle checkbox values
+                    categoryData.is_active = formData.get('is_active') === 'on';
+                    
+                    // Convert sort order to number
+                    if (categoryData.sort_order) {
+                        categoryData.sort_order = parseInt(categoryData.sort_order);
+                    }
+                    
+                    // Handle parent_id for subcategories
+                    if (categoryData.category_type === 'main') {
+                        categoryData.parent_id = null;
+                    }
+                    delete categoryData.category_type; // Remove this field as it's not stored
+                    
+                    // Remove empty fields
+                    Object.keys(categoryData).forEach(key => {
+                        if (categoryData[key] === '' || categoryData[key] === null || categoryData[key] === undefined) {
+                            if (key !== 'parent_id') { // Keep parent_id even if null
+                                delete categoryData[key];
+                            }
+                        }
+                    });
+                    
+                    const submitButton = e.target.querySelector('button[type="submit"]');
+                    const submitText = submitButton.querySelector('.update-category-text');
+                    const submitLoading = submitButton.querySelector('.update-category-loading');
+                    
+                    try {
+                        // Show loading state
+                        submitButton.disabled = true;
+                        submitText.classList.add('hidden');
+                        submitLoading.classList.remove('hidden');
+                        
+                        console.log('🔄 Updating category:', categoryId, categoryData);
+                        
+                        // Validate required fields
+                        if (!categoryData.name_en || !categoryData.slug) {
+                            throw new Error('Name (English) and Slug are required');
+                        }
+                        
+                        // Update category in database
+                        const { data, error } = await window.supabase
+                            .from('categories')
+                            .update(categoryData)
+                            .eq('id', categoryId)
+                            .select();
+                        
+                        if (error) {
+                            console.error('❌ Supabase error:', error);
+                            
+                            // Provide user-friendly error messages
+                            let userMessage = error.message;
+                            if (error.code === '23505') {
+                                if (error.details && error.details.includes('slug')) {
+                                    userMessage = 'A category with this slug already exists. Please use a different slug.';
+                                } else {
+                                    userMessage = 'A category with these details already exists.';
+                                }
+                            } else if (error.code === '23503') {
+                                userMessage = 'Invalid parent category selected.';
+                            }
+                            
+                            throw new Error(userMessage);
+                        }
+                        
+                        if (!data || data.length === 0) {
+                            throw new Error('No data returned from update operation');
+                        }
+                        
+                        console.log('✅ Category updated successfully:', data);
+                        alert('Category updated successfully!');
+                        
+                        // Close modal and reload categories
+                        closeModal('edit-category-modal');
+                        loadCategoriesManagement(); // Refresh categories list
+                        
+                    } catch (error) {
+                        console.error('❌ Error updating category:', error);
+                        alert('Failed to update category: ' + error.message);
+                    } finally {
+                        // Reset loading state
+                        submitButton.disabled = false;
+                        submitText.classList.remove('hidden');
+                        submitLoading.classList.add('hidden');
+                    }
+                });
+            }
+            
             // Create promo form
             const createPromoForm = document.getElementById('create-promo-form');
             if (createPromoForm) {
@@ -1794,7 +2503,7 @@
                     try {
                         // Try to check table structure first
                         const { data: testData, error: testError } = await window.supabase
-                            .from('promo_codes')
+                            .from('promocodes')
                             .select('*')
                             .limit(1);
                         
@@ -1811,7 +2520,7 @@
                         console.log('Creating promo code:', promoInsert);
                         
                         const { data, error } = await window.supabase
-                            .from('promo_codes')
+                            .from('promocodes')
                             .insert([promoInsert])
                             .select();
                         
@@ -2002,6 +2711,20 @@
                 option.value = cat.id;
                 option.textContent = cat.name_en || cat.name || 'Unknown Subcategory';
                 subcategorySelect.appendChild(option);
+            });
+            
+            // Category type radio buttons for edit modal
+            const categoryTypeRadios = document.querySelectorAll('input[name="category_type"]');
+            categoryTypeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const parentSection = document.getElementById('parent-category-section');
+                    if (this.value === 'sub') {
+                        parentSection.classList.remove('hidden');
+                        loadParentCategoriesForEdit();
+                    } else {
+                        parentSection.classList.add('hidden');
+                    }
+                });
             });
             
             // If no subcategories, show message

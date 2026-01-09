@@ -140,7 +140,7 @@
                     <button type="submit" id="login-button"
                         class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed">
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                            <i class="fas fa-sign-in-alt text-red-500 group-hover:text-blue-400"></i>
+                            <i class="fas fa-sign-in-alt text-red-500 group-hover:text-red-400"></i>
                         </span>
                         <span id="button-text">Sign in</span>
                         <i id="loading-spinner" class="fas fa-spinner fa-spin ml-2 hidden"></i>
@@ -153,16 +153,8 @@
     <script>
         console.log('🔥 Login page loaded');
         
-        // Use global Supabase client from app-universal.js
-        const supabase = window.supabase;
-        
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📄 DOM loaded, setting up form');
-            
-            // Clear URL parameters for security
-            if (window.location.search) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
             
             const form = document.getElementById('login-form');
             form.addEventListener('submit', handleLogin);
@@ -171,9 +163,6 @@
         async function handleLogin(e) {
             e.preventDefault();
             console.log('🔄 Form submitted, preventing default');
-            
-            // Clear URL immediately
-            window.history.replaceState({}, document.title, window.location.pathname);
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -193,7 +182,14 @@
             successMessage.classList.add('hidden');
             
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({
+                // Check if Supabase is available
+                if (!window.supabase) {
+                    throw new Error('Login service is not available. Please refresh the page and try again.');
+                }
+                
+                console.log('🔗 Using Supabase client:', !!window.supabase.auth);
+                
+                const { data, error } = await window.supabase.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
@@ -202,22 +198,34 @@
                 
                 if (error) {
                     console.error('❌ Login failed:', error);
-                    document.getElementById('error-text').textContent = error.message;
+                    const errorMessages = {
+                        'Invalid login credentials': 'Email sau parolă incorectă',
+                        'Email not confirmed': 'Email-ul nu a fost confirmat. Verificați inbox-ul.',
+                        'User already registered': 'Un cont cu acest email există deja',
+                        'Password should be at least 6 characters': 'Parola trebuie să aibă minim 6 caractere',
+                        'Unable to validate email address: invalid format': 'Format email invalid',
+                        'Signup is disabled': 'Înregistrarea este temporar dezactivată'
+                    };
+                    
+                    const displayError = errorMessages[error.message] || error.message || 'A apărut o eroare neașteptată';
+                    document.getElementById('error-text').textContent = displayError;
                     errorMessage.classList.remove('hidden');
                 } else if (data.user) {
                     console.log('✅ Login successful!', data.user.email);
                     successMessage.classList.remove('hidden');
                     
-                    // Redirect to requested page or dashboard
+                    // Wait for auth state to update then redirect
                     setTimeout(() => {
                         const urlParams = new URLSearchParams(window.location.search);
                         const redirect = urlParams.get('redirect') || localStorage.getItem('redirect_after_login');
                         
-                        if (redirect && redirect !== 'login.html') {
+                        if (redirect && redirect !== 'login.html' && redirect !== '/login.html') {
                             // Remove stored redirect
                             localStorage.removeItem('redirect_after_login');
+                            console.log('🔀 Redirecting to:', redirect);
                             window.location.href = redirect;
                         } else {
+                            console.log('🔀 Redirecting to home');
                             window.location.href = 'index.html';
                         }
                     }, 1000);

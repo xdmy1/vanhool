@@ -1,20 +1,45 @@
-// Universal Van Hool Parts App System
+// Universal Inter Bus Parts App System
 // This connects all pages and functionality together
 
 console.log('🔥 Universal App System Loading...');
 
 // Initialize Supabase globally
-const { createClient } = supabase;
-window.supabase = createClient(
-    'https://iqsfmofoezkdnmhbxwbn.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
-);
+// Wait for the Supabase library to be available
+function initializeGlobalSupabase() {
+    try {
+        if (window.supabase && window.supabase.createClient) {
+            window.supabase = window.supabase.createClient(
+                'https://iqsfmofoezkdnmhbxwbn.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
+            );
+            console.log('✅ Global Supabase client initialized');
+            return true;
+        } else {
+            console.warn('⚠️ Supabase library not yet available');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Error initializing global Supabase:', error);
+        return false;
+    }
+}
+
+// Try to initialize immediately, then retry
+if (!initializeGlobalSupabase()) {
+    // Retry after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!initializeGlobalSupabase()) {
+            // Final retry with timeout
+            setTimeout(initializeGlobalSupabase, 1000);
+        }
+    });
+}
 
 // Global App State
-window.VanHoolApp = {
+window.InterBusApp = {
     currentUser: null,
-    currentLanguage: localStorage.getItem('vanhool_language') || 'en',
-    cart: JSON.parse(localStorage.getItem('vanhool_cart')) || [],
+    currentLanguage: localStorage.getItem('interbus_language') || 'en',
+    cart: JSON.parse(localStorage.getItem('interbus_cart')) || [],
     categories: [],
     isAdmin: false
 };
@@ -40,8 +65,8 @@ const TRANSLATIONS = {
         out_of_stock: "Out of Stock",
         
         // Hero
-        hero_title: "Rare Van Hool Bus Parts",
-        hero_subtitle: "Specialized supplier of authentic Van Hool parts. Hard-to-find components for all Van Hool bus models with worldwide shipping.",
+        hero_title: "Rare Inter Bus Bus Parts",
+        hero_subtitle: "Specialized supplier of authentic Inter Bus parts. Hard-to-find components for all Inter Bus bus models with worldwide shipping.",
         view_catalog: "View Catalog",
         contact_us: "Contact Us",
         parts_available: "Parts Available",
@@ -51,12 +76,12 @@ const TRANSLATIONS = {
         // Categories
         popular_categories: "Popular Categories",
         featured_parts: "Featured Parts",
-        featured_parts_desc: "Discover our most popular Van Hool parts. All parts come with detailed specifications and authentic part numbers.",
+        featured_parts_desc: "Discover our most popular Inter Bus parts. All parts come with detailed specifications and authentic part numbers.",
         see_all_parts: "See All Parts",
         
         // Catalog
-        title: "Van Hool Parts Catalog",
-        subtitle: "Find the perfect part for your Van Hool bus",
+        title: "Inter Bus Parts Catalog",
+        subtitle: "Find the perfect part for your Inter Bus bus",
         filters: "Filters",
         search: "Search",
         search_placeholder: "Search by part code or name...",
@@ -73,6 +98,27 @@ const TRANSLATIONS = {
         sort_featured: "Featured",
         no_results: "No products found",
         no_results_desc: "Try adjusting your filters or search terms",
+        
+        // Home page additions
+        about_inter_bus: "About Inter Bus",
+        about_description: "Inter Bus is your trusted supplier of authentic bus parts and components worldwide. We specialize in providing hard-to-find, rare parts for all bus models, ensuring your fleet stays operational and safe. With over 25 years of experience in the industry, we maintain an extensive inventory of genuine parts and high-quality alternatives that meet or exceed OEM standards.",
+        authentic_parts: "Authentic Parts",
+        authentic_parts_desc: "Genuine components from trusted manufacturers",
+        global_shipping: "Global Shipping",
+        global_shipping_desc: "Fast, reliable delivery to 50+ countries worldwide",
+        expert_support: "Expert Support",
+        expert_support_desc: "Professional guidance from experienced specialists",
+        
+        // Footer
+        footer_description: "Your trusted partner for authentic bus parts and components worldwide.",
+        quick_links: "Quick Links",
+        home: "Home",
+        address: "Chișinău, Moldova",
+        all_rights_reserved: "All rights reserved.",
+        latest_parts: "Latest Parts",
+        latest_parts_desc: "Discover our bus parts collection. All parts come with detailed specifications and authentic part numbers.",
+        over_parts: "Over 1000+ authentic parts",
+        view_all_catalog: "View All Catalog",
         
         // Admin
         admin_panel: "Admin Panel",
@@ -99,8 +145,8 @@ const TRANSLATIONS = {
         out_of_stock: "Fără Stoc",
         
         // Hero
-        hero_title: "Piese Rare Autobuze Van Hool",
-        hero_subtitle: "Furnizor specializat de piese originale Van Hool. Componente greu de găsit pentru toate modelele de autobuze Van Hool cu livrare în întreaga lume.",
+        hero_title: "Piese Rare Autobuze Inter Bus",
+        hero_subtitle: "Furnizor specializat de piese originale Inter Bus. Componente greu de găsit pentru toate modelele de autobuze Inter Bus cu livrare în întreaga lume.",
         view_catalog: "Vezi Catalogul",
         contact_us: "Contactează-ne",
         parts_available: "Piese Disponibile",
@@ -110,12 +156,12 @@ const TRANSLATIONS = {
         // Categories 
         popular_categories: "Categorii Populare",
         featured_parts: "Piese Recomandate", 
-        featured_parts_desc: "Descoperă cele mai populare piese Van Hool. Toate piesele vin cu specificații detaliate și numere originale de piese.",
+        featured_parts_desc: "Descoperă cele mai populare piese Inter Bus. Toate piesele vin cu specificații detaliate și numere originale de piese.",
         see_all_parts: "Vezi Toate Piesele",
         
         // Catalog
-        title: "Catalog Piese Van Hool",
-        subtitle: "Găsește piesa perfectă pentru autobuzul tău Van Hool",
+        title: "Catalog Piese Inter Bus",
+        subtitle: "Găsește piesa perfectă pentru autobuzul tău Inter Bus",
         filters: "Filtre",
         search: "Căutare",
         search_placeholder: "Caută după cod piesă sau nume...",
@@ -132,6 +178,27 @@ const TRANSLATIONS = {
         sort_featured: "Recomandate",
         no_results: "Nu s-au găsit produse",
         no_results_desc: "Încearcă să ajustezi filtrele sau termenii de căutare",
+        
+        // Home page additions
+        about_inter_bus: "Despre Inter Bus",
+        about_description: "Inter Bus este furnizorul de încredere pentru piese și componente autentice de autobuz la nivel mondial. Ne specializăm în furnizarea de piese rare și greu de găsit pentru toate modelele de autobuze, asigurându-ne că flota dumneavoastră rămâne operațională și sigură. Cu peste 25 de ani de experiență în industrie, menținem un inventar extins de piese originale și alternative de înaltă calitate care îndeplinesc sau depășesc standardele OEM.",
+        authentic_parts: "Piese Autentice",
+        authentic_parts_desc: "Componente originale de la producători de încredere",
+        global_shipping: "Livrare Globală",
+        global_shipping_desc: "Livrare rapidă și sigură în peste 50 de țări",
+        expert_support: "Suport Expert",
+        expert_support_desc: "Ghidare profesională de la specialiști cu experiență",
+        
+        // Footer
+        footer_description: "Partenerul dumneavoastră de încredere pentru piese și componente autentice de autobuz în întreaga lume.",
+        quick_links: "Legături Rapide",
+        home: "Acasă",
+        address: "Chișinău, Moldova",
+        all_rights_reserved: "Toate drepturile rezervate.",
+        latest_parts: "Ultimele Piese",
+        latest_parts_desc: "Descoperiți colecția noastră de piese de autobuz. Toate piesele vin cu specificații detaliate și numere autentice de piese.",
+        over_parts: "Peste 1000+ piese autentice",
+        view_all_catalog: "Vezi Tot Catalogul",
         
         // Admin
         admin_panel: "Panou Admin",
@@ -158,8 +225,8 @@ const TRANSLATIONS = {
         out_of_stock: "Нет в наличии",
         
         // Hero
-        hero_title: "Редкие запчасти для автобусов Van Hool",
-        hero_subtitle: "Специализированный поставщик оригинальных запчастей Van Hool. Труднодоступные компоненты для всех моделей автобусов Van Hool с доставкой по всему миру.",
+        hero_title: "Редкие запчасти для автобусов Inter Bus",
+        hero_subtitle: "Специализированный поставщик оригинальных запчастей Inter Bus. Труднодоступные компоненты для всех моделей автобусов Inter Bus с доставкой по всему миру.",
         view_catalog: "Смотреть каталог",
         contact_us: "Связаться с нами",
         parts_available: "Доступных запчастей",
@@ -169,12 +236,12 @@ const TRANSLATIONS = {
         // Categories
         popular_categories: "Популярные категории",
         featured_parts: "Рекомендуемые запчасти",
-        featured_parts_desc: "Откройте для себя самые популярные запчасти Van Hool. Все запчасти поставляются с подробными характеристиками и подлинными номерами запчастей.",
+        featured_parts_desc: "Откройте для себя самые популярные запчасти Inter Bus. Все запчасти поставляются с подробными характеристиками и подлинными номерами запчастей.",
         see_all_parts: "Смотреть все запчасти",
         
         // Catalog
-        title: "Каталог запчастей Van Hool",
-        subtitle: "Найдите идеальную запчасть для вашего автобуса Van Hool",
+        title: "Каталог запчастей Inter Bus",
+        subtitle: "Найдите идеальную запчасть для вашего автобуса Inter Bus",
         filters: "Фильтры",
         search: "Поиск",
         search_placeholder: "Поиск по коду запчасти или названию...",
@@ -192,6 +259,27 @@ const TRANSLATIONS = {
         no_results: "Товары не найдены",
         no_results_desc: "Попробуйте изменить фильтры или условия поиска",
         
+        // Home page additions
+        about_inter_bus: "О Inter Bus",
+        about_description: "Inter Bus — ваш надежный поставщик аутентичных автобусных запчастей и компонентов по всему миру. Мы специализируемся на поставке труднодоступных, редких запчастей для всех моделей автобусов, обеспечивая работоспособность и безопасность вашего парка. Имея более 25 лет опыта в отрасли, мы поддерживаем обширный склад оригинальных запчастей и высококачественных альтернатив, которые соответствуют или превышают стандарты OEM.",
+        authentic_parts: "Аутентичные запчасти",
+        authentic_parts_desc: "Оригинальные компоненты от надежных производителей",
+        global_shipping: "Глобальная доставка",
+        global_shipping_desc: "Быстрая, надежная доставка в более чем 50 стран мира",
+        expert_support: "Экспертная поддержка",
+        expert_support_desc: "Профессиональное руководство от опытных специалистов",
+        
+        // Footer
+        footer_description: "Ваш надежный партнер по аутентичным автобусным запчастям и компонентам по всему миру.",
+        quick_links: "Быстрые ссылки",
+        home: "Главная",
+        address: "Кишинёв, Молдова",
+        all_rights_reserved: "Все права защищены.",
+        latest_parts: "Последние запчасти",
+        latest_parts_desc: "Откройте для себя нашу коллекцию автобусных запчастей. Все запчасти поставляются с подробными техническими характеристиками и подлинными номерами запчастей.",
+        over_parts: "Более 1000+ подлинных запчастей",
+        view_all_catalog: "Посмотреть весь каталог",
+        
         // Admin
         admin_panel: "Админ панель",
         manage_products: "Управление товарами",
@@ -204,9 +292,9 @@ const TRANSLATIONS = {
 window.setLanguage = function(lang) {
     console.log('🌐 Setting language to:', lang);
     
-    // Ensure VanHoolApp is initialized
-    if (!window.VanHoolApp) {
-        window.VanHoolApp = {
+    // Ensure InterBusApp is initialized
+    if (!window.InterBusApp) {
+        window.InterBusApp = {
             currentLanguage: 'en',
             currentUser: null,
             cart: [],
@@ -216,8 +304,8 @@ window.setLanguage = function(lang) {
     }
     
     if (TRANSLATIONS[lang]) {
-        window.VanHoolApp.currentLanguage = lang;
-        localStorage.setItem('vanhool_language', lang);
+        window.InterBusApp.currentLanguage = lang;
+        localStorage.setItem('interbus_language', lang);
         updateTranslations();
         updateLanguageDisplay();
         
@@ -232,7 +320,7 @@ window.setLanguage = function(lang) {
 };
 
 window.translate = function(key) {
-    const lang = window.VanHoolApp.currentLanguage;
+    const lang = window.InterBusApp.currentLanguage;
     return TRANSLATIONS[lang] && TRANSLATIONS[lang][key] || key;
 };
 
@@ -259,9 +347,9 @@ function updateTranslations() {
 
 function updateLanguageDisplay() {
     const langElement = document.getElementById('current-lang');
-    if (langElement && window.VanHoolApp?.currentLanguage) {
-        langElement.textContent = window.VanHoolApp.currentLanguage.toUpperCase();
-        console.log('🎌 Updated language display to:', window.VanHoolApp.currentLanguage);
+    if (langElement && window.InterBusApp?.currentLanguage) {
+        langElement.textContent = window.InterBusApp.currentLanguage.toUpperCase();
+        console.log('🎌 Updated language display to:', window.InterBusApp.currentLanguage);
     } else if (langElement) {
         // Fallback
         langElement.textContent = 'EN';
@@ -275,7 +363,7 @@ async function checkUserAuth() {
         const { data: { session }, error } = await window.supabase.auth.getSession();
         
         if (session && session.user) {
-            window.VanHoolApp.currentUser = session.user;
+            window.InterBusApp.currentUser = session.user;
             
             // Check if admin
             const { data: profile } = await window.supabase
@@ -284,13 +372,13 @@ async function checkUserAuth() {
                 .eq('id', session.user.id)
                 .single();
                 
-            window.VanHoolApp.isAdmin = profile?.is_admin || false;
+            window.InterBusApp.isAdmin = profile?.is_admin || false;
             
             updateNavbarForLoggedInUser(session.user);
             return session.user;
         } else {
-            window.VanHoolApp.currentUser = null;
-            window.VanHoolApp.isAdmin = false;
+            window.InterBusApp.currentUser = null;
+            window.InterBusApp.isAdmin = false;
             updateNavbarForGuest();
             return null;
         }
@@ -308,7 +396,7 @@ function updateNavbarForLoggedInUser(user) {
     const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     
     let adminLink = '';
-    if (window.VanHoolApp.isAdmin) {
+    if (window.InterBusApp.isAdmin) {
         adminLink = `
             <a href="admin.html" class="block px-4 py-2 text-sm text-purple-600 hover:bg-gray-100 rounded-md">
                 <i class="fas fa-crown mr-2"></i>Admin Panel
@@ -379,7 +467,7 @@ function updateMobileAuthForLoggedIn(user, capitalizedName, adminLink) {
         <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
             <i class="fas fa-shopping-bag mr-2"></i>Catalog
         </a>
-        ${window.VanHoolApp.isAdmin ? `
+        ${window.InterBusApp.isAdmin ? `
             <a href="admin.html" class="block px-3 py-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors">
                 <i class="fas fa-crown mr-2"></i>Admin Panel
             </a>
@@ -421,10 +509,10 @@ window.handleLogout = async function() {
         const { error } = await window.supabase.auth.signOut();
         if (error) throw error;
         
-        window.VanHoolApp.currentUser = null;
-        window.VanHoolApp.isAdmin = false;
-        window.VanHoolApp.cart = [];
-        localStorage.removeItem('vanhool_cart');
+        window.InterBusApp.currentUser = null;
+        window.InterBusApp.isAdmin = false;
+        window.InterBusApp.cart = [];
+        localStorage.removeItem('interbus_cart');
         
         window.location.href = 'index.html';
     } catch (error) {
@@ -438,7 +526,7 @@ window.addToCart = async function(productId) {
     console.log('🛒 Adding to cart:', productId);
     
     // Check if user is logged in
-    if (!window.VanHoolApp.currentUser) {
+    if (!window.InterBusApp.currentUser) {
         if (confirm('You need to be logged in to add items to cart. Login now?')) {
             window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.href);
         }
@@ -450,7 +538,7 @@ window.addToCart = async function(productId) {
         let { data: cart, error } = await window.supabase
             .from('carts')
             .select('id')
-            .eq('user_id', window.VanHoolApp.currentUser.id)
+            .eq('user_id', window.InterBusApp.currentUser.id)
             .eq('status', 'active')
             .single();
         
@@ -459,7 +547,7 @@ window.addToCart = async function(productId) {
             const { data: newCart, error: createError } = await window.supabase
                 .from('carts')
                 .insert({
-                    user_id: window.VanHoolApp.currentUser.id,
+                    user_id: window.InterBusApp.currentUser.id,
                     status: 'active'
                 })
                 .select('id')
@@ -517,7 +605,14 @@ window.addToCart = async function(productId) {
         
         // Show success feedback
         showNotification('Added to cart!', 'success');
+        
+        // Update cart counter immediately
         updateCartCount();
+        
+        // Also update cart manager if it exists
+        if (window.cartManager) {
+            updateCartCountDisplay();
+        }
         
     } catch (error) {
         console.error('Cart error:', error);
@@ -525,9 +620,9 @@ window.addToCart = async function(productId) {
     }
 };
 
-// Get cart count
+// Get cart count from database and update display
 async function updateCartCount() {
-    if (!window.VanHoolApp.currentUser) return;
+    if (!window.InterBusApp.currentUser) return;
     
     try {
         const { data: cart } = await window.supabase
@@ -535,26 +630,50 @@ async function updateCartCount() {
             .select(`
                 cart_items(quantity)
             `)
-            .eq('user_id', window.VanHoolApp.currentUser.id)
+            .eq('user_id', window.InterBusApp.currentUser.id)
             .eq('status', 'active')
             .single();
             
         const totalItems = cart?.cart_items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
         
-        // Update cart badge if exists
-        const cartBadge = document.querySelector('.cart-count');
-        if (cartBadge) {
-            cartBadge.textContent = totalItems;
-            cartBadge.classList.toggle('hidden', totalItems === 0);
-        }
+        // Update all cart counter elements
+        const cartCountSelectors = [
+            '#cart-count', '#cart-counter', '#mobile-cart-counter', '#cart-item-count', '.cart-count'
+        ];
+        
+        cartCountSelectors.forEach(selector => {
+            const cartCountEl = document.querySelector(selector);
+            if (cartCountEl) {
+                cartCountEl.textContent = totalItems;
+                
+                if (totalItems > 0) {
+                    cartCountEl.classList.remove('hidden');
+                } else {
+                    cartCountEl.classList.add('hidden');
+                }
+            }
+        });
+        
+        // Trigger custom event for other parts of the app
+        window.dispatchEvent(new CustomEvent('cartCountUpdated', { 
+            detail: { count: totalItems } 
+        }));
+        
     } catch (error) {
         console.error('Cart count error:', error);
     }
 }
 
+// Global function to update cart counter from anywhere
+window.updateGlobalCartCounter = function() {
+    // Try both methods to ensure counter is updated
+    updateCartCount();
+    updateCartCountDisplay();
+};
+
 // Admin access function
 window.becomeAdmin = async function() {
-    if (!window.VanHoolApp.currentUser) {
+    if (!window.InterBusApp.currentUser) {
         alert('You must be logged in to access admin functions');
         return;
     }
@@ -563,11 +682,11 @@ window.becomeAdmin = async function() {
         const { error } = await window.supabase
             .from('profiles')
             .update({ is_admin: true })
-            .eq('id', window.VanHoolApp.currentUser.id);
+            .eq('id', window.InterBusApp.currentUser.id);
             
         if (error) throw error;
         
-        window.VanHoolApp.isAdmin = true;
+        window.InterBusApp.isAdmin = true;
         alert('Admin access granted! Refreshing page...');
         window.location.reload();
         
@@ -646,7 +765,7 @@ async function loadMobileCategories() {
             .from('categories')
             .select('*')
             .is('parent_id', null) // Only parent categories
-            .order('name');
+            .order('name_en');
         
         if (error) {
             console.error('Error loading categories for mobile:', error);
@@ -700,40 +819,37 @@ function setupCartIconHandlers() {
             window.location.href = 'cart.html';
         });
     }
-    
-    // Setup cart count updates
-    if (window.cartManager) {
-        window.cartManager.on('cart_updated', function() {
-            updateCartCountDisplay();
-        });
-        
-        window.cartManager.on('item_added', function() {
-            updateCartCountDisplay();
-        });
-        
-        window.cartManager.on('item_removed', function() {
-            updateCartCountDisplay();
-        });
-        
-        window.cartManager.on('cart_cleared', function() {
-            updateCartCountDisplay();
-        });
-    }
 }
 
 // Update cart count display
 function updateCartCountDisplay() {
-    const cartCountEl = document.getElementById('cart-count');
-    if (cartCountEl && window.cartManager) {
+    if (window.cartManager) {
         const cart = window.cartManager.getCart();
         const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-        cartCountEl.textContent = totalItems;
         
-        if (totalItems > 0) {
-            cartCountEl.classList.remove('hidden');
-        } else {
-            cartCountEl.classList.add('hidden');
-        }
+        // Update all possible cart counter elements across different pages
+        const cartCountSelectors = [
+            '#cart-count', '#cart-counter', '#mobile-cart-counter', '#cart-item-count', '.cart-count'
+        ];
+        
+        cartCountSelectors.forEach(selector => {
+            const cartCountEl = document.querySelector(selector);
+            if (cartCountEl) {
+                cartCountEl.textContent = totalItems;
+                
+                // Show or hide the counter based on item count
+                if (totalItems > 0) {
+                    cartCountEl.classList.remove('hidden');
+                } else {
+                    cartCountEl.classList.add('hidden');
+                }
+            }
+        });
+        
+        // Trigger custom event for other parts of the app to listen to
+        window.dispatchEvent(new CustomEvent('cartCountUpdated', { 
+            detail: { count: totalItems } 
+        }));
     }
 }
 
@@ -760,17 +876,17 @@ async function initializeManagers() {
             listeners: [],
             
             isAuthenticated: () => {
-                const authenticated = window.VanHoolApp.currentUser !== null;
-                console.log('🔐 Auth check:', authenticated, window.VanHoolApp.currentUser?.email);
+                const authenticated = window.InterBusApp.currentUser !== null;
+                console.log('🔐 Auth check:', authenticated, window.InterBusApp.currentUser?.email);
                 return authenticated;
             },
             
             getUserId: () => {
-                return window.VanHoolApp.currentUser?.id || null;
+                return window.InterBusApp.currentUser?.id || null;
             },
             
             getUser: () => {
-                return window.VanHoolApp.currentUser;
+                return window.InterBusApp.currentUser;
             },
             
             signOut: async () => {
@@ -815,6 +931,29 @@ async function initializeManagers() {
         const { cartManager } = await import('./cart.js');
         window.cartManager = cartManager;
         
+        // Setup cart event listeners after cart manager is loaded
+        if (window.cartManager && window.cartManager.on) {
+            window.cartManager.on('cart_updated', function() {
+                updateCartCountDisplay();
+                updateCartCount();
+            });
+            
+            window.cartManager.on('item_added', function() {
+                updateCartCountDisplay();
+                updateCartCount();
+            });
+            
+            window.cartManager.on('item_removed', function() {
+                updateCartCountDisplay();
+                updateCartCount();
+            });
+            
+            window.cartManager.on('cart_cleared', function() {
+                updateCartCountDisplay();
+                updateCartCount();
+            });
+        }
+        
         console.log('📦 Loading Order Manager...');
         
         // Import OrderManager instance
@@ -830,7 +969,7 @@ async function initializeManagers() {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Universal Van Hool App Initializing...');
+    console.log('🚀 Universal Inter Bus App Initializing...');
     
     // Initialize managers first
     await initializeManagers();
@@ -840,9 +979,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateTranslations();
     
     // Ensure language is set properly on page load
-    const savedLanguage = localStorage.getItem('vanhool_language') || 'en';
-    if (savedLanguage !== window.VanHoolApp.currentLanguage) {
-        window.VanHoolApp.currentLanguage = savedLanguage;
+    const savedLanguage = localStorage.getItem('interbus_language') || 'en';
+    if (savedLanguage !== window.InterBusApp.currentLanguage) {
+        window.InterBusApp.currentLanguage = savedLanguage;
         updateLanguageDisplay();
     }
     
@@ -868,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     window.supabase.auth.onAuthStateChange((event, session) => {
         console.log('🔐 Auth state changed:', event);
         if (event === 'SIGNED_IN' && session) {
-            window.VanHoolApp.currentUser = session.user;
+            window.InterBusApp.currentUser = session.user;
             updateNavbarForLoggedInUser(session.user);
             
             // Dispatch auth state change event for other components
@@ -881,8 +1020,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.authManager.notifyListeners('SIGNED_IN');
             }
         } else if (event === 'SIGNED_OUT') {
-            window.VanHoolApp.currentUser = null;
-            window.VanHoolApp.isAdmin = false;
+            window.InterBusApp.currentUser = null;
+            window.InterBusApp.isAdmin = false;
             updateNavbarForGuest();
             
             // Dispatch auth state change event for other components
@@ -898,19 +1037,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     
     console.log('✅ Universal App Initialized');
-    console.log('Current user:', window.VanHoolApp.currentUser?.email);
-    console.log('Is admin:', window.VanHoolApp.isAdmin);
-    console.log('Language:', window.VanHoolApp.currentLanguage);
+    console.log('Current user:', window.InterBusApp.currentUser?.email);
+    console.log('Is admin:', window.InterBusApp.isAdmin);
+    console.log('Language:', window.InterBusApp.currentLanguage);
     
     // Add console helpers
-    if (window.VanHoolApp.currentUser && !window.VanHoolApp.isAdmin) {
+    if (window.InterBusApp.currentUser && !window.InterBusApp.isAdmin) {
         console.log('💡 To become admin, run: becomeAdmin()');
     }
     
     // Add debug helper
     window.checkAuth = () => {
         console.log('🔐 Auth status debug:');
-        console.log('- VanHoolApp.currentUser:', window.VanHoolApp.currentUser);
+        console.log('- InterBusApp.currentUser:', window.InterBusApp.currentUser);
         console.log('- authManager.isAuthenticated():', window.authManager?.isAuthenticated());
         console.log('- authManager.getUserId():', window.authManager?.getUserId());
     };

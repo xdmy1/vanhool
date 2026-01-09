@@ -142,12 +142,20 @@ class CartPageManager {
         
         const renderedHTML = this.cart.items.map((item, index) => {
             console.log(`🏗️ Rendering item ${index + 1}: ${item.name}`);
+            console.log(`🖼️ Image URL for ${item.name}:`, item.image);
+            
+            // Multiple fallbacks for image
+            const imageSrc = item.image || item.imageUrl || '/images/placeholder.svg';
+            const imageElement = `
+                <img src="${imageSrc}" alt="${item.name}" 
+                     class="w-20 h-20 object-cover rounded-lg"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGM0Y0RjYiLz48cmVjdCB4PSI0MCIgeT0iNjAiIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIHJ4PSI4IiBmaWxsPSIjRTVFN0VCIi8+PGNpcmNsZSBjeD0iNzAiIGN5PSI4NSIgcj0iOCIgZmlsbD0iIzlDQTNBRiIvPjxwYXRoIGQ9Ik01MCA1MkM3MCA2MEw5MCA4MEwxMjAgNDBMMTUwIDgwVjEyMEg1MFY4MFoiIGZpbGw9IiM5Q0EzQUYiLz48dGV4dCB4PSIxMDAiIHk9IjE2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzZCNzI4MCIgZm9udC1zaXplPSIxMiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';">
+            `;
+            
             return `
             <div class="cart-item flex items-center space-x-4 py-6 border-b border-gray-200 last:border-b-0" data-product-id="${item.productId}">
                 <div class="flex-shrink-0">
-                    <img src="${item.image}" alt="${item.name}" 
-                         class="w-20 h-20 object-cover rounded-lg"
-                         onerror="this.src='/images/placeholder.jpg'">
+                    ${imageElement}
                 </div>
                 
                 <div class="flex-1">

@@ -158,8 +158,12 @@ class CatalogManager {
         try {
             const { data, error } = await supabase
                 .from('products')
-                .select('*')
-                .eq('status', 'active');
+                .select(`
+                    *,
+                    categories(name_en, name_ro, name_ru, slug),
+                    brands(name_en, slug)
+                `)
+                .eq('is_active', true);
 
             if (error) throw error;
             
@@ -172,7 +176,30 @@ class CatalogManager {
             }
         } catch (error) {
             console.error('❌ Error loading products from Supabase:', error);
-            console.log('📦 Fallback to demo products');
+            console.error('Error details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+            
+            // Try to test Supabase connection
+            try {
+                console.log('🔍 Testing Supabase connection...');
+                const { data: testData, error: testError } = await supabase
+                    .from('products')
+                    .select('count', { count: 'exact', head: true });
+                
+                if (testError) {
+                    console.error('❌ Supabase connection test failed:', testError);
+                } else {
+                    console.log('✅ Supabase connection OK, total products in DB:', testData);
+                }
+            } catch (testErr) {
+                console.error('❌ Supabase connection test error:', testErr);
+            }
+            
+            console.log('📦 Fallback to demo products due to error');
             this.products = this.getDemoProducts();
         }
     }

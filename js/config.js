@@ -16,9 +16,34 @@ let supabase = null;
 // Initialize Supabase when DOM is ready and library is loaded
 function initializeSupabase() {
     try {
-        if (typeof window !== 'undefined' && window.supabase && SUPABASE_URL !== 'https://your-project-id.supabase.co') {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('✅ Supabase client initialized successfully');
+        if (typeof window !== 'undefined' && SUPABASE_URL !== 'https://your-project-id.supabase.co') {
+            // Check if Supabase is already initialized by app-universal.js
+            if (window.supabase && typeof window.supabase.auth === 'object') {
+                console.log('✅ Using existing Supabase client from app-universal.js');
+                supabase = window.supabase;
+                // CONFIG will be updated after it's defined
+                return true;
+            }
+            
+            // If not, try to initialize it ourselves
+            let createClient = null;
+            
+            if (window.supabase?.createClient) {
+                createClient = window.supabase.createClient;
+            } else if (window.supabase?.default?.createClient) {
+                createClient = window.supabase.default.createClient;
+            } else if (typeof window.supabase === 'function') {
+                // Sometimes the library exports the createClient function directly
+                createClient = window.supabase;
+            }
+            
+            if (!createClient) {
+                console.error('❌ Supabase createClient function not found. Available methods:', Object.keys(window.supabase || {}));
+                return false;
+            }
+            
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase client initialized successfully in config.js');
             
             // Update CONFIG object
             CONFIG.supabase = supabase;
@@ -31,6 +56,7 @@ function initializeSupabase() {
         }
     } catch (error) {
         console.error('❌ Failed to initialize Supabase client:', error);
+        console.error('Available window.supabase:', window.supabase);
         return false;
     }
 }
@@ -225,7 +251,8 @@ const UTILS = {
     
     // Validate Romanian phone number
     isValidPhone(phone) {
-        return CONFIG.phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+        // Allow any phone format - just check if it exists and has some digits
+        return phone && phone.toString().replace(/[^\d]/g, '').length >= 3;
     },
     
     // Normalize phone number
@@ -343,15 +370,11 @@ const UTILS = {
 // Standardized Database Queries
 const DB_QUERIES = {
     // Standard product selection with all related data
-    PRODUCTS_SELECT: `
-        *,
-        categories(id, name, name_en, name_ro, name_ru, slug, parent_id),
-        brands(id, name, slug)
-    `,
+    PRODUCTS_SELECT: `*`,
     
     // Standard category selection
     CATEGORIES_SELECT: `
-        id, name, name_en, name_ro, name_ru, slug, parent_id, sort_order, is_active
+        id, name_en, name_ro, name_ru, slug, parent_id, sort_order, is_active
     `,
     
     // Standard product queries
@@ -446,6 +469,12 @@ const DB_QUERIES = {
 window.CONFIG = CONFIG;
 window.UTILS = UTILS;
 window.DB_QUERIES = DB_QUERIES;
+
+// Set supabase in CONFIG if it was initialized before CONFIG was defined
+if (supabase && !CONFIG.supabase) {
+    CONFIG.supabase = supabase;
+    console.log('✅ CONFIG.supabase set after CONFIG initialization');
+}
 
 // Check if Supabase is properly initialized
 if (!supabase) {

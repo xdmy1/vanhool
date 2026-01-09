@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="about_page_title">About Us - Inter Bus</title>
+    <meta name="description" data-translate="about_meta_description" content="Learn about Inter Bus - your trusted supplier of rare bus parts and components since 2025.">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/custom-colors.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg border-b sticky top-0 z-50">
+        <div class="container mx-auto px-4 lg:px-8">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
+                <!-- Left: Logo -->
+                <div class="flex items-center">
+                    <a href="index.html" class="text-xl lg:text-2xl font-bold text-red-600 flex items-center hover:text-red-700 transition-colors">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
+                        <span class="sm:hidden">IB</span>
+                    </a>
+                </div>
+                    
+                <!-- Center: Navigation -->
+                <div class="flex-1 flex justify-center">
+                    <!-- Desktop Navigation -->
+                    <div class="hidden lg:flex items-center space-x-8">
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
+                        <a href="about.html" class="text-red-600 font-medium transition-colors px-3 py-2 rounded-lg bg-red-50" data-translate="about">About</a>
+                        <a href="#contact" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                    </div>
+                </div>
+                
+                <!-- Right: User Actions -->
+                <div class="flex items-center">
+                    <!-- Language Switcher -->
+                    <div class="relative hidden sm:block">
+                        <button onclick="toggleLanguageDropdown()" class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                            <span id="current-lang" class="text-sm font-medium">EN</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div id="language-dropdown" class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden z-50 min-w-max">
+                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
+                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
+                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Icon -->
+                    <div class="relative">
+                        <a href="cart.html" class="flex items-center text-gray-600 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50">
+                            <i class="fas fa-shopping-cart text-lg"></i>
+                            <span id="cart-counter" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="py-8 lg:py-16">
+        <div class="container mx-auto px-4 lg:px-8">
+            
+            <!-- Hero Section -->
+            <section class="text-center mb-16">
+                <h1 class="text-4xl lg:text-6xl font-bold text-gray-900 mb-6" data-translate="about_hero_title">About Inter Bus</h1>
+                <p class="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed" data-translate="about_hero_description">
+                    Your trusted partner for authentic Inter Bus bus parts and components since 2025. We specialize in rare and hard-to-find parts for Inter Bus buses worldwide.
+                </p>
+            </section>
+
+            <!-- Our Story -->
+            <section class="mb-16">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900 mb-6" data-translate="our_story_title">Our Story</h2>
+                        <p class="text-gray-600 mb-4" data-translate="our_story_p1">
+                            Inter Bus was founded with a simple mission: to provide Inter Bus bus operators and maintenance professionals with reliable access to genuine parts and components.
+                        </p>
+                        <p class="text-gray-600 mb-4" data-translate="our_story_p2">
+                            Understanding the challenges of maintaining older Inter Bus vehicles, we've built an extensive network of suppliers and maintain a comprehensive inventory of both current and discontinued parts.
+                        </p>
+                        <p class="text-gray-600" data-translate="our_story_p3">
+                            From brake systems and air pressure components to electrical parts and body panels, we ensure your Inter Bus buses stay on the road safely and efficiently.
+                        </p>
+                    </div>
+                    <div class="relative">
+                        <img src="/images/van-hool-bus.jpg" alt="Inter Bus Bus" class="rounded-lg shadow-xl w-full">
+                        <div class="absolute inset-0 bg-red-600 opacity-10 rounded-lg"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Our Values -->
+            <section class="mb-16">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4" data-translate="our_values_title">Our Values</h2>
+                    <p class="text-gray-600 max-w-2xl mx-auto" data-translate="our_values_description">
+                        These core values guide everything we do at Inter Bus
+                    </p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <!-- Quality -->
+                    <div class="text-center p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-shield-alt text-red-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-3" data-translate="quality_title">Quality First</h3>
+                        <p class="text-gray-600" data-translate="quality_description">
+                            We source only genuine Inter Bus parts and high-quality aftermarket alternatives that meet or exceed OEM standards.
+                        </p>
+                    </div>
+
+                    <!-- Expertise -->
+                    <div class="text-center p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-tools text-red-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-3" data-translate="expertise_title">Expert Knowledge</h3>
+                        <p class="text-gray-600" data-translate="expertise_description">
+                            Our team has decades of experience with Inter Bus buses and can help you find exactly what you need.
+                        </p>
+                    </div>
+
+                    <!-- Service -->
+                    <div class="text-center p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-heart text-red-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-900 mb-3" data-translate="service_title">Customer Service</h3>
+                        <p class="text-gray-600" data-translate="service_description">
+                            We're committed to providing exceptional customer service and support throughout your parts sourcing journey.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Why Choose Us -->
+            <section class="mb-16 bg-white rounded-2xl p-8 lg:p-12 shadow-xl">
+                <h2 class="text-3xl font-bold text-gray-900 text-center mb-12" data-translate="why_choose_title">Why Choose Inter Bus?</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-red-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2" data-translate="extensive_inventory">Extensive Inventory</h4>
+                            <p class="text-gray-600" data-translate="extensive_inventory_desc">Over 1000+ Inter Bus parts in stock, from common maintenance items to rare discontinued components.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-red-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2" data-translate="global_shipping">Global Shipping</h4>
+                            <p class="text-gray-600" data-translate="global_shipping_desc">We ship Inter Bus parts worldwide with fast, reliable delivery options.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-red-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2" data-translate="competitive_pricing">Competitive Pricing</h4>
+                            <p class="text-gray-600" data-translate="competitive_pricing_desc">Fair, transparent pricing with bulk discounts available for fleet operators.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-4">
+                        <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-red-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2" data-translate="technical_support">Technical Support</h4>
+                            <p class="text-gray-600" data-translate="technical_support_desc">Expert technical assistance to help you identify and install the right parts.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact CTA -->
+            <section class="text-center bg-red-600 text-white rounded-2xl p-8 lg:p-12">
+                <h2 class="text-3xl font-bold mb-4" data-translate="contact_cta_title">Ready to Find Your Inter Bus?</h2>
+                <p class="text-red-100 mb-8 text-lg" data-translate="contact_cta_description">
+                    Contact us today and let our experts help you find exactly what you need.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="catalog.html" class="bg-white text-red-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                        <i class="fas fa-search mr-2"></i>
+                        <span data-translate="browse_catalog">Browse Catalog</span>
+                    </a>
+                    <a href="tel:+373123456789" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-red-600 transition-colors">
+                        <i class="fas fa-phone mr-2"></i>
+                        <span data-translate="call_us">Call Us: +373 123 456 789</span>
+                    </a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Company Info -->
+                <div class="md:col-span-2">
+                    <div class="flex items-center mb-4">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3">
+                        <span class="text-xl font-bold">Inter Bus</span>
+                    </div>
+                    <p class="text-gray-400 mb-4" data-translate="footer_description">
+                        Your trusted partner for authentic Inter Bus bus parts and components worldwide.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-translate="quick_links">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-gray-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-gray-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-gray-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="#contact" class="text-gray-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-translate="contact">Contact</h4>
+                    <ul class="space-y-2">
+                        <li class="text-gray-400">
+                            <i class="fas fa-phone mr-2"></i>
+                            +373 123 456 789
+                        </li>
+                        <li class="text-gray-400">
+                            <i class="fas fa-envelope mr-2"></i>
+                            contact@interbus.md
+                        </li>
+                        <li class="text-gray-400">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            <span data-translate="address">Chișinău, Moldova</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
+                <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/app-universal.js"></script>
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/cart.js"></script>
+    
+    <script>
+        // Language dropdown toggle
+        function toggleLanguageDropdown() {
+            const dropdown = document.getElementById('language-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('language-dropdown');
+            const button = event.target.closest('button[onclick*="toggleLanguageDropdown"]');
+            
+            if (!button && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Translations object
+        const translations = {
+            en: {
+                about_page_title: "About Us - Inter Bus",
+                about_meta_description: "Learn about Inter Bus - your trusted supplier of rare bus parts and components since 2025.",
+                catalog: "Catalog",
+                about: "About",
+                contact: "Contact",
+                about_hero_title: "About Inter Bus",
+                about_hero_description: "Your trusted partner for authentic Inter Bus bus parts and components since 2025. We specialize in rare and hard-to-find parts for Inter Bus buses worldwide.",
+                our_story_title: "Our Story",
+                our_story_p1: "Inter Bus was founded with a simple mission: to provide Inter Bus bus operators and maintenance professionals with reliable access to genuine parts and components.",
+                our_story_p2: "Understanding the challenges of maintaining older Inter Bus vehicles, we've built an extensive network of suppliers and maintain a comprehensive inventory of both current and discontinued parts.",
+                our_story_p3: "From brake systems and air pressure components to electrical parts and body panels, we ensure your Inter Bus buses stay on the road safely and efficiently.",
+                our_values_title: "Our Values",
+                our_values_description: "These core values guide everything we do at Inter Bus",
+                quality_title: "Quality First",
+                quality_description: "We source only genuine Inter Bus parts and high-quality aftermarket alternatives that meet or exceed OEM standards.",
+                expertise_title: "Expert Knowledge",
+                expertise_description: "Our team has decades of experience with Inter Bus buses and can help you find exactly what you need.",
+                service_title: "Customer Service",
+                service_description: "We're committed to providing exceptional customer service and support throughout your parts sourcing journey.",
+                why_choose_title: "Why Choose Inter Bus?",
+                extensive_inventory: "Extensive Inventory",
+                extensive_inventory_desc: "Over 1000+ Inter Bus parts in stock, from common maintenance items to rare discontinued components.",
+                global_shipping: "Global Shipping",
+                global_shipping_desc: "We ship Inter Bus parts worldwide with fast, reliable delivery options.",
+                competitive_pricing: "Competitive Pricing",
+                competitive_pricing_desc: "Fair, transparent pricing with bulk discounts available for fleet operators.",
+                technical_support: "Technical Support",
+                technical_support_desc: "Expert technical assistance to help you identify and install the right parts.",
+                contact_cta_title: "Ready to Find Your Inter Bus?",
+                contact_cta_description: "Contact us today and let our experts help you find exactly what you need.",
+                browse_catalog: "Browse Catalog",
+                call_us: "Call Us: +373 123 456 789",
+                footer_description: "Your trusted partner for authentic Inter Bus bus parts and components worldwide.",
+                quick_links: "Quick Links",
+                home: "Home",
+                address: "Chișinău, Moldova",
+                all_rights_reserved: "All rights reserved."
+            },
+            ro: {
+                about_page_title: "Despre Noi - Inter Bus",
+                about_meta_description: "Aflați despre Inter Bus - furnizorul dumneavoastră de încredere pentru piese rare de autobuz începând din 2025.",
+                catalog: "Catalog",
+                about: "Despre",
+                contact: "Contact",
+                about_hero_title: "Despre Inter Bus",
+                about_hero_description: "Partenerul dumneavoastră de încredere pentru piese și componente autentice Inter Bus din 2025. Ne specializăm în piese rare și greu de găsit pentru autobuzele Inter Bus din întreaga lume.",
+                our_story_title: "Povestea Noastră",
+                our_story_p1: "Inter Bus a fost fondată cu o misiune simplă: să oferim operatorilor de autobuze Inter Bus și profesioniștilor în mentenanță acces fiabil la piese și componente originale.",
+                our_story_p2: "Înțelegând provocările menținerii vehiculelor Inter Bus mai vechi, am construit o rețea extinsă de furnizori și menținem un inventar cuprinzător atât de piese actuale, cât și de piese întrerupte.",
+                our_story_p3: "De la sisteme de frânare și componente de presiune a aerului la piese electrice și panouri de caroserie, ne asigurăm că autobuzele Inter Bus rămân pe drum în siguranță și eficient.",
+                our_values_title: "Valorile Noastre",
+                our_values_description: "Aceste valori fundamentale ghidează tot ce facem la Inter Bus",
+                quality_title: "Calitatea Întâi",
+                quality_description: "Ne aprovizionăm doar cu piese originale Inter Bus și alternative aftermarket de înaltă calitate care îndeplinesc sau depășesc standardele OEM.",
+                expertise_title: "Cunoștințe Experte",
+                expertise_description: "Echipa noastră are zeci de ani de experiență cu autobuzele Inter Bus și vă poate ajuta să găsiți exact ceea ce aveți nevoie.",
+                service_title: "Serviciul Clienți",
+                service_description: "Ne angajăm să oferim servicii și suport excepționale pentru clienți pe parcursul călătoriei dumneavoastră de aprovizionare cu piese.",
+                why_choose_title: "De ce să alegeți Inter Bus?",
+                extensive_inventory: "Inventar Extensiv",
+                extensive_inventory_desc: "Peste 1000+ piese Inter Bus în stoc, de la articole comune de mentenanță la componente rare întrerupte.",
+                global_shipping: "Livrare Globală",
+                global_shipping_desc: "Expediem piese Inter Bus în întreaga lume cu opțiuni de livrare rapide și fiabile.",
+                competitive_pricing: "Prețuri Competitive",
+                competitive_pricing_desc: "Prețuri corecte și transparente cu reduceri în vrac disponibile pentru operatorii de flotă.",
+                technical_support: "Suport Tehnic",
+                technical_support_desc: "Asistență tehnică expertă pentru a vă ajuta să identificați și să instalați piesele potrivite.",
+                contact_cta_title: "Gata să vă găsiți piesele Inter Bus?",
+                contact_cta_description: "Contactați-ne astăzi și lăsați experții noștri să vă ajute să găsiți exact ceea ce aveți nevoie.",
+                browse_catalog: "Răsfoiește Catalogul",
+                call_us: "Sunați-ne: +373 123 456 789",
+                footer_description: "Partenerul dumneavoastră de încredere pentru piese și componente autentice Inter Bus în întreaga lume.",
+                quick_links: "Legături Rapide",
+                home: "Acasă",
+                address: "Chișinău, Moldova",
+                all_rights_reserved: "Toate drepturile rezervate."
+            },
+            ru: {
+                about_page_title: "О нас - Inter Bus",
+                about_meta_description: "Узнайте о Inter Bus - вашем надежном поставщике редких автобусных запчастей с 2025 года.",
+                catalog: "Каталог",
+                about: "О нас",
+                contact: "Контакт",
+                about_hero_title: "О Inter Bus",
+                about_hero_description: "Ваш надежный партнер по оригинальным запчастям и компонентам Inter Bus с 2025 года. Мы специализируемся на редких и труднодоступных запчастях для автобусов Inter Bus по всему миру.",
+                our_story_title: "Наша История",
+                our_story_p1: "Inter Bus была основана с простой миссией: предоставить операторам автобусов Inter Bus и специалистам по техническому обслуживанию надежный доступ к оригинальным запчастям и компонентам.",
+                our_story_p2: "Понимая проблемы технического обслуживания старых автомобилей Inter Bus, мы построили обширную сеть поставщиков и поддерживаем комплексный инвентарь как текущих, так и снятых с производства запчастей.",
+                our_story_p3: "От тормозных систем и компонентов пневматического давления до электрических деталей и кузовных панелей, мы гарантируем, что ваши автобусы Inter Bus остаются на дороге безопасно и эффективно.",
+                our_values_title: "Наши Ценности",
+                our_values_description: "Эти основные ценности направляют все, что мы делаем в Inter Bus",
+                quality_title: "Качество Прежде Всего",
+                quality_description: "Мы закупаем только оригинальные запчасти Inter Bus и высококачественные альтернативы вторичного рынка, которые соответствуют или превышают стандарты OEM.",
+                expertise_title: "Экспертные Знания",
+                expertise_description: "Наша команда имеет десятилетний опыт работы с автобусами Inter Bus и может помочь вам найти именно то, что вам нужно.",
+                service_title: "Обслуживание Клиентов",
+                service_description: "Мы стремимся предоставлять исключительное обслуживание и поддержку клиентов на протяжении всего пути поиска запчастей.",
+                why_choose_title: "Почему выбирают Inter Bus?",
+                extensive_inventory: "Обширный Инвентарь",
+                extensive_inventory_desc: "Более 1000+ запчастей Inter Bus в наличии, от обычных элементов технического обслуживания до редких снятых с производства компонентов.",
+                global_shipping: "Глобальная Доставка",
+                global_shipping_desc: "Мы отправляем запчасти Inter Bus по всему миру с быстрыми и надежными вариантами доставки.",
+                competitive_pricing: "Конкурентные Цены",
+                competitive_pricing_desc: "Справедливые, прозрачные цены с оптовыми скидками для операторов автопарков.",
+                technical_support: "Техническая Поддержка",
+                technical_support_desc: "Экспертная техническая помощь, чтобы помочь вам идентифицировать и установить правильные запчасти.",
+                contact_cta_title: "Готовы найти свои запчасти Inter Bus?",
+                contact_cta_description: "Свяжитесь с нами сегодня и позвольте нашим экспертам помочь вам найти именно то, что вам нужно.",
+                browse_catalog: "Просмотреть Каталог",
+                call_us: "Позвоните нам: +373 123 456 789",
+                footer_description: "Ваш надежный партнер по оригинальным запчастям и компонентам Inter Bus по всему миру.",
+                quick_links: "Быстрые Ссылки",
+                home: "Главная",
+                address: "Кишинёв, Молдова",
+                all_rights_reserved: "Все права защищены."
+            }
+        };
+        
+        console.log('🔥 About page loaded with multilingual support');
+    </script>
+</body>
+</html>

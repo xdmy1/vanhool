@@ -31,84 +31,55 @@ class OrderManager {
                 throw new Error('Trebuie să vă autentificați pentru a plasa o comandă');
             }
             
-            // Validate cart items before creating order
-            const validationResults = await window.cartManager.validateCartItems();
-            const invalidItems = validationResults.filter(r => !r.valid);
-            
-            if (invalidItems.length > 0) {
-                throw new Error('Coșul conține produse invalide. Verificați din nou coșul.');
-            }
+            // Skip all cart validation - just proceed with order
+            console.log('🚀 Skipping cart validation - proceeding directly with order creation...');
             
             const cart = window.cartManager.getCart();
             const user = window.authManager.getUser();
             
-            // Prepare order data
+            console.log('📊 Creating order with cart:', cart);
+            console.log('👤 User creating order:', user);
+            console.log('💰 Cart total value:', cart.total, typeof cart.total);
+            
+            if (!user || !user.id) {
+                throw new Error('User ID is missing. Please log in again.');
+            }
+            
+            if (!cart || !cart.items || cart.items.length === 0) {
+                throw new Error('Cart is empty or invalid');
+            }
+            
+            // Prepare simple order data - only essential fields
             const order = {
-                id: UTILS.generateId('order'),
                 user_id: user.id,
-                status: 'pending',
                 
-                // Customer info
-                customer_info: {
-                    firstName: orderData.firstName,
-                    lastName: orderData.lastName,
-                    email: orderData.email,
-                    phone: orderData.phone,
-                    company: orderData.company || null
-                },
+                // Customer info (simple)
+                customer_name: orderData.fullName || '',
+                customer_email: user.email || '',
+                customer_phone: orderData.phone || '',
+                customer_address: orderData.address || '',
                 
-                // Billing address
-                billing_address: {
-                    street: orderData.billingAddress.street,
-                    city: orderData.billingAddress.city,
-                    state: orderData.billingAddress.state,
-                    postalCode: orderData.billingAddress.postalCode,
-                    country: orderData.billingAddress.country || 'România'
-                },
-                
-                // Shipping address
-                shipping_address: orderData.sameAsShipping ? 
-                    orderData.billingAddress : orderData.shippingAddress,
-                    
-                // Order items
+                // Order items as JSON
                 items: cart.items.map(item => ({
-                    product_id: item.productId,
-                    product_name: item.name,
-                    product_sku: item.sku,
-                    product_image: item.image,
-                    quantity: item.quantity,
-                    unit_price: item.price,
-                    total_price: item.totalPrice,
-                    product_details: {
-                        brand: item.brand,
-                        category: item.category
-                    }
+                    name: item.name || 'Produs',
+                    quantity: item.quantity || 1,
+                    price: item.price || 0,
+                    total: (item.price || 0) * (item.quantity || 1)
                 })),
                 
-                // Pricing
-                subtotal: cart.subtotal,
-                discount_amount: cart.discountAmount,
-                shipping_cost: cart.shipping,
-                total: cart.total,
-                currency: CONFIG.currency,
+                // Pricing (simple numbers)
+                subtotal: parseFloat(cart.subtotal) || 0,
+                discount_amount: parseFloat(cart.discountAmount) || 0,
+                shipping_cost: parseFloat(cart.shipping) || 25.00,
+                total: parseFloat(cart.total) || 0,
                 
-                // Promo code
-                promocode_id: cart.promocode?.id || null,
-                promocode_code: cart.promocode?.code || null,
-                
-                // Payment and shipping
-                payment_method: orderData.paymentMethod,
-                shipping_method: orderData.shippingMethod || 'standard',
-                
-                // Notes
-                notes: orderData.notes || null,
-                
-                // Metadata
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                order_number: this.generateOrderNumber(),
-                session_id: window.cartManager.getSessionId()
+                // Order details
+                status: 'pending',
+                payment_method: orderData.paymentMethod || 'transfer',
+                notes: orderData.notes || null
             };
+            
+            console.log('🚀 Final order object before saving:', order);
             
             // Save order to database
             const savedOrder = await this.saveOrderToDatabase(order);
@@ -156,64 +127,54 @@ class OrderManager {
     // Save order to database
     async saveOrderToDatabase(order) {
         try {
+            console.log('🔍 Saving order to database:', order);
+            
+            // Use simple order object directly - only fields that exist in new table
+            const orderData = order;
+            
+            console.log('📝 Order data to insert:', orderData);
+            
             // Save main order
             const { data: savedOrder, error: orderError } = await CONFIG.supabase
                 .from('orders')
-                .insert({
-                    id: order.id,
-                    user_id: order.user_id,
-                    order_number: order.order_number,
-                    status: order.status,
-                    customer_info: order.customer_info,
-                    billing_address: order.billing_address,
-                    shipping_address: order.shipping_address,
-                    subtotal: order.subtotal,
-                    discount_amount: order.discount_amount,
-                    shipping_cost: order.shipping_cost,
-                    total: order.total,
-                    currency: order.currency,
-                    promocode_id: order.promocode_id,
-                    promocode_code: order.promocode_code,
-                    payment_method: order.payment_method,
-                    shipping_method: order.shipping_method,
-                    notes: order.notes,
-                    session_id: order.session_id,
-                    created_at: order.created_at,
-                    updated_at: order.updated_at
-                })
+                .insert(orderData)
                 .select()
                 .single();
                 
-            if (orderError) throw orderError;
+            if (orderError) {
+                console.error('❌ Order insertion error:', orderError);
+                throw orderError;
+            }
             
-            // Save order items
-            const orderItems = order.items.map(item => ({
-                order_id: savedOrder.id,
-                product_id: item.product_id,
-                product_name: item.product_name,
-                product_sku: item.product_sku,
-                product_image: item.product_image,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
-                total_price: item.total_price,
-                product_details: item.product_details
-            }));
+            console.log('✅ Order saved successfully:', savedOrder);
+            console.log('🆔 Order ID for redirect:', savedOrder?.id);
             
-            const { error: itemsError } = await CONFIG.supabase
-                .from('order_items')
-                .insert(orderItems);
-                
-            if (itemsError) throw itemsError;
-            
-            // Return complete order with items
-            return {
-                ...savedOrder,
-                items: orderItems
-            };
+            // Return the saved order (items are already in JSON field)
+            return savedOrder;
             
         } catch (error) {
-            console.error('Database save error:', error);
-            throw new Error('Eroare la salvarea comenzii în baza de date');
+            console.error('❌ Database save error details:', {
+                error: error,
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+            
+            // Provide more specific error messages
+            let errorMessage = 'Eroare la salvarea comenzii în baza de date';
+            
+            if (error.code === '42P01') {
+                errorMessage = 'Tabelul orders nu există în baza de date';
+            } else if (error.code === '23505') {
+                errorMessage = 'Există deja o comandă cu acest număr';
+            } else if (error.code === '23503') {
+                errorMessage = 'Eroare de referință în baza de date';
+            } else if (error.message) {
+                errorMessage = `Eroare bază de date: ${error.message}`;
+            }
+            
+            throw new Error(errorMessage);
         }
     }
     

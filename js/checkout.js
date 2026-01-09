@@ -159,7 +159,7 @@ class CheckoutManager {
             <div class="flex items-center space-x-3 py-3 border-b border-gray-100 last:border-b-0">
                 <img src="${item.image}" alt="${item.name}" 
                      class="w-12 h-12 object-cover rounded-md"
-                     onerror="this.src='/images/placeholder.jpg'">
+                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGM0Y0RjYiLz48cmVjdCB4PSI0MCIgeT0iNjAiIHdpZHRoPSIxMjAiIGhlaWdodD0iODAiIHJ4PSI4IiBmaWxsPSIjRTVFN0VCIi8+PGNpcmNsZSBjeD0iNzAiIGN5PSI4NSIgcj0iOCIgZmlsbD0iIzlDQTNBRiIvPjxwYXRoIGQ9Ik01MCA1MkM3MCA2MEw5MCA4MEwxMjAgNDBMMTUwIDgwVjEyMEg1MFY4MFoiIGZpbGw9IiM5Q0EzQUYiLz48dGV4dCB4PSIxMDAiIHk9IjE2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzZCNzI4MCIgZm9udC1zaXplPSIxMiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='">
                 <div class="flex-1">
                     <h4 class="text-sm font-medium text-gray-900 line-clamp-1">${item.name}</h4>
                     <p class="text-xs text-gray-500">SKU: ${item.sku}</p>
@@ -221,18 +221,7 @@ class CheckoutManager {
     }
     
     setupEventListeners() {
-        // Same as shipping checkbox
-        const sameAsShippingCheckbox = document.getElementById('sameAsShipping');
-        const shippingFields = document.getElementById('shipping-address-fields');
-        
-        sameAsShippingCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                shippingFields.classList.add('hidden');
-                this.clearShippingFields();
-            } else {
-                shippingFields.classList.remove('hidden');
-            }
-        });
+        // Skip shipping address logic since we have a simple form
         
         // Promo code functionality
         document.getElementById('toggle-promo-code').addEventListener('click', () => {
@@ -272,21 +261,11 @@ class CheckoutManager {
             }
         });
         
-        // Postal code validation
-        const postalInputs = document.querySelectorAll('input[name$="PostalCode"]');
-        postalInputs.forEach(input => {
-            input.addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 6);
-            });
-        });
+        // Skip postal code validation since we don't have separate postal code fields
     }
     
     clearShippingFields() {
-        document.getElementById('shippingStreet').value = '';
-        document.getElementById('shippingCity').value = '';
-        document.getElementById('shippingState').value = '';
-        document.getElementById('shippingPostalCode').value = '';
-        document.getElementById('shippingCountry').value = 'România';
+        // Not needed for simplified form
     }
     
     async prefillUserData() {
@@ -294,10 +273,18 @@ class CheckoutManager {
             const user = window.authManager.getUser();
             if (user) {
                 // Pre-fill basic info
-                if (user.first_name) document.getElementById('firstName').value = user.first_name;
-                if (user.last_name) document.getElementById('lastName').value = user.last_name;
-                if (user.email) document.getElementById('email').value = user.email;
-                if (user.phone) document.getElementById('phone').value = user.phone;
+                const fullNameField = document.getElementById('fullName');
+                const phoneField = document.getElementById('phone');
+                
+                if (user.first_name && user.last_name && fullNameField) {
+                    fullNameField.value = `${user.first_name} ${user.last_name}`;
+                } else if (user.full_name && fullNameField) {
+                    fullNameField.value = user.full_name;
+                }
+                
+                if (user.phone && phoneField) {
+                    phoneField.value = user.phone;
+                }
                 
                 // Try to load saved addresses
                 try {
@@ -309,11 +296,11 @@ class CheckoutManager {
                         .single();
                         
                     if (addresses) {
-                        document.getElementById('billingStreet').value = addresses.street || '';
-                        document.getElementById('billingCity').value = addresses.city || '';
-                        document.getElementById('billingState').value = addresses.state || '';
-                        document.getElementById('billingPostalCode').value = addresses.postal_code || '';
-                        document.getElementById('billingCountry').value = addresses.country || 'România';
+                        const addressField = document.getElementById('address');
+                        if (addressField && addresses.street) {
+                            const fullAddress = `${addresses.street}, ${addresses.city || ''}, ${addresses.state || ''}, ${addresses.country || 'România'}`;
+                            addressField.value = fullAddress;
+                        }
                     }
                 } catch (error) {
                     console.log('No saved addresses found');
@@ -376,14 +363,9 @@ class CheckoutManager {
         
         // Required fields validation
         const requiredFields = [
-            { field: 'firstName', message: 'Prenumele este obligatoriu' },
-            { field: 'lastName', message: 'Numele este obligatoriu' },
-            { field: 'email', message: 'Email-ul este obligatoriu' },
+            { field: 'fullName', message: 'Numele complet este obligatoriu' },
             { field: 'phone', message: 'Telefonul este obligatoriu' },
-            { field: 'billingStreet', message: 'Adresa de facturare este obligatorie' },
-            { field: 'billingCity', message: 'Orașul de facturare este obligatoriu' },
-            { field: 'billingState', message: 'Județul de facturare este obligatoriu' },
-            { field: 'billingPostalCode', message: 'Codul poștal de facturare este obligatoriu' }
+            { field: 'address', message: 'Adresa este obligatorie' }
         ];
         
         requiredFields.forEach(({ field, message }) => {
@@ -392,44 +374,15 @@ class CheckoutManager {
             }
         });
         
-        // Email validation
-        const email = formData.get('email');
-        if (email && !UTILS.isValidEmail(email)) {
-            errors.push('Adresa de email nu este validă');
-        }
+        // Skip email validation since it's not in the form
         
-        // Phone validation
+        // Phone validation - allow any phone format
         const phone = formData.get('phone');
-        if (phone && !UTILS.isValidPhone(phone)) {
-            errors.push('Numărul de telefon nu este valid');
+        if (!phone || phone.trim().length === 0) {
+            errors.push('Numărul de telefon este obligatoriu');
         }
         
-        // Postal code validation
-        const postalCode = formData.get('billingPostalCode');
-        if (postalCode && !UTILS.isValidPostalCode(postalCode)) {
-            errors.push('Codul poștal nu este valid (trebuie să aibă 6 cifre)');
-        }
-        
-        // Shipping address validation if different
-        if (!formData.get('sameAsShipping')) {
-            const shippingRequired = [
-                { field: 'shippingStreet', message: 'Adresa de livrare este obligatorie' },
-                { field: 'shippingCity', message: 'Orașul de livrare este obligatoriu' },
-                { field: 'shippingState', message: 'Județul de livrare este obligatoriu' },
-                { field: 'shippingPostalCode', message: 'Codul poștal de livrare este obligatoriu' }
-            ];
-            
-            shippingRequired.forEach(({ field, message }) => {
-                if (!formData.get(field)?.trim()) {
-                    errors.push(message);
-                }
-            });
-            
-            const shippingPostalCode = formData.get('shippingPostalCode');
-            if (shippingPostalCode && !UTILS.isValidPostalCode(shippingPostalCode)) {
-                errors.push('Codul poștal de livrare nu este valid');
-            }
-        }
+        // Skip postal code validation since we use simple address field
         
         // Terms acceptance
         if (!formData.get('acceptTerms')) {
@@ -445,46 +398,31 @@ class CheckoutManager {
     buildOrderData() {
         const formData = new FormData(this.form);
         
+        // Parse full name
+        const fullName = formData.get('fullName').trim();
+        const nameParts = fullName.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
         const orderData = {
             // Customer info
-            firstName: formData.get('firstName').trim(),
-            lastName: formData.get('lastName').trim(),
-            email: formData.get('email').trim().toLowerCase(),
+            firstName: firstName,
+            lastName: lastName,
+            fullName: fullName,
             phone: UTILS.normalizePhone(formData.get('phone')),
-            company: formData.get('company')?.trim() || null,
             
-            // Billing address
-            billingAddress: {
-                street: formData.get('billingStreet').trim(),
-                city: formData.get('billingCity').trim(),
-                state: formData.get('billingState').trim(),
-                postalCode: formData.get('billingPostalCode').trim(),
-                country: formData.get('billingCountry') || 'România'
-            },
-            
-            // Shipping address
-            sameAsShipping: formData.get('sameAsShipping') === 'on',
+            // Address (simplified - using the single address field)
+            address: formData.get('address').trim(),
+            billingAddress: formData.get('address').trim(),
+            shippingAddress: formData.get('address').trim(),
             
             // Payment and shipping
-            paymentMethod: formData.get('paymentMethod'),
-            shippingMethod: formData.get('shippingMethod') || 'standard',
+            paymentMethod: formData.get('paymentMethod') || 'cash',
+            shippingMethod: 'standard',
             
             // Notes
             notes: formData.get('notes')?.trim() || null
         };
-        
-        // Set shipping address
-        if (orderData.sameAsShipping) {
-            orderData.shippingAddress = orderData.billingAddress;
-        } else {
-            orderData.shippingAddress = {
-                street: formData.get('shippingStreet').trim(),
-                city: formData.get('shippingCity').trim(),
-                state: formData.get('shippingState').trim(),
-                postalCode: formData.get('shippingPostalCode').trim(),
-                country: formData.get('shippingCountry') || 'România'
-            };
-        }
         
         return orderData;
     }
@@ -503,13 +441,7 @@ class CheckoutManager {
             // Show processing state
             this.setProcessingState(true);
             
-            // Final cart validation
-            const cartValidation = await window.cartManager.validateCartItems();
-            const invalidItems = cartValidation.filter(r => !r.valid);
-            
-            if (invalidItems.length > 0) {
-                throw new Error('Coșul conține produse care nu mai sunt disponibile');
-            }
+            // Skip cart validation - proceed directly
             
             // Build order data
             const orderData = this.buildOrderData();
@@ -556,7 +488,7 @@ class CheckoutManager {
             this.form.style.pointerEvents = 'none';
         } else {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-lock mr-2"></i>Finalizează comanda';
+            submitBtn.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-truck mr-2"></i>Trimite comanda</span>';
             loadingOverlay.classList.add('hidden');
             this.form.style.pointerEvents = '';
         }
@@ -571,7 +503,10 @@ class CheckoutManager {
     }
     
     redirectToThankYou(order) {
-        window.location.href = `/thank-you.html?order=${order.order_number}`;
+        console.log('🎯 Redirecting to thank you with order:', order);
+        const orderId = order?.id || order?.order_number || 'unknown';
+        console.log('🔗 Final redirect URL:', `thank-you.html?order=${orderId}`);
+        window.location.href = `thank-you.html?order=${orderId}`;
     }
     
     showValidationErrors(errors) {

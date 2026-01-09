@@ -1,4 +1,4 @@
-// Universal navbar authentication system
+cc// Universal navbar authentication system
 console.log('🔗 Loading navbar authentication...');
 
 // Initialize Supabase

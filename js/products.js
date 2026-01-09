@@ -76,7 +76,7 @@ class ProductManager {
     }
     
     // Load featured products
-    async loadFeaturedProducts(limit = 8) {
+    async loadFeaturedProducts(limit = 10) {
         const cacheKey = `featured_${limit}`;
         const cached = this.searchCache.get(cacheKey);
         
@@ -89,8 +89,8 @@ class ProductManager {
                 .from('products')
                 .select(`
                     *,
-                    categories(name, slug),
-                    brands(name, slug)
+                    categories(name_en, slug),
+                    brands(name_en, slug)
                 `)
                 .eq('is_active', true)
                 .eq('is_featured', true)
@@ -129,8 +129,8 @@ class ProductManager {
                 .from('products')
                 .select(`
                     *,
-                    categories(id, name, slug),
-                    brands(id, name, slug)
+                    categories(id, name_en, slug),
+                    brands(id, name_en, slug)
                 `, { count: 'exact' })
                 .eq('is_active', true);
                 
@@ -286,8 +286,8 @@ class ProductManager {
                 .from('products')
                 .select(`
                     *,
-                    categories(id, name, slug),
-                    brands(id, name, slug)
+                    categories(id, name_en, slug),
+                    brands(id, name_en, slug)
                 `)
                 .eq('is_active', true)
                 .single();
@@ -332,8 +332,8 @@ class ProductManager {
                 .from('products')
                 .select(`
                     *,
-                    categories(name, slug),
-                    brands(name, slug)
+                    categories(name_en, slug),
+                    brands(name_en, slug)
                 `)
                 .eq('is_active', true)
                 .neq('id', productId)
@@ -468,8 +468,8 @@ class ProductManager {
                 price: product.sale_price || product.price,
                 originalPrice: product.price,
                 image: product.images?.[0] || '/images/placeholder.jpg',
-                category: product.categories?.name || '',
-                brand: product.brands?.name || '',
+                category: product.categories?.name_en || '',
+                brand: product.brands?.name_en || '',
                 viewedAt: Date.now()
             });
             

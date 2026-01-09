@@ -596,7 +596,7 @@ class AuthManager {
         return this.user?.email || null;
     }
     
-    isInitialized() {
+    getIsInitialized() {
         return this.isInitialized;
     }
 }
