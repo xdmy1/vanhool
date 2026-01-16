@@ -10,6 +10,10 @@
     
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Universal App System -->
+    <script src="js/app-universal.js"></script>
+    <script type="module" src="js/config.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Navigation -->
@@ -24,6 +28,7 @@
                 
                 <div class="flex items-center space-x-6">
                     <a href="catalog.html" class="text-gray-600 hover:text-red-600">Catalog</a>
+                    <a href="about.html" class="text-gray-600 hover:text-red-600" data-translate="about">About</a>
                     
                     <!-- Language Switcher -->
                     <div class="relative group hidden sm:block">
@@ -177,35 +182,53 @@
         let currentUser = null;
         let supabase = null;
         
-        // Wait for universal app and config to initialize
-        function waitForUniversalApp() {
+        // Wait for config and Supabase to initialize  
+        function waitForConfig() {
             return new Promise((resolve) => {
-                const checkApp = () => {
-                    if (window.supabase && window.VanHoolApp && window.CONFIG) {
-                        supabase = window.supabase;
-                        console.log('✅ All dependencies loaded:', {
-                            supabase: !!window.supabase,
-                            vanHoolApp: !!window.VanHoolApp,
-                            config: !!window.CONFIG
-                        });
+                let attempts = 0;
+                const maxAttempts = 100; // 10 seconds timeout
+                
+                const checkConfig = () => {
+                    attempts++;
+                    
+                    console.log(`🔍 Checking for Supabase (attempt ${attempts}/${maxAttempts})`, {
+                        'window.CONFIG': !!window.CONFIG,
+                        'window.CONFIG.supabase': !!(window.CONFIG && window.CONFIG.supabase),
+                        'window.supabase': !!window.supabase,
+                        'window.InterBusApp': !!window.InterBusApp
+                    });
+                    
+                    // Check if CONFIG and Supabase are available
+                    if (window.CONFIG && window.CONFIG.supabase && typeof window.CONFIG.supabase.auth === 'object') {
+                        supabase = window.CONFIG.supabase;
+                        console.log('✅ Supabase from CONFIG loaded successfully');
                         resolve();
-                    } else {
-                        console.log('⏳ Waiting for dependencies:', {
+                    } else if (window.supabase && typeof window.supabase.auth === 'object') {
+                        supabase = window.supabase;
+                        console.log('✅ Supabase from global window loaded successfully');
+                        resolve();
+                    } else if (attempts >= maxAttempts) {
+                        console.error('❌ Config/Supabase not available after timeout');
+                        console.log('Available globals:', {
+                            CONFIG: !!window.CONFIG,
                             supabase: !!window.supabase,
-                            vanHoolApp: !!window.VanHoolApp,
-                            config: !!window.CONFIG
+                            configSupabase: !!(window.CONFIG && window.CONFIG.supabase),
+                            supabaseAuth: !!(window.supabase && window.supabase.auth),
+                            configSupabaseAuth: !!(window.CONFIG && window.CONFIG.supabase && window.CONFIG.supabase.auth)
                         });
-                        setTimeout(checkApp, 100);
+                        resolve(); // Continue anyway, let checkAuth handle the error
+                    } else {
+                        setTimeout(checkConfig, 100);
                     }
                 };
-                checkApp();
+                checkConfig();
             });
         }
         
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('📄 DOM loaded, waiting for universal app...');
-            await waitForUniversalApp();
-            console.log('✅ Universal app ready, checking auth');
+            console.log('📄 DOM loaded, waiting for config...');
+            await waitForConfig();
+            console.log('✅ Config ready, checking auth');
             checkAuth();
             setupEventListeners();
         });
@@ -214,45 +237,96 @@
             try {
                 console.log('🔐 Checking authentication...');
                 
-                if (!window.CONFIG || !window.CONFIG.supabase) {
-                    console.error('❌ Supabase not properly initialized');
-                    window.location.href = 'login.html';
+                // Use Supabase directly
+                if (!supabase) {
+                    console.error('❌ Supabase not available for authentication');
+                    showError('Authentication system not available. Please refresh the page.');
                     return;
                 }
                 
-                const { data: { session }, error } = await window.CONFIG.supabase.auth.getSession();
+                console.log('🔍 Getting session from Supabase...');
+                const { data: { session }, error } = await supabase.auth.getSession();
                 
                 if (error) {
-                    console.error('Authentication error:', error);
-                    window.location.href = 'login.html';
+                    console.error('❌ Auth session error:', error);
+                    showError('Authentication error. Please login again.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
                     return;
                 }
                 
-                if (!session) {
-                    console.log('❌ Not authenticated, redirecting to login');
-                    window.location.href = 'login.html';
+                if (!session || !session.user) {
+                    console.log('❌ No valid session found, redirecting to login');
+                    showError('Please login to access dashboard.');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 1500);
                     return;
                 }
                 
-                console.log('✅ User authenticated:', session.user.email);
+                console.log('✅ User authenticated successfully:', session.user.email);
                 currentUser = session.user;
-                supabase = window.CONFIG.supabase; // Update local reference
+                
+                // Update the UI immediately
                 displayUserInfo(currentUser);
+                
+                // Load additional data
                 loadUserData();
                 
             } catch (error) {
-                console.error('Auth check error:', error);
-                window.location.href = 'login.html';
+                console.error('❌ Auth check error:', error);
+                showError('Authentication failed. Redirecting to login...');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
             }
         }
         
         function displayUserInfo(user) {
-            document.getElementById('user-email').textContent = user.email;
-            document.getElementById('user-name').textContent = user.email.split('@')[0];
-            document.getElementById('welcome-message').textContent = `Welcome back, ${user.email}!`;
-            
-            const createdAt = new Date(user.created_at);
-            document.getElementById('member-since').textContent = createdAt.toLocaleDateString();
+            try {
+                console.log('📝 Displaying user info for:', user.email);
+                
+                // Update email
+                const emailEl = document.getElementById('user-email');
+                if (emailEl) {
+                    emailEl.textContent = user.email || 'Not available';
+                }
+                
+                // Update username  
+                const userNameEl = document.getElementById('user-name');
+                if (userNameEl) {
+                    userNameEl.textContent = user.email ? user.email.split('@')[0] : 'User';
+                }
+                
+                // Update welcome message
+                const welcomeEl = document.getElementById('welcome-message');
+                if (welcomeEl) {
+                    welcomeEl.textContent = `Welcome back, ${user.email || 'User'}!`;
+                }
+                
+                // Update member since date
+                const memberSinceEl = document.getElementById('member-since');
+                if (memberSinceEl) {
+                    if (user.created_at) {
+                        const createdAt = new Date(user.created_at);
+                        memberSinceEl.textContent = createdAt.toLocaleDateString();
+                    } else {
+                        memberSinceEl.textContent = 'Not available';
+                    }
+                }
+                
+                console.log('✅ User info displayed successfully');
+                
+            } catch (error) {
+                console.error('❌ Error displaying user info:', error);
+                // Set fallback values
+                const emailEl = document.getElementById('user-email');
+                if (emailEl) emailEl.textContent = 'Error loading email';
+                
+                const memberSinceEl = document.getElementById('member-since');
+                if (memberSinceEl) memberSinceEl.textContent = 'Error loading date';
+            }
         }
         
         async function loadUserData() {
@@ -555,19 +629,33 @@
         }
         
         function showError(message) {
+            // Remove any existing error messages
+            const existingErrors = document.querySelectorAll('.dashboard-error');
+            existingErrors.forEach(el => el.remove());
+            
             const errorDiv = document.createElement('div');
-            errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-            errorDiv.textContent = message;
+            errorDiv.className = 'dashboard-error fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-xl z-50 max-w-md';
+            errorDiv.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle mr-3 mt-0.5"></i>
+                    <div class="flex-1">
+                        <div class="font-medium">Dashboard Error</div>
+                        <div class="text-sm opacity-90 mt-1">${message}</div>
+                    </div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-3 hover:opacity-75">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
             document.body.appendChild(errorDiv);
             
+            // Auto-remove after 8 seconds
             setTimeout(() => {
-                errorDiv.remove();
-            }, 5000);
+                if (errorDiv.parentNode) {
+                    errorDiv.remove();
+                }
+            }, 8000);
         }
     </script>
-    
-    <!-- Universal App System -->
-    <script src="js/app-universal.js"></script>
-    <script type="module" src="js/config.js"></script>
 </body>
 </html>

@@ -115,15 +115,19 @@ class ThankYouManager {
         if (!container) return;
         
         const orderDate = new Date(this.order.created_at);
-        const customer = this.order.customer_info;
-        const billingAddress = this.order.billing_address;
-        const shippingAddress = this.order.shipping_address;
+        
+        // Use the actual order data structure from order-manager.js
+        const customerName = this.order.customer_name || 'N/A';
+        const customerEmail = this.order.customer_email || 'N/A';
+        const customerPhone = this.order.customer_phone || 'N/A';
+        const customerAddress = this.order.customer_address || 'N/A';
+        const orderNumber = this.order.id || this.order.order_number || 'N/A';
         
         container.innerHTML = `
             <div class="space-y-3">
                 <div>
                     <label class="text-sm font-medium text-gray-500">Numărul comenzii</label>
-                    <p class="text-lg font-semibold text-gray-900">#${this.order.order_number}</p>
+                    <p class="text-lg font-semibold text-gray-900">#${orderNumber}</p>
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-500">Data comenzii</label>
@@ -137,17 +141,14 @@ class ThankYouManager {
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-500">Client</label>
-                    <p class="text-gray-900">${customer.firstName} ${customer.lastName}</p>
-                    <p class="text-sm text-gray-600">${customer.email}</p>
-                    <p class="text-sm text-gray-600">${customer.phone}</p>
-                    ${customer.company ? `<p class="text-sm text-gray-600">${customer.company}</p>` : ''}
+                    <p class="text-gray-900">${customerName}</p>
+                    <p class="text-sm text-gray-600">${customerEmail}</p>
+                    <p class="text-sm text-gray-600">${customerPhone}</p>
                 </div>
                 <div>
                     <label class="text-sm font-medium text-gray-500">Adresa de livrare</label>
                     <div class="text-sm text-gray-900">
-                        <p>${shippingAddress.street}</p>
-                        <p>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postalCode}</p>
-                        <p>${shippingAddress.country}</p>
+                        <p>${customerAddress}</p>
                     </div>
                 </div>
                 ${this.order.notes ? `
@@ -171,26 +172,35 @@ class ThankYouManager {
             return;
         }
         
-        container.innerHTML = items.map(item => `
-            <div class="flex items-center space-x-4 py-3 border-b border-gray-100 last:border-b-0">
-                <img src="${item.product_image || '/images/placeholder.jpg'}" 
-                     alt="${item.product_name}" 
-                     class="w-16 h-16 object-cover rounded-md"
-                     onerror="this.src='/images/placeholder.jpg'">
-                <div class="flex-1">
-                    <h4 class="text-sm font-medium text-gray-900">${item.product_name}</h4>
-                    <p class="text-xs text-gray-500">SKU: ${item.product_sku}</p>
-                    ${item.product_details?.brand ? `<p class="text-xs text-gray-500">Brand: ${item.product_details.brand}</p>` : ''}
-                    <div class="flex items-center justify-between mt-2">
-                        <span class="text-sm text-gray-600">Cantitate: ${item.quantity}</span>
-                        <div class="text-right">
-                            <p class="text-sm font-medium text-gray-900">${UTILS.formatPrice(item.total_price)}</p>
-                            ${item.quantity > 1 ? `<p class="text-xs text-gray-500">${UTILS.formatPrice(item.unit_price)}/buc</p>` : ''}
+        container.innerHTML = items.map(item => {
+            // Use the actual order data structure from order-manager.js
+            const productName = item.product_name || item.name || 'Produs';
+            const productImage = item.product_image || item.image || '/images/placeholder.jpg';
+            const productSku = item.product_sku || item.sku || 'N/A';
+            const quantity = item.quantity || 1;
+            const unitPrice = item.unit_price || item.price || 0;
+            const totalPrice = item.total_price || item.total || (unitPrice * quantity);
+            
+            return `
+                <div class="flex items-center space-x-4 py-3 border-b border-gray-100 last:border-b-0">
+                    <img src="${productImage}" 
+                         alt="${productName}" 
+                         class="w-16 h-16 object-cover rounded-md"
+                         onerror="this.src='/images/placeholder.jpg'">
+                    <div class="flex-1">
+                        <h4 class="text-sm font-medium text-gray-900">${productName}</h4>
+                        <p class="text-xs text-gray-500">SKU: ${productSku}</p>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-sm text-gray-600">Cantitate: ${quantity}</span>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">${UTILS.formatPrice(totalPrice)}</p>
+                                ${quantity > 1 ? `<p class="text-xs text-gray-500">${UTILS.formatPrice(unitPrice)}/buc</p>` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     }
     
     renderPaymentInfo() {

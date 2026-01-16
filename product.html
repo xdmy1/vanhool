@@ -26,9 +26,128 @@
                 <div class="flex-1 flex justify-center">
                     <!-- Desktop Navigation -->
                     <div class="hidden lg:flex items-center space-x-8">
+                        <!-- Categories Dropdown -->
+                        <div class="relative" onmouseenter="showDropdown()" onmouseleave="hideDropdown()">
+                            <button class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 font-medium transition-colors">
+                                <i class="fas fa-th-large mr-1"></i>
+                                <span data-translate="categories">Categories</span>
+                                <i class="fas fa-chevron-down text-sm ml-1 group-hover:rotate-180 transition-transform duration-200"></i>
+                            </button>
+                            <!-- Enhanced Categories Dropdown -->
+                            <div id="categories-dropdown-menu" class="absolute overflow-x-hidden  top-full left-0 bg-white shadow-xl border rounded-lg z-50 w-96  px-6  max-h-100 overflow-y-hidden" style="display: none;">
+                                <!-- Categories Content -->
+                                <div id="categories-dropdown">
+                                    <div class="py-4">
+                                        <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
+                                            
+                                            <!-- Brake System -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=brake-system" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-stop-circle text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Brake System</div>
+                                                        <div class="text-sm text-gray-500">Pads, Discs, Fluid</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Air Pressure System -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=air-pressure" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-wind text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Air Pressure</div>
+                                                        <div class="text-sm text-gray-500">Compressors, Valves</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Electrical System -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=electrical" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-bolt text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Electrical</div>
+                                                        <div class="text-sm text-gray-500">Lighting, Wiring</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Chassis & Suspension -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=chassis-suspension" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-car-side text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Chassis & Suspension</div>
+                                                        <div class="text-sm text-gray-500">Suspension, Frames</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Engine & Transmission -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=engine-transmission" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-cog text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Engine & Transmission</div>
+                                                        <div class="text-sm text-gray-500">Engine Parts, Gears</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Body & Interior -->
+                                            <div class="relative group/category">
+                                                <a href="catalog.html?category=body-interior" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
+                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                                                        <i class="fas fa-door-open text-red-600"></i>
+                                                    </div>
+                                                    <div class="flex-1">
+                                                        <div class="font-medium">Body & Interior</div>
+                                                        <div class="text-sm text-gray-500">Doors, Seats, Panels</div>
+                                                    </div>
+                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
+                                                </a>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Footer -->
+                                <div class="border-t bg-gray-50 p-4 rounded-b-xl">
+                                    <div class="flex items-center justify-between">
+                                        <div class="text-sm text-gray-600">
+                                            <span data-translate="over_parts">Over 1000+ authentic parts</span>
+                                        </div>
+                                        <a href="catalog.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm">
+                                            <span data-translate="view_all_catalog">View All Catalog</span>
+                                            <i class="fas fa-arrow-right ml-2"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Regular Navigation Links -->
                         <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
                         <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
-                        <a href="index.html#contact" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                        <a href="contact.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
                     </div>
 
                     <!-- Tablet Navigation -->
@@ -84,10 +203,10 @@
                         <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
                             <i class="fas fa-th-grid mr-2"></i>Catalog
                         </a>
-                        <a href="index.html#about" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
+                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
                             <i class="fas fa-info-circle mr-2"></i>About
                         </a>
-                        <a href="index.html#contact" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
+                        <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
                             <i class="fas fa-envelope mr-2"></i>Contact
                         </a>
                     </div>
@@ -234,6 +353,69 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Company Info -->
+                <div class="md:col-span-2">
+                    <div class="flex items-center mb-4">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3">
+                        <span class="text-xl font-bold">Inter Bus</span>
+                    </div>
+                    <p class="text-gray-400 mb-4" data-translate="footer_description">
+                        Your trusted partner for authentic bus parts and components worldwide.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-translate="quick_links">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-gray-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-gray-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-gray-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="index.html#contact" class="text-gray-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact -->
+                <div>
+                    <h4 class="font-semibold mb-4" data-translate="contact">Contact</h4>
+                    <ul class="space-y-2">
+                        <li class="text-gray-400">
+                            <i class="fas fa-phone mr-2"></i>
+                            +373 123 456 789
+                        </li>
+                        <li class="text-gray-400">
+                            <i class="fas fa-envelope mr-2"></i>
+                            contact@interbus.md
+                        </li>
+                        <li class="text-gray-400">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            <span data-translate="address">Chișinău, Moldova</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
+                <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Universal App System -->
     <script src="js/app-universal.js"></script>
@@ -439,28 +621,45 @@
         // Load related products
         async function loadRelatedProducts(categoryId) {
             try {
-                // Use standardized query for related products
-                const relatedQuery = window.DB_QUERIES.getProducts({
-                    categoryId: categoryId,
-                    activeOnly: true,
-                    limit: 5 // Get 5 to ensure we have 4 after excluding current product
-                });
+                console.log('🔍 Loading related products for category:', categoryId);
                 
-                const { data: allProducts, error } = await relatedQuery;
+                let products = [];
+                let error = null;
                 
-                // Filter out current product
-                const products = allProducts ? allProducts.filter(p => p.id !== currentProduct.id).slice(0, 4) : [];
+                // Try using DB_QUERIES if available
+                if (window.DB_QUERIES && window.DB_QUERIES.getProducts) {
+                    console.log('📊 Using DB_QUERIES for related products');
+                    const relatedQuery = window.DB_QUERIES.getProducts({
+                        categoryId: categoryId,
+                        activeOnly: true,
+                        limit: 5 // Get 5 to ensure we have 4 after excluding current product
+                    });
+                    
+                    const result = await relatedQuery;
+                    const allProducts = result.data;
+                    error = result.error;
+                    
+                    // Filter out current product
+                    products = allProducts ? allProducts.filter(p => p.id !== currentProduct.id).slice(0, 4) : [];
+                } else {
+                    console.log('⚠️ DB_QUERIES not available for related products');
+                }
                 
                 if (error || !products || products.length === 0) {
+                    console.log('📦 Using demo products for related products');
                     // Show demo related products
                     const demoProducts = getDemoProducts().filter(p => p.id !== currentProduct.id).slice(0, 4);
                     displayRelatedProducts(demoProducts);
                 } else {
+                    console.log(`✅ Found ${products.length} related products`);
                     displayRelatedProducts(products);
                 }
                 
             } catch (error) {
-                console.error('Error loading related products:', error);
+                console.error('❌ Error loading related products:', error);
+                // Always show demo products as fallback
+                const demoProducts = getDemoProducts().filter(p => p.id !== currentProduct.id).slice(0, 4);
+                displayRelatedProducts(demoProducts);
             }
         }
         
@@ -492,7 +691,7 @@
                         <div class="flex items-center justify-between">
                             <span class="text-lg font-bold text-gray-900">€${product.price}</span>
                             <span class="text-xs ${product.stock_quantity > 0 ? 'text-green-600' : 'text-red-600'}">
-                                ${product.stock_quantity > 0 ? translate('in_stock') : translate('out_of_stock')}
+                                ${product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'}
                             </span>
                         </div>
                     </div>
@@ -577,7 +776,7 @@
         function updateCartCounter() {
             if (window.cartManager) {
                 const itemCount = window.cartManager.getItemCount();
-                const counter = document.getElementById('cart-counter');
+                const counter = document.getElementById('cart-count');
                 const mobileCounter = document.getElementById('mobile-cart-counter');
                 
                 if (itemCount > 0) {
@@ -794,6 +993,29 @@
                     document.body.removeChild(notification);
                 }, 300);
             }, 3000);
+        }
+        
+        // Dropdown functions for categories
+        function showDropdown() {
+            console.log('🔼 Showing dropdown...');
+            const dropdown = document.getElementById('categories-dropdown-menu');
+            if (dropdown) {
+                dropdown.style.display = 'block';
+                console.log('✅ Dropdown shown');
+            } else {
+                console.log('❌ Dropdown menu element not found');
+            }
+        }
+        
+        function hideDropdown() {
+            console.log('🔽 Hiding dropdown...');
+            const dropdown = document.getElementById('categories-dropdown-menu');
+            if (dropdown) {
+                dropdown.style.display = 'none';
+                console.log('✅ Dropdown hidden');
+            } else {
+                console.log('❌ Dropdown menu element not found');
+            }
         }
         
         // Mobile menu toggle

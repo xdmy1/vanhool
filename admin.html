@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ro">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Van Hool Parts</title>
+    <title>Panou de Administrare - Piese Auto</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/custom-colors.css" rel="stylesheet">
@@ -33,6 +33,20 @@
         .modal-wrapper {
             overflow-y: auto;
             overflow-x: hidden;
+            max-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        
+        .modal-content-container {
+            max-height: calc(100vh - 4rem);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-scrollable {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
         }
         
         /* Smooth transitions */
@@ -41,21 +55,21 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-100 min-h-screen">
     <!-- Header -->
-    <header class="bg-purple-700 shadow-sm">
+    <header class="bg-white shadow-sm border-b">
         <div class="container mx-auto px-4 lg:px-8">
             <nav class="flex items-center justify-between h-16">
                 <div class="flex items-center space-x-8">
-                    <a href="index.html" class="text-2xl font-bold text-white flex items-center">
-                        <i class="fas fa-crown mr-2"></i>
-                        Admin Panel
+                    <a href="index.html" class="text-xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-cog mr-2 text-gray-600"></i>
+                        Panou Admin
                     </a>
                 </div>
                 
                 <div class="flex items-center space-x-4">
-                    <a href="index.html" class="text-purple-200 hover:text-white">Back to Site</a>
-                    <div id="admin-user-info" class="text-purple-200"></div>
+                    <a href="index.html" class="text-gray-600 hover:text-gray-900 font-medium">Înapoi la Site</a>
+                    <div id="admin-user-info" class="text-gray-600 font-medium"></div>
                 </div>
             </nav>
         </div>
@@ -86,171 +100,158 @@
         <!-- Admin Dashboard -->
         <div id="admin-dashboard" class="hidden">
             <!-- Welcome -->
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome to Admin Panel</h1>
-                <p class="text-gray-600">Manage your Van Hool Parts store</p>
+            <div class="bg-white rounded-lg p-8 shadow-sm border mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Panou de Administrare</h1>
+                <p class="text-gray-600">Gestionează magazinul tău de piese auto</p>
             </div>
             
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-box text-red-600 text-2xl"></i>
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-box text-gray-600 text-xl"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Total Products</p>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Total Produse</p>
                             <p class="text-2xl font-bold text-gray-900" id="total-products">-</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-users text-green-600 text-2xl"></i>
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-users text-gray-600 text-xl"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Total Users</p>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Total Utilizatori</p>
                             <p class="text-2xl font-bold text-gray-900" id="total-users">-</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-shopping-cart text-purple-600 text-2xl"></i>
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-shopping-cart text-gray-600 text-xl"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Total Orders</p>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Total Comenzi</p>
                             <p class="text-2xl font-bold text-gray-900" id="total-orders">-</p>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
                     <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-list text-orange-600 text-2xl"></i>
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-list text-gray-600 text-xl"></i>
                         </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Categories</p>
+                        <div>
+                            <p class="text-sm font-medium text-gray-500">Categorii</p>
                             <p class="text-2xl font-bold text-gray-900" id="total-categories">-</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Quick Actions -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                <!-- Product Management -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-box text-red-600 mr-2"></i>
-                        Manage Products
-                    </h3>
-                    <p class="text-gray-600 mb-4">Add, edit, remove Van Hool parts</p>
-                    <button onclick="showProductManagement()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
-                        Manage Products
-                    </button>
-                </div>
-                
-                <!-- Order Management -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-shopping-cart text-green-600 mr-2"></i>
-                        Orders & Payments
-                    </h3>
-                    <p class="text-gray-600 mb-4">View order details and payment history</p>
-                    <button onclick="showOrderManagement()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">
-                        View Orders
-                    </button>
-                </div>
-                
-                <!-- User Management -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-users text-purple-600 mr-2"></i>
-                        User Management
-                    </h3>
-                    <p class="text-gray-600 mb-4">Manage user registrations and data</p>
-                    <button onclick="showUserManagement()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-full">
-                        Manage Users
-                    </button>
-                </div>
-                
-                <!-- Promo Codes -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-tags text-yellow-600 mr-2"></i>
-                        Promo Codes
-                    </h3>
-                    <p class="text-gray-600 mb-4">Create and track promo codes</p>
-                    <button onclick="showPromoCodeManagement()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 w-full">
-                        Manage Promos
-                    </button>
-                </div>
-                
-                <!-- Categories -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-list text-red-600 mr-2"></i>
-                        Categories
-                    </h3>
-                    <p class="text-gray-600 mb-4">Organize product categories</p>
-                    <button onclick="showCategoriesManagement()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
-                        Manage Categories
-                    </button>
-                </div>
-                
-                <!-- Analytics -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-chart-bar text-red-600 mr-2"></i>
-                        Analytics
-                    </h3>
-                    <p class="text-gray-600 mb-4">View sales statistics and reports</p>
-                    <button onclick="showAnalytics()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
-                        View Analytics
-                    </button>
-                </div>
-                
-                <!-- Quick Add Product -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-plus-circle text-red-600 mr-2"></i>
-                        Quick Add Product
-                    </h3>
-                    <p class="text-gray-600 mb-4">Add a new part quickly</p>
-                    <button onclick="showAddProductForm()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">
-                        Add Product
-                    </button>
-                </div>
-                
-                <!-- Admin Info -->
-                <div class="bg-white rounded-lg shadow-sm p-6 border-2 border-green-200">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                        <i class="fas fa-shield-alt text-green-500 mr-2"></i>
-                        Admin Access
-                    </h3>
-                    <p class="text-gray-600 mb-4 text-sm">Admin access is controlled via Supabase</p>
-                    <div class="text-sm text-green-700">
-                        <i class="fas fa-check-circle mr-2"></i>
-                        Admin privileges active
+            <!-- Acțiuni Rapide -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Gestionare Produse -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-box text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Gestionare Produse</h3>
+                            <p class="text-gray-500 text-sm">Adaugă, editează, șterge piese</p>
+                        </div>
                     </div>
+                    <button onclick="showProductManagement()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Gestionează Produse
+                    </button>
                 </div>
-            </div>
-            
-            <!-- Recent Activity -->
-            <div class="bg-white rounded-lg shadow-sm">
-                <div class="p-6 border-b border-gray-200 flex-shrink-0">
-                    <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
-                </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
-                    <div id="recent-activity">
-                        <p class="text-gray-500 text-center py-8">Loading recent activity...</p>
+                
+                <!-- Gestionare Comenzi -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-shopping-cart text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Comenzi & Plăți</h3>
+                            <p class="text-gray-500 text-sm">Vizualizează comenzile și plățile</p>
+                        </div>
                     </div>
+                    <button onclick="showOrderManagement()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Vizualizează Comenzi
+                    </button>
+                </div>
+                
+                <!-- Gestionare Utilizatori -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-users text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Gestionare Utilizatori</h3>
+                            <p class="text-gray-500 text-sm">Administrează utilizatorii</p>
+                        </div>
+                    </div>
+                    <button onclick="showUserManagement()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Gestionează Utilizatori
+                    </button>
+                </div>
+                
+                <!-- Coduri Promoționale -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-tags text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Coduri Promoționale</h3>
+                            <p class="text-gray-500 text-sm">Creează și urmărește promoții</p>
+                        </div>
+                    </div>
+                    <button onclick="showPromoCodeManagement()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Gestionează Promoții
+                    </button>
+                </div>
+                
+                <!-- Gestionare Categorii -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-list text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Gestionare Categorii</h3>
+                            <p class="text-gray-500 text-sm">Organizează categoriile produselor</p>
+                        </div>
+                    </div>
+                    <button onclick="showCategoriesManagement()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Gestionează Categorii
+                    </button>
+                </div>
+                
+                <!-- Adăugare Rapidă Produs -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-gray-100 rounded-lg p-3 mr-4">
+                            <i class="fas fa-plus-circle text-gray-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Adăugare Rapidă</h3>
+                            <p class="text-gray-500 text-sm">Adaugă un produs nou rapid</p>
+                        </div>
+                    </div>
+                    <button onclick="showAddProductForm()" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 w-full transition-colors font-medium">
+                        Adaugă Produs
+                    </button>
                 </div>
             </div>
         </div>
@@ -260,8 +261,8 @@
     
     <!-- Product Management Modal -->
     <div id="products-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Product Management</h2>
@@ -270,7 +271,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <div class="mb-4 flex justify-between items-center">
                         <div class="flex space-x-4">
                             <input type="text" id="product-search" placeholder="Search products..." class="px-4 py-2 border border-gray-300 rounded-lg">
@@ -292,8 +293,8 @@
 
     <!-- Add Product Modal -->
     <div id="add-product-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-4xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Add New Product</h2>
@@ -302,7 +303,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <form id="add-product-form" class="space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Basic Information -->
@@ -409,8 +410,8 @@
 
     <!-- Edit Product Modal -->
     <div id="edit-product-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-4xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-4xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Edit Product</h2>
@@ -419,7 +420,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <form id="edit-product-form" class="space-y-6">
                         <input type="hidden" name="product_id" id="edit-product-id">
                         
@@ -537,8 +538,8 @@
 
     <!-- Promo Codes Modal -->
     <div id="promo-codes-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Promo Code Management</h2>
@@ -547,7 +548,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <!-- Create New Promo Code -->
                     <div class="bg-gray-50 rounded-lg p-6 mb-6">
                         <h3 class="text-lg font-semibold text-gray-900 mb-4">Create New Promo Code</h3>
@@ -583,8 +584,8 @@
 
     <!-- Orders Modal -->
     <div id="orders-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-7xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Order Management</h2>
@@ -593,7 +594,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <div class="mb-4 flex justify-between items-center">
                         <div class="flex space-x-4">
                             <input type="text" id="order-search" placeholder="Search orders..." class="px-4 py-2 border border-gray-300 rounded-lg">
@@ -639,31 +640,10 @@
         </div>
     </div>
 
-    <!-- Analytics Modal -->
-    <div id="analytics-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-7xl w-full max-h-[85vh] flex flex-col shadow-xl">
-                <div class="p-6 border-b border-gray-200 flex-shrink-0">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold text-gray-900">Analytics & Statistics</h2>
-                        <button onclick="closeModal('analytics-modal')" class="text-gray-400 hover:text-gray-600">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
-                    <div id="analytics-content">
-                        <!-- Analytics content will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Categories Modal -->
     <div id="categories-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-6xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Category Management</h2>
@@ -672,7 +652,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <div id="categories-management-content">
                         <!-- Categories content will be loaded here -->
                     </div>
@@ -683,8 +663,8 @@
 
     <!-- Edit Category Modal -->
     <div id="edit-category-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="flex items-start justify-center min-h-screen p-4 pt-8 pb-8 modal-wrapper">
-            <div class="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] flex flex-col shadow-xl">
+        <div class="flex items-center justify-center modal-wrapper">
+            <div class="bg-white rounded-lg max-w-2xl w-full modal-content-container shadow-xl">
                 <div class="p-6 border-b border-gray-200 flex-shrink-0">
                     <div class="flex justify-between items-center">
                         <h2 class="text-2xl font-bold text-gray-900">Edit Category</h2>
@@ -693,7 +673,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="p-6 flex-1 overflow-y-auto min-h-0 modal-content">
+                <div class="p-6 modal-scrollable">
                     <form id="edit-category-form" class="space-y-6">
                         <input type="hidden" id="edit-category-id" name="category_id">
                         
@@ -821,6 +801,7 @@
                 const user = session.user;
                 const adminEmails = [
                     'bobernagadamianw2312@gmail.com',
+                    'tbobernaga@gmail.com',
                     // Add your email here:
                     // 'your-email@gmail.com',
                 ];
@@ -865,7 +846,6 @@
                 
                 // Load admin data
                 loadAdminStats();
-                loadRecentActivity();
                 
             } catch (error) {
                 console.error('Admin access check error:', error);
@@ -889,49 +869,51 @@
                 }
                 document.getElementById('total-products').textContent = productCount;
                 
-                // Get user count from profiles table
+                // Get user count - use multiple approaches
                 let userCount = 0;
+                
+                // Method 1: Try to count from orders table (users who have placed orders)
                 try {
-                    console.log('🔍 Fetching user count from profiles table...');
-                    const { count, error } = await window.supabase
-                        .from('profiles')
-                        .select('*', { count: 'exact', head: true });
+                    console.log('🔍 Counting users from orders table...');
+                    const { data: orders, error: ordersError } = await window.supabase
+                        .from('orders')
+                        .select('user_id');
                     
-                    if (error) {
-                        console.error('❌ Error fetching user count:', error);
-                        throw error;
+                    if (!ordersError && orders) {
+                        // Get unique user IDs from orders
+                        const uniqueUserIds = [...new Set(orders.map(order => order.user_id))];
+                        userCount = uniqueUserIds.length;
+                        console.log(`✅ Found ${userCount} unique users from orders`);
                     }
-                    
-                    userCount = count || 0;
-                    console.log(`✅ Found ${userCount} users in profiles table`);
-                    
                 } catch (e) {
-                    console.warn('⚠️ Cannot access profiles table, trying alternative methods');
-                    console.error('Error details:', e);
-                    
+                    console.warn('⚠️ Cannot count from orders table');
+                }
+                
+                // Method 2: If no users from orders, try profiles table
+                if (userCount === 0) {
                     try {
-                        // Fallback: Try to get users from auth.users (requires service role)
-                        console.log('🔍 Trying auth.admin.listUsers as fallback...');
-                        const { data: { users }, error } = await window.supabase.auth.admin.listUsers();
-                        if (error) throw error;
-                        userCount = users ? users.length : 0;
-                        console.log(`✅ Found ${userCount} users via auth admin`);
-                    } catch (e2) {
-                        console.warn('⚠️ Auth admin access not available');
+                        console.log('🔍 Trying profiles table with simple select...');
+                        const { data: users, error: profilesError } = await window.supabase
+                            .from('profiles')
+                            .select('id');
                         
-                        // Last resort: count users by querying the actual data
-                        try {
-                            const { data: users, error: dataError } = await window.supabase
-                                .from('profiles')
-                                .select('id');
-                            
-                            if (dataError) throw dataError;
-                            userCount = users ? users.length : 0;
-                            console.log(`✅ Counted ${userCount} users by actual data`);
-                        } catch (e3) {
-                            console.error('❌ All user counting methods failed');
-                            userCount = 0; // Default to 0 if everything fails
+                        if (!profilesError && users) {
+                            userCount = users.length;
+                            console.log(`✅ Found ${userCount} users from profiles table`);
                         }
+                    } catch (e) {
+                        console.warn('⚠️ Cannot access profiles table');
+                    }
+                }
+                
+                // Method 3: Fallback - at minimum we know there's the current admin user
+                if (userCount === 0) {
+                    console.log('🔍 Using fallback user count...');
+                    // If we can't count users but we're logged in as admin, 
+                    // there's at least 1 user (the current user)
+                    if (window.authManager && window.authManager.isAuthenticated()) {
+                        userCount = 1;
+                        console.log(`✅ Fallback: At least ${userCount} user (current admin)`);
                     }
                 }
                 
@@ -966,41 +948,12 @@
                 console.error('Error loading admin stats:', error);
                 // Set default values if all fails
                 document.getElementById('total-products').textContent = '0';
-                document.getElementById('total-users').textContent = '1';
+                document.getElementById('total-users').textContent = window.authManager?.isAuthenticated() ? '1' : '0';
                 document.getElementById('total-categories').textContent = '0';
                 document.getElementById('total-orders').textContent = '0';
             }
         }
         
-        // Load recent activity
-        async function loadRecentActivity() {
-            try {
-                // Get recent users
-                const { data: recentUsers } = await window.supabase
-                    .from('profiles')
-                    .select('email, created_at')
-                    .order('created_at', { ascending: false })
-                    .limit(5);
-                
-                const activityHtml = recentUsers?.length ? 
-                    recentUsers.map(user => `
-                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                            <div class="flex items-center">
-                                <i class="fas fa-user-plus text-green-500 mr-3"></i>
-                                <span class="text-sm text-gray-900">New user registered: ${user.email}</span>
-                            </div>
-                            <span class="text-xs text-gray-500">${new Date(user.created_at).toLocaleDateString()}</span>
-                        </div>
-                    `).join('') :
-                    '<p class="text-gray-500 text-center py-4">No recent activity</p>';
-                
-                document.getElementById('recent-activity').innerHTML = activityHtml;
-                
-            } catch (error) {
-                console.error('Error loading recent activity:', error);
-                document.getElementById('recent-activity').innerHTML = '<p class="text-red-500 text-center py-4">Error loading activity</p>';
-            }
-        }
         
         // Admin action functions
         window.showAddProductForm = function() {
@@ -1012,10 +965,6 @@
             loadCategoriesForManagement();
         };
         
-        window.showAnalytics = function() {
-            showModal('analytics-modal');
-            loadAnalytics();
-        };
         
         window.showPromoCodeManagement = function() {
             showModal('promo-codes-modal');
@@ -1169,29 +1118,61 @@
                     const usageCount = promo.current_uses || 0;
                     const maxUses = promo.max_uses || 1;
                     const usagePercentage = (usageCount / maxUses) * 100;
+                    const isMaxedOut = usageCount >= maxUses;
+                    const canBeEnabled = !isMaxedOut;
+                    
+                    // Status determination
+                    let statusText = 'Active';
+                    let statusClass = 'bg-green-100 text-green-800';
+                    
+                    if (!promo.is_active && isMaxedOut) {
+                        statusText = 'Limit Reached';
+                        statusClass = 'bg-orange-100 text-orange-800';
+                    } else if (!promo.is_active) {
+                        statusText = 'Disabled';
+                        statusClass = 'bg-red-100 text-red-800';
+                    } else if (isMaxedOut) {
+                        statusText = 'At Limit';
+                        statusClass = 'bg-yellow-100 text-yellow-800';
+                    }
                     
                     return `
-                        <div class="bg-white border rounded-lg p-4 mb-4">
+                        <div class="bg-white border rounded-lg p-4 mb-4 ${isMaxedOut ? 'border-orange-200 bg-orange-50' : ''}">
                             <div class="flex justify-between items-start mb-4">
-                                <div>
+                                <div class="flex-1">
                                     <div class="flex items-center space-x-3 mb-2">
                                         <span class="text-lg font-mono font-bold text-gray-900">${promo.code}</span>
-                                        <span class="px-2 py-1 text-sm rounded ${promo.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                                            ${promo.is_active ? 'Active' : 'Inactive'}
+                                        <span class="px-2 py-1 text-sm rounded ${statusClass}">
+                                            ${statusText}
                                         </span>
+                                        ${isMaxedOut ? '<span class="px-2 py-1 text-xs bg-orange-200 text-orange-800 rounded-full">🚫 Usage Limit Reached</span>' : ''}
                                     </div>
                                     <p class="text-gray-600">
                                         ${promo.discount_percent || 0}% discount • Used ${usageCount}/${maxUses} times
                                     </p>
                                     <p class="text-sm text-gray-500">Created: ${new Date(promo.created_at).toLocaleDateString()}</p>
+                                    ${isMaxedOut ? '<p class="text-sm text-orange-600 font-medium mt-1">⚠️ This promocode cannot be used anymore (automatically disabled)</p>' : ''}
                                 </div>
-                                <div class="flex space-x-2">
-                                    <button onclick="togglePromoCode('${promo.id}', ${!promo.is_active})" 
-                                            class="px-3 py-1 text-sm ${promo.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded">
-                                        ${promo.is_active ? 'Deactivate' : 'Activate'}
-                                    </button>
-                                    <button onclick="deletePromoCode('${promo.id}')" class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700">
+                                <div class="flex flex-col space-y-2 ml-4">
+                                    ${canBeEnabled ? `
+                                        <button onclick="togglePromoCode('${promo.id}', ${!promo.is_active})" 
+                                                class="px-3 py-1 text-sm ${promo.is_active ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded">
+                                            ${promo.is_active ? 'Deactivate' : 'Activate'}
+                                        </button>
+                                    ` : `
+                                        <button disabled class="px-3 py-1 text-sm bg-gray-300 text-gray-500 rounded cursor-not-allowed" 
+                                                title="Cannot enable - usage limit reached">
+                                            Maxed Out
+                                        </button>
+                                    `}
+                                    <button onclick="deletePromoCode('${promo.id}')" 
+                                            class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700">
                                         Delete
+                                    </button>
+                                    <button onclick="refreshPromoCodes()" 
+                                            class="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                                            title="Refresh usage counts">
+                                        <i class="fas fa-sync-alt"></i>
                                     </button>
                                 </div>
                             </div>
@@ -1202,12 +1183,15 @@
                                     <span>Usage Progress</span>
                                     <span>${usagePercentage.toFixed(1)}%</span>
                                 </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-red-600 h-2 rounded-full" style="width: ${Math.min(usagePercentage, 100)}%"></div>
+                                <div class="w-full bg-gray-200 rounded-full h-3">
+                                    <div class="${usageCount >= maxUses ? 'bg-red-500' : usageCount/maxUses > 0.8 ? 'bg-yellow-500' : 'bg-blue-500'} h-3 rounded-full transition-all duration-300" 
+                                         style="width: ${Math.min(usagePercentage, 100)}%"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-1">
+                                    <span class="text-xs text-gray-500">${usageCount}/${maxUses} uses</span>
+                                    ${isMaxedOut ? '<span class="text-xs text-red-600 font-medium">LIMIT REACHED</span>' : ''}
                                 </div>
                             </div>
-                            
-                            <!-- Usage will be tracked when promo_code_usage table is available -->
                         </div>
                     `;
                 }).join('');
@@ -1304,65 +1288,167 @@
         // Load users
         async function loadUsers() {
             try {
-                const { data: users, error } = await window.supabase
-                    .from('profiles')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
                 const usersList = document.getElementById('users-list');
+                let users = [];
+                let error = null;
                 
-                if (error || !users || users.length === 0) {
+                // Try multiple approaches to get user data
+                try {
+                    console.log('🔍 Loading users from profiles table...');
+                    const { data: profileUsers, error: profileError } = await window.supabase
+                        .from('profiles')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (profileError) {
+                        console.warn('⚠️ Profiles table error:', profileError);
+                        throw profileError;
+                    }
+                    
+                    users = profileUsers || [];
+                    console.log(`✅ Found ${users.length} users from profiles table`);
+                    
+                } catch (e) {
+                    console.warn('⚠️ Cannot access profiles table, trying orders table...');
+                    
+                    // Fallback: Get user info from orders table
+                    try {
+                        const { data: orders, error: ordersError } = await window.supabase
+                            .from('orders')
+                            .select('user_id, customer_email, customer_name, customer_phone, customer_address, created_at')
+                            .order('created_at', { ascending: false });
+                        
+                        if (ordersError) throw ordersError;
+                        
+                        // Create user objects from order data with better aggregation
+                        const userMap = new Map();
+                        orders?.forEach(order => {
+                            if (order.user_id) {
+                                const userId = order.user_id;
+                                
+                                if (!userMap.has(userId)) {
+                                    // Create new user entry
+                                    userMap.set(userId, {
+                                        id: userId,
+                                        email: order.customer_email || 'Unknown',
+                                        full_name: order.customer_name || 'Unknown User',
+                                        phone: order.customer_phone || null,
+                                        address: order.customer_address || null,
+                                        created_at: order.created_at,
+                                        is_admin: false, // We can't determine this from orders
+                                        source: 'orders',
+                                        order_count: 1
+                                    });
+                                } else {
+                                    // Update existing user with more complete info if available
+                                    const existingUser = userMap.get(userId);
+                                    
+                                    // Use the most complete data available
+                                    if (!existingUser.phone && order.customer_phone) {
+                                        existingUser.phone = order.customer_phone;
+                                    }
+                                    if (!existingUser.address && order.customer_address) {
+                                        existingUser.address = order.customer_address;
+                                    }
+                                    if (existingUser.full_name === 'Unknown User' && order.customer_name) {
+                                        existingUser.full_name = order.customer_name;
+                                    }
+                                    if (existingUser.email === 'Unknown' && order.customer_email) {
+                                        existingUser.email = order.customer_email;
+                                    }
+                                    
+                                    // Use earliest order date as join date
+                                    if (new Date(order.created_at) < new Date(existingUser.created_at)) {
+                                        existingUser.created_at = order.created_at;
+                                    }
+                                    
+                                    existingUser.order_count++;
+                                }
+                            }
+                        });
+                        
+                        users = Array.from(userMap.values());
+                        console.log(`✅ Found ${users.length} users from orders table with aggregated data`);
+                        
+                    } catch (e2) {
+                        console.error('❌ Both profiles and orders queries failed');
+                        error = e2;
+                    }
+                }
+                
+                if (error && (!users || users.length === 0)) {
+                    usersList.innerHTML = `
+                        <div class="text-center py-8">
+                            <p class="text-gray-500 mb-2">Cannot load users from database</p>
+                            <p class="text-sm text-gray-400">Check database permissions for profiles table</p>
+                            <p class="text-sm text-red-500 mt-2">Error: ${error.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (!users || users.length === 0) {
                     usersList.innerHTML = '<p class="text-gray-500 text-center py-8">No users found</p>';
                     return;
                 }
                 
-                usersList.innerHTML = users.map(user => `
-                    <div class="bg-white border rounded-lg p-4 mb-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-4 mb-2">
-                                    <h3 class="font-semibold text-gray-900">${user.email}</h3>
-                                    <span class="px-2 py-1 text-xs rounded ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
-                                        ${user.is_admin ? 'Admin' : 'User'}
-                                    </span>
+                usersList.innerHTML = users.map(user => {
+                    const isFromOrders = user.source === 'orders';
+                    const userName = user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A';
+                    
+                    return `
+                        <div class="bg-white border rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-4 mb-2">
+                                        <h3 class="font-semibold text-gray-900">${user.email}</h3>
+                                        <span class="px-2 py-1 text-xs rounded ${user.is_admin ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                            ${user.is_admin ? 'Admin' : 'User'}
+                                        </span>
+                                        ${isFromOrders ? `
+                                            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">From Orders</span>
+                                        ` : ''}
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                                        <div>
+                                            <span class="text-gray-500">Name:</span><br>
+                                            ${userName}
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">Phone:</span><br>
+                                            ${user.phone || 'N/A'}
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">${isFromOrders ? 'Orders' : 'Company'}:</span><br>
+                                            ${isFromOrders ? (user.order_count || 1) : (user.company || 'N/A')}
+                                        </div>
+                                        <div>
+                                            <span class="text-gray-500">Joined:</span><br>
+                                            ${new Date(user.created_at).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                    ${user.address || user.city || user.country ? `
+                                        <div class="mt-2 text-sm text-gray-600">
+                                            <span class="text-gray-500">Address:</span>
+                                            ${user.address || ''} ${user.city || ''} ${user.postal_code || ''} ${user.country || ''}
+                                        </div>
+                                    ` : ''}
                                 </div>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                                    <div>
-                                        <span class="text-gray-500">Name:</span><br>
-                                        ${user.first_name || 'N/A'} ${user.last_name || ''}
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">Phone:</span><br>
-                                        ${user.phone || 'N/A'}
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">Company:</span><br>
-                                        ${user.company || 'N/A'}
-                                    </div>
-                                    <div>
-                                        <span class="text-gray-500">Joined:</span><br>
-                                        ${new Date(user.created_at).toLocaleDateString()}
-                                    </div>
+                                <div class="flex space-x-2">
+                                    ${!isFromOrders ? `
+                                        <button onclick="toggleUserAdmin('${user.id}', ${!user.is_admin})" 
+                                                class="px-3 py-1 text-sm ${user.is_admin ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded">
+                                            ${user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="viewUserDetails('${user.id}')" class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700">
+                                        Details
+                                    </button>
                                 </div>
-                                ${user.address || user.city || user.country ? `
-                                    <div class="mt-2 text-sm text-gray-600">
-                                        <span class="text-gray-500">Address:</span>
-                                        ${user.address || ''} ${user.city || ''} ${user.postal_code || ''} ${user.country || ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="toggleUserAdmin('${user.id}', ${!user.is_admin})" 
-                                        class="px-3 py-1 text-sm ${user.is_admin ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded">
-                                    ${user.is_admin ? 'Remove Admin' : 'Make Admin'}
-                                </button>
-                                <button onclick="viewUserDetails('${user.id}')" class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700">
-                                    Details
-                                </button>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
                 
             } catch (error) {
                 console.error('Error loading users:', error);
@@ -1724,6 +1810,11 @@
             }
         };
         
+        window.refreshPromoCodes = function() {
+            console.log('🔄 Refreshing promo codes...');
+            loadPromoCodes();
+        };
+        
         window.updateOrderStatus = async function(orderId, status) {
             try {
                 const { error } = await window.supabase
@@ -1740,18 +1831,45 @@
         
         window.viewOrderDetails = async function(orderId) {
             try {
-                // Get order details from database (simple version)
-                const { data: order, error } = await supabase
+                console.log('🔍 Fetching order details for ID:', orderId);
+                
+                // Check if Supabase is available
+                if (!window.supabase) {
+                    console.error('❌ Supabase client not available');
+                    alert('Database connection error. Please refresh the page.');
+                    return;
+                }
+                
+                // Get order details from database
+                const { data: order, error } = await window.supabase
                     .from('orders')
                     .select('*')
                     .eq('id', orderId)
                     .single();
                 
                 if (error) {
-                    console.error('Error fetching order details:', error);
-                    alert('Eroare la încărcarea detaliilor comenzii');
+                    console.error('❌ Error fetching order details:', error);
+                    console.error('Error code:', error.code);
+                    console.error('Error message:', error.message);
+                    
+                    // Provide more specific error messages
+                    if (error.code === 'PGRST116') {
+                        alert('Comanda nu a fost găsită în baza de date.');
+                    } else if (error.message.includes('permission')) {
+                        alert('Nu aveți permisiuni să accesați această comandă.');
+                    } else {
+                        alert(`Eroare la încărcarea detaliilor comenzii: ${error.message}`);
+                    }
                     return;
                 }
+                
+                if (!order) {
+                    console.error('❌ No order data returned');
+                    alert('Comanda nu a fost găsită.');
+                    return;
+                }
+                
+                console.log('✅ Order details loaded successfully:', order);
                 
                 const items = order.items || [];
                 

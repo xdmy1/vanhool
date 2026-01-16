@@ -44,6 +44,9 @@ window.InterBusApp = {
     isAdmin: false
 };
 
+// Create alias for backward compatibility
+window.VanHoolApp = window.InterBusApp;
+
 // Universal Translation System
 const TRANSLATIONS = {
     en: {
@@ -301,10 +304,13 @@ window.setLanguage = function(lang) {
             categories: [],
             isAdmin: false
         };
+        // Create alias for backward compatibility
+        window.VanHoolApp = window.InterBusApp;
     }
     
     if (TRANSLATIONS[lang]) {
         window.InterBusApp.currentLanguage = lang;
+        window.VanHoolApp.currentLanguage = lang; // Keep both in sync
         localStorage.setItem('interbus_language', lang);
         updateTranslations();
         updateLanguageDisplay();
@@ -312,6 +318,7 @@ window.setLanguage = function(lang) {
         // Reload page content if needed
         if (typeof renderProducts === 'function') renderProducts();
         if (typeof loadCategories === 'function') loadCategories();
+        if (typeof loadCategoriesDropdown === 'function') loadCategoriesDropdown();
         
         console.log('✅ Language set successfully to:', lang);
     } else {
@@ -982,7 +989,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     const savedLanguage = localStorage.getItem('interbus_language') || 'en';
     if (savedLanguage !== window.InterBusApp.currentLanguage) {
         window.InterBusApp.currentLanguage = savedLanguage;
+        window.VanHoolApp.currentLanguage = savedLanguage; // Keep both in sync
         updateLanguageDisplay();
+        updateTranslations();
     }
     
     // Check authentication

@@ -181,15 +181,54 @@ class OrderManager {
     // Update promo code usage
     async updatePromoCodeUsage(promocodeId) {
         try {
+            console.log('🎟️ Updating promo code usage for ID:', promocodeId);
+            
+            // First, get current promo code data to check if we need to disable it
+            const { data: currentPromo, error: fetchError } = await CONFIG.supabase
+                .from('promocodes')
+                .select('current_uses, max_uses, is_active, code')
+                .eq('id', promocodeId)
+                .single();
+                
+            if (fetchError) {
+                console.error('Error fetching current promo code data:', fetchError);
+                return;
+            }
+            
+            if (!currentPromo) {
+                console.error('Promo code not found with ID:', promocodeId);
+                return;
+            }
+            
+            console.log('📊 Current promo code data:', currentPromo);
+            
+            const newUsageCount = (currentPromo.current_uses || 0) + 1;
+            const maxUses = currentPromo.max_uses || 1;
+            
+            // Prepare update object
+            const updateData = {
+                current_uses: newUsageCount,
+                updated_at: new Date().toISOString()
+            };
+            
+            // If usage reaches or exceeds max_uses, disable the promo code
+            if (newUsageCount >= maxUses) {
+                updateData.is_active = false;
+                console.log(`🚫 Promo code "${currentPromo.code}" reached usage limit (${newUsageCount}/${maxUses}), disabling...`);
+            }
+            
+            // Update the promo code
             const { error } = await CONFIG.supabase
                 .from('promocodes')
-                .update({ 
-                    used_count: CONFIG.supabase.raw('used_count + 1'),
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', promocodeId);
                 
-            if (error) throw error;
+            if (error) {
+                console.error('Error updating promo code usage:', error);
+                throw error;
+            }
+            
+            console.log(`✅ Promo code "${currentPromo.code}" usage updated: ${newUsageCount}/${maxUses}${updateData.is_active === false ? ' (DISABLED)' : ''}`);
             
         } catch (error) {
             console.error('Error updating promo code usage:', error);

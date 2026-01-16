@@ -9,9 +9,9 @@
     <link href="css/custom-colors.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-white min-h-screen font-inter">
     <!-- Header -->
-    <header class="bg-white shadow-lg border-b sticky top-0 z-50">
+    <header class="bg-white backdrop-blur-lg shadow-sm sticky top-0 z-50 border-b border-gray-100">
         <div class="container mx-auto px-4 lg:px-8">
             <nav class="flex items-center justify-between h-16 lg:h-20">
                 <!-- Left: Logo -->
@@ -27,186 +27,32 @@
                     <div class="hidden lg:flex items-center space-x-8">
                         <!-- Categories Dropdown -->
                         <div class="relative" onmouseenter="showDropdown()" onmouseleave="hideDropdown()">
-                            <button class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 font-medium transition-colors">
+                            <button onclick="toggleDropdown()" class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 font-medium transition-colors">
                                 <i class="fas fa-th-large mr-1"></i>
                                 <span data-translate="categories">Categories</span>
                                 <i class="fas fa-chevron-down text-sm ml-1 group-hover:rotate-180 transition-transform duration-200"></i>
                             </button>
-                            <!-- Enhanced Categories Dropdown -->
-                            <div id="categories-dropdown-menu" class="absolute overflow-x-hidden  top-full left-0 bg-white shadow-xl border rounded-lg z-50 w-96  px-6  max-h-100 overflow-y-hidden" style="display: none;">
-                                <!-- Categories Content -->
-                                <div id="categories-dropdown">
-                                    <div class="py-4">
-                                        <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                                            
-                                            <!-- Brake System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=brake-system" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-stop-circle text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Brake System</div>
-                                                        <div class="text-sm text-gray-500">Pads, Discs, Fluid</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Brake Components</div>
-                                                        <a href="catalog.html?category=brake-pads" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Pads</a>
-                                                        <a href="catalog.html?category=brake-discs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Discs</a>
-                                                        <a href="catalog.html?category=brake-fluid" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Fluid</a>
-                                                        <a href="catalog.html?category=brake-calipers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Calipers</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Air Pressure System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=air-pressure" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-wind text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Air Pressure</div>
-                                                        <div class="text-sm text-gray-500">Compressors, Valves</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Air System Parts</div>
-                                                        <a href="catalog.html?category=air-compressors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Compressors</a>
-                                                        <a href="catalog.html?category=air-valves" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Valves</a>
-                                                        <a href="catalog.html?category=air-tanks" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Tanks</a>
-                                                        <a href="catalog.html?category=air-filters" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Filters</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Electrical System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=electrical" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-bolt text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Electrical</div>
-                                                        <div class="text-sm text-gray-500">Lighting, Wiring</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Electrical Parts</div>
-                                                        <a href="catalog.html?category=headlights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Headlights</a>
-                                                        <a href="catalog.html?category=tail-lights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Tail Lights</a>
-                                                        <a href="catalog.html?category=wiring-harness" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Wiring Harness</a>
-                                                        <a href="catalog.html?category=switches" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Switches</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Chassis & Suspension -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=chassis-suspension" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-car-side text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Chassis & Suspension</div>
-                                                        <div class="text-sm text-gray-500">Suspension, Frames</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Chassis Parts</div>
-                                                        <a href="catalog.html?category=suspension-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Suspension Parts</a>
-                                                        <a href="catalog.html?category=chassis-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Chassis Parts</a>
-                                                        <a href="catalog.html?category=shock-absorbers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Shock Absorbers</a>
-                                                        <a href="catalog.html?category=springs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Springs</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Engine & Transmission -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=engine-transmission" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-cog text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Engine & Transmission</div>
-                                                        <div class="text-sm text-gray-500">Engine Parts, Gears</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Engine Parts</div>
-                                                        <a href="catalog.html?category=engine-filters" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Engine Filters</a>
-                                                        <a href="catalog.html?category=transmission-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Transmission Parts</a>
-                                                        <a href="catalog.html?category=cooling-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Cooling System</a>
-                                                        <a href="catalog.html?category=exhaust-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Exhaust System</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Body & Interior -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=body-interior" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-door-open text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Body & Interior</div>
-                                                        <div class="text-sm text-gray-500">Doors, Seats, Panels</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Body Parts</div>
-                                                        <a href="catalog.html?category=doors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Doors</a>
-                                                        <a href="catalog.html?category=seats" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Seats</a>
-                                                        <a href="catalog.html?category=body-panels" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Body Panels</a>
-                                                        <a href="catalog.html?category=mirrors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Mirrors</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
+                            <!-- Compact Categories Dropdown -->
+                            <div id="categories-dropdown-menu" class="absolute top-full left-0 bg-white shadow-lg border rounded-md z-50 w-56 sm:w-64 max-h-80 overflow-y-auto" style="display: none;">
+                                <div id="categories-dropdown" class="p-2">
+                                    <!-- Loading state -->
+                                    <div class="py-4 text-center">
+                                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mx-auto mb-1"></div>
+                                        <p class="text-xs text-gray-500">Loading...</p>
                                     </div>
                                 </div>
-                                
-                                <!-- Footer -->
-                                <div class="border-t bg-gray-50 p-4 rounded-b-xl">
-                                    <div class="flex items-center justify-between">
-                                        <div class="text-sm text-gray-600">
-                                            <span data-translate="over_parts">Over 1000+ authentic parts</span>
-                                        </div>
-                                        <a href="catalog.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm">
-                                            <span data-translate="view_all_catalog">View All Catalog</span>
-                                            <i class="fas fa-arrow-right ml-2"></i>
-                                        </a>
-                                    </div>
+                                <div class="border-t p-2">
+                                    <a href="catalog.html" class="block text-center text-xs text-red-600 hover:text-red-700 font-medium">
+                                        View All →
+                                    </a>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Regular Navigation Links -->
                         <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
-                        <a href="#about" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
-                        <a href="#contact" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                        <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                        <a href="contact.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
                     </div>
 
                     <!-- Tablet Navigation -->
@@ -217,12 +63,12 @@
                                 <i class="fas fa-th-large"></i>
                                 <i class="fas fa-chevron-down text-sm"></i>
                             </button>
-                            <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 w-48">
+                            <div id="tablet-categories-dropdown" class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 w-48">
                                 <div class="p-3">
-                                    <a href="catalog.html?category=brake-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Brake System</a>
-                                    <a href="catalog.html?category=electrical" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Electrical</a>
-                                    <a href="catalog.html?category=engine" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Engine</a>
-                                    <a href="catalog.html" class="block px-3 py-2 text-sm text-red-600 font-medium border-t mt-2 pt-2">View All →</a>
+                                    <div class="text-center py-4">
+                                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                        <p class="text-xs text-gray-500">Loading...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -274,16 +120,11 @@
                     <!-- Mobile Categories -->
                     <div class="mb-4">
                         <h3 class="text-sm font-semibold text-gray-900 mb-3 px-2">Categories</h3>
-                        <div class="space-y-1">
-                            <a href="catalog.html?category=brake-system" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-stop-circle mr-3 w-4"></i>Brake System
-                            </a>
-                            <a href="catalog.html?category=electrical" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-bolt mr-3 w-4"></i>Electrical
-                            </a>
-                            <a href="catalog.html?category=engine" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-cog mr-3 w-4"></i>Engine
-                            </a>
+                        <div id="mobile-categories-dropdown" class="space-y-1">
+                            <div class="text-center py-4">
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                <p class="text-xs text-gray-500">Loading categories...</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -300,10 +141,10 @@
                             </span>
                             <span id="mobile-cart-counter" class="hidden bg-red-500 text-white text-xs rounded-full px-2 py-1 font-medium">0</span>
                         </a>
-                        <a href="#about" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
+                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
                             <i class="fas fa-info-circle mr-2"></i>About
                         </a>
-                        <a href="#contact" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
+                        <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
                             <i class="fas fa-envelope mr-2"></i>Contact
                         </a>
                     </div>
@@ -323,38 +164,46 @@
     </header>
 
     <!-- Hero Section -->
-    <section class="bg-gray-900 text-white relative overflow-hidden">
-        <div class="absolute inset-0 bg-vhp-gradient opacity-20"></div>
-        <div class="container mx-auto px-4 py-16 lg:py-24 relative z-10">
-            <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-4xl lg:text-6xl font-bold mb-6 text-white" data-translate="hero_title">
-                    Rare Bus Parts
-                </h1>
-                <p class="text-xl lg:text-2xl mb-8 text-gray-200" data-translate="hero_subtitle">
-                    Specialized supplier of authentic bus parts. Hard-to-find components for all bus models with worldwide shipping.
-                </p>
-                <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-                    <a href="catalog.html" class="btn-vhp-primary px-8 py-3 rounded-md font-semibold" data-translate="view_catalog">
-                        View Catalog
-                    </a>
-                    <a href="#contact" class="btn-vhp-outline px-8 py-3 rounded-md font-semibold" data-translate="contact_us">
-                        Contact Us
-                    </a>
+    <section class="relative bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden">
+        <img src="bus.png" alt="Van Hool Bus" class="lg:hidden absolute top-6 right-16 -z-10 w-28 object-cover">
+        <img src="bus.png" alt="Van Hool Bus" class="hidden lg:block absolute bottom-48 right-48 -z-10 w-64  object-cover">
+        <div class="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,121,12,1))] -z-10"></div>
+        <div class="container mx-auto px-4 pt-20 pb-16 lg:pt-28 lg:pb-24">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-16">
+                    <div class="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-200 rounded-full text-blue-700 text-sm font-medium mb-8">
+                        <i class="fas fa-truck mr-2"></i>
+                        <span data-translate="trusted_worldwide">Trusted worldwide since 1999</span>
+                    </div>
+                    <h1 class="text-4xl lg:text-7xl font-bold mb-6 text-slate-900 leading-tight" data-translate="hero_title">
+                        Premium Bus Parts
+                    </h1>
+                    <p class="text-xl lg:text-2xl mb-10 text-slate-600 max-w-3xl mx-auto leading-relaxed" data-translate="hero_subtitle">
+                        Your trusted source for authentic bus parts and components. Quality parts, global shipping, expert support.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+                        <a href="catalog.html" class="bg-slate-900 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" data-translate="view_catalog">
+                            Browse Catalog
+                        </a>
+                        <a href="contact.html" class="bg-white text-slate-900 px-8 py-4 rounded-xl font-semibold text-lg border-2 border-slate-200 hover:border-slate-300 transition-all hover:shadow-lg" data-translate="contact_us">
+                            Get Quote
+                        </a>
+                    </div>
                 </div>
                 
-                <!-- Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                    <div>
-                        <div class="text-3xl font-bold text-yellow-300" id="parts-count">2000+</div>
-                        <div class="text-gray-300" data-translate="parts_available">Parts Available</div>
+                <!-- Modern Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-100">
+                        <div class="text-4xl font-bold text-slate-900 mb-2" id="parts-count">2000+</div>
+                        <div class="text-slate-600 font-medium" data-translate="parts_available">Parts Available</div>
                     </div>
-                    <div>
-                        <div class="text-3xl font-bold text-yellow-300">50+</div>
-                        <div class="text-gray-300" data-translate="countries_served">Countries Served</div>
+                    <div class="bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-100">
+                        <div class="text-4xl font-bold text-slate-900 mb-2">50+</div>
+                        <div class="text-slate-600 font-medium" data-translate="countries_served">Countries Served</div>
                     </div>
-                    <div>
-                        <div class="text-3xl font-bold text-yellow-300">25+</div>
-                        <div class="text-gray-300" data-translate="years_experience">Years Experience</div>
+                    <div class="bg-white rounded-2xl p-8 text-center shadow-lg border border-slate-100">
+                        <div class="text-4xl font-bold text-slate-900 mb-2">25+</div>
+                        <div class="text-slate-600 font-medium" data-translate="years_experience">Years Experience</div>
                     </div>
                 </div>
             </div>
@@ -429,7 +278,7 @@
     <!-- Universal App System -->
     <script src="js/app-universal.js"></script>
     <script type="module" src="js/config.js"></script>
-    <script src="js/categories-dropdown.js"></script>
+    <!-- <script src="js/categories-dropdown.js"></script> -->
     
     <script>
         console.log('🔥 Index page loaded with universal system');
@@ -456,123 +305,133 @@
                 console.log('❌ Dropdown menu element not found');
             }
         }
+
+        function toggleDropdown() {
+            console.log('🔄 Toggling dropdown...');
+            const dropdown = document.getElementById('categories-dropdown-menu');
+            if (dropdown) {
+                if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                    dropdown.style.display = 'block';
+                    console.log('✅ Dropdown toggled to visible');
+                } else {
+                    dropdown.style.display = 'none';
+                    console.log('✅ Dropdown toggled to hidden');
+                }
+            } else {
+                console.log('❌ Dropdown menu element not found');
+            }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('categories-dropdown-menu');
+            const dropdownContainer = event.target.closest('.relative');
+            
+            // If click is outside the dropdown container, close it
+            if (dropdown && !dropdownContainer) {
+                dropdown.style.display = 'none';
+            }
+        });
         
-        // Load categories for dropdown - DO NOTHING, use static HTML
+        // Load categories for dropdown from database
         async function loadCategoriesDropdown() {
-            // Disabled - using static HTML content
+            console.log('🔄 Loading categories dropdown from database...');
+            const dropdownContent = document.getElementById('categories-dropdown');
+            
+            try {
+                // Wait for supabase to be available
+                let retries = 0;
+                const maxRetries = 30;
+                
+                while ((!window.supabase && !window.CONFIG?.supabase) && retries < maxRetries) {
+                    console.log(`⏳ Waiting for Supabase... (attempt ${retries + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    retries++;
+                }
+                
+                const supabaseClient = window.CONFIG?.supabase || window.supabase;
+                if (!supabaseClient) {
+                    console.warn('⚠️ Supabase not available, using fallback categories');
+                    dropdownContent.innerHTML = getStaticCategoriesDropdown();
+                    populateMobileCategoriesStatic();
+                    populateTabletCategoriesStatic();
+                    return;
+                }
+                
+                // Fetch categories from database
+                console.log('🔍 Fetching categories from database...');
+                const { data: categories, error } = await supabaseClient
+                    .from('categories')
+                    .select('*')
+                    .is('parent_id', null)
+                    .eq('is_active', true)
+                    .order('name_en');
+                
+                if (error) {
+                    console.error('❌ Error fetching categories:', error);
+                    dropdownContent.innerHTML = getStaticCategoriesDropdown();
+                    return;
+                }
+                
+                if (!categories || categories.length === 0) {
+                    console.log('📦 No categories found, using fallback');
+                    dropdownContent.innerHTML = getStaticCategoriesDropdown();
+                    populateMobileCategoriesStatic();
+                    populateTabletCategoriesStatic();
+                    return;
+                }
+                
+                console.log(`✅ Loaded ${categories.length} categories from database`);
+                
+                // Create modern dropdown with database categories
+                dropdownContent.innerHTML = createDynamicCategoriesDropdown(categories);
+                
+                // Also populate mobile and tablet dropdowns
+                populateMobileCategories(categories);
+                populateTabletCategories(categories);
+                
+            } catch (error) {
+                console.error('💥 Error in loadCategoriesDropdown:', error);
+                dropdownContent.innerHTML = getStaticCategoriesDropdown();
+                // Fallback for mobile/tablet as well
+                populateMobileCategoriesStatic();
+                populateTabletCategoriesStatic();
+            }
         }
         
-        // Create static categories dropdown as fallback
+        // Create static categories dropdown as fallback (compact version)
         function getStaticCategoriesDropdown() {
             console.log('📋 Generating static categories dropdown');
             return `
-                <div class="py-4">
-                    <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                        
-                        <!-- Brake System -->
-                        <div class="relative group/category">
-                            <a href="catalog.html?category=brake-system" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-stop-circle text-red-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-medium">Brake System</div>
-                                    <div class="text-sm text-gray-500">Pads, Discs, Fluid</div>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                            </a>
-                            <!-- Subcategories -->
-                            <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                <div class="p-3">
-                                    <div class="text-sm font-medium text-gray-900 mb-2">Brake Components</div>
-                                    <a href="catalog.html?category=brake-pads" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Pads</a>
-                                    <a href="catalog.html?category=brake-discs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Discs</a>
-                                    <a href="catalog.html?category=brake-fluid" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Fluid</a>
-                                    <a href="catalog.html?category=brake-calipers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Calipers</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Air Pressure System -->
-                        <div class="relative group/category">
-                            <a href="catalog.html?category=air-pressure" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-wind text-red-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-medium">Air Pressure</div>
-                                    <div class="text-sm text-gray-500">Compressors, Valves</div>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                            </a>
-                            <!-- Subcategories -->
-                            <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                <div class="p-3">
-                                    <div class="text-sm font-medium text-gray-900 mb-2">Air System Parts</div>
-                                    <a href="catalog.html?category=air-compressors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Compressors</a>
-                                    <a href="catalog.html?category=air-valves" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Valves</a>
-                                    <a href="catalog.html?category=air-tanks" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Tanks</a>
-                                    <a href="catalog.html?category=air-filters" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Filters</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Electrical System -->
-                        <div class="relative group/category">
-                            <a href="catalog.html?category=electrical" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-bolt text-red-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-medium">Electrical</div>
-                                    <div class="text-sm text-gray-500">Lighting, Wiring</div>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                            </a>
-                            <!-- Subcategories -->
-                            <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                <div class="p-3">
-                                    <div class="text-sm font-medium text-gray-900 mb-2">Electrical Parts</div>
-                                    <a href="catalog.html?category=headlights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Headlights</a>
-                                    <a href="catalog.html?category=tail-lights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Tail Lights</a>
-                                    <a href="catalog.html?category=wiring-harness" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Wiring Harness</a>
-                                    <a href="catalog.html?category=switches" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Switches</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chassis & Suspension -->
-                        <div class="relative group/category">
-                            <a href="catalog.html?category=chassis-suspension" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-car-side text-red-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-medium">Chassis & Suspension</div>
-                                    <div class="text-sm text-gray-500">Suspension, Frames</div>
-                                </div>
-                                <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                            </a>
-                            <!-- Subcategories -->
-                            <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                <div class="p-3">
-                                    <div class="text-sm font-medium text-gray-900 mb-2">Chassis Parts</div>
-                                    <a href="catalog.html?category=suspension-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Suspension Parts</a>
-                                    <a href="catalog.html?category=chassis-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Chassis Parts</a>
-                                    <a href="catalog.html?category=shock-absorbers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Shock Absorbers</a>
-                                    <a href="catalog.html?category=springs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Springs</a>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
+                <a href="catalog.html?category=brake-system" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-stop-circle text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Brake System</span>
+                </a>
+                <a href="catalog.html?category=air-pressure" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-wind text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Air Pressure</span>
+                </a>
+                <a href="catalog.html?category=electrical" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-bolt text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Electrical</span>
+                </a>
+                <a href="catalog.html?category=chassis-suspension" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-car-side text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Chassis & Suspension</span>
+                </a>
+                <a href="catalog.html?category=engine-transmission" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-cog text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Engine & Transmission</span>
+                </a>
+                <a href="catalog.html?category=body-interior" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                    <i class="fas fa-door-open text-red-600 mr-2 text-xs w-4"></i>
+                    <span class="text-gray-700 group-hover:text-red-600">Body & Interior</span>
+                </a>
             `;
         }
         
-        // Create dynamic categories dropdown
-        function createDynamicCategoriesDropdown(categories, subcategories) {
+        // Create compact categories dropdown
+        function createDynamicCategoriesDropdown(categories) {
             const categoryIcons = {
                 'brake-system': 'fas fa-stop-circle',
                 'air-pressure': 'fas fa-wind', 
@@ -586,42 +445,108 @@
                 'safety': 'fas fa-shield-alt'
             };
             
-            return `
-                <div class="py-4">
-                    <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                        ${categories.map(category => {
-                            const categorySubcats = subcategories.filter(sub => sub.parent_id === category.id);
-                            const icon = categoryIcons[category.slug] || 'fas fa-cog';
-                            
-                            return `
-                                <div class="relative group/category">
-                                    <a href="catalog.html?category=${category.slug}" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="${icon} text-red-600"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="font-medium">${category.name_en || category.name || 'Unknown Category'}</div>
-                                            <div class="text-sm text-gray-500">${category.description || ''}</div>
-                                        </div>
-                                        ${categorySubcats.length > 0 ? '<i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>' : ''}
-                                    </a>
-                                    ${categorySubcats.length > 0 ? `
-                                        <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                            <div class="p-3">
-                                                <div class="text-sm font-medium text-gray-900 mb-2">${category.name} Parts</div>
-                                                ${categorySubcats.map(subcat => `
-                                                    <a href="catalog.html?category=${subcat.slug}" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">
-                                                        ${subcat.name}
-                                                    </a>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
+            // Get current language for translation
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+            
+            return categories.map(category => {
+                const icon = categoryIcons[category.slug] || 'fas fa-cog';
+                // Use proper translation based on current language
+                const categoryName = category[`name_${currentLang}`] || category.name_en || category.name || 'Unknown Category';
+                
+                return `
+                    <a href="catalog.html?category=${category.slug}" class="flex items-center px-2 py-2 text-sm hover:bg-red-50 rounded transition-colors group">
+                        <i class="${icon} text-red-600 mr-2 text-xs w-4"></i>
+                        <span class="text-gray-700 group-hover:text-red-600 truncate">${categoryName}</span>
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        // Populate mobile categories dropdown
+        function populateMobileCategories(categories) {
+            const mobileDropdown = document.getElementById('mobile-categories-dropdown');
+            if (!mobileDropdown) return;
+            
+            const categoryIcons = {
+                'brake-system': 'fas fa-stop-circle',
+                'air-pressure': 'fas fa-wind', 
+                'electrical': 'fas fa-bolt',
+                'chassis-suspension': 'fas fa-car-side',
+                'engine-transmission': 'fas fa-cog',
+                'body-interior': 'fas fa-door-open',
+                'hvac': 'fas fa-snowflake',
+                'fuel-system': 'fas fa-gas-pump',
+                'lighting': 'fas fa-lightbulb',
+                'safety': 'fas fa-shield-alt'
+            };
+            
+            // Get current language for translation
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+            
+            mobileDropdown.innerHTML = categories.map(category => {
+                const icon = categoryIcons[category.slug] || 'fas fa-cog';
+                // Use proper translation based on current language
+                const categoryName = category[`name_${currentLang}`] || category.name_en || category.name || 'Unknown Category';
+                
+                return `
+                    <a href="catalog.html?category=${category.slug}" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <i class="${icon} mr-3 w-4"></i>${categoryName}
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        // Populate tablet categories dropdown  
+        function populateTabletCategories(categories) {
+            const tabletDropdown = document.getElementById('tablet-categories-dropdown');
+            if (!tabletDropdown) return;
+            
+            const limitedCategories = categories.slice(0, 6); // Show max 6 categories
+            
+            // Get current language for translation
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+            
+            tabletDropdown.innerHTML = `
+                <div class="p-3">
+                    ${limitedCategories.map(category => {
+                        // Use proper translation based on current language
+                        const categoryName = category[`name_${currentLang}`] || category.name_en || category.name || 'Unknown Category';
+                        return `<a href="catalog.html?category=${category.slug}" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">${categoryName}</a>`;
+                    }).join('')}
+                    <a href="catalog.html" class="block px-3 py-2 text-sm text-red-600 font-medium border-t mt-2 pt-2">View All →</a>
+                </div>
+            `;
+        }
+        
+        // Static fallback for mobile categories
+        function populateMobileCategoriesStatic() {
+            const mobileDropdown = document.getElementById('mobile-categories-dropdown');
+            if (!mobileDropdown) return;
+            
+            mobileDropdown.innerHTML = `
+                <a href="catalog.html?category=brake-system" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <i class="fas fa-stop-circle mr-3 w-4"></i>Brake System
+                </a>
+                <a href="catalog.html?category=electrical" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <i class="fas fa-bolt mr-3 w-4"></i>Electrical
+                </a>
+                <a href="catalog.html?category=engine" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                    <i class="fas fa-cog mr-3 w-4"></i>Engine
+                </a>
+            `;
+        }
+        
+        // Static fallback for tablet categories
+        function populateTabletCategoriesStatic() {
+            const tabletDropdown = document.getElementById('tablet-categories-dropdown');
+            if (!tabletDropdown) return;
+            
+            tabletDropdown.innerHTML = `
+                <div class="p-3">
+                    <a href="catalog.html?category=brake-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Brake System</a>
+                    <a href="catalog.html?category=electrical" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Electrical</a>
+                    <a href="catalog.html?category=engine" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Engine</a>
+                    <a href="catalog.html" class="block px-3 py-2 text-sm text-red-600 font-medium border-t mt-2 pt-2">View All →</a>
                 </div>
             `;
         }
@@ -1202,7 +1127,7 @@
         // Initialize page after universal system loads
         window.addEventListener('load', function() {
             console.log('🚀 Page fully loaded, initializing...');
-            // Remove categories loading since we're not displaying categories on homepage
+            // Load categories for the dropdown navigation
             loadCategoriesDropdown();
             loadLatestProducts();
             updateCartCounter(); // Update cart counter on page load

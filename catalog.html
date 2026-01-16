@@ -3,329 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate="page_title">Inter Bus Catalog - Rare Bus Parts & Components</title>
-    <meta name="description" data-translate="meta_description" content="Browse our complete catalog of Inter Bus bus parts. Find brake systems, air pressure components, suspension parts and more.">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>Inter Bus Catalog - Parts & Components</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom styles -->
     <link href="css/custom-colors.css" rel="stylesheet">
+    
+    <!-- Configuration and Dependencies -->
+    <script src="js/config.js"></script>
+    <script src="js/app-universal.js"></script>
+    <script type="module" src="js/cart.js"></script>
+    
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-lg border-b sticky top-0 z-50">
-        <div class="container mx-auto px-4 lg:px-8">
-            <nav class="flex items-center justify-between h-16 lg:h-20">
-                <!-- Left: Logo -->
-                <div class="flex items-center">
-                    <a href="index.html" class="text-xl lg:text-2xl font-bold text-red-600 flex items-center hover:text-red-700 transition-colors">
-                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
-                        <span class="sm:hidden">IB</span>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
+                    <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <!-- Regular Navigation Links -->
+                    <a href="catalog.html" class="text-red-600 font-semibold px-3 py-2 rounded-lg bg-red-50" data-translate="catalog">Catalog</a>
+                    <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                    <a href="contact.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                </div>
+
+                <!-- Right side auth/cart -->
+                <div class="flex items-center space-x-4">
+                    <!-- Cart -->
+                    <a href="cart.html" class="relative text-gray-600 hover:text-red-600 transition-colors">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        <span id="cart-count" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                     </a>
-                </div>
-                    
-                <!-- Center: Navigation -->
-                <div class="flex-1 flex justify-center">
-                    <!-- Desktop Navigation -->
-                    <div class="hidden lg:flex items-center space-x-8">
-                        <!-- Categories Dropdown -->
-                        <div class="relative" onmouseenter="showDropdown()" onmouseleave="hideDropdown()">
-                            <button class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 font-medium transition-colors">
-                                <i class="fas fa-th-large mr-1"></i>
-                                <span data-translate="categories">Categories</span>
-                                <i class="fas fa-chevron-down text-sm ml-1 group-hover:rotate-180 transition-transform duration-200"></i>
-                            </button>
-                            <!-- Enhanced Categories Dropdown -->
-                            <div id="categories-dropdown-menu" class="absolute overflow-x-hidden  top-full left-0 bg-white shadow-xl border rounded-lg z-50 w-96  px-6  max-h-100 overflow-y-hidden" style="display: none;">
-                                <!-- Categories Content -->
-                                <div id="categories-dropdown">
-                                    <div class="py-4">
-                                        <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                                            
-                                            <!-- Brake System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=brake-system" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-stop-circle text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Brake System</div>
-                                                        <div class="text-sm text-gray-500">Pads, Discs, Fluid</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Brake Components</div>
-                                                        <a href="catalog.html?category=brake-pads" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Pads</a>
-                                                        <a href="catalog.html?category=brake-discs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Discs</a>
-                                                        <a href="catalog.html?category=brake-fluid" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Fluid</a>
-                                                        <a href="catalog.html?category=brake-calipers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Brake Calipers</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Air Pressure System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=air-pressure" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-wind text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Air Pressure</div>
-                                                        <div class="text-sm text-gray-500">Compressors, Valves</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Air System Parts</div>
-                                                        <a href="catalog.html?category=air-compressors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Compressors</a>
-                                                        <a href="catalog.html?category=air-valves" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Valves</a>
-                                                        <a href="catalog.html?category=air-tanks" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Tanks</a>
-                                                        <a href="catalog.html?category=air-filters" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Air Filters</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Electrical System -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=electrical" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-bolt text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Electrical</div>
-                                                        <div class="text-sm text-gray-500">Lighting, Wiring</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Electrical Parts</div>
-                                                        <a href="catalog.html?category=headlights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Headlights</a>
-                                                        <a href="catalog.html?category=tail-lights" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Tail Lights</a>
-                                                        <a href="catalog.html?category=wiring-harness" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Wiring Harness</a>
-                                                        <a href="catalog.html?category=switches" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Switches</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Chassis & Suspension -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=chassis-suspension" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-car-side text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Chassis & Suspension</div>
-                                                        <div class="text-sm text-gray-500">Suspension, Frames</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Chassis Parts</div>
-                                                        <a href="catalog.html?category=suspension-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Suspension Parts</a>
-                                                        <a href="catalog.html?category=chassis-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Chassis Parts</a>
-                                                        <a href="catalog.html?category=shock-absorbers" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Shock Absorbers</a>
-                                                        <a href="catalog.html?category=springs" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Springs</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Engine & Transmission -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=engine-transmission" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-cog text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Engine & Transmission</div>
-                                                        <div class="text-sm text-gray-500">Engine Parts, Gears</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Engine Parts</div>
-                                                        <a href="catalog.html?category=engine-filters" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Engine Filters</a>
-                                                        <a href="catalog.html?category=transmission-parts" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Transmission Parts</a>
-                                                        <a href="catalog.html?category=cooling-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Cooling System</a>
-                                                        <a href="catalog.html?category=exhaust-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Exhaust System</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Body & Interior -->
-                                            <div class="relative group/category">
-                                                <a href="catalog.html?category=body-interior" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors">
-                                                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                                        <i class="fas fa-door-open text-red-600"></i>
-                                                    </div>
-                                                    <div class="flex-1">
-                                                        <div class="font-medium">Body & Interior</div>
-                                                        <div class="text-sm text-gray-500">Doors, Seats, Panels</div>
-                                                    </div>
-                                                    <i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600"></i>
-                                                </a>
-                                                <!-- Subcategories -->
-                                                <div class="absolute left-full top-0 ml-2 w-64 bg-white border rounded-lg shadow-lg opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-200 z-60">
-                                                    <div class="p-3">
-                                                        <div class="text-sm font-medium text-gray-900 mb-2">Body Parts</div>
-                                                        <a href="catalog.html?category=doors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Doors</a>
-                                                        <a href="catalog.html?category=seats" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Seats</a>
-                                                        <a href="catalog.html?category=body-panels" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Body Panels</a>
-                                                        <a href="catalog.html?category=mirrors" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors">Mirrors</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Footer -->
-                                <div class="border-t bg-gray-50 p-4 rounded-b-xl">
-                                    <div class="flex items-center justify-between">
-                                        <div class="text-sm text-gray-600">
-                                            <span data-translate="over_parts">Over 1000+ authentic parts</span>
-                                        </div>
-                                        <a href="catalog.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm">
-                                            <span data-translate="view_all_catalog">View All Catalog</span>
-                                            <i class="fas fa-arrow-right ml-2"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Regular Navigation Links -->
-                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
-                        <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
-                        <a href="#contact" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
-                    </div>
-
-                    <!-- Tablet Navigation -->
-                    <div class="hidden md:flex lg:hidden items-center space-x-4">
-                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="catalog">Catalog</a>
-                        <div class="relative group">
-                            <button class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 font-medium transition-colors">
-                                <i class="fas fa-th-large"></i>
-                                <i class="fas fa-chevron-down text-sm"></i>
-                            </button>
-                            <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 w-48">
-                                <div class="p-3">
-                                    <a href="catalog.html?category=brake-system" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Brake System</a>
-                                    <a href="catalog.html?category=electrical" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Electrical</a>
-                                    <a href="catalog.html?category=engine" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md">Engine</a>
-                                    <a href="catalog.html" class="block px-3 py-2 text-sm text-red-600 font-medium border-t mt-2 pt-2">View All →</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Right: User Actions -->
-                <div class="flex items-center">
-                    <!-- Right Side Navigation -->
-                <div class="flex items-center space-x-2 lg:space-x-4">
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
-                        <i class="fas fa-bars text-lg"></i>
-                    </button>
-                    
-                    <!-- Language Switcher -->
-                    <div class="relative hidden sm:block">
-                        <button onclick="toggleLanguageDropdown()" class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
-                            <span id="current-lang" class="text-sm font-medium">EN</span>
-                            <i class="fas fa-chevron-down text-xs"></i>
-                        </button>
-                        <div id="language-dropdown" class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden z-50 min-w-max">
-                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
-                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
-                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Cart Icon -->
-                    <div class="relative">
-                        <button id="cart-toggle" class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-all duration-200 relative">
-                            <i class="fas fa-shopping-cart text-lg"></i>
-                            <span id="cart-count" class="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center absolute -top-1 -right-1 min-w-[20px]">0</span>
-                        </button>
-                    </div>
                     
                     <!-- Auth Links -->
-                    <div id="auth-links" class="hidden md:flex items-center space-x-3">
-                        <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
-                        <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md" data-translate="register">Register</a>
-                    </div>
-                </div>
-                </div>
-            </nav>
-            
-            <!-- Mobile menu -->
-            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
-                <div class="px-4 py-4 space-y-2">
-                    <!-- Mobile Categories -->
-                    <div class="mb-4">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-3 px-2">Categories</h3>
-                        <div class="space-y-1">
-                            <a href="catalog.html?category=brake-system" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-stop-circle mr-3 w-4"></i>Brake System
-                            </a>
-                            <a href="catalog.html?category=electrical" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-bolt mr-3 w-4"></i>Electrical
-                            </a>
-                            <a href="catalog.html?category=engine" class="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <i class="fas fa-cog mr-3 w-4"></i>Engine
-                            </a>
-                        </div>
+                    <div id="auth-links" class="flex items-center space-x-2">
+                        <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium" data-translate="login">Login</a>
+                        <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors" data-translate="register">Register</a>
                     </div>
                     
-                    <div class="border-t pt-3 space-y-1">
-                        <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
-                            <i class="fas fa-th-grid mr-2"></i>Catalog
-                        </a>
-                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
-                            <i class="fas fa-info-circle mr-2"></i>About
-                        </a>
-                        <a href="#contact" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
-                            <i class="fas fa-envelope mr-2"></i>Contact
-                        </a>
-                    </div>
-                    
-                    
-                    <!-- Mobile Language -->
-                    <div class="border-t pt-3">
-                        <div class="flex justify-center space-x-4">
-                            <button onclick="setLanguage('en')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
-                            <button onclick="setLanguage('ro')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
-                            <button onclick="setLanguage('ru')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
-                        </div>
+                    <!-- User Profile (hidden by default) -->
+                    <div id="user-profile" class="flex items-center space-x-2 hidden">
+                        <a href="dashboard.html" class="text-gray-600 hover:text-red-600 font-medium" data-translate="dashboard">Dashboard</a>
+                        <button id="logout-btn" class="text-gray-600 hover:text-red-600 font-medium" data-translate="logout">Logout</button>
                     </div>
                 </div>
             </div>
         </div>
-    </header>
-
-    <!-- Hero Section -->
-    <section class="bg-gradient-to-r from-red-600 to-red-800 text-white py-16">
-        <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl font-bold mb-4" data-translate="title">Inter Bus Catalog</h1>
-            <p class="text-xl text-red-100" data-translate="subtitle">Find the perfect part for your Inter Bus bus</p>
-        </div>
-    </section>
+    </nav>
 
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
         <div class="flex flex-col lg:flex-row gap-8">
+            
             <!-- Filters Sidebar -->
             <div class="lg:w-1/4">
                 <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
@@ -336,7 +78,7 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="search">Search</label>
                         <input type="text" id="search-input" 
                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                               data-translate-placeholder="search_placeholder">
+                               placeholder="Search by part code or name..." data-translate-placeholder="search_placeholder">
                     </div>
                     
                     <!-- Category -->
@@ -375,514 +117,113 @@
                 </div>
             </div>
             
-            <!-- Products Grid -->
-            <div class="lg:w-3/4">
-                <!-- Sort and Results -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div id="results-count" class="text-gray-600"></div>
-                    <div class="flex items-center space-x-2">
-                        <label class="text-sm text-gray-700" data-translate="sort_by">Sort by:</label>
-                        <select id="sort-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+            <!-- Products Section -->
+            <div class="flex-1">
+                <!-- Products Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                    <div>
+                        <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2" data-translate="title">Inter Bus Parts Catalog</h1>
+                        <p class="text-gray-600" data-translate="subtitle">Find the perfect part for your Inter Bus bus</p>
+                    </div>
+                    
+                    <!-- Sort -->
+                    <div class="mt-4 sm:mt-0">
+                        <label class="block text-sm font-medium text-gray-700 mb-1" data-translate="sort_by">Sort by:</label>
+                        <select id="sort-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
                             <option value="name" data-translate="sort_name">Name</option>
-                            <option value="price_asc" data-translate="sort_price_low">Price: Low to High</option>
-                            <option value="price_desc" data-translate="sort_price_high">Price: High to Low</option>
+                            <option value="price_low" data-translate="sort_price_low">Price: Low to High</option>
+                            <option value="price_high" data-translate="sort_price_high">Price: High to Low</option>
                             <option value="featured" data-translate="sort_featured">Featured</option>
                         </select>
                     </div>
                 </div>
                 
-                <!-- Loading State -->
+                <!-- Loading -->
                 <div id="loading-products" class="text-center py-12">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                    <i class="fas fa-spinner fa-spin text-3xl text-red-600 mb-4"></i>
                     <p class="text-gray-600" data-translate="loading">Loading products...</p>
                 </div>
                 
                 <!-- Products Grid -->
-                <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <!-- Products will be loaded here -->
                 </div>
                 
                 <!-- No Results -->
-                <div id="no-results" class="hidden text-center py-12">
-                    <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                <div id="no-results" class="text-center py-12 hidden">
+                    <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
                     <h3 class="text-lg font-semibold text-gray-900 mb-2" data-translate="no_results">No products found</h3>
                     <p class="text-gray-600" data-translate="no_results_desc">Try adjusting your filters or search terms</p>
                 </div>
                 
                 <!-- Pagination -->
-                <div id="pagination" class="hidden flex justify-center items-center space-x-4">
-                    <button id="prev-page" class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div id="page-info" class="text-sm text-gray-600"></div>
-                    <button id="next-page" class="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
+                <div id="pagination" class="flex justify-center mt-8">
+                    <!-- Pagination will be added here -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Universal App System -->
-    <script src="js/app-universal.js"></script>
-    <script type="module" src="js/config.js"></script>
-    <script type="module" src="js/cart.js"></script>
-    <script src="js/categories-dropdown.js"></script>
-    
     <script>
-        console.log('🔥 Catalog page loaded');
+        console.log('🚀 New Catalog System Starting...');
         
-        // Dropdown functions
-        function showDropdown() {
-            document.getElementById('categories-dropdown-menu').style.display = 'block';
-        }
-        
-        function hideDropdown() {
-            document.getElementById('categories-dropdown-menu').style.display = 'none';
-        }
-        
-        // Load categories for dropdown
-        async function loadCategoriesDropdown() {
-            try {
-                const supabaseClient = window.CONFIG?.supabase || window.supabase;
-                if (!supabaseClient) {
-                    console.warn('⚠️ Supabase client not available for categories dropdown');
-                    return;
-                }
-                
-                const { data: allCategories, error } = await supabaseClient
-                    .from('categories')
-                    .select('*')
-                    .order('sort_order');
-                
-                if (error) {
-                    console.error('Error loading categories:', error);
-                    return;
-                }
-                
-                const parentCategories = allCategories?.filter(cat => !cat.parent_id) || [];
-                const subcategories = allCategories?.filter(cat => cat.parent_id) || [];
-                
-                // Store globally for mobile functions
-                window.allCategoriesForDropdown = allCategories;
-                
-                const dropdownContent = document.getElementById('categories-dropdown');
-                if (dropdownContent && parentCategories.length > 0) {
-                    dropdownContent.innerHTML = createDynamicCategoriesDropdown(parentCategories, subcategories);
-                } else if (dropdownContent) {
-                    // Fallback to static content if no categories
-                    dropdownContent.innerHTML = getStaticCategoriesDropdown();
-                }
-                
-            } catch (error) {
-                console.error('Error loading categories for dropdown:', error);
-            }
-        }
-        
-        // Create dynamic categories dropdown with enhanced subcategories
-        function createDynamicCategoriesDropdown(categories, subcategories) {
-            const categoryIcons = {
-                'brake-system': 'fas fa-stop-circle',
-                'air-pressure': 'fas fa-wind', 
-                'electrical': 'fas fa-bolt',
-                'chassis-suspension': 'fas fa-car-side',
-                'cooling': 'fas fa-snowflake',
-                'clutch-gearbox': 'fas fa-cog',
-                'steering-axles': 'fas fa-steering-wheel',
-                'bodywork': 'fas fa-car',
-                'hvac': 'fas fa-thermometer-half',
-                'interior': 'fas fa-chair',
-                'silicone-hose': 'fas fa-grip-lines',
-                'abc-raufoss-air-couplings': 'fas fa-plug'
-            };
-            
-            return `
-                <div class="py-4">
-                    <h4 class="font-semibold mb-4 text-center">Inter Bus Categories</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                        ${categories.map(category => {
-                            const categorySubcats = subcategories.filter(sub => sub.parent_id === category.id);
-                            const icon = categoryIcons[category.slug] || 'fas fa-cog';
-                            
-                            return `
-                                <div class="relative group/category">
-                                    <a href="catalog.html?category=${category.slug}" class="flex items-center p-3 rounded-lg hover:bg-red-50 border transition-colors cursor-pointer" 
-                                       onclick="handleCategoryClick(event, '${category.slug}')"
-                                       ontouchstart="handleCategoryTouch(event, '${category.slug}')">
-                                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-                                            <i class="${icon} text-red-600"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="font-medium">${category.name_en || category.name || 'Unknown Category'}</div>
-                                            <div class="text-sm text-gray-500">${categorySubcats.length} subcategories</div>
-                                        </div>
-                                        ${categorySubcats.length > 0 ? '<i class="fas fa-chevron-right text-gray-400 group-hover/category:text-red-600 transition-transform duration-200"></i>' : ''}
-                                    </a>
-                                    ${categorySubcats.length > 0 ? `
-                                        <!-- Desktop Hover Dropdown -->
-                                        <div class="absolute left-full top-0 ml-2 w-72 bg-white border rounded-lg shadow-2xl opacity-0 invisible group-hover/category:opacity-100 group-hover/category:visible transition-all duration-300 z-[70] hidden lg:block">
-                                            <div class="p-4">
-                                                <div class="text-sm font-semibold text-gray-900 mb-3 border-b border-gray-200 pb-2 flex items-center">
-                                                    <i class="${icon} text-red-600 mr-2"></i>
-                                                    ${category.name_en || category.name || 'Unknown'}
-                                                </div>
-                                                <div class="max-h-64 overflow-y-auto">
-                                                    ${categorySubcats.map(subcat => `
-                                                        <a href="catalog.html?category=${subcat.slug}" class="block px-3 py-2 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-md transition-colors flex items-center">
-                                                            <i class="fas fa-arrow-right text-xs text-gray-400 mr-2"></i>
-                                                            ${subcat.name_en || subcat.name || 'Unknown'}
-                                                        </a>
-                                                    `).join('')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Mobile Dropdown -->
-                                        <div id="mobile-subcats-${category.id}" class="lg:hidden mt-2 bg-gray-50 rounded-lg border hidden transition-all duration-300">
-                                            <div class="p-3">
-                                                <div class="text-sm font-medium text-gray-900 mb-2">
-                                                    ${category.name_en || category.name || 'Unknown'} Subcategories:
-                                                </div>
-                                                ${categorySubcats.map(subcat => `
-                                                    <a href="catalog.html?category=${subcat.slug}" class="block px-2 py-1.5 text-sm text-gray-600 hover:bg-white hover:text-red-600 rounded transition-colors">
-                                                        • ${subcat.name_en || subcat.name || 'Unknown'}
-                                                    </a>
-                                                `).join('')}
-                                            </div>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Handle category clicks for mobile/desktop
-        function handleCategoryClick(event, categorySlug) {
-            // On mobile, if there are subcategories, show them instead of navigating
-            if (window.innerWidth < 1024) { // lg breakpoint
-                const subcatsDiv = document.getElementById(`mobile-subcats-${getCategoryIdBySlug(categorySlug)}`);
-                if (subcatsDiv) {
-                    event.preventDefault();
-                    
-                    // Toggle visibility
-                    const isHidden = subcatsDiv.classList.contains('hidden');
-                    
-                    // Hide all other mobile subcategories
-                    document.querySelectorAll('[id^="mobile-subcats-"]').forEach(div => {
-                        div.classList.add('hidden');
-                        // Reset all chevrons
-                        const parentLink = div.parentElement.querySelector('a');
-                        if (parentLink) {
-                            const chevron = parentLink.querySelector('.fa-chevron-right');
-                            if (chevron) chevron.style.transform = 'rotate(0deg)';
-                        }
-                    });
-                    
-                    // Show this one if it was hidden
-                    if (isHidden) {
-                        subcatsDiv.classList.remove('hidden');
-                        
-                        // Rotate chevron
-                        const chevron = event.currentTarget.querySelector('.fa-chevron-right');
-                        if (chevron) {
-                            chevron.style.transform = 'rotate(90deg)';
-                        }
-                    } else {
-                        // Reset chevron
-                        const chevron = event.currentTarget.querySelector('.fa-chevron-right');
-                        if (chevron) {
-                            chevron.style.transform = 'rotate(0deg)';
-                        }
-                    }
-                }
-            }
-            // On desktop, normal navigation happens via the href
-        }
-
-        // Handle touch events for better mobile experience
-        function handleCategoryTouch(event, categorySlug) {
-            // This helps with touch responsiveness on mobile
-            if (window.innerWidth < 1024) {
-                event.preventDefault();
-            }
-        }
-
-        // Helper function to get category ID by slug (needed for mobile subcategories)
-        function getCategoryIdBySlug(slug) {
-            if (window.allCategoriesForDropdown) {
-                const category = window.allCategoriesForDropdown.find(cat => cat.slug === slug && !cat.parent_id);
-                return category ? category.id : null;
-            }
-            return null;
-        }
-        
-        // Translation system
-        const translations = {
-            en: {
-                page_title: "Inter Bus Catalog - Rare Bus Parts & Components",
-                meta_description: "Browse our complete catalog of Inter Bus bus parts. Find brake systems, air pressure components, suspension parts and more.",
-                title: "Inter Bus Catalog", 
-                subtitle: "Find the perfect part for your Inter Bus bus",
-                filters: "Filters",
-                search: "Search",
-                search_placeholder: "Search by part code or name...",
-                category: "Category",
-                all_categories: "All Categories",
-                price_range: "Price Range",
-                availability: "Availability", 
-                in_stock: "In Stock",
-                featured: "Featured",
-                clear_filters: "Clear Filters",
-                sort_by: "Sort by:",
-                sort_name: "Name",
-                sort_price_low: "Price: Low to High",
-                sort_price_high: "Price: High to Low", 
-                sort_featured: "Featured",
-                loading: "Loading products...",
-                no_results: "No products found",
-                no_results_desc: "Try adjusting your filters or search terms",
-                add_to_cart: "Add to Cart"
-            },
-            ro: {
-                page_title: "Catalog Piese Inter Bus - Piese Rare Autobuze & Componente",
-                meta_description: "Răsfoiește catalogul nostru complet de piese pentru autobuze Inter Bus. Găsește sisteme de frânare, componente presiune aer, piese suspensie și multe altele.",
-                title: "Catalog Piese Inter Bus",
-                subtitle: "Găsește piesa perfectă pentru autobuzul tău Inter Bus",
-                filters: "Filtre",
-                search: "Căutare", 
-                search_placeholder: "Caută după cod piesă sau nume...",
-                category: "Categorie",
-                all_categories: "Toate Categoriile",
-                price_range: "Interval Preț",
-                availability: "Disponibilitate",
-                in_stock: "În Stoc",
-                featured: "Recomandate",
-                clear_filters: "Șterge Filtrele",
-                sort_by: "Sortează după:",
-                sort_name: "Nume", 
-                sort_price_low: "Preț: De la mic la mare",
-                sort_price_high: "Preț: De la mare la mic",
-                sort_featured: "Recomandate",
-                loading: "Se încarcă produsele...",
-                no_results: "Nu s-au găsit produse",
-                no_results_desc: "Încearcă să ajustezi filtrele sau termenii de căutare",
-                add_to_cart: "Adaugă în Coș"
-            },
-            ru: {
-                page_title: "Каталог запчастей Inter Bus - Редкие запчасти для автобусов и компоненты",
-                meta_description: "Просмотрите наш полный каталог запчастей для автобусов Inter Bus. Найдите тормозные системы, компоненты пневматической системы, детали подвески и многое другое.",
-                title: "Каталог запчастей Inter Bus",
-                subtitle: "Найдите идеальную запчасть для вашего автобуса Inter Bus",
-                filters: "Фильтры",
-                search: "Поиск",
-                search_placeholder: "Поиск по коду запчасти или названию...",
-                category: "Категория", 
-                all_categories: "Все категории",
-                price_range: "Диапазон цен",
-                availability: "Наличие",
-                in_stock: "В наличии",
-                featured: "Рекомендуемые",
-                clear_filters: "Очистить фильтры",
-                sort_by: "Сортировка:",
-                sort_name: "Название",
-                sort_price_low: "Цена: По возрастанию", 
-                sort_price_high: "Цена: По убыванию",
-                sort_featured: "Рекомендуемые",
-                loading: "Загрузка товаров...",
-                no_results: "Товары не найдены",
-                no_results_desc: "Попробуйте изменить фильтры или условия поиска",
-                add_to_cart: "В корзину"
-            }
-        };
-        
+        // Global variables
         let allProducts = [];
         let filteredProducts = [];
-        
-        // Make products globally accessible for cart functions
-        window.allProducts = allProducts;
-        window.filteredProducts = filteredProducts;
         let currentPage = 1;
         const itemsPerPage = 12;
-        
-        // Get current language from universal app
         let currentLang = 'en';
         
-        // Use universal language function  
-        function updateTranslations() {
-            // Get current language from universal system
-            if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                currentLang = window.VanHoolApp.currentLanguage;
-            } else {
-                currentLang = 'en';
-            }
-            
-            const elements = document.querySelectorAll('[data-translate]');
-            elements.forEach(el => {
-                const key = el.getAttribute('data-translate');
-                if (translations[currentLang] && translations[currentLang][key]) {
-                    el.textContent = translations[currentLang][key];
-                }
-            });
-            
-            // Update placeholders
-            const placeholderElements = document.querySelectorAll('[data-translate-placeholder]');
-            placeholderElements.forEach(el => {
-                const key = el.getAttribute('data-translate-placeholder');
-                if (translations[currentLang] && translations[currentLang][key]) {
-                    el.placeholder = translations[currentLang][key];
-                }
-            });
-        }
-        
-        // Load categories
-        async function loadCategories() {
-            try {
-                // Update current language from universal app
-                if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                    currentLang = window.VanHoolApp.currentLanguage;
-                }
-                
-                console.log('🔍 Loading categories from Supabase...');
-                
-                // Get all categories without strict filtering
-                const { data: categories, error } = await window.supabase
-                    .from('categories')
-                    .select('*')
-                    .order('sort_order');
-                
-                const categoryFilter = document.getElementById('category-filter');
-                
-                if (error) {
-                    console.error('Supabase categories error:', error);
-                    throw error;
-                }
-                
-                if (!categories || categories.length === 0) {
-                    console.log('No categories found in database, using demo categories');
-                    // Add demo categories
-                    const demoCategories = [
-                        { slug: 'brake-system', name_en: 'Brake System', name_ro: 'Sistem Frânare', name_ru: 'Тормозная система' },
-                        { slug: 'air-pressure', name_en: 'Air Pressure', name_ro: 'Presiune Aer', name_ru: 'Пневматика' },
-                        { slug: 'chassis-suspension', name_en: 'Chassis & Suspension', name_ro: 'Șasiu & Suspensie', name_ru: 'Шасси и подвеска' },
-                        { slug: 'electrical', name_en: 'Electrical System', name_ro: 'Sistem Electric', name_ru: 'Электрооборудование' }
-                    ];
-                    
-                    demoCategories.forEach(cat => {
-                        const option = document.createElement('option');
-                        option.value = cat.slug;
-                        option.textContent = cat[`name_${currentLang}`] || cat.name_en;
-                        categoryFilter.appendChild(option);
-                    });
-                    return;
-                }
-                
-                console.log(`✅ Loaded ${categories.length} categories from database`);
-                categories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat.slug;
-                    option.textContent = cat[`name_${currentLang}`] || cat.name_en;
-                    categoryFilter.appendChild(option);
-                });
-                
-            } catch (error) {
-                console.error('Error loading categories:', error);
-            }
-        }
-        
-        // Load products
+        // Main product loading function
         async function loadProducts() {
             try {
-                console.log('🔍 Loading products from Supabase...');
+                document.getElementById('loading-products').style.display = 'block';
                 
-                // Wait for CONFIG and DB_QUERIES to be available
-                let retries = 0;
-                const maxRetries = 30;
-                
-                while ((!window.CONFIG?.supabase && !window.supabase) && retries < maxRetries) {
-                    console.log(`⏳ Waiting for Supabase and CONFIG... (attempt ${retries + 1}/${maxRetries})`);
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    retries++;
-                }
-                
-                // Ensure window.supabase is set for compatibility
-                if (!window.supabase && window.CONFIG?.supabase) {
-                    window.supabase = window.CONFIG.supabase;
-                }
-                
-                if (!window.DB_QUERIES) {
-                    console.warn('⚠️ DB_QUERIES not available, using demo products');
-                    allProducts = getDemoProducts();
-                    window.allProducts = allProducts;
-                    filteredProducts = [...allProducts];
-                    window.filteredProducts = filteredProducts;
-                    renderProducts();
-                    return;
-                }
-                
-                // Get Supabase client
                 console.log('🔍 Loading products from database...');
                 const supabaseClient = window.CONFIG?.supabase || window.supabase;
                 
-                // Try using DB_QUERIES if available
-                if (window.DB_QUERIES) {
-                    console.log('🔄 Using DB_QUERIES for products...');
-                    const productsQuery = window.DB_QUERIES.getProducts({
-                        activeOnly: true,
-                        inStockOnly: false
-                    });
-                    
-                    const { data: products, error } = await productsQuery;
-                    
-                    if (!error && products && products.length > 0) {
-                        console.log(`✅ Loaded ${products.length} products via DB_QUERIES`);
-                        allProducts = products;
-                        window.allProducts = allProducts;
-                    } else {
-                        console.warn('⚠️ DB_QUERIES failed, falling back to direct query');
-                        throw new Error('DB_QUERIES failed');
-                    }
-                } else {
-                    // Fallback to direct Supabase query
-                    console.log('⚠️ DB_QUERIES not available, using direct query');
-                    const { data: products, error } = await supabaseClient
-                        .from('products')
-                        .select('*')
-                        .eq('is_active', true);
-                    
-                    if (error) {
-                        console.error('❌ Direct products query failed:', error);
-                        throw error;
-                    }
-                    
-                    if (products && products.length > 0) {
-                        console.log(`✅ Loaded ${products.length} products via direct query`);
-                        allProducts = products;
-                        window.allProducts = allProducts;
-                    } else {
-                        console.log('📦 No products found in database');
-                        
-                        // Check total count
-                        const { count } = await supabaseClient
-                            .from('products')
-                            .select('*', { count: 'exact', head: true });
-                        
-                        console.log('📊 Total products in database:', count);
-                        
-                        // Use demo products as fallback
-                        allProducts = getDemoProducts();
-                        window.allProducts = allProducts;
-                    }
+                if (!supabaseClient) {
+                    throw new Error('Supabase client not available');
                 }
                 
+                // Load products with categories
+                const { data: products, error } = await supabaseClient
+                    .from('products')
+                    .select(`
+                        *,
+                        categories:category_id (
+                            id,
+                            slug,
+                            name_en,
+                            name_ro,
+                            name_ru,
+                            parent_id
+                        )
+                    `)
+                    .eq('is_active', true);
+                
+                if (error) {
+                    console.error('❌ Products query failed:', error);
+                    throw error;
+                }
+                
+                if (products && products.length > 0) {
+                    console.log(`✅ Loaded ${products.length} products from database`);
+                    allProducts = products;
+                } else {
+                    console.log('📦 No products found in database, using demo data');
+                    allProducts = getDemoProducts();
+                }
+                
+                window.allProducts = allProducts;
                 filteredProducts = [...allProducts];
                 window.filteredProducts = filteredProducts;
+                
                 renderProducts();
                 
             } catch (error) {
                 console.error('Error loading products:', error);
-                console.log('Using demo products as fallback');
+                console.log('📦 Using demo products as fallback');
                 allProducts = getDemoProducts();
                 window.allProducts = allProducts;
                 filteredProducts = [...allProducts];
@@ -893,567 +234,118 @@
             }
         }
         
-        // Demo products
+        // Get translated category name based on current language
+        function getTranslatedCategoryName(category) {
+            if (!category) return '';
+            
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+            
+            switch(currentLang) {
+                case 'ro':
+                    return category.name_ro || category.name_en || category.name || 'Unknown Category';
+                case 'ru':
+                    return category.name_ru || category.name_en || category.name || 'Unknown Category';
+                case 'en':
+                default:
+                    return category.name_en || category.name || 'Unknown Category';
+            }
+        }
+        
+        // Demo products fallback
         function getDemoProducts() {
             return [
                 {
                     id: '1',
-                    part_code: 'VH-BP-F-AG300-001',
-                    slug: 'brake-pad-front-vanhool-ag300',
-                    name_en: 'Front Brake Pads Inter Bus AG300',
-                    name_ro: 'Plăcuțe Frână Față Inter Bus AG300',
-                    name_ru: 'Передние тормозные колодки Inter Bus AG300',
-                    description_en: 'Original Inter Bus front brake pads for AG300 bus model.',
-                    description_ro: 'Plăcuțe de frână originale Inter Bus pentru modelul AG300.',
-                    description_ru: 'Оригинальные передние тормозные колодки Inter Bus для модели AG300.',
+                    part_code: 'VH-BP-001',
+                    name_en: 'Front Brake Pads Set',
+                    description_en: 'Original front brake pads for Inter Bus AG300',
                     price: 125.99,
                     stock_quantity: 15,
                     is_featured: true,
-                    image_url: null,
-                    categories: {
-                        id: '1',
-                        slug: 'brake-system',
+                    image_url: '/images/placeholder.jpg',
+                    categories: { 
+                        id: '1', 
+                        slug: 'brake-system', 
                         name_en: 'Brake System',
                         name_ro: 'Sistem Frânare',
                         name_ru: 'Тормозная система'
                     }
                 },
                 {
-                    id: '2', 
-                    part_code: 'VH-AS-R-A330-002',
-                    slug: 'air-suspension-rear-vanhool-a330',
-                    name_en: 'Rear Air Suspension Inter Bus A330',
-                    name_ro: 'Suspensie Pneumatică Spate Inter Bus A330',
-                    name_ru: 'Задняя пневмоподвеска Inter Bus A330',
-                    description_en: 'Original Inter Bus rear air suspension system for A330 coach.',
-                    description_ro: 'Sistem original de suspensie pneumatică spate Inter Bus pentru A330.',
-                    description_ru: 'Оригинальная система задней пневмоподвески Inter Bus для A330.',
-                    price: 890.50,
-                    stock_quantity: 8,
+                    id: '2',
+                    part_code: 'VH-AC-002',
+                    name_en: 'Air Compressor Unit',
+                    description_en: 'Complete air compressor for pneumatic system',
+                    price: 750.00,
+                    stock_quantity: 3,
                     is_featured: true,
-                    image_url: null,
-                    categories: {
-                        id: '2',
-                        slug: 'chassis-suspension',
-                        name_en: 'Chassis & Suspension',
-                        name_ro: 'Șasiu & Suspensie', 
-                        name_ru: 'Шасси и подвеска'
+                    image_url: '/images/placeholder.jpg',
+                    categories: { 
+                        id: '2', 
+                        slug: 'air-pressure', 
+                        name_en: 'Air Pressure',
+                        name_ro: 'Presiune Aer',
+                        name_ru: 'Пневматическое давление'
                     }
                 },
                 {
                     id: '3',
-                    part_code: 'VH-AC-C-T815-003',
-                    slug: 'air-compressor-vanhool-t815',
-                    name_en: 'Air Compressor Inter Bus T815',
-                    name_ro: 'Compresor Aer Inter Bus T815',
-                    name_ru: 'Воздушный компрессор Inter Bus T815',
-                    description_en: 'Original Inter Bus air compressor for T815 bus model.',
-                    description_ro: 'Compresor de aer original Inter Bus pentru modelul T815.',
-                    description_ru: 'Оригинальный воздушный компрессор Inter Bus для модели T815.',
-                    price: 1250.00,
-                    stock_quantity: 5,
-                    is_featured: false,
-                    image_url: null,
-                    categories: {
-                        id: '3',
-                        slug: 'air-pressure',
-                        name_en: 'Air Pressure',
-                        name_ro: 'Presiune Aer',
-                        name_ru: 'Пневматическая система'
-                    }
-                },
-                {
-                    id: '4',
-                    part_code: 'VH-HL-F-A330-004',
-                    slug: 'headlight-front-vanhool-a330',
-                    name_en: 'Front Headlight Inter Bus A330',
-                    name_ro: 'Far Frontal Inter Bus A330',
-                    name_ru: 'Передняя фара Inter Bus A330',
-                    description_en: 'Original Inter Bus front headlight assembly for A330 coach.',
-                    description_ro: 'Ansamblu far frontal original Inter Bus pentru A330.',
-                    description_ru: 'Оригинальная передняя фара Inter Bus для A330.',
-                    price: 420.75,
-                    stock_quantity: 12,
+                    part_code: 'VH-HL-003',
+                    name_en: 'LED Headlight Set',
+                    description_en: 'Modern LED headlight for better visibility',
+                    price: 450.00,
+                    stock_quantity: 7,
                     is_featured: true,
-                    image_url: null,
-                    categories: {
-                        id: '4',
-                        slug: 'electrical',
-                        name_en: 'Electrical System',
-                        name_ro: 'Sistem Electric',
-                        name_ru: 'Электрооборудование'
-                    }
-                },
-                {
-                    id: '5',
-                    part_code: 'VH-BD-R-AG300-005',
-                    slug: 'brake-disc-rear-vanhool-ag300',
-                    name_en: 'Rear Brake Disc Inter Bus AG300',
-                    name_ro: 'Disc Frână Spate Inter Bus AG300',
-                    name_ru: 'Задний тормозной диск Inter Bus AG300',
-                    description_en: 'Original Inter Bus rear brake disc for AG300 bus.',
-                    description_ro: 'Disc de frână spate original Inter Bus pentru AG300.',
-                    description_ru: 'Оригинальный задний тормозной диск Inter Bus для AG300.',
-                    price: 285.00,
-                    stock_quantity: 10,
-                    is_featured: false,
-                    image_url: null,
-                    categories: {
-                        id: '1',
-                        slug: 'brake-system',
-                        name_en: 'Brake System',
-                        name_ro: 'Sistem Frânare',
-                        name_ru: 'Тормозная система'
-                    }
-                },
-                {
-                    id: '6',
-                    part_code: 'VH-AV-S-T815-006',
-                    slug: 'air-valve-safety-vanhool-t815',
-                    name_en: 'Safety Air Valve Inter Bus T815',
-                    name_ro: 'Valvă Aer Siguranță Inter Bus T815',
-                    name_ru: 'Предохранительный воздушный клапан Inter Bus T815',
-                    description_en: 'Original Inter Bus safety air valve for T815 model.',
-                    description_ro: 'Valvă de siguranță aer original Inter Bus pentru T815.',
-                    description_ru: 'Оригинальный предохранительный воздушный клапан Inter Bus для T815.',
-                    price: 95.50,
-                    stock_quantity: 20,
-                    is_featured: false,
-                    image_url: null,
-                    categories: {
-                        id: '3',
-                        slug: 'air-pressure',
-                        name_en: 'Air Pressure',
-                        name_ro: 'Presiune Aer',
-                        name_ru: 'Пневматическая система'
+                    image_url: '/images/placeholder.jpg',
+                    categories: { 
+                        id: '3', 
+                        slug: 'electrical', 
+                        name_en: 'Electrical',
+                        name_ro: 'Electrice',
+                        name_ru: 'Электрические'
                     }
                 }
             ];
         }
         
-        // Render products
-        function renderProducts() {
-            // Update current language from universal app
-            if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                currentLang = window.VanHoolApp.currentLanguage;
-            }
+        // Refresh category filter translations when language changes
+        function refreshCategoryTranslations() {
+            const categoryFilter = document.getElementById('category-filter');
+            if (!categoryFilter || !window.allCategoriesForDropdown) return;
             
-            const grid = document.getElementById('products-grid');
-            const resultsCount = document.getElementById('results-count');
-            const noResults = document.getElementById('no-results');
-            const pagination = document.getElementById('pagination');
+            const selectedValue = categoryFilter.value; // Preserve selection
             
-            // Calculate pagination
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const pageProducts = filteredProducts.slice(startIndex, endIndex);
+            // Clear and rebuild options
+            categoryFilter.innerHTML = '<option value="" data-translate="all_categories">All Categories</option>';
             
-            // Update results count
-            resultsCount.textContent = `Showing ${pageProducts.length} of ${filteredProducts.length} products`;
-            
-            if (pageProducts.length === 0) {
-                grid.style.display = 'none';
-                noResults.classList.remove('hidden');
-                pagination.classList.add('hidden');
-                return;
-            }
-            
-            grid.style.display = 'grid';
-            noResults.classList.add('hidden');
-            
-            // Render products
-            grid.innerHTML = pageProducts.map(product => `
-                <div class="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden border">
-                    <a href="product.html?id=${product.id}&code=${product.part_code}" class="block">
-                        <div class="aspect-w-1 aspect-h-1 bg-gray-100">
-                            ${product.image_url ? 
-                                `<img src="${product.image_url}" alt="${product[`name_${currentLang}`] || product.name_en}" class="w-full h-48 object-cover">` :
-                                `<div class="w-full h-48 bg-gray-200 flex items-center justify-center">
-                                    <i class="fas fa-image text-gray-400 text-4xl"></i>
-                                </div>`
-                            }
-                        </div>
-                        <div class="p-4">
-                            <div class="text-sm text-red-600 font-medium mb-1">${product.part_code}</div>
-                            <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2">
-                                ${product[`name_${currentLang}`] || product.name_en}
-                            </h3>
-                            <p class="text-sm text-gray-600 mb-3 line-clamp-2">
-                                ${product[`description_${currentLang}`] || product.description_en || ''}
-                            </p>
-                            <div class="flex items-center justify-between mb-3">
-                                <span class="text-lg font-bold text-gray-900">€${product.price}</span>
-                                <span class="text-sm ${product.stock_quantity > 0 ? 'text-green-600' : 'text-red-600'}">
-                                    ${product.stock_quantity > 0 ? translations[currentLang].in_stock : 'Out of Stock'}
-                                </span>
-                            </div>
-                        </div>
-                    </a>
-                    <div class="px-4 pb-4">
-                        <button onclick="addToCartLocal('${product.id}')" 
-                                class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors ${product.stock_quantity === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
-                                ${product.stock_quantity === 0 ? 'disabled' : ''}>
-                            <i class="fas fa-cart-plus mr-2"></i>
-                            ${translations[currentLang].add_to_cart}
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-            
-            // Update pagination
-            updatePagination();
-        }
-        
-        // Update pagination
-        function updatePagination() {
-            const pagination = document.getElementById('pagination');
-            const pageInfo = document.getElementById('page-info');
-            const prevBtn = document.getElementById('prev-page');
-            const nextBtn = document.getElementById('next-page');
-            
-            const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-            
-            if (totalPages <= 1) {
-                pagination.classList.add('hidden');
-                return;
-            }
-            
-            pagination.classList.remove('hidden');
-            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-            
-            prevBtn.disabled = currentPage === 1;
-            nextBtn.disabled = currentPage === totalPages;
-        }
-        
-        // Add to cart function
-        async function addToCartLocal(productId) {
-            try {
-                // Wait for cart manager to be available
-                if (!window.cartManager) {
-                    console.warn('Cart manager not available yet, waiting...');
-                    await new Promise(resolve => {
-                        const checkCartManager = () => {
-                            if (window.cartManager) {
-                                resolve();
-                            } else {
-                                setTimeout(checkCartManager, 100);
-                            }
-                        };
-                        checkCartManager();
-                    });
-                }
+            window.allCategoriesForDropdown.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.slug;
                 
-                // Find the product in our loaded data
-                let product = null;
+                const translatedName = getTranslatedCategoryName(cat);
+                const displayName = cat.parent_id ? 
+                    `  └ ${translatedName}` : 
+                    translatedName;
                 
-                // First try to find in filteredProducts
-                if (window.filteredProducts) {
-                    product = window.filteredProducts.find(p => p.id == productId);
-                }
-                
-                // If not found, try allProducts
-                if (!product && window.allProducts) {
-                    product = window.allProducts.find(p => p.id == productId);
-                }
-                
-                // If still not found, create a mock product for demo
-                if (!product) {
-                    product = {
-                        id: productId,
-                        name: 'Demo Product',
-                        sku: 'DEMO-' + productId,
-                        price: 99.99,
-                        sale_price: null,
-                        stock_quantity: 10,
-                        is_active: true,
-                        images: ['/images/placeholder.jpg'],
-                        categories: { name: 'Demo Category' },
-                        brands: { name: 'Demo Brand' }
-                    };
-                }
-                
-                // Add to cart
-                const result = await window.cartManager.addItem(productId, 1, {
-                    productDetails: {
-                        ...product,
-                        is_active: product.is_active !== undefined ? product.is_active : true,
-                        stock_quantity: product.stock_quantity || 10
-                    },
-                    name: product.name_en || product.name || product.name_ro || 'Product',
-                    sku: product.part_code || product.sku || 'N/A',
-                    price: product.sale_price || product.price,
-                    originalPrice: product.price,
-                    image: product.image_url || (product.images && product.images[0]) || '/images/placeholder.svg',
-                    category: product.categories?.name || product.category || '',
-                    brand: product.brands?.name || product.brand || ''
-                });
-                
-                if (result.success) {
-                    showNotification(result.message || 'Produs adăugat în coș', 'success');
-                    updateCartCounter();
-                } else {
-                    showNotification(result.error || 'Eroare la adăugarea în coș', 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-                showNotification('Eroare la adăugarea în coș', 'error');
-            }
-        }
-        
-        // Update cart counter in navigation
-        function updateCartCounter() {
-            if (window.cartManager) {
-                const itemCount = window.cartManager.getItemCount();
-                const counter = document.getElementById('cart-counter');
-                const mobileCounter = document.getElementById('mobile-cart-counter');
-                
-                if (itemCount > 0) {
-                    if (counter) {
-                        counter.textContent = itemCount;
-                        counter.classList.remove('hidden');
-                    }
-                    if (mobileCounter) {
-                        mobileCounter.textContent = itemCount;
-                        mobileCounter.classList.remove('hidden');
-                    }
-                } else {
-                    if (counter) counter.classList.add('hidden');
-                    if (mobileCounter) mobileCounter.classList.add('hidden');
-                }
-            }
-        }
-        
-        // Language dropdown toggle
-        function toggleLanguageDropdown() {
-            const dropdown = document.getElementById('language-dropdown');
-            dropdown.classList.toggle('hidden');
-        }
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('language-dropdown');
-            const button = event.target.closest('button[onclick*="toggleLanguageDropdown"]');
-            
-            if (!button && !dropdown.contains(event.target)) {
-                dropdown.classList.add('hidden');
-            }
-        });
-        
-        // Show notification
-        function showNotification(message, type = 'info') {
-            // Remove existing notifications
-            const existing = document.querySelectorAll('.cart-notification');
-            existing.forEach(n => n.remove());
-            
-            const notification = document.createElement('div');
-            notification.className = `cart-notification fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 max-w-sm ${
-                type === 'error' ? 'bg-red-100 border border-red-400 text-red-700' :
-                type === 'success' ? 'bg-green-100 border border-green-400 text-green-700' :
-                'bg-red-100 border border-red-400 text-red-700'
-            }`;
-            
-            notification.innerHTML = `
-                <div class="flex items-start">
-                    <i class="fas ${
-                        type === 'error' ? 'fa-exclamation-circle' :
-                        type === 'success' ? 'fa-check-circle' :
-                        'fa-info-circle'
-                    } mt-0.5 mr-2 flex-shrink-0"></i>
-                    <div class="flex-1">${message}</div>
-                    <button type="button" class="ml-3 flex-shrink-0 hover:opacity-75" onclick="this.parentElement.parentElement.remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // Auto remove after 4 seconds
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 4000);
-        }
-        
-        // Sort products function
-        function sortProducts() {
-            const sortValue = document.getElementById('sort-select').value;
-            
-            // Update current language from universal app
-            if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                currentLang = window.VanHoolApp.currentLanguage;
-            }
-            
-            switch (sortValue) {
-                case 'name':
-                    filteredProducts.sort((a, b) => {
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    break;
-                case 'price_asc':
-                    filteredProducts.sort((a, b) => (a.price || 0) - (b.price || 0));
-                    break;
-                case 'price_desc':
-                    filteredProducts.sort((a, b) => (b.price || 0) - (a.price || 0));
-                    break;
-                case 'featured':
-                    filteredProducts.sort((a, b) => {
-                        // Featured first, then by name
-                        if (a.is_featured && !b.is_featured) return -1;
-                        if (!a.is_featured && b.is_featured) return 1;
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    break;
-                default:
-                    // Default to name sort
-                    filteredProducts.sort((a, b) => {
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-            }
-            
-            currentPage = 1;
-            renderProducts();
-        }
-        
-        // Apply current sort without rendering
-        function applyCurrentSort() {
-            const sortValue = document.getElementById('sort-select').value;
-            
-            // Update current language from universal app
-            if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                currentLang = window.VanHoolApp.currentLanguage;
-            }
-            
-            switch (sortValue) {
-                case 'name':
-                    filteredProducts.sort((a, b) => {
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    break;
-                case 'price_asc':
-                    filteredProducts.sort((a, b) => (a.price || 0) - (b.price || 0));
-                    break;
-                case 'price_desc':
-                    filteredProducts.sort((a, b) => (b.price || 0) - (a.price || 0));
-                    break;
-                case 'featured':
-                    filteredProducts.sort((a, b) => {
-                        // Featured first, then by name
-                        if (a.is_featured && !b.is_featured) return -1;
-                        if (!a.is_featured && b.is_featured) return 1;
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-                    break;
-                default:
-                    // Default to name sort
-                    filteredProducts.sort((a, b) => {
-                        const nameA = (a[`name_${currentLang}`] || a.name_en || '').toLowerCase();
-                        const nameB = (b[`name_${currentLang}`] || b.name_en || '').toLowerCase();
-                        return nameA.localeCompare(nameB);
-                    });
-            }
-        }
-        
-        // Apply all filters function
-        function applyFilters() {
-            // Get filter values
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const selectedCategory = document.getElementById('category-filter').value;
-            const minPrice = parseFloat(document.getElementById('min-price').value) || 0;
-            const maxPrice = parseFloat(document.getElementById('max-price').value) || Infinity;
-            const inStockOnly = document.getElementById('in-stock-filter').checked;
-            const featuredOnly = document.getElementById('featured-filter').checked;
-            
-            console.log('🔍 Applying filters:', {
-                searchTerm,
-                selectedCategory,
-                minPrice,
-                maxPrice,
-                inStockOnly,
-                featuredOnly,
-                totalProducts: allProducts.length
+                option.textContent = displayName;
+                categoryFilter.appendChild(option);
             });
             
-            // Apply all filters
-            filteredProducts = allProducts.filter(product => {
-                // Search filter
-                const searchMatch = !searchTerm || 
-                    product.part_code.toLowerCase().includes(searchTerm) ||
-                    (product[`name_${currentLang}`] || product.name_en).toLowerCase().includes(searchTerm) ||
-                    (product.description_en && product.description_en.toLowerCase().includes(searchTerm));
-                
-                // Category filter - improved logic with debugging
-                let categoryMatch = true;
-                if (selectedCategory) {
-                    categoryMatch = false;
-                    
-                    // Check various category properties
-                    if (product.category_slug === selectedCategory) {
-                        categoryMatch = true;
-                    } else if (product.categories && product.categories.slug === selectedCategory) {
-                        categoryMatch = true;
-                    } else if (product.category_id) {
-                        // Try to match by category ID if we have it
-                        const categoryId = getCategoryIdBySlug(selectedCategory);
-                        if (categoryId && product.category_id === categoryId) {
-                            categoryMatch = true;
-                        }
-                    }
-                    
-                    // Debug logging for category filtering issues
-                    if (!categoryMatch) {
-                        console.log(`Product ${product.part_code} doesn't match category ${selectedCategory}:`, {
-                            product_category_slug: product.category_slug,
-                            product_categories: product.categories,
-                            product_category_id: product.category_id,
-                            selected_category: selectedCategory
-                        });
-                    }
-                }
-                
-                // Price filter
-                const price = parseFloat(product.price) || 0;
-                const priceMatch = price >= minPrice && price <= maxPrice;
-                
-                // Stock filter
-                const stockMatch = !inStockOnly || (product.stock_quantity > 0);
-                
-                // Featured filter
-                const featuredMatch = !featuredOnly || product.is_featured;
-                
-                return searchMatch && categoryMatch && priceMatch && stockMatch && featuredMatch;
-            });
-            
-            currentPage = 1;
-            
-            console.log(`✅ Filtering complete: ${filteredProducts.length} products match filters`);
-            
-            // Update window reference
-            window.filteredProducts = filteredProducts;
-            
-            // Apply current sort after filtering (without calling renderProducts again)
-            const sortValue = document.getElementById('sort-select').value;
-            applyCurrentSort();
-            
-            renderProducts();
+            // Restore selection
+            categoryFilter.value = selectedValue;
         }
         
         // Load categories for filter dropdown
         async function loadCategoriesForFilter() {
             try {
-                const { data: allCategories, error } = await window.supabase
+                const supabaseClient = window.CONFIG?.supabase || window.supabase;
+                
+                if (!supabaseClient) {
+                    console.warn('Supabase not available for categories');
+                    return;
+                }
+                
+                const { data: allCategories, error } = await supabaseClient
                     .from('categories')
                     .select('*')
                     .order('sort_order');
@@ -1462,6 +354,10 @@
                     console.error('Error loading categories for filter:', error);
                     return;
                 }
+
+                // Store globally for category filtering
+                window.allCategoriesForDropdown = allCategories;
+                window.allCategoriesData = allCategories; // Also store with admin variable name
 
                 const categoryFilter = document.getElementById('category-filter');
                 if (categoryFilter && allCategories) {
@@ -1474,98 +370,249 @@
                         option.value = cat.slug;
                         
                         // Indent subcategories to show hierarchy
+                        const translatedName = getTranslatedCategoryName(cat);
                         const displayName = cat.parent_id ? 
-                            `  └ ${cat.name_en || cat.name || 'Unknown'}` : 
-                            cat.name_en || cat.name || 'Unknown';
+                            `  └ ${translatedName}` : 
+                            translatedName;
                         
                         option.textContent = displayName;
                         categoryFilter.appendChild(option);
                     });
+                    
+                    console.log(`✅ Loaded ${allCategories.length} categories for filter`);
                 }
                 
             } catch (error) {
                 console.error('Error loading categories for filter:', error);
             }
         }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Catalog ready, setting up event listeners...');
-            
-            // Search filter
-            document.getElementById('search-input').addEventListener('input', function(e) {
-                applyFilters();
-            });
-            
-            // Category filter
-            document.getElementById('category-filter').addEventListener('change', function(e) {
-                applyFilters();
-            });
-            
-            // Price range filters
-            document.getElementById('min-price').addEventListener('input', function(e) {
-                applyFilters();
-            });
-            
-            document.getElementById('max-price').addEventListener('input', function(e) {
-                applyFilters();
-            });
-            
-            // Availability filters
-            document.getElementById('in-stock-filter').addEventListener('change', function(e) {
-                applyFilters();
-            });
-            
-            document.getElementById('featured-filter').addEventListener('change', function(e) {
-                applyFilters();
-            });
-            
-            // Sort functionality
-            document.getElementById('sort-select').addEventListener('change', function(e) {
-                sortProducts();
-            });
-            
-            // Clear filters
-            document.getElementById('clear-filters').addEventListener('click', function() {
-                document.getElementById('search-input').value = '';
-                document.getElementById('category-filter').value = '';
-                document.getElementById('min-price').value = '';
-                document.getElementById('max-price').value = '';
-                document.getElementById('in-stock-filter').checked = false;
-                document.getElementById('featured-filter').checked = false;
-                filteredProducts = [...allProducts];
-                window.filteredProducts = filteredProducts;
-                currentPage = 1;
-                renderProducts();
-            });
-            
-            // Pagination
-            document.getElementById('prev-page').addEventListener('click', function() {
-                if (currentPage > 1) {
-                    currentPage--;
-                    renderProducts();
-                }
-            });
-            
-            document.getElementById('next-page').addEventListener('click', function() {
-                const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    renderProducts();
-                }
-            });
-            
-            // Universal app handles auth dropdowns
-        });
         
-        // Helper function to get category ID by slug
-        function getCategoryIdBySlug(slug) {
-            // This would need to be implemented based on how categories are stored
-            // For now, return null to avoid errors
-            return null;
+        // Apply filters function
+        function applyFilters() {
+            console.log('🔍 Applying filters...');
+            
+            // Get filter values
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+            const selectedCategory = document.getElementById('category-filter').value.trim();
+            const minPrice = parseFloat(document.getElementById('min-price').value) || 0;
+            const maxPrice = parseFloat(document.getElementById('max-price').value) || Infinity;
+            const inStockOnly = document.getElementById('in-stock-filter').checked;
+            const featuredOnly = document.getElementById('featured-filter').checked;
+            const sortBy = document.getElementById('sort-select').value;
+            
+            console.log('Filter values:', {
+                searchTerm,
+                selectedCategory,
+                minPrice,
+                maxPrice,
+                inStockOnly,
+                featuredOnly,
+                sortBy,
+                totalProducts: allProducts.length
+            });
+            
+            // Apply filters
+            filteredProducts = allProducts.filter(product => {
+                // Search filter
+                const searchMatch = !searchTerm || 
+                    product.part_code.toLowerCase().includes(searchTerm) ||
+                    (product.name_en || '').toLowerCase().includes(searchTerm) ||
+                    (product.description_en || '').toLowerCase().includes(searchTerm);
+                
+                // Category filter - supports both main categories and subcategories
+                let categoryMatch = true;
+                if (selectedCategory) {
+                    // Get product's category info
+                    let productCategory = '';
+                    let productParentCategory = '';
+                    
+                    if (product.categories) {
+                        productCategory = product.categories.slug;
+                        
+                        // If this is a subcategory, find its parent category
+                        if (product.categories.parent_id && window.allCategoriesForDropdown) {
+                            const parentCat = window.allCategoriesForDropdown.find(cat => 
+                                cat.id.toString() === product.categories.parent_id.toString()
+                            );
+                            if (parentCat) {
+                                productParentCategory = parentCat.slug;
+                            }
+                        }
+                    } else if (product.category_slug) {
+                        productCategory = product.category_slug;
+                    }
+                    
+                    // Determine if selected category is a main category or subcategory
+                    const selectedCategoryData = window.allCategoriesForDropdown?.find(cat => cat.slug === selectedCategory);
+                    const isSelectedCategoryMain = selectedCategoryData && !selectedCategoryData.parent_id;
+                    
+                    if (isSelectedCategoryMain) {
+                        // If main category is selected, show products from:
+                        // 1. This main category directly, OR
+                        // 2. Any subcategory of this main category
+                        categoryMatch = (productCategory === selectedCategory) || 
+                                       (productParentCategory === selectedCategory);
+                    } else {
+                        // If subcategory is selected, show only products from this exact subcategory
+                        categoryMatch = (productCategory === selectedCategory);
+                    }
+                    
+                    console.log(`Product ${product.part_code}: category="${productCategory}", parent="${productParentCategory}", selected="${selectedCategory}", isMainCategory=${isSelectedCategoryMain}, match=${categoryMatch}`);
+                }
+                
+                // Price filter
+                const price = parseFloat(product.price) || 0;
+                const priceMatch = price >= minPrice && price <= maxPrice;
+                
+                // Stock filter
+                const stockMatch = !inStockOnly || (product.stock_quantity > 0);
+                
+                // Featured filter
+                const featuredMatch = !featuredOnly || product.is_featured;
+                
+                const finalMatch = searchMatch && categoryMatch && priceMatch && stockMatch && featuredMatch;
+                
+                if (!finalMatch && selectedCategory) {
+                    console.log(`❌ Product ${product.part_code} filtered out - category mismatch`);
+                }
+                
+                return finalMatch;
+            });
+            
+            console.log(`✅ Filtered ${allProducts.length} products down to ${filteredProducts.length}`);
+            
+            // Apply sorting
+            if (sortBy && filteredProducts.length > 0) {
+                console.log(`🔄 Sorting products by: ${sortBy}`);
+                
+                filteredProducts.sort((a, b) => {
+                    switch (sortBy) {
+                        case 'price_low':
+                            const priceA = parseFloat(a.sale_price || a.price) || 0;
+                            const priceB = parseFloat(b.sale_price || b.price) || 0;
+                            return priceA - priceB;
+                            
+                        case 'price_high':
+                            const priceHighA = parseFloat(a.sale_price || a.price) || 0;
+                            const priceHighB = parseFloat(b.sale_price || b.price) || 0;
+                            return priceHighB - priceHighA;
+                            
+                        case 'name':
+                            const nameA = (a.name_en || a.name || '').toLowerCase();
+                            const nameB = (b.name_en || b.name || '').toLowerCase();
+                            return nameA.localeCompare(nameB);
+                            
+                        case 'featured':
+                            // Featured products first, then by name
+                            if (a.is_featured && !b.is_featured) return -1;
+                            if (!a.is_featured && b.is_featured) return 1;
+                            const featNameA = (a.name_en || a.name || '').toLowerCase();
+                            const featNameB = (b.name_en || b.name || '').toLowerCase();
+                            return featNameA.localeCompare(featNameB);
+                            
+                        default:
+                            return 0;
+                    }
+                });
+                
+                console.log(`✅ Products sorted by ${sortBy}`);
+            }
+            
+            // Update global reference
+            window.filteredProducts = filteredProducts;
+            
+            // Reset to first page
+            currentPage = 1;
+            
+            // Re-render products
+            renderProducts();
         }
         
-        // Handle URL parameters for filtering
+        // Render products
+        function renderProducts() {
+            const grid = document.getElementById('products-grid');
+            const noResults = document.getElementById('no-results');
+            
+            if (filteredProducts.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+            
+            noResults.classList.add('hidden');
+            
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageProducts = filteredProducts.slice(startIndex, endIndex);
+            
+            // Render products
+            grid.innerHTML = pageProducts.map(product => {
+                const productName = product.name_en || product.name || 'Unknown Product';
+                const productPrice = product.sale_price || product.price || 0;
+                const originalPrice = product.price || 0;
+                const productImage = product.image_url || '/images/placeholder.svg';
+                const categoryName = getTranslatedCategoryName(product.categories) || product.category || '';
+                const inStock = (product.stock_quantity || 0) > 0;
+                
+                return `
+                    <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-200 group">
+                        <div class="relative">
+                            <!-- Product Image -->
+                            <div class="aspect-square w-full bg-gray-100 rounded-t-lg overflow-hidden">
+                                <img src="${productImage}" 
+                                     alt="${productName}" 
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                     onerror="this.src='/images/placeholder.svg'">
+                            </div>
+                            
+                            <!-- Featured badge -->
+                            ${product.is_featured ? '<div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Featured</div>' : ''}
+                            
+                            <!-- Stock indicator -->
+                            <div class="absolute top-2 right-2 ${inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs px-2 py-1 rounded">
+                                ${inStock ? 'In Stock' : 'Out of Stock'}
+                            </div>
+                        </div>
+                        
+                        <div class="p-4">
+                            <!-- Product Info -->
+                            <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">${productName}</h3>
+                            <p class="text-sm text-gray-600 mb-1">Part: ${product.part_code}</p>
+                            ${categoryName ? `<p class="text-sm text-gray-500 mb-3">${categoryName}</p>` : ''}
+                            
+                            <!-- Price -->
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    ${productPrice !== originalPrice && originalPrice ? 
+                                        `<span class="text-lg font-bold text-red-600">$${productPrice}</span>
+                                         <span class="text-sm text-gray-500 line-through ml-2">$${originalPrice}</span>` :
+                                        `<span class="text-lg font-bold text-gray-900">$${productPrice}</span>`
+                                    }
+                                </div>
+                                <span class="text-xs ${inStock ? 'text-green-600' : 'text-red-500'}">
+                                    ${inStock ? `${product.stock_quantity} available` : 'Out of stock'}
+                                </span>
+                            </div>
+                            
+                            <!-- Add to Cart Button -->
+                            <button onclick="addToCart('${product.id}')" 
+                                    class="w-full py-2 px-4 rounded-lg font-medium transition-colors ${
+                                        inStock 
+                                            ? 'bg-red-600 text-white hover:bg-red-700' 
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    }" 
+                                    ${!inStock ? 'disabled' : ''}>
+                                <i class="fas fa-cart-plus mr-2"></i>
+                                ${inStock ? 'Add to Cart' : 'Out of Stock'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Handle URL parameters
         function handleUrlParameters() {
             const urlParams = new URLSearchParams(window.location.search);
             
@@ -1599,306 +646,225 @@
             const maxPrice = urlParams.get('max_price');
             if (minPrice) document.getElementById('min-price').value = minPrice;
             if (maxPrice) document.getElementById('max-price').value = maxPrice;
+            
+            // Apply filters if any URL parameters were found
+            if (categoryParam || featuredParam || inStockParam || minPrice || maxPrice) {
+                applyFilters();
+            }
         }
         
-        // Initialize page after everything loads (like index.html)
-        window.addEventListener('load', function() {
-            console.log('🚀 Window loaded, initializing catalog...');
-            
-            // Update current language from universal app
-            if (window.VanHoolApp && window.VanHoolApp.currentLanguage) {
-                currentLang = window.VanHoolApp.currentLanguage;
+        
+        // Add to cart function
+        async function addToCart(productId) {
+            try {
+                console.log('Adding product to cart:', productId);
+                
+                // Find the product from our loaded products
+                const product = window.allProducts?.find(p => p.id === productId);
+                
+                if (!product) {
+                    console.error('Product not found:', productId);
+                    showNotification('Product not found', 'error');
+                    return;
+                }
+                
+                // Check if CartManager is available
+                if (!window.cartManager) {
+                    // Wait for cart manager to be available
+                    let retries = 0;
+                    while (!window.cartManager && retries < 20) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        retries++;
+                    }
+                    
+                    if (!window.cartManager) {
+                        console.error('Cart manager not available');
+                        showNotification('Cart system not available', 'error');
+                        return;
+                    }
+                }
+                
+                // Add to cart using CartManager API
+                const result = await window.cartManager.addItem(product.id, 1, {
+                    productDetails: {
+                        id: product.id,
+                        name: product.name_en || product.name || 'Unknown Product',
+                        price: parseFloat(product.price) || 0,
+                        image: product.image_url || product.images?.[0] || '/images/placeholder.jpg',
+                        part_code: product.part_code || '',
+                        sku: product.part_code || product.id
+                    }
+                });
+                
+                if (result.success) {
+                    const productName = product.name_en || product.name || 'Product';
+                    showNotification(`${productName} added to cart!`, 'success');
+                    updateCartCounter();
+                } else {
+                    showNotification(result.error || 'Failed to add item to cart', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error adding to cart:', error);
+                showNotification('Error adding item to cart', 'error');
             }
+        }
+        
+        // Update cart counter
+        function updateCartCounter() {
+            try {
+                const cartCount = document.getElementById('cart-count');
+                if (cartCount && window.cartManager) {
+                    const itemCount = window.cartManager.getItemCount();
+                    cartCount.textContent = itemCount;
+                    cartCount.classList.toggle('hidden', itemCount === 0);
+                }
+            } catch (error) {
+                console.error('Error updating cart counter:', error);
+            }
+        }
+        
+        // Initialize cart system
+        async function initializeCartSystem() {
+            try {
+                console.log('🛒 Initializing cart system...');
+                
+                // Wait for CartManager to be available
+                let retries = 0;
+                while (!window.cartManager && retries < 30) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    retries++;
+                }
+                
+                if (window.cartManager) {
+                    console.log('✅ Cart manager available');
+                    
+                    // Initial cart counter update
+                    updateCartCounter();
+                    
+                    // Listen for cart changes
+                    if (typeof window.cartManager.addListener === 'function') {
+                        window.cartManager.addListener('cart_updated', updateCartCounter);
+                    }
+                } else {
+                    console.warn('⚠️ Cart manager not available after timeout');
+                }
+                
+            } catch (error) {
+                console.error('Error initializing cart system:', error);
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelectorAll('.catalog-notification');
+            existing.forEach(el => el.remove());
             
-            // Initialize everything in sequence
-            initializeCatalog();
+            const notification = document.createElement('div');
+            notification.className = `catalog-notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Catalog ready, setting up...');
+            
+            // Initialize cart system
+            initializeCartSystem();
+            
+            // Set up filter event listeners
+            document.getElementById('search-input').addEventListener('input', applyFilters);
+            document.getElementById('category-filter').addEventListener('change', applyFilters);
+            document.getElementById('min-price').addEventListener('input', applyFilters);
+            document.getElementById('max-price').addEventListener('input', applyFilters);
+            document.getElementById('in-stock-filter').addEventListener('change', applyFilters);
+            document.getElementById('featured-filter').addEventListener('change', applyFilters);
+            document.getElementById('sort-select').addEventListener('change', applyFilters);
+            
+            // Clear filters
+            document.getElementById('clear-filters').addEventListener('click', function() {
+                document.getElementById('search-input').value = '';
+                document.getElementById('category-filter').value = '';
+                document.getElementById('min-price').value = '';
+                document.getElementById('max-price').value = '';
+                document.getElementById('in-stock-filter').checked = false;
+                document.getElementById('featured-filter').checked = false;
+                document.getElementById('sort-select').value = 'name';
+                applyFilters();
+            });
+            
+            // Listen for language changes to refresh category translations
+            window.addEventListener('language-changed', function() {
+                console.log('🌍 Language changed, refreshing category translations...');
+                refreshCategoryTranslations();
+                renderProducts(); // Re-render products to show translated category names
+            });
+            
+            // Also listen for storage changes (when language is changed from another tab)
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'interbus_language') {
+                    console.log('🌍 Language changed in another tab, refreshing...');
+                    refreshCategoryTranslations();
+                    renderProducts();
+                }
+            });
         });
         
-        // Initialize catalog in proper sequence
-        async function initializeCatalog() {
+        // Initialize after dependencies load
+        window.addEventListener('load', async function() {
+            console.log('🎯 Window loaded, initializing catalog...');
+            
             try {
+                // Wait for config to load
+                await new Promise(resolve => {
+                    if (window.CONFIG) {
+                        resolve();
+                    } else {
+                        const checkConfig = () => {
+                            if (window.CONFIG) {
+                                resolve();
+                            } else {
+                                setTimeout(checkConfig, 100);
+                            }
+                        };
+                        checkConfig();
+                    }
+                });
+                
                 // Load categories first
-                await loadCategories();
-                await loadCategoriesDropdown();
                 await loadCategoriesForFilter();
                 
-                // Then load products
+                // Load products
                 await loadProducts();
                 
-                // Update translations
-                updateTranslations();
-                
-                // Apply URL parameters after everything is loaded
+                // Handle URL parameters
                 handleUrlParameters();
-                applyFilters();
                 
-                // Load categories for navigation dropdown
-                await loadCategoriesForNavigation();
-                
-                // Initialize cart counter
-                setTimeout(updateCartCounter, 1000);
-                
-                // Listen for cart events if cart manager becomes available
-                const checkForCartManager = () => {
-                    if (window.cartManager) {
-                        window.cartManager.addListener((event) => {
-                            if (['item_added', 'item_removed', 'item_updated', 'cart_cleared', 'cart_synced'].includes(event)) {
-                                updateCartCounter();
-                            }
-                        });
-                    } else {
-                        setTimeout(checkForCartManager, 500);
-                    }
-                };
-                checkForCartManager();
-                
-                console.log('✅ Catalog initialization complete');
+                console.log('✅ Catalog initialized successfully');
                 
             } catch (error) {
                 console.error('Error initializing catalog:', error);
             }
-        }
-        
-        // Load categories for navigation dropdown
-        async function loadCategoriesForNavigation() {
-            try {
-                // Load both parent categories and subcategories
-                const { data: allCategories, error } = await window.supabase
-                    .from('categories')
-                    .select('*')
-                    .order('sort_order');
-                
-                if (error) throw error;
-                
-                // Separate parent categories and subcategories
-                const categories = allCategories?.filter(cat => !cat.parent_id) || [];
-                const subcategories = allCategories?.filter(cat => cat.parent_id) || [];
-                
-                const dropdown = document.getElementById('categories-dropdown');
-                
-                if (!categories || categories.length === 0) {
-                    console.log('Using demo categories for navigation');
-                    // dropdown.innerHTML = getDemoCategoriesDropdownForNav();
-                    return;
-                }
-                
-                // Enhanced dropdown menu with subcategories
-                // dropdown.innerHTML = createCoolCategoriesDropdownForNav(categories, subcategories);
-                
-            } catch (error) {
-                console.error('Error loading categories for navigation:', error);
-                // document.getElementById('categories-dropdown').innerHTML = getDemoCategoriesDropdownForNav();
-            }
-        }
-        
-        // Create enhanced categories dropdown for navigation
-        function createCoolCategoriesDropdownForNav(categories, subcategories) {
-            const currentLang = (window.VanHoolApp && window.VanHoolApp.currentLanguage) ? window.VanHoolApp.currentLanguage : 'en';
-            
-            // Create category icons mapping
-            const categoryIcons = {
-                'brake-system': 'fas fa-stop-circle',
-                'air-pressure': 'fas fa-wind',
-                'chassis-suspension': 'fas fa-car-side',
-                'electrical': 'fas fa-bolt',
-                'engine-parts': 'fas fa-cogs',
-                'transmission': 'fas fa-gear',
-                'cooling-system': 'fas fa-snowflake',
-                'fuel-system': 'fas fa-gas-pump',
-                'exhaust-system': 'fas fa-smog',
-                'steering': 'fas fa-steering-wheel',
-                'lights': 'fas fa-lightbulb',
-                'body-parts': 'fas fa-truck'
-            };
-            
-            // Group subcategories by parent
-            const subcategoriesMap = {};
-            subcategories.forEach(sub => {
-                if (!subcategoriesMap[sub.parent_id]) {
-                    subcategoriesMap[sub.parent_id] = [];
-                }
-                subcategoriesMap[sub.parent_id].push(sub);
-            });
-            
-            return `
-                <div class="grid grid-cols-2 gap-6">
-                    ${categories.map(category => {
-                        const categoryName = category[`name_${currentLang}`] || category.name_en;
-                        const categoryIcon = categoryIcons[category.slug] || 'fas fa-cogs';
-                        const categorySubs = subcategoriesMap[category.id] || [];
-                        
-                        return `
-                            <div class="category-group">
-                                <!-- Main Category -->
-                                <a href="catalog.html?category=${category.slug}" 
-                                   class="main-category-link flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 group transition-all duration-200 mb-2 border-2 border-transparent hover:border-red-200">
-                                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-md">
-                                        <i class="${categoryIcon} text-white text-lg"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <h4 class="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
-                                            ${categoryName}
-                                        </h4>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            ${categorySubs.length} ${categorySubs.length === 1 ? 'subcategory' : 'subcategories'}
-                                        </p>
-                                    </div>
-                                    <i class="fas fa-arrow-right text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all duration-200"></i>
-                                </a>
-                                
-                                <!-- Subcategories -->
-                                ${categorySubs.length > 0 ? `
-                                    <div class="subcategories ml-4 space-y-1">
-                                        ${categorySubs.slice(0, 4).map(sub => `
-                                            <a href="catalog.html?category=${sub.slug}" 
-                                               class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">
-                                                    ${sub[`name_${currentLang}`] || sub.name_en}
-                                                </span>
-                                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                                            </a>
-                                        `).join('')}
-                                        ${categorySubs.length > 4 ? `
-                                            <a href="catalog.html?category=${category.slug}" 
-                                               class="inline-flex items-center text-xs text-red-600 hover:text-red-700 ml-4 mt-1">
-                                                +${categorySubs.length - 4} more
-                                                <i class="fas fa-chevron-right ml-1 text-xs"></i>
-                                            </a>
-                                        ` : ''}
-                                    </div>
-                                ` : `
-                                    <div class="ml-4 text-xs text-gray-400 italic">No subcategories</div>
-                                `}
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-                
-                <!-- Quick Actions -->
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <div class="grid grid-cols-3 gap-3">
-                        <a href="catalog.html?featured=true" class="flex flex-col items-center p-3 rounded-lg hover:bg-yellow-50 group transition-colors">
-                            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-yellow-200 transition-colors">
-                                <i class="fas fa-star text-yellow-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-yellow-700">Featured Parts</span>
-                        </a>
-                        <a href="catalog.html?in_stock=true" class="flex flex-col items-center p-3 rounded-lg hover:bg-green-50 group transition-colors">
-                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
-                                <i class="fas fa-check-circle text-green-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-green-700">In Stock</span>
-                        </a>
-                        <a href="catalog.html?sort=price_asc" class="flex flex-col items-center p-3 rounded-lg hover:bg-purple-50 group transition-colors">
-                            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-purple-200 transition-colors">
-                                <i class="fas fa-tag text-purple-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-purple-700">Best Price</span>
-                        </a>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Demo categories dropdown for navigation
-        function getDemoCategoriesDropdownForNav() {
-            // Return the same demo content as index.html
-            return getDemoCategoriesDropdown();
-        }
-        
-        // Demo categories dropdown function (same as index.html)
-        function getDemoCategoriesDropdown() {
-            // Same demo content as in index.html
-            return `
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="category-group">
-                        <a href="catalog.html?category=brake-system" 
-                           class="main-category-link flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 group transition-all duration-200 mb-2 border-2 border-transparent hover:border-red-200">
-                            <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-md">
-                                <i class="fas fa-stop-circle text-white text-lg"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">Brake System</h4>
-                                <p class="text-xs text-gray-500 mt-1">2 subcategories</p>
-                            </div>
-                            <i class="fas fa-arrow-right text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all duration-200"></i>
-                        </a>
-                        <div class="subcategories ml-4 space-y-1">
-                            <a href="catalog.html?category=brake-pads" class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">Brake Pads</span>
-                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                            </a>
-                            <a href="catalog.html?category=brake-discs" class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">Brake Discs</span>
-                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="category-group">
-                        <a href="catalog.html?category=air-pressure" 
-                           class="main-category-link flex items-center space-x-3 p-3 rounded-lg hover:bg-red-50 group transition-all duration-200 mb-2 border-2 border-transparent hover:border-red-200">
-                            <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-md">
-                                <i class="fas fa-wind text-white text-lg"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h4 class="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">Air Pressure</h4>
-                                <p class="text-xs text-gray-500 mt-1">3 subcategories</p>
-                            </div>
-                            <i class="fas fa-arrow-right text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all duration-200"></i>
-                        </a>
-                        <div class="subcategories ml-4 space-y-1">
-                            <a href="catalog.html?category=air-compressors" class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">Air Compressors</span>
-                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                            </a>
-                            <a href="catalog.html?category=air-valves" class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">Air Valves</span>
-                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                            </a>
-                            <a href="catalog.html?category=air-tanks" class="subcategory-link flex items-center space-x-2 py-2 px-3 rounded-md hover:bg-gray-50 group text-sm transition-colors duration-150">
-                                <div class="w-2 h-2 bg-red-400 rounded-full group-hover:bg-red-600 transition-colors"></div>
-                                <span class="text-gray-600 group-hover:text-gray-900 transition-colors">Air Tanks</span>
-                                <i class="fas fa-external-link-alt text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Quick Actions -->
-                <div class="mt-6 pt-4 border-t border-gray-200">
-                    <div class="grid grid-cols-3 gap-3">
-                        <a href="catalog.html?featured=true" class="flex flex-col items-center p-3 rounded-lg hover:bg-yellow-50 group transition-colors">
-                            <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-yellow-200 transition-colors">
-                                <i class="fas fa-star text-yellow-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-yellow-700">Featured Parts</span>
-                        </a>
-                        <a href="catalog.html?in_stock=true" class="flex flex-col items-center p-3 rounded-lg hover:bg-green-50 group transition-colors">
-                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
-                                <i class="fas fa-check-circle text-green-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-green-700">In Stock</span>
-                        </a>
-                        <a href="catalog.html?sort=price_asc" class="flex flex-col items-center p-3 rounded-lg hover:bg-purple-50 group transition-colors">
-                            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-purple-200 transition-colors">
-                                <i class="fas fa-tag text-purple-600 text-sm"></i>
-                            </div>
-                            <span class="text-xs text-center text-gray-600 group-hover:text-purple-700">Best Price</span>
-                        </a>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // Mobile menu toggle
-        document.getElementById('mobile-menu-button').addEventListener('click', function() {
-            document.getElementById('mobile-menu').classList.toggle('hidden');
         });
     </script>
 </body>
