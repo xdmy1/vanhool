@@ -115,20 +115,10 @@
             </nav>
             
             <!-- Mobile menu -->
-            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
-                <div class="px-4 py-4 space-y-2">
-                    <!-- Mobile Categories -->
-                    <div class="mb-4">
-                        <h3 class="text-sm font-semibold text-gray-900 mb-3 px-2">Categories</h3>
-                        <div id="mobile-categories-dropdown" class="space-y-1">
-                            <div class="text-center py-4">
-                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mx-auto mb-2"></div>
-                                <p class="text-xs text-gray-500">Loading categories...</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="border-t pt-3 space-y-1">
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg max-h-screen overflow-y-auto">
+                <div class="px-4 py-3 space-y-2">
+                    <!-- Main Navigation -->
+                    <div class="space-y-1">
                         <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
                             <i class="fas fa-th-grid mr-2"></i>Catalog
                         </a>
@@ -141,21 +131,33 @@
                             </span>
                             <span id="mobile-cart-counter" class="hidden bg-red-500 text-white text-xs rounded-full px-2 py-1 font-medium">0</span>
                         </a>
-                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
-                            <i class="fas fa-info-circle mr-2"></i>About
-                        </a>
                         <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
                             <i class="fas fa-envelope mr-2"></i>Contact
                         </a>
                     </div>
                     
+                    <!-- Collapsible Categories -->
+                    <div class="border-t pt-2">
+                        <button id="mobile-categories-toggle" class="w-full flex items-center justify-between px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <span class="flex items-center">
+                                <i class="fas fa-list mr-2"></i>Categories
+                            </span>
+                            <i class="fas fa-chevron-down text-sm transform transition-transform duration-200"></i>
+                        </button>
+                        <div id="mobile-categories-dropdown" class="hidden mt-1 space-y-1 pl-4 max-h-48 overflow-y-auto">
+                            <div class="text-center py-3">
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                <p class="text-xs text-gray-500">Loading categories...</p>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <!-- Mobile Language -->
-                    <div class="border-t pt-3">
+                    <!-- Language Switcher -->
+                    <div class="border-t pt-2">
                         <div class="flex justify-center space-x-4">
-                            <button onclick="setLanguage('en')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
-                            <button onclick="setLanguage('ro')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
-                            <button onclick="setLanguage('ru')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
+                            <button onclick="setLanguage('en')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
+                            <button onclick="setLanguage('ro')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
+                            <button onclick="setLanguage('ru')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
                         </div>
                     </div>
                 </div>
@@ -891,6 +893,29 @@
         // Mobile menu toggle
         document.getElementById('mobile-menu-button').addEventListener('click', function() {
             document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+
+        // Mobile categories toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const categoriesToggle = document.getElementById('mobile-categories-toggle');
+            const categoriesDropdown = document.getElementById('mobile-categories-dropdown');
+            const chevronIcon = categoriesToggle?.querySelector('.fa-chevron-down');
+
+            if (categoriesToggle && categoriesDropdown) {
+                categoriesToggle.addEventListener('click', function() {
+                    const isHidden = categoriesDropdown.classList.contains('hidden');
+                    categoriesDropdown.classList.toggle('hidden');
+                    
+                    // Rotate chevron icon
+                    if (chevronIcon) {
+                        if (isHidden) {
+                            chevronIcon.style.transform = 'rotate(180deg)';
+                        } else {
+                            chevronIcon.style.transform = 'rotate(0deg)';
+                        }
+                    }
+                });
+            }
         });
         
         // Cart functionality

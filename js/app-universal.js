@@ -3,37 +3,56 @@
 
 console.log('🔥 Universal App System Loading...');
 
-// Initialize Supabase globally
-// Wait for the Supabase library to be available
+// Initialize Supabase globally with retry mechanism
 function initializeGlobalSupabase() {
     try {
-        if (window.supabase && window.supabase.createClient) {
-            window.supabase = window.supabase.createClient(
-                'https://iqsfmofoezkdnmhbxwbn.supabase.co',
-                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
-            );
-            console.log('✅ Global Supabase client initialized');
+        // Check if already initialized
+        if (window.supabase && window.supabase.auth) {
+            console.log('✅ Supabase already initialized');
             return true;
-        } else {
-            console.warn('⚠️ Supabase library not yet available');
-            return false;
         }
+
+        // Check if the library is available
+        if (typeof window.supabase !== 'undefined') {
+            // If it's a constructor function from CDN
+            if (typeof window.supabase.createClient === 'function') {
+                window.supabase = window.supabase.createClient(
+                    'https://iqsfmofoezkdnmhbxwbn.supabase.co',
+                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
+                );
+                console.log('✅ Global Supabase client initialized with createClient');
+                return true;
+            }
+            // If it's already an instance (some CDN versions work this way)
+            else if (window.supabase.auth) {
+                console.log('✅ Supabase instance already available');
+                return true;
+            }
+        }
+
+        console.warn('⚠️ Supabase library not yet available');
+        return false;
     } catch (error) {
         console.error('❌ Error initializing global Supabase:', error);
         return false;
     }
 }
 
-// Try to initialize immediately, then retry
-if (!initializeGlobalSupabase()) {
-    // Retry after DOM loads
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!initializeGlobalSupabase()) {
-            // Final retry with timeout
-            setTimeout(initializeGlobalSupabase, 1000);
-        }
-    });
+// Progressive initialization with multiple attempts
+let supabaseInitAttempts = 0;
+const maxInitAttempts = 10;
+
+function tryInitializeSupabase() {
+    if (initializeGlobalSupabase() || supabaseInitAttempts >= maxInitAttempts) {
+        return;
+    }
+    
+    supabaseInitAttempts++;
+    setTimeout(tryInitializeSupabase, 100 * supabaseInitAttempts);
 }
+
+// Start initialization attempts immediately
+tryInitializeSupabase();
 
 // Global App State
 window.InterBusApp = {
@@ -465,21 +484,18 @@ function updateMobileAuthForLoggedIn(user, capitalizedName, adminLink) {
     }
     
     mobileAuthSection.innerHTML = `
-        <div class="px-3 py-2 text-sm font-medium text-gray-900 bg-blue-50 rounded-lg">
-            <i class="fas fa-user-circle mr-2"></i>Welcome, ${capitalizedName}
+        <div class="px-2 py-1.5 text-sm font-medium text-gray-900 bg-red-50 rounded">
+            <i class="fas fa-user-circle mr-2"></i>${capitalizedName}
         </div>
-        <a href="dashboard.html" class="block px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+        <a href="dashboard.html" class="block px-2 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
             <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
         </a>
-        <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-            <i class="fas fa-shopping-bag mr-2"></i>Catalog
-        </a>
         ${window.InterBusApp.isAdmin ? `
-            <a href="admin.html" class="block px-3 py-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors">
-                <i class="fas fa-crown mr-2"></i>Admin Panel
+            <a href="admin.html" class="block px-2 py-1.5 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors">
+                <i class="fas fa-crown mr-2"></i>Admin
             </a>
         ` : ''}
-        <button onclick="handleLogout()" class="w-full text-left block px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+        <button onclick="handleLogout()" class="w-full text-left block px-2 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors">
             <i class="fas fa-sign-out-alt mr-2"></i>Logout
         </button>
     `;
@@ -498,8 +514,8 @@ function updateMobileAuthForGuest() {
     }
     
     mobileAuthSection.innerHTML = `
-        <a href="login.html" class="block px-3 py-2 text-center text-gray-600 hover:text-blue-600 border border-gray-300 rounded-lg transition-colors">Login</a>
-        <a href="register.html" class="block px-3 py-2 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">Register</a>
+        <a href="login.html" class="block px-2 py-1.5 text-center text-sm text-gray-600 hover:text-red-600 border border-gray-300 rounded transition-colors">Login</a>
+        <a href="register.html" class="block px-2 py-1.5 text-center text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors font-medium">Register</a>
     `;
 }
 
@@ -782,11 +798,8 @@ async function loadMobileCategories() {
         const mobileMenu = document.getElementById('mobile-menu');
         if (!mobileMenu || !categories) return;
         
-        // Find or create mobile categories section
-        let mobileCategoriesSection = mobileMenu.querySelector('#mobile-categories');
-        if (!mobileCategoriesSection) {
-            mobileCategoriesSection = document.querySelector('#mobile-categories');
-        }
+        // Find the mobile categories dropdown
+        let mobileCategoriesSection = mobileMenu.querySelector('#mobile-categories-dropdown');
         
         if (mobileCategoriesSection && categories.length > 0) {
             const categoryIcons = {
@@ -802,14 +815,23 @@ async function loadMobileCategories() {
                 'safety': 'fas fa-shield-alt'
             };
             
-            mobileCategoriesSection.innerHTML = categories.map(category => {
+            mobileCategoriesSection.innerHTML = categories.slice(0, 8).map(category => {
                 const icon = categoryIcons[category.slug] || 'fas fa-cog';
                 return `
-                    <a href="catalog.html?category=${category.slug}" class="flex items-center px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <i class="${icon} mr-3 w-4"></i>${category.name}
+                    <a href="catalog.html?category=${category.slug}" class="flex items-center px-2 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
+                        <i class="${icon} mr-2 w-3 text-xs"></i>${category.name}
                     </a>
                 `;
             }).join('');
+            
+            // Add "View All" link if there are more categories
+            if (categories.length > 8) {
+                mobileCategoriesSection.innerHTML += `
+                    <a href="catalog.html" class="flex items-center px-2 py-1.5 text-sm text-red-600 hover:text-red-700 font-medium transition-colors border-t border-gray-100 mt-1 pt-2">
+                        <i class="fas fa-arrow-right mr-2 w-3 text-xs"></i>View All Categories
+                    </a>
+                `;
+            }
         }
         
         console.log('✅ Mobile categories loaded:', categories.length);
@@ -935,8 +957,20 @@ async function initializeManagers() {
         console.log('🛒 Loading Cart Manager...');
         
         // Import CartManager instance (after auth manager is ready)
-        const { cartManager } = await import('./cart.js');
-        window.cartManager = cartManager;
+        try {
+            const { cartManager } = await import('./cart.js');
+            window.cartManager = cartManager;
+        } catch (error) {
+            console.warn('⚠️ Could not load cart manager:', error);
+            // Create a basic cart manager fallback
+            window.cartManager = {
+                getCart: () => ({ items: [] }),
+                getTotalItems: () => 0,
+                isEmpty: () => true,
+                on: () => {},
+                clear: () => {}
+            };
+        }
         
         // Setup cart event listeners after cart manager is loaded
         if (window.cartManager && window.cartManager.on) {
@@ -964,8 +998,17 @@ async function initializeManagers() {
         console.log('📦 Loading Order Manager...');
         
         // Import OrderManager instance
-        const { orderManager } = await import('./order-manager.js');
-        window.orderManager = orderManager;
+        try {
+            const { orderManager } = await import('./order-manager.js');
+            window.orderManager = orderManager;
+        } catch (error) {
+            console.warn('⚠️ Could not load order manager:', error);
+            // Create a basic order manager fallback
+            window.orderManager = {
+                createOrder: async () => ({ success: false, error: 'Order manager not available' }),
+                getUserOrders: async () => ({ success: false, orders: [] })
+            };
+        }
         
         console.log('✅ All managers loaded successfully');
         

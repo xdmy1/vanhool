@@ -250,6 +250,9 @@
                         <span class="absolute left-0 inset-y-0 flex items-center pl-3">
                             <i class="fas fa-user-plus text-red-500 group-hover:text-red-400"></i>
                         </span>
+                        <span id="register-spinner" class="hidden">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                        </span>
                         <span id="register-button-text" data-translate="register.create_account">Create Account</span>
                     </button>
                 </div>
@@ -275,63 +278,25 @@
     <script>
         console.log('🔥 Register page loaded');
         
-        // Initialize Supabase client properly
-        let supabase = null;
-        
-        function initSupabase() {
-            try {
-                // Check if global Supabase client already exists
-                if (window.supabase && window.supabase.auth) {
-                    supabase = window.supabase;
-                    console.log('✅ Using existing global Supabase client');
-                } else {
-                    // Initialize from CDN library
-                    console.log('⚠️ Initializing Supabase client from library...');
-                    
-                    // Check if Supabase library is loaded
-                    if (typeof window.supabase === 'undefined') {
-                        console.error('❌ Supabase library not loaded');
-                        return;
-                    }
-                    
-                    // Create client using CDN library
-                    const { createClient } = window.supabase;
-                    if (createClient) {
-                        const client = createClient(
-                            'https://iqsfmofoezkdnmhbxwbn.supabase.co',
-                            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I'
-                        );
-                        supabase = client;
-                        window.supabase = client; // Make it globally available
-                        console.log('✅ Created and stored Supabase client');
+        // Wait for global Supabase to be ready
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                let attempts = 0;
+                const checkSupabase = () => {
+                    if (window.supabase && window.supabase.auth) {
+                        console.log('✅ Supabase is ready');
+                        resolve(true);
+                    } else if (attempts < 50) {
+                        attempts++;
+                        setTimeout(checkSupabase, 100);
                     } else {
-                        console.error('❌ Supabase createClient function not found');
+                        console.error('❌ Supabase not available after waiting');
+                        resolve(false);
                     }
-                }
-            } catch (error) {
-                console.error('❌ Error initializing Supabase client:', error);
-            }
+                };
+                checkSupabase();
+            });
         }
-        
-        // Try to initialize immediately
-        initSupabase();
-        
-        // Retry with increasing delays if first attempt failed
-        if (!supabase) {
-            setTimeout(() => {
-                if (!supabase) initSupabase();
-            }, 100);
-            
-            setTimeout(() => {
-                if (!supabase) initSupabase();
-            }, 500);
-            
-            setTimeout(() => {
-                if (!supabase) initSupabase();
-            }, 1000);
-        }
-        
-        console.log('Supabase client ready:', !!supabase);
         // Mobile menu toggle
         document.addEventListener('DOMContentLoaded', function() {
             const mobileMenuButton = document.getElementById('mobile-menu-button');
@@ -440,8 +405,9 @@
             // Check if already logged in
             setTimeout(async () => {
                 try {
-                    if (supabase) {
-                        const { data: { user } } = await supabase.auth.getUser();
+                    const supabaseReady = await waitForSupabase();
+                    if (supabaseReady) {
+                        const { data: { user } } = await window.supabase.auth.getUser();
                         if (user) {
                             window.location.href = 'index.html';
                             return;
@@ -537,28 +503,24 @@
             
             // Show loading state
             registerButton.disabled = true;
-            buttonText.style.display = 'none';
-            spinner.classList.remove('hidden');
+            buttonText.textContent = 'Creating Account...';
+            if (spinner) spinner.classList.remove('hidden');
             hideMessage(errorMessage);
             hideMessage(successMessage);
             
             try {
                 console.log('🔥 Starting Supabase registration for:', formData.email);
                 
-                // Check if Supabase is available
-                if (!supabase) {
-                    // Try to initialize again
-                    initSupabase();
-                    
-                    if (!supabase) {
-                        throw new Error('Registration service is not available. Please refresh the page and try again.');
-                    }
+                // Wait for Supabase to be ready
+                const supabaseReady = await waitForSupabase();
+                if (!supabaseReady) {
+                    throw new Error('Registration service is not available. Please refresh the page and try again.');
                 }
                 
-                console.log('Using Supabase client:', !!supabase.auth);
+                console.log('Using Supabase client:', !!window.supabase.auth);
                 
                 // Real Supabase registration
-                const { data, error } = await supabase.auth.signUp({
+                const { data, error } = await window.supabase.auth.signUp({
                     email: formData.email,
                     password: formData.password,
                     options: {
@@ -610,7 +572,7 @@
                     
                     // Try to create user profile in profiles table
                     try {
-                        const { error: profileError } = await supabase
+                        const { error: profileError } = await window.supabase
                             .from('profiles')
                             .insert({
                                 id: data.user.id,
@@ -651,8 +613,8 @@
             } finally {
                 // Reset loading state
                 registerButton.disabled = false;
-                buttonText.style.display = 'inline';
-                spinner.classList.add('hidden');
+                buttonText.textContent = 'Create Account';
+                if (spinner) spinner.classList.add('hidden');
             }
         }
 
