@@ -14,13 +14,13 @@
     <!-- Custom styles -->
     <link href="css/custom-colors.css" rel="stylesheet">
     
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <!-- Configuration and Dependencies -->
     <script src="js/config.js"></script>
     <script src="js/app-universal.js"></script>
     <script type="module" src="js/cart.js"></script>
-    
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
@@ -48,16 +48,62 @@
                         <span id="cart-count" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
                     </a>
                     
-                    <!-- Auth Links -->
+                    <!-- Language Switcher -->
+                    <div class="relative group hidden sm:block">
+                        <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                            <span id="current-lang" class="text-sm font-medium">EN</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
+                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
+                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
+                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                    
+                    <!-- Auth Links - Managed by app-universal.js -->
                     <div id="auth-links" class="flex items-center space-x-2">
+                        <!-- Will be populated by app-universal.js -->
                         <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium" data-translate="login">Login</a>
                         <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors" data-translate="register">Register</a>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg max-h-screen overflow-y-auto">
+                <div class="px-4 py-3 space-y-2">
+                    <!-- Main Navigation -->
+                    <div class="space-y-1">
+                        <a href="catalog.html" class="block px-3 py-2 text-red-600 bg-red-50 rounded-lg font-medium">
+                            <i class="fas fa-th-grid mr-2"></i>Catalog
+                        </a>
+                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="about">
+                            <i class="fas fa-info-circle mr-2"></i>About
+                        </a>
+                        <a href="cart.html" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <span class="flex items-center">
+                                <i class="fas fa-shopping-cart mr-2"></i>Shopping Cart
+                            </span>
+                            <span id="mobile-cart-counter" class="hidden bg-red-500 text-white text-xs rounded-full px-2 py-1 font-medium">0</span>
+                        </a>
+                        <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
+                            <i class="fas fa-envelope mr-2"></i>Contact
+                        </a>
+                    </div>
                     
-                    <!-- User Profile (hidden by default) -->
-                    <div id="user-profile" class="flex items-center space-x-2 hidden">
-                        <a href="dashboard.html" class="text-gray-600 hover:text-red-600 font-medium" data-translate="dashboard">Dashboard</a>
-                        <button id="logout-btn" class="text-gray-600 hover:text-red-600 font-medium" data-translate="logout">Logout</button>
+                    <!-- Language Switcher -->
+                    <div class="border-t pt-2">
+                        <div class="flex justify-center space-x-4">
+                            <button onclick="setLanguage('en')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
+                            <button onclick="setLanguage('ro')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
+                            <button onclick="setLanguage('ru')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
+                        </div>
                     </div>
                 </div>
             </div>
