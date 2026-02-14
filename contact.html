@@ -3,122 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact - Inter Bus Parts</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title data-translate="contact_page_title">Contact - Inter Bus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="css/custom-colors.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-white" style="font-family: 'Inter', sans-serif;">
     <!-- Header -->
-    <header class="bg-white shadow-sm sticky top-0 z-40">
+    <header class="bg-white sticky top-0 z-50 border-b border-slate-200">
         <div class="container mx-auto px-4 lg:px-8">
-            <nav class="flex justify-between items-center py-4">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
                 <!-- Left: Logo -->
                 <div class="flex items-center">
-                    <a href="index.html" class="flex items-center space-x-2">
+                    <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
                         <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
-                        <span class="text-xl font-bold text-gray-800">Inter Bus</span>
                     </a>
                 </div>
-                    
-                <!-- Center: Navigation -->
-                <div class="flex-1 flex justify-center">
-                    <!-- Desktop Navigation -->
-                    <div class="hidden lg:flex items-center space-x-8">
-                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
-                        <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
-                        <a href="contact.html" class="text-red-600 font-medium transition-colors px-3 py-2 rounded-lg bg-red-50" data-translate="contact">Contact</a>
-                    </div>
 
-                    <!-- Tablet Navigation -->
-                    <div class="hidden md:flex lg:hidden items-center space-x-4">
-                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="catalog">Catalog</a>
-                        <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="about">About</a>
-                        <a href="contact.html" class="text-red-600 font-medium transition-colors" data-translate="contact">Contact</a>
-                    </div>
+                <!-- Center: Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="categories.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50"><i class="fas fa-th-large mr-1"></i><span data-translate="categories">Categories</span></a>
+                    <a href="catalog.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
+                    <a href="about.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                    <a href="contact.html" class="text-red-600 font-medium px-3 py-2 rounded-lg bg-red-50" data-translate="contact">Contact</a>
                 </div>
-                
+
                 <!-- Right: User Actions -->
                 <div class="flex items-center">
-                    <!-- Right Side Navigation -->
                     <div class="flex items-center space-x-2 lg:space-x-4">
                         <!-- Mobile menu button -->
-                        <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                        <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
                             <i class="fas fa-bars text-lg"></i>
                         </button>
-                        
+
                         <!-- Language Switcher -->
                         <div class="relative group hidden sm:block">
-                            <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                            <button class="flex items-center space-x-1 text-slate-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
                                 <span id="current-lang" class="text-sm font-medium">EN</span>
                                 <i class="fas fa-chevron-down text-xs"></i>
                             </button>
-                            <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
-                                <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
-                                <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
-                                <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                            <div class="absolute top-full right-0 bg-white shadow-lg border border-slate-200 rounded-lg hidden group-hover:block z-50 min-w-max">
+                                <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">🇬🇧 English</button>
+                                <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">🇷🇴 Romana</button>
+                                <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">🇷🇺 Русский</button>
                             </div>
                         </div>
-                        
+
                         <!-- Cart Icon -->
                         <div class="relative">
-                            <button id="cart-toggle" class="flex items-center space-x-1 text-gray-600 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-all duration-200 relative">
+                            <a href="cart.html" class="flex items-center text-slate-600 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50">
                                 <i class="fas fa-shopping-cart text-lg"></i>
-                                <span id="cart-count" class="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center absolute -top-1 -right-1 min-w-[20px]">0</span>
-                            </button>
+                                <span id="cart-count" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
+                            </a>
                         </div>
-                        
-                        <!-- Auth Links -->
+
+                        <!-- Auth Links (managed by app-universal.js) -->
                         <div id="auth-links" class="hidden md:flex items-center space-x-3">
-                            <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
+                            <a href="login.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
                             <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md" data-translate="register">Register</a>
-                        </div>
-                        
-                        <!-- User Profile (hidden by default, shown when authenticated) -->
-                        <div id="user-profile" class="hidden md:flex items-center space-x-3">
-                            <!-- User dropdown will be handled by authentication system -->
                         </div>
                     </div>
                 </div>
             </nav>
-            
+
             <!-- Mobile menu -->
-            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg">
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t border-slate-200">
                 <div class="px-4 py-4 space-y-2">
-                    <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
+                    <a href="catalog.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
                         <i class="fas fa-th-grid mr-2"></i>Catalog
                     </a>
-                    <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="about">
+                    <a href="about.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="about">
                         <i class="fas fa-info-circle mr-2"></i>About
                     </a>
                     <a href="contact.html" class="block px-3 py-2 text-red-600 bg-red-50 rounded-lg transition-colors font-medium" data-translate="contact">
                         <i class="fas fa-envelope mr-2"></i>Contact
                     </a>
-                    
-                    <!-- Mobile Auth Links -->
-                    <div id="mobile-auth-links" class="border-t pt-3 hidden">
-                        <a href="login.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="login">
-                            <i class="fas fa-sign-in-alt mr-2"></i>Login
-                        </a>
-                        <a href="register.html" class="block px-3 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors font-medium" data-translate="register">
-                            <i class="fas fa-user-plus mr-2"></i>Register
-                        </a>
-                    </div>
-
-                    <!-- Mobile User Profile -->
-                    <div id="mobile-user-profile" class="border-t pt-3 hidden">
-                        <!-- Mobile user profile will be handled by authentication system -->
-                    </div>
-                    
-                    <!-- Mobile Language -->
-                    <div class="border-t pt-3">
-                        <div class="flex justify-center space-x-4">
-                            <button onclick="setLanguage('en')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
-                            <button onclick="setLanguage('ro')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
-                            <button onclick="setLanguage('ru')" class="px-3 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -128,51 +90,51 @@
     <main class="container mx-auto px-4 lg:px-8 py-8">
         <!-- Hero Section -->
         <div class="text-center mb-12">
-            <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 mb-4" data-translate="contact_title">Contact Us</h1>
-            <p class="text-xl text-gray-600 max-w-3xl mx-auto" data-translate="contact_subtitle">
+            <h1 class="text-4xl lg:text-5xl font-bold text-slate-900 mb-4" data-translate="contact_title">Contact Us</h1>
+            <p class="text-xl text-slate-600 max-w-3xl mx-auto" data-translate="contact_subtitle">
                 Get in touch with our expert team for any questions about Inter Bus parts, orders, or technical support.
             </p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <!-- Contact Form -->
-            <div class="bg-white rounded-lg shadow-lg p-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6" data-translate="send_message">Send us a Message</h2>
-                
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                <h2 class="text-2xl font-bold text-slate-900 mb-6" data-translate="send_message">Send us a Message</h2>
+
                 <form id="contact-form" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2" data-translate="first_name">First Name</label>
-                            <input type="text" id="firstName" name="firstName" required 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                            <label for="firstName" class="block text-sm font-medium text-slate-700 mb-2" data-translate="first_name">First Name</label>
+                            <input type="text" id="firstName" name="firstName" required
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
                                 data-translate-placeholder="first_name_placeholder">
                         </div>
                         <div>
-                            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2" data-translate="last_name">Last Name</label>
+                            <label for="lastName" class="block text-sm font-medium text-slate-700 mb-2" data-translate="last_name">Last Name</label>
                             <input type="text" id="lastName" name="lastName" required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
                                 data-translate-placeholder="last_name_placeholder">
                         </div>
                     </div>
 
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2" data-translate="email">Email Address</label>
+                        <label for="email" class="block text-sm font-medium text-slate-700 mb-2" data-translate="email">Email Address</label>
                         <input type="email" id="email" name="email" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
                             data-translate-placeholder="email_placeholder">
                     </div>
 
                     <div>
-                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-2" data-translate="phone">Phone Number (Optional)</label>
+                        <label for="phone" class="block text-sm font-medium text-slate-700 mb-2" data-translate="phone">Phone Number (Optional)</label>
                         <input type="tel" id="phone" name="phone"
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
                             data-translate-placeholder="phone_placeholder">
                     </div>
 
                     <div>
-                        <label for="subject" class="block text-sm font-medium text-gray-700 mb-2" data-translate="subject">Subject</label>
+                        <label for="subject" class="block text-sm font-medium text-slate-700 mb-2" data-translate="subject">Subject</label>
                         <select id="subject" name="subject" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200">
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200">
                             <option value="" data-translate="select_subject">Select a subject</option>
                             <option value="parts-inquiry" data-translate="parts_inquiry">Parts Inquiry</option>
                             <option value="order-status" data-translate="order_status">Order Status</option>
@@ -183,13 +145,13 @@
                     </div>
 
                     <div>
-                        <label for="message" class="block text-sm font-medium text-gray-700 mb-2" data-translate="message">Message</label>
+                        <label for="message" class="block text-sm font-medium text-slate-700 mb-2" data-translate="message">Message</label>
                         <textarea id="message" name="message" rows="6" required
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 resize-none"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 resize-none"
                             data-translate-placeholder="message_placeholder"></textarea>
                     </div>
 
-                    <button type="submit" 
+                    <button type="submit"
                         class="w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-all duration-200 font-semibold focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                         <i class="fas fa-paper-plane mr-2"></i>
                         <span data-translate="send_message_btn">Send Message</span>
@@ -200,17 +162,17 @@
             <!-- Contact Information -->
             <div class="space-y-8">
                 <!-- Contact Details -->
-                <div class="bg-white rounded-lg shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6" data-translate="contact_info">Contact Information</h2>
-                    
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6" data-translate="contact_info">Contact Information</h2>
+
                     <div class="space-y-6">
                         <div class="flex items-start">
                             <div class="flex-shrink-0">
                                 <i class="fas fa-map-marker-alt text-red-600 text-xl mt-1"></i>
                             </div>
                             <div class="ml-4">
-                                <h3 class="text-lg font-semibold text-gray-900" data-translate="address_label">Address</h3>
-                                <p class="text-gray-600" data-translate="company_address">
+                                <h3 class="text-lg font-semibold text-slate-900" data-translate="address_label">Address</h3>
+                                <p class="text-slate-600" data-translate="company_address">
                                     Chișinău, Moldova<br>
                                     Street Name, Building Number<br>
                                     MD-2001
@@ -223,8 +185,8 @@
                                 <i class="fas fa-phone text-red-600 text-xl mt-1"></i>
                             </div>
                             <div class="ml-4">
-                                <h3 class="text-lg font-semibold text-gray-900" data-translate="phone_label">Phone</h3>
-                                <p class="text-gray-600">
+                                <h3 class="text-lg font-semibold text-slate-900" data-translate="phone_label">Phone</h3>
+                                <p class="text-slate-600">
                                     <a href="tel:+373123456789" class="hover:text-red-600 transition-colors">+373 123 456 789</a>
                                 </p>
                             </div>
@@ -235,8 +197,8 @@
                                 <i class="fas fa-envelope text-red-600 text-xl mt-1"></i>
                             </div>
                             <div class="ml-4">
-                                <h3 class="text-lg font-semibold text-gray-900" data-translate="email_label">Email</h3>
-                                <p class="text-gray-600">
+                                <h3 class="text-lg font-semibold text-slate-900" data-translate="email_label">Email</h3>
+                                <p class="text-slate-600">
                                     <a href="mailto:contact@interbus.md" class="hover:text-red-600 transition-colors">contact@interbus.md</a>
                                 </p>
                             </div>
@@ -247,8 +209,8 @@
                                 <i class="fas fa-clock text-red-600 text-xl mt-1"></i>
                             </div>
                             <div class="ml-4">
-                                <h3 class="text-lg font-semibold text-gray-900" data-translate="business_hours">Business Hours</h3>
-                                <p class="text-gray-600">
+                                <h3 class="text-lg font-semibold text-slate-900" data-translate="business_hours">Business Hours</h3>
+                                <p class="text-slate-600">
                                     <span data-translate="monday_friday">Monday - Friday</span>: 8:00 - 18:00<br>
                                     <span data-translate="saturday">Saturday</span>: 9:00 - 15:00<br>
                                     <span data-translate="sunday">Sunday</span>: <span data-translate="closed">Closed</span>
@@ -259,17 +221,17 @@
                 </div>
 
                 <!-- Quick Stats -->
-                <div class="bg-white rounded-lg shadow-lg p-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-6" data-translate="why_choose_us">Why Choose Us</h2>
-                    
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6" data-translate="why_choose_us">Why Choose Us</h2>
+
                     <div class="space-y-4">
                         <div class="flex items-center">
                             <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center mr-4">
                                 <i class="fas fa-shipping-fast text-red-600 text-xl"></i>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900" data-translate="fast_shipping">Fast Shipping</h4>
-                                <p class="text-gray-600 text-sm" data-translate="fast_shipping_desc">Worldwide delivery in 3-7 days</p>
+                                <h4 class="font-semibold text-slate-900" data-translate="fast_shipping">Fast Shipping</h4>
+                                <p class="text-slate-600 text-sm" data-translate="fast_shipping_desc">Worldwide delivery in 3-7 days</p>
                             </div>
                         </div>
 
@@ -278,8 +240,8 @@
                                 <i class="fas fa-certificate text-red-600 text-xl"></i>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900" data-translate="authentic_parts">Authentic Parts</h4>
-                                <p class="text-gray-600 text-sm" data-translate="authentic_parts_desc">100% genuine bus components</p>
+                                <h4 class="font-semibold text-slate-900" data-translate="authentic_parts">Authentic Parts</h4>
+                                <p class="text-slate-600 text-sm" data-translate="authentic_parts_desc">100% genuine bus components</p>
                             </div>
                         </div>
 
@@ -288,8 +250,8 @@
                                 <i class="fas fa-headset text-red-600 text-xl"></i>
                             </div>
                             <div>
-                                <h4 class="font-semibold text-gray-900" data-translate="expert_support">Expert Support</h4>
-                                <p class="text-gray-600 text-sm" data-translate="expert_support_desc">Professional technical assistance</p>
+                                <h4 class="font-semibold text-slate-900" data-translate="expert_support">Expert Support</h4>
+                                <p class="text-slate-600 text-sm" data-translate="expert_support_desc">Professional technical assistance</p>
                             </div>
                         </div>
                     </div>
@@ -299,63 +261,41 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-900 text-white py-12 mt-16">
+    <footer class="bg-slate-900 text-white py-16">
         <div class="container mx-auto px-4 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <!-- Company Info -->
-                <div class="md:col-span-2">
-                    <div class="flex items-center mb-4">
-                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3">
-                        <span class="text-xl font-bold">Inter Bus</span>
-                    </div>
-                    <p class="text-gray-400 mb-4" data-translate="footer_description">
-                        Your trusted partner for authentic bus parts and components worldwide.
-                    </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
-                            <i class="fab fa-twitter"></i>
-                        </a>
-                        <a href="#" class="text-gray-400 hover:text-white transition-colors">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Quick Links -->
                 <div>
-                    <h4 class="font-semibold mb-4" data-translate="quick_links">Quick Links</h4>
+                    <div class="flex items-center mb-4"><img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3"><span class="text-xl font-bold">Inter Bus</span></div>
+                    <p class="text-slate-400 mb-4" data-translate="footer_description">Your trusted partner for authentic bus parts and components worldwide.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="quick_links">Quick Links</h4>
                     <ul class="space-y-2">
-                        <li><a href="index.html" class="text-gray-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
-                        <li><a href="catalog.html" class="text-gray-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
-                        <li><a href="about.html" class="text-gray-400 hover:text-white transition-colors" data-translate="about">About</a></li>
-                        <li><a href="contact.html" class="text-gray-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                        <li><a href="index.html" class="text-slate-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-slate-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-slate-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="contact.html" class="text-slate-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
                     </ul>
                 </div>
-                
-                <!-- Contact -->
                 <div>
-                    <h4 class="font-semibold mb-4" data-translate="contact">Contact</h4>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="footer_categories">Categories</h4>
                     <ul class="space-y-2">
-                        <li class="text-gray-400">
-                            <i class="fas fa-phone mr-2"></i>
-                            +373 123 456 789
-                        </li>
-                        <li class="text-gray-400">
-                            <i class="fas fa-envelope mr-2"></i>
-                            contact@interbus.md
-                        </li>
-                        <li class="text-gray-400">
-                            <i class="fas fa-map-marker-alt mr-2"></i>
-                            <span data-translate="address">Chișinău, Moldova</span>
-                        </li>
+                        <li><a href="catalog.html?category=brakes" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_brakes">Brakes</a></li>
+                        <li><a href="catalog.html?category=air-pressure" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_air_pressure">Air Pressure</a></li>
+                        <li><a href="catalog.html?category=engine-extension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_engine_extension">Engine & Extension</a></li>
+                        <li><a href="catalog.html?category=chassis-suspension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_chassis_suspension">Chassis & Suspension</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="contact">Contact</h4>
+                    <ul class="space-y-3">
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-phone mr-3 text-red-500"></i>+373 123 456 789</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-envelope mr-3 text-red-500"></i>contact@interbus.md</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-map-marker-alt mr-3 text-red-500"></i><span data-translate="address">Chișinau, Moldova</span></li>
                     </ul>
                 </div>
             </div>
-            
-            <div class="border-t border-gray-800 pt-8 mt-8 text-center text-gray-400">
+            <div class="border-t border-slate-800 pt-8 mt-12 text-center text-slate-500 text-sm">
                 <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
             </div>
         </div>
@@ -365,7 +305,7 @@
     <script src="js/app-universal.js"></script>
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/cart.js"></script>
-    
+
     <script>
         console.log('📞 Contact page loaded');
 
@@ -375,7 +315,7 @@
             if (window.cartManager) {
                 const itemCount = window.cartManager.getItemCount();
                 const counter = document.getElementById('cart-count');
-                
+
                 if (itemCount > 0) {
                     if (counter) {
                         counter.textContent = itemCount;
@@ -390,28 +330,28 @@
         // Contact form handling
         document.getElementById('contact-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
+
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            
+
             // Show loading state
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i><span data-translate="sending">Sending...</span>';
             submitBtn.disabled = true;
-            
+
             // Get form data
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            
+
             try {
                 // Simulate form submission (you can replace this with actual submission logic)
                 await new Promise(resolve => setTimeout(resolve, 2000));
-                
+
                 // Show success message
                 showNotification('Message sent successfully! We\'ll get back to you soon.', 'success');
-                
+
                 // Reset form
                 e.target.reset();
-                
+
             } catch (error) {
                 console.error('Error sending message:', error);
                 showNotification('Error sending message. Please try again.', 'error');
@@ -432,9 +372,9 @@
                     <span>${message}</span>
                 </div>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             // Auto remove after 5 seconds
             setTimeout(() => {
                 notification.style.opacity = '0';
@@ -453,7 +393,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Set up cart counter updates
             setTimeout(updateCartCounter, 1000);
-            
+
             // Listen for cart events if cart manager becomes available
             const checkForCartManager = () => {
                 if (window.cartManager) {
@@ -470,77 +410,7 @@
         });
 
         // Authentication management
-        async function checkAuthStatus() {
-            try {
-                // Wait for global supabase to be available
-                if (typeof window.supabase === 'undefined') {
-                    setTimeout(checkAuthStatus, 100);
-                    return;
-                }
-
-                const { data: { session } } = await window.supabase.auth.getSession();
-                updateAuthUI(session);
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                updateAuthUI(null);
-            }
-        }
-
-        function updateAuthUI(session) {
-            // Desktop elements
-            const authLinks = document.getElementById('auth-links');
-            const userProfile = document.getElementById('user-profile');
-            
-            // Mobile elements
-            const mobileAuthLinks = document.getElementById('mobile-auth-links');
-            const mobileUserProfile = document.getElementById('mobile-user-profile');
-            
-            if (session && session.user) {
-                // User is authenticated - hide login/register, show user profile
-                if (authLinks) authLinks.classList.add('hidden');
-                if (userProfile) userProfile.classList.remove('hidden');
-                if (mobileAuthLinks) mobileAuthLinks.classList.add('hidden');
-                if (mobileUserProfile) mobileUserProfile.classList.remove('hidden');
-                
-                console.log('✅ User authenticated, showing user profile');
-            } else {
-                // User is not authenticated - show login/register, hide user profile
-                if (authLinks) authLinks.classList.remove('hidden');
-                if (userProfile) userProfile.classList.add('hidden');
-                if (mobileAuthLinks) mobileAuthLinks.classList.remove('hidden');
-                if (mobileUserProfile) mobileUserProfile.classList.add('hidden');
-                
-                console.log('❌ User not authenticated, showing login/register links');
-            }
-        }
-
-        // Logout functionality
-        async function handleLogout() {
-            try {
-                if (window.supabase) {
-                    await window.supabase.auth.signOut();
-                    updateAuthUI(null);
-                    console.log('✅ User logged out successfully');
-                }
-            } catch (error) {
-                console.error('Error during logout:', error);
-            }
-        }
-
-        // Set up authentication
-        document.addEventListener('DOMContentLoaded', function() {
-            
-            // Check auth status on page load
-            setTimeout(checkAuthStatus, 500);
-            
-            // Listen for auth changes
-            if (window.supabase) {
-                window.supabase.auth.onAuthStateChange((event, session) => {
-                    console.log('🔄 Auth state changed:', event);
-                    updateAuthUI(session);
-                });
-            }
-        });
+        // Auth is handled by app-universal.js
     </script>
 </body>
 </html>

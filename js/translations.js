@@ -139,9 +139,14 @@ const TRANSLATIONS = {
         about_us: "About Us",
         shipping_returns: "Shipping & Returns",
         warranty: "Warranty",
-        privacy_policy: "Privacy Policy"
+        privacy_policy: "Privacy Policy",
+
+        // Catalog
+        catalog: "Catalog",
+        price_min: "Min",
+        price_max: "Max"
     },
-    
+
     ro: {
         // Navigation
         categories: "Categorii",
@@ -281,9 +286,14 @@ const TRANSLATIONS = {
         about_us: "Despre Noi",
         shipping_returns: "Livrare și Returnări",
         warranty: "Garanție",
-        privacy_policy: "Politica de Confidențialitate"
+        privacy_policy: "Politica de Confidențialitate",
+
+        // Catalog
+        catalog: "Catalog",
+        price_min: "Min",
+        price_max: "Max"
     },
-    
+
     ru: {
         // Navigation
         categories: "Категории",
@@ -423,7 +433,12 @@ const TRANSLATIONS = {
         about_us: "О нас",
         shipping_returns: "Доставка и возврат",
         warranty: "Гарантия",
-        privacy_policy: "Политика конфиденциальности"
+        privacy_policy: "Политика конфиденциальности",
+
+        // Catalog
+        catalog: "Каталог",
+        price_min: "Мин",
+        price_max: "Макс"
     }
 };
 

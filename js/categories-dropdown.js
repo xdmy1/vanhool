@@ -6,17 +6,17 @@ window.allCategoriesForDropdown = null;
 
 // Category icons mapping
 const categoryIcons = {
-    'brake-system': 'fas fa-stop-circle',
-    'air-pressure': 'fas fa-wind', 
-    'electrical': 'fas fa-bolt',
+    'brakes': 'fas fa-stop-circle',
+    'air-pressure': 'fas fa-wind',
     'chassis-suspension': 'fas fa-car-side',
-    'cooling': 'fas fa-snowflake',
-    'clutch-gearbox': 'fas fa-cog',
-    'steering-axles': 'fas fa-steering-wheel',
+    'electro': 'fas fa-bolt',
+    'engine-extension': 'fas fa-cog',
+    'clutch-gearbox': 'fas fa-cogs',
+    'steering-axle-hubs': 'fas fa-steering-wheel',
     'bodywork': 'fas fa-car',
-    'hvac': 'fas fa-thermometer-half',
+    'air-conditioning-heating': 'fas fa-thermometer-half',
     'interior': 'fas fa-chair',
-    'silicone-hose': 'fas fa-grip-lines',
+    'silicone-pipe': 'fas fa-grip-lines',
     'abc-raufoss-air-couplings': 'fas fa-plug'
 };
 

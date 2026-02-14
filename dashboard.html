@@ -3,658 +3,605 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Van Hool Parts</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title data-translate="dashboard_page_title">Dashboard - Inter Bus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="css/custom-colors.css" rel="stylesheet">
-    
-    <!-- Supabase -->
+    <link href="css/style.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Universal App System -->
-    <script src="js/app-universal.js"></script>
-    <script type="module" src="js/config.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen" style="font-family: 'Inter', sans-serif;">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
+    <header class="bg-white sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4 lg:px-8">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
                 <div class="flex items-center">
-                    <a href="index.html" class="flex items-center space-x-2">
-                        <img src="LOGO1 1.svg" alt="Van Hool Parts" class="h-8 lg:h-10 w-auto">
+                    <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
                     </a>
                 </div>
-                
-                <div class="flex items-center space-x-6">
-                    <a href="catalog.html" class="text-gray-600 hover:text-red-600">Catalog</a>
-                    <a href="about.html" class="text-gray-600 hover:text-red-600" data-translate="about">About</a>
-                    
+
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="categories.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50"><i class="fas fa-th-large mr-1"></i><span data-translate="categories">Categories</span></a>
+                    <a href="catalog.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
+                    <a href="about.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                    <a href="contact.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                </div>
+
+                <div class="flex items-center space-x-2 lg:space-x-4">
                     <!-- Language Switcher -->
                     <div class="relative group hidden sm:block">
-                        <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                        <button class="flex items-center space-x-1 text-slate-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
                             <span id="current-lang" class="text-sm font-medium">EN</span>
                             <i class="fas fa-chevron-down text-xs"></i>
                         </button>
-                        <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
-                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
-                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
-                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                        <div class="absolute top-full right-0 bg-white shadow-lg border border-slate-200 rounded-lg hidden group-hover:block z-50 min-w-max">
+                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">English</button>
+                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">Romana</button>
+                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">Russkij</button>
                         </div>
                     </div>
-                    
-                    <!-- User menu -->
-                    <div class="relative">
-                        <button id="user-menu-button" class="flex items-center space-x-2 text-gray-700 hover:text-red-600">
-                            <i class="fas fa-user-circle text-xl"></i>
-                            <span id="user-name">Loading...</span>
-                            <i class="fas fa-chevron-down text-sm"></i>
-                        </button>
-                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                            <a href="dashboard.html" class="block px-4 py-2 text-sm text-red-600 bg-red-50">Dashboard</a>
-                            <a href="#" id="logout-btn" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</a>
-                        </div>
-                    </div>
-                    
+
+                    <!-- Auth Links -->
+                    <div id="auth-links" class="flex items-center space-x-3"></div>
+
                     <!-- Cart -->
                     <div class="relative">
-                        <a href="cart.html" class="relative text-gray-600 hover:text-red-600">
-                            <i class="fas fa-shopping-cart text-xl"></i>
-                            <span id="cart-count" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                        <a href="cart.html" class="flex items-center text-slate-600 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50">
+                            <i class="fas fa-shopping-cart text-lg"></i>
+                            <span id="cart-count" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
                         </a>
                     </div>
+
+                    <!-- Mobile menu button -->
+                    <button id="mobile-menu-btn" class="lg:hidden p-2 text-slate-600 hover:text-red-600">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                </div>
+            </nav>
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="hidden lg:hidden pb-4 border-t border-slate-100">
+                <div class="pt-3 space-y-1">
+                    <a href="catalog.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="catalog">Catalog</a>
+                    <a href="about.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="about">About</a>
+                    <a href="contact.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="contact">Contact</a>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Welcome Section -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+    <div class="container mx-auto px-4 lg:px-8 py-8">
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-6 lg:p-8 mb-8 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Welcome back!</h1>
-                    <p class="text-gray-600" id="welcome-message">Loading your dashboard...</p>
+                    <h1 class="text-2xl lg:text-3xl font-bold mb-1" data-translate="welcome_back">Welcome back!</h1>
+                    <p class="text-slate-300 text-sm lg:text-base" id="welcome-message" data-translate="loading_dashboard">Loading your dashboard...</p>
                 </div>
-                <div class="text-red-600">
-                    <i class="fas fa-user-circle text-4xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <a href="catalog.html" class="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-search text-2xl text-red-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Browse Parts</h3>
-                        <p class="text-gray-600">Find Van Hool parts</p>
-                    </div>
-                </div>
-            </a>
-
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-shopping-bag text-2xl text-green-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-semibold text-gray-900">My Orders</h3>
-                        <p class="text-gray-600" id="orders-count">0 orders</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-sm p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-heart text-2xl text-red-600"></i>
-                    </div>
-                    <div class="ml-4">
-                        <h3 class="text-lg font-semibold text-gray-900">Wishlist</h3>
-                        <p class="text-gray-600" id="wishlist-count">0 items</p>
-                    </div>
+                <div class="hidden sm:flex items-center space-x-3">
+                    <a href="catalog.html" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-search mr-2"></i><span data-translate="browse_parts">Browse Parts</span>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Account Information -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Profile Info -->
-            <div class="bg-white rounded-lg shadow-sm">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Account Information</h2>
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-xl border border-slate-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500" data-translate="total_orders">Total Orders</p>
+                        <p class="text-2xl font-bold text-slate-900 mt-1" id="orders-count-number">0</p>
+                    </div>
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-shopping-bag text-green-600"></i>
+                    </div>
                 </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Email</label>
-                            <p class="mt-1 text-sm text-gray-900" id="user-email">Loading...</p>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500" data-translate="total_spent">Total Spent</p>
+                        <p class="text-2xl font-bold text-slate-900 mt-1" id="total-spent">€0.00</p>
+                    </div>
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-euro-sign text-blue-600"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500" data-translate="cart_items">Cart Items</p>
+                        <p class="text-2xl font-bold text-slate-900 mt-1" id="cart-items-count">0</p>
+                    </div>
+                    <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-shopping-cart text-red-600"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Orders List (takes 2 columns) -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold text-slate-900" data-translate="my_orders">My Orders</h2>
+                        <div id="orders-filter" class="flex items-center space-x-2">
+                            <select id="status-filter" class="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 focus:ring-red-500 focus:border-red-500">
+                                <option value="all" data-translate="all_statuses">All</option>
+                                <option value="pending" data-translate="status_pending">Pending</option>
+                                <option value="confirmed" data-translate="status_confirmed">Confirmed</option>
+                                <option value="shipped" data-translate="status_shipped">Shipped</option>
+                                <option value="delivered" data-translate="status_delivered">Delivered</option>
+                                <option value="cancelled" data-translate="status_cancelled">Cancelled</option>
+                            </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Name</label>
-                            <p class="mt-1 text-sm text-gray-900" id="user-full-name">Not set</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Phone</label>
-                            <p class="mt-1 text-sm text-gray-900" id="user-phone">Not set</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Member Since</label>
-                            <p class="mt-1 text-sm text-gray-900" id="member-since">Loading...</p>
-                        </div>
-                        <div>
-                            <button class="text-sm text-red-600 hover:text-red-800">Edit Profile</button>
+                    </div>
+                    <div id="orders-list" class="divide-y divide-slate-100">
+                        <!-- Loading state -->
+                        <div class="p-8 text-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-3"></div>
+                            <p class="text-sm text-slate-500" data-translate="loading_orders">Loading orders...</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Activity -->
-            <div class="bg-white rounded-lg shadow-sm">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold text-gray-900">Recent Activity</h2>
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Account Info -->
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <div class="px-6 py-4 border-b border-slate-200">
+                        <h2 class="text-lg font-semibold text-slate-900" data-translate="account_info">Account Information</h2>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider" data-translate="email_label">Email</p>
+                            <p class="text-sm text-slate-900 mt-0.5" id="user-email">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider" data-translate="name_label">Name</p>
+                            <p class="text-sm text-slate-900 mt-0.5" id="user-full-name">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider" data-translate="phone_label">Phone</p>
+                            <p class="text-sm text-slate-900 mt-0.5" id="user-phone">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider" data-translate="member_since">Member Since</p>
+                            <p class="text-sm text-slate-900 mt-0.5" id="member-since">-</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="p-6">
-                    <div id="recent-activity" class="space-y-4">
-                        <div class="flex items-center text-sm text-gray-600">
-                            <i class="fas fa-user-plus mr-3 text-green-500"></i>
-                            <span>Account created</span>
-                        </div>
-                        <div class="text-sm text-gray-500 text-center py-8">
-                            <i class="fas fa-box-open text-3xl mb-2 block"></i>
-                            No recent orders
-                        </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-xl border border-slate-200">
+                    <div class="px-6 py-4 border-b border-slate-200">
+                        <h2 class="text-lg font-semibold text-slate-900" data-translate="quick_actions">Quick Actions</h2>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        <a href="catalog.html" class="flex items-center px-3 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
+                            <i class="fas fa-search mr-3 w-4 text-center"></i><span data-translate="browse_parts">Browse Parts</span>
+                        </a>
+                        <a href="cart.html" class="flex items-center px-3 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
+                            <i class="fas fa-shopping-cart mr-3 w-4 text-center"></i><span data-translate="view_cart">View Cart</span>
+                        </a>
+                        <a href="contact.html" class="flex items-center px-3 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
+                            <i class="fas fa-headset mr-3 w-4 text-center"></i><span data-translate="contact_support">Contact Support</span>
+                        </a>
+                        <button onclick="handleLogout()" class="flex items-center px-3 py-2.5 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors w-full text-left">
+                            <i class="fas fa-sign-out-alt mr-3 w-4 text-center"></i><span data-translate="logout">Logout</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Order Detail Modal -->
+    <div id="order-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white rounded-t-xl">
+                <h3 class="text-lg font-semibold text-slate-900" data-translate="order_details">Order Details</h3>
+                <button onclick="closeOrderModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <div id="order-modal-content" class="p-6">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16 mt-12">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center mb-4"><img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3"><span class="text-xl font-bold">Inter Bus</span></div>
+                    <p class="text-slate-400 mb-4" data-translate="footer_description">Your trusted partner for authentic bus parts and components worldwide.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="quick_links">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-slate-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-slate-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-slate-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="contact.html" class="text-slate-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="categories">Categories</h4>
+                    <ul class="space-y-2">
+                        <li><a href="catalog.html?category=brakes" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_brakes">Brakes</a></li>
+                        <li><a href="catalog.html?category=air-pressure" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_air_pressure">Air Pressure</a></li>
+                        <li><a href="catalog.html?category=engine-extension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_engine_extension">Engine & Extension</a></li>
+                        <li><a href="catalog.html?category=chassis-suspension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_chassis_suspension">Chassis & Suspension</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="contact">Contact</h4>
+                    <ul class="space-y-3">
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-phone mr-3 text-red-500"></i>+373 123 456 789</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-envelope mr-3 text-red-500"></i>contact@interbus.md</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-map-marker-alt mr-3 text-red-500"></i><span data-translate="address">Chisinau, Moldova</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 mt-12 text-center text-slate-500 text-sm">
+                <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
+
     <!-- Scripts -->
+    <script src="js/app-universal.js"></script>
+    <script type="module" src="js/config.js"></script>
     <script>
-        console.log('🔥 Dashboard page loaded');
-        
         let currentUser = null;
-        let supabase = null;
-        
-        // Wait for config and Supabase to initialize  
-        function waitForConfig() {
-            return new Promise((resolve) => {
-                let attempts = 0;
-                const maxAttempts = 100; // 10 seconds timeout
-                
-                const checkConfig = () => {
+        let supabaseClient = null;
+        let allOrders = [];
+
+        // Wait for Supabase
+        function waitForSupabase() {
+            return new Promise(function(resolve) {
+                var attempts = 0;
+                var check = function() {
                     attempts++;
-                    
-                    console.log(`🔍 Checking for Supabase (attempt ${attempts}/${maxAttempts})`, {
-                        'window.CONFIG': !!window.CONFIG,
-                        'window.CONFIG.supabase': !!(window.CONFIG && window.CONFIG.supabase),
-                        'window.supabase': !!window.supabase,
-                        'window.InterBusApp': !!window.InterBusApp
-                    });
-                    
-                    // Check if CONFIG and Supabase are available
                     if (window.CONFIG && window.CONFIG.supabase && typeof window.CONFIG.supabase.auth === 'object') {
-                        supabase = window.CONFIG.supabase;
-                        console.log('✅ Supabase from CONFIG loaded successfully');
+                        supabaseClient = window.CONFIG.supabase;
                         resolve();
                     } else if (window.supabase && typeof window.supabase.auth === 'object') {
-                        supabase = window.supabase;
-                        console.log('✅ Supabase from global window loaded successfully');
+                        supabaseClient = window.supabase;
                         resolve();
-                    } else if (attempts >= maxAttempts) {
-                        console.error('❌ Config/Supabase not available after timeout');
-                        console.log('Available globals:', {
-                            CONFIG: !!window.CONFIG,
-                            supabase: !!window.supabase,
-                            configSupabase: !!(window.CONFIG && window.CONFIG.supabase),
-                            supabaseAuth: !!(window.supabase && window.supabase.auth),
-                            configSupabaseAuth: !!(window.CONFIG && window.CONFIG.supabase && window.CONFIG.supabase.auth)
-                        });
-                        resolve(); // Continue anyway, let checkAuth handle the error
+                    } else if (attempts >= 80) {
+                        resolve();
                     } else {
-                        setTimeout(checkConfig, 100);
+                        setTimeout(check, 100);
                     }
                 };
-                checkConfig();
+                check();
             });
         }
-        
+
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('📄 DOM loaded, waiting for config...');
-            await waitForConfig();
-            console.log('✅ Config ready, checking auth');
-            checkAuth();
-            setupEventListeners();
+            await waitForSupabase();
+
+            // Mobile menu
+            var mobileBtn = document.getElementById('mobile-menu-btn');
+            var mobileMenu = document.getElementById('mobile-menu');
+            if (mobileBtn && mobileMenu) {
+                mobileBtn.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // Status filter
+            var statusFilter = document.getElementById('status-filter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', function() {
+                    renderOrders(this.value);
+                });
+            }
+
+            // Check auth and load data
+            await checkAuth();
         });
-        
+
         async function checkAuth() {
+            if (!supabaseClient) {
+                showLoginRedirect();
+                return;
+            }
+
             try {
-                console.log('🔐 Checking authentication...');
-                
-                // Use Supabase directly
-                if (!supabase) {
-                    console.error('❌ Supabase not available for authentication');
-                    showError('Authentication system not available. Please refresh the page.');
-                    return;
-                }
-                
-                console.log('🔍 Getting session from Supabase...');
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('❌ Auth session error:', error);
-                    showError('Authentication error. Please login again.');
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 2000);
-                    return;
-                }
-                
+                var result = await supabaseClient.auth.getSession();
+                var session = result.data.session;
+
                 if (!session || !session.user) {
-                    console.log('❌ No valid session found, redirecting to login');
-                    showError('Please login to access dashboard.');
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 1500);
+                    showLoginRedirect();
                     return;
                 }
-                
-                console.log('✅ User authenticated successfully:', session.user.email);
+
                 currentUser = session.user;
-                
-                // Update the UI immediately
-                displayUserInfo(currentUser);
-                
-                // Load additional data
-                loadUserData();
-                
-            } catch (error) {
-                console.error('❌ Auth check error:', error);
-                showError('Authentication failed. Redirecting to login...');
-                setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 2000);
+                displayUserInfo();
+                loadDashboardData();
+            } catch (err) {
+                console.error('Auth error:', err);
+                showLoginRedirect();
             }
         }
-        
-        function displayUserInfo(user) {
-            try {
-                console.log('📝 Displaying user info for:', user.email);
-                
-                // Update email
-                const emailEl = document.getElementById('user-email');
-                if (emailEl) {
-                    emailEl.textContent = user.email || 'Not available';
-                }
-                
-                // Update username  
-                const userNameEl = document.getElementById('user-name');
-                if (userNameEl) {
-                    userNameEl.textContent = user.email ? user.email.split('@')[0] : 'User';
-                }
-                
-                // Update welcome message
-                const welcomeEl = document.getElementById('welcome-message');
-                if (welcomeEl) {
-                    welcomeEl.textContent = `Welcome back, ${user.email || 'User'}!`;
-                }
-                
-                // Update member since date
-                const memberSinceEl = document.getElementById('member-since');
-                if (memberSinceEl) {
-                    if (user.created_at) {
-                        const createdAt = new Date(user.created_at);
-                        memberSinceEl.textContent = createdAt.toLocaleDateString();
-                    } else {
-                        memberSinceEl.textContent = 'Not available';
-                    }
-                }
-                
-                console.log('✅ User info displayed successfully');
-                
-            } catch (error) {
-                console.error('❌ Error displaying user info:', error);
-                // Set fallback values
-                const emailEl = document.getElementById('user-email');
-                if (emailEl) emailEl.textContent = 'Error loading email';
-                
-                const memberSinceEl = document.getElementById('member-since');
-                if (memberSinceEl) memberSinceEl.textContent = 'Error loading date';
+
+        function showLoginRedirect() {
+            document.getElementById('orders-list').innerHTML = '<div class="p-8 text-center"><p class="text-slate-500">Please login to view your dashboard.</p><a href="login.html" class="mt-3 inline-block text-red-600 font-medium hover:underline">Go to Login</a></div>';
+        }
+
+        function displayUserInfo() {
+            var email = currentUser.email || '';
+            var username = email.split('@')[0] || 'User';
+
+            // Welcome message
+            var welcomeEl = document.getElementById('welcome-message');
+            if (welcomeEl) welcomeEl.textContent = email;
+
+            // Email
+            var emailEl = document.getElementById('user-email');
+            if (emailEl) emailEl.textContent = email;
+
+            // Member since
+            var memberEl = document.getElementById('member-since');
+            if (memberEl && currentUser.created_at) {
+                memberEl.textContent = new Date(currentUser.created_at).toLocaleDateString();
+            }
+
+            // User metadata (from Supabase auth)
+            var meta = currentUser.user_metadata || {};
+            var fullName = '';
+            if (meta.first_name || meta.last_name) {
+                fullName = ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim();
+            } else if (meta.full_name) {
+                fullName = meta.full_name;
+            }
+
+            if (fullName) {
+                var nameEl = document.getElementById('user-full-name');
+                if (nameEl) nameEl.textContent = fullName;
+            }
+
+            if (meta.phone) {
+                var phoneEl = document.getElementById('user-phone');
+                if (phoneEl) phoneEl.textContent = meta.phone;
             }
         }
-        
-        async function loadUserData() {
-            try {
-                console.log('📊 Loading user dashboard data...');
-                
-                // Load profile data
-                await loadProfileData();
-                
-                // Load orders data
-                await loadOrdersData();
-                
-                // Load cart data
-                await loadCartData();
-                
-                // Load wishlist data (if exists)
-                await loadWishlistData();
-                
-                // Load recent activity
-                await loadRecentActivity();
-                
-                console.log('✅ Dashboard data loaded successfully');
-                
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
+
+        async function loadDashboardData() {
+            // Load all data in parallel
+            await Promise.all([
+                loadOrders(),
+                loadProfileData(),
+                loadCartInfo()
+            ]);
         }
-        
-        async function loadProfileData() {
+
+        async function loadOrders() {
             try {
-                console.log('📝 Loading profile data...');
-                const { data: profile, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', currentUser.id)
-                    .single();
-                
-                if (error && error.code !== 'PGRST116') {
-                    console.error('Profile query error:', error);
-                    return;
-                }
-                
-                if (profile) {
-                    console.log('✅ Profile data loaded:', profile);
-                    // Update full name if available
-                    if (profile.first_name || profile.last_name || profile.full_name) {
-                        const fullName = profile.full_name || 
-                            `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-                        const userFullNameEl = document.getElementById('user-full-name');
-                        if (userFullNameEl) {
-                            userFullNameEl.textContent = fullName;
-                        }
-                    }
-                    
-                    // Update phone if available
-                    const phoneEl = document.getElementById('user-phone');
-                    if (phoneEl && profile.phone) {
-                        phoneEl.textContent = profile.phone;
-                    }
-                } else {
-                    console.log('📝 No profile data found - user may need to complete profile');
-                }
-                
-            } catch (error) {
-                console.error('Error loading profile data:', error);
-            }
-        }
-        
-        async function loadOrdersData() {
-            try {
-                console.log('📦 Loading orders data...');
-                const { data: orders, error } = await supabase
+                var result = await supabaseClient
                     .from('orders')
-                    .select('id, order_number, total_amount, status, created_at')
+                    .select('id, customer_name, customer_email, customer_phone, customer_address, items, subtotal, discount_amount, shipping_cost, total, status, payment_method, notes, created_at')
                     .eq('user_id', currentUser.id)
                     .order('created_at', { ascending: false });
-                
-                if (error) {
-                    console.error('Error loading orders:', error);
-                    // Set default state for orders
-                    const ordersCountEl = document.getElementById('orders-count');
-                    if (ordersCountEl) {
-                        ordersCountEl.textContent = '0 orders';
-                    }
+
+                if (result.error) {
+                    console.error('Orders query error:', result.error);
+                    document.getElementById('orders-list').innerHTML = '<div class="p-8 text-center"><p class="text-sm text-slate-500">Could not load orders.</p></div>';
                     return;
                 }
-                
-                // Update orders count
-                const ordersCountEl = document.getElementById('orders-count');
-                if (ordersCountEl) {
-                    const count = orders ? orders.length : 0;
-                    ordersCountEl.textContent = `${count} order${count !== 1 ? 's' : ''}`;
-                }
-                
-                console.log('📦 Loaded', orders?.length || 0, 'orders');
-                
-            } catch (error) {
-                console.error('Error loading orders data:', error);
-                // Set default state for orders
-                const ordersCountEl = document.getElementById('orders-count');
-                if (ordersCountEl) {
-                    ordersCountEl.textContent = '0 orders';
-                }
+
+                allOrders = result.data || [];
+
+                // Update stats
+                document.getElementById('orders-count-number').textContent = allOrders.length;
+
+                var totalSpent = allOrders.reduce(function(sum, o) {
+                    return sum + (parseFloat(o.total) || 0);
+                }, 0);
+                document.getElementById('total-spent').textContent = '\u20AC' + totalSpent.toFixed(2);
+
+                renderOrders('all');
+            } catch (err) {
+                console.error('Load orders error:', err);
+                document.getElementById('orders-list').innerHTML = '<div class="p-8 text-center"><p class="text-sm text-slate-500">Error loading orders.</p></div>';
             }
         }
-        
-        async function loadCartData() {
-            try {
-                console.log('🛒 Loading cart data...');
-                const { data: cart, error } = await supabase
-                    .from('carts')
-                    .select(`
-                        id,
-                        cart_items (
-                            quantity
-                        )
-                    `)
-                    .eq('user_id', currentUser.id)
-                    .eq('status', 'active')
-                    .single();
-                
-                if (error && error.code !== 'PGRST116') {
-                    console.error('Error loading cart:', error);
-                    // Set default cart state
-                    const cartCountEl = document.getElementById('cart-count');
-                    if (cartCountEl) {
-                        cartCountEl.textContent = '0';
-                        cartCountEl.classList.add('hidden');
-                    }
-                    return;
-                }
-                
-                // Update cart counter
-                const totalItems = cart?.cart_items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-                const cartCountEl = document.getElementById('cart-count');
-                if (cartCountEl) {
-                    cartCountEl.textContent = totalItems;
-                    if (totalItems > 0) {
-                        cartCountEl.classList.remove('hidden');
-                    } else {
-                        cartCountEl.classList.add('hidden');
-                    }
-                }
-                
-                console.log('🛒 Cart items:', totalItems);
-                
-            } catch (error) {
-                console.error('Error loading cart data:', error);
-                // Set default cart state on error
-                const cartCountEl = document.getElementById('cart-count');
-                if (cartCountEl) {
-                    cartCountEl.textContent = '0';
-                    cartCountEl.classList.add('hidden');
-                }
+
+        function renderOrders(statusFilter) {
+            var container = document.getElementById('orders-list');
+            var filtered = statusFilter === 'all' ? allOrders : allOrders.filter(function(o) { return o.status === statusFilter; });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fas fa-box-open text-2xl text-slate-400"></i></div><p class="text-slate-500 font-medium" data-translate="no_orders_yet">No orders yet</p><p class="text-sm text-slate-400 mt-1" data-translate="no_orders_desc">Your orders will appear here after you place them.</p><a href="catalog.html" class="mt-4 inline-block bg-red-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors" data-translate="start_shopping">Start Shopping</a></div>';
+                if (typeof updateTranslations === 'function') updateTranslations();
+                return;
             }
-        }
-        
-        async function loadWishlistData() {
-            try {
-                // For now, set wishlist to 0 as wishlist functionality isn't implemented yet
-                const wishlistCountEl = document.getElementById('wishlist-count');
-                if (wishlistCountEl) {
-                    wishlistCountEl.textContent = '0 items';
+
+            var html = '';
+            filtered.forEach(function(order) {
+                var date = new Date(order.created_at);
+                var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+                var statusInfo = getStatusInfo(order.status);
+                var itemCount = 0;
+                if (Array.isArray(order.items)) {
+                    itemCount = order.items.reduce(function(s, i) { return s + (i.quantity || 1); }, 0);
                 }
-                
-            } catch (error) {
-                console.error('Error loading wishlist data:', error);
-            }
-        }
-        
-        async function loadRecentActivity() {
-            try {
-                console.log('📈 Loading recent activity...');
-                // Load recent orders for activity
-                const { data: recentOrders, error } = await supabase
-                    .from('orders')
-                    .select('id, order_number, total_amount, status, created_at')
-                    .eq('user_id', currentUser.id)
-                    .order('created_at', { ascending: false })
-                    .limit(3);
-                
-                if (error) {
-                    console.error('Error loading recent activity:', error);
-                    // Still show account creation even if orders fail to load
-                    const activityEl = document.getElementById('recent-activity');
-                    if (activityEl) {
-                        activityEl.innerHTML = `
-                            <div class="flex items-center text-sm text-gray-600">
-                                <i class="fas fa-user-plus mr-3 text-green-500"></i>
-                                <span>Account created on ${new Date(currentUser.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <div class="text-sm text-gray-500 text-center py-4">
-                                <i class="fas fa-box-open text-3xl mb-2 block"></i>
-                                No recent orders
-                            </div>
-                        `;
-                    }
-                    return;
-                }
-                
-                const activityEl = document.getElementById('recent-activity');
-                if (activityEl) {
-                    let activityHTML = `
-                        <div class="flex items-center text-sm text-gray-600">
-                            <i class="fas fa-user-plus mr-3 text-green-500"></i>
-                            <span>Account created on ${new Date(currentUser.created_at).toLocaleDateString()}</span>
-                        </div>
-                    `;
-                    
-                    if (recentOrders && recentOrders.length > 0) {
-                        recentOrders.forEach(order => {
-                            const orderDate = new Date(order.created_at).toLocaleDateString();
-                            const statusIcon = order.status === 'completed' ? 'fas fa-check-circle text-green-500' :
-                                             order.status === 'processing' ? 'fas fa-clock text-yellow-500' :
-                                             'fas fa-shopping-bag text-red-500';
-                            
-                            activityHTML += `
-                                <div class="flex items-center text-sm text-gray-600">
-                                    <i class="${statusIcon} mr-3"></i>
-                                    <span>Order #${order.order_number} - €${order.total_amount} (${orderDate})</span>
-                                </div>
-                            `;
-                        });
-                    } else {
-                        activityHTML += `
-                            <div class="text-sm text-gray-500 text-center py-4">
-                                <i class="fas fa-box-open text-3xl mb-2 block"></i>
-                                No recent orders
-                            </div>
-                        `;
-                    }
-                    
-                    activityEl.innerHTML = activityHTML;
-                }
-                
-                console.log('📈 Recent activity loaded');
-                
-            } catch (error) {
-                console.error('Error loading recent activity:', error);
-                // Show default activity
-                const activityEl = document.getElementById('recent-activity');
-                if (activityEl) {
-                    activityEl.innerHTML = `
-                        <div class="flex items-center text-sm text-gray-600">
-                            <i class="fas fa-user-plus mr-3 text-green-500"></i>
-                            <span>Account created</span>
-                        </div>
-                        <div class="text-sm text-gray-500 text-center py-4">
-                            <i class="fas fa-box-open text-3xl mb-2 block"></i>
-                            Unable to load activity
-                        </div>
-                    `;
-                }
-            }
-        }
-        
-        function setupEventListeners() {
-            // User menu toggle
-            const userMenuButton = document.getElementById('user-menu-button');
-            const userDropdown = document.getElementById('user-dropdown');
-            
-            if (userMenuButton) {
-                userMenuButton.addEventListener('click', () => {
-                    userDropdown.classList.toggle('hidden');
-                });
-            }
-            
-            // Click outside to close dropdown
-            document.addEventListener('click', (e) => {
-                if (!userMenuButton?.contains(e.target)) {
-                    userDropdown?.classList.add('hidden');
-                }
+                var orderId = order.id ? order.id.substring(0, 8) : '-';
+
+                html += '<div class="p-4 lg:p-5 hover:bg-slate-50 transition-colors cursor-pointer" onclick="showOrderDetail(\'' + order.id + '\')">';
+                html += '<div class="flex items-start justify-between">';
+                html += '<div class="flex-1 min-w-0">';
+                html += '<div class="flex items-center space-x-3 mb-1">';
+                html += '<span class="text-sm font-semibold text-slate-900">#' + orderId + '</span>';
+                html += '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ' + statusInfo.classes + '">' + statusInfo.label + '</span>';
+                html += '</div>';
+                html += '<p class="text-sm text-slate-500">' + dateStr + '</p>';
+                html += '<p class="text-xs text-slate-400 mt-0.5">' + itemCount + ' item' + (itemCount !== 1 ? 's' : '') + '</p>';
+                html += '</div>';
+                html += '<div class="text-right ml-4">';
+                html += '<p class="text-sm font-bold text-slate-900">\u20AC' + (parseFloat(order.total) || 0).toFixed(2) + '</p>';
+                html += '<p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-chevron-right"></i></p>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
             });
-            
-            // Logout
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    await handleLogout();
+
+            container.innerHTML = html;
+        }
+
+        function getStatusInfo(status) {
+            var statuses = {
+                pending: { label: 'Pending', classes: 'bg-yellow-100 text-yellow-800' },
+                confirmed: { label: 'Confirmed', classes: 'bg-blue-100 text-blue-800' },
+                processing: { label: 'Processing', classes: 'bg-purple-100 text-purple-800' },
+                shipped: { label: 'Shipped', classes: 'bg-indigo-100 text-indigo-800' },
+                delivered: { label: 'Delivered', classes: 'bg-green-100 text-green-800' },
+                cancelled: { label: 'Cancelled', classes: 'bg-red-100 text-red-800' }
+            };
+            return statuses[status] || { label: status || 'Unknown', classes: 'bg-slate-100 text-slate-800' };
+        }
+
+        function showOrderDetail(orderId) {
+            var order = allOrders.find(function(o) { return o.id === orderId; });
+            if (!order) return;
+
+            var modal = document.getElementById('order-modal');
+            var content = document.getElementById('order-modal-content');
+            var statusInfo = getStatusInfo(order.status);
+            var date = new Date(order.created_at);
+            var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            var shortId = order.id.substring(0, 8);
+
+            var html = '';
+            // Status & ID
+            html += '<div class="flex items-center justify-between mb-4">';
+            html += '<span class="text-sm text-slate-500">Order #' + shortId + '</span>';
+            html += '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ' + statusInfo.classes + '">' + statusInfo.label + '</span>';
+            html += '</div>';
+
+            // Date
+            html += '<p class="text-sm text-slate-500 mb-5"><i class="fas fa-calendar mr-2"></i>' + dateStr + '</p>';
+
+            // Items
+            html += '<h4 class="text-sm font-semibold text-slate-700 mb-3">Items</h4>';
+            html += '<div class="space-y-2 mb-5">';
+            if (Array.isArray(order.items)) {
+                order.items.forEach(function(item) {
+                    html += '<div class="flex items-center justify-between py-2 border-b border-slate-100">';
+                    html += '<div><p class="text-sm text-slate-900">' + (item.name || 'Product') + '</p><p class="text-xs text-slate-400">Qty: ' + (item.quantity || 1) + ' x \u20AC' + (parseFloat(item.price) || 0).toFixed(2) + '</p></div>';
+                    html += '<p class="text-sm font-medium text-slate-900">\u20AC' + (parseFloat(item.total) || 0).toFixed(2) + '</p>';
+                    html += '</div>';
                 });
             }
+            html += '</div>';
+
+            // Pricing
+            html += '<div class="bg-slate-50 rounded-lg p-4 space-y-2 mb-5">';
+            html += '<div class="flex justify-between text-sm"><span class="text-slate-500">Subtotal</span><span class="text-slate-900">\u20AC' + (parseFloat(order.subtotal) || 0).toFixed(2) + '</span></div>';
+            if (parseFloat(order.discount_amount) > 0) {
+                html += '<div class="flex justify-between text-sm"><span class="text-green-600">Discount</span><span class="text-green-600">-\u20AC' + parseFloat(order.discount_amount).toFixed(2) + '</span></div>';
+            }
+            html += '<div class="flex justify-between text-sm"><span class="text-slate-500">Shipping</span><span class="text-slate-900">\u20AC' + (parseFloat(order.shipping_cost) || 0).toFixed(2) + '</span></div>';
+            html += '<div class="flex justify-between text-sm font-bold border-t border-slate-200 pt-2 mt-2"><span>Total</span><span>\u20AC' + (parseFloat(order.total) || 0).toFixed(2) + '</span></div>';
+            html += '</div>';
+
+            // Customer info
+            html += '<h4 class="text-sm font-semibold text-slate-700 mb-2">Delivery Info</h4>';
+            html += '<div class="text-sm text-slate-600 space-y-1 mb-4">';
+            if (order.customer_name) html += '<p><i class="fas fa-user mr-2 text-slate-400 w-4 text-center"></i>' + order.customer_name + '</p>';
+            if (order.customer_phone) html += '<p><i class="fas fa-phone mr-2 text-slate-400 w-4 text-center"></i>' + order.customer_phone + '</p>';
+            if (order.customer_address) html += '<p><i class="fas fa-map-marker-alt mr-2 text-slate-400 w-4 text-center"></i>' + order.customer_address + '</p>';
+            html += '</div>';
+
+            if (order.payment_method) {
+                html += '<p class="text-xs text-slate-400"><i class="fas fa-credit-card mr-1"></i> Payment: ' + order.payment_method + '</p>';
+            }
+            if (order.notes) {
+                html += '<p class="text-xs text-slate-400 mt-1"><i class="fas fa-sticky-note mr-1"></i> Notes: ' + order.notes + '</p>';
+            }
+
+            content.innerHTML = html;
+            modal.classList.remove('hidden');
         }
-        
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('order-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeOrderModal();
+        });
+
+        async function loadProfileData() {
+            try {
+                var result = await supabaseClient
+                    .from('profiles')
+                    .select('first_name, last_name, full_name, phone')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (result.error) {
+                    // profiles table might not exist or user has no profile row - that's ok
+                    console.log('Profile not found or table missing');
+                    return;
+                }
+
+                var profile = result.data;
+                if (!profile) return;
+
+                if (profile.first_name || profile.last_name || profile.full_name) {
+                    var fullName = profile.full_name || ((profile.first_name || '') + ' ' + (profile.last_name || '')).trim();
+                    var nameEl = document.getElementById('user-full-name');
+                    if (nameEl && fullName) nameEl.textContent = fullName;
+                }
+
+                if (profile.phone) {
+                    var phoneEl = document.getElementById('user-phone');
+                    if (phoneEl) phoneEl.textContent = profile.phone;
+                }
+            } catch (err) {
+                console.log('Profile load skipped:', err.message);
+            }
+        }
+
+        function loadCartInfo() {
+            // Cart is stored in localStorage, not database
+            try {
+                // Find the user's cart key
+                var cartKey = 'autoparts_cart_' + currentUser.id;
+                var stored = localStorage.getItem(cartKey);
+                if (stored) {
+                    var cart = JSON.parse(stored);
+                    if (cart && Array.isArray(cart.items)) {
+                        var count = cart.items.reduce(function(s, i) { return s + (i.quantity || 1); }, 0);
+                        document.getElementById('cart-items-count').textContent = count;
+                    }
+                }
+            } catch (err) {
+                console.log('Cart info not available');
+            }
+        }
+
         async function handleLogout() {
             try {
-                const { error } = await supabase.auth.signOut();
-                if (error) {
-                    console.error('Logout error:', error);
-                }
-                
-                // Always redirect to home page
-                window.location.href = 'index.html';
-                
-            } catch (error) {
-                console.error('Logout failed:', error);
-                // Still redirect even if logout fails
-                window.location.href = 'index.html';
+                if (supabaseClient) await supabaseClient.auth.signOut();
+            } catch (err) {
+                console.error('Logout error:', err);
             }
-        }
-        
-        function showError(message) {
-            // Remove any existing error messages
-            const existingErrors = document.querySelectorAll('.dashboard-error');
-            existingErrors.forEach(el => el.remove());
-            
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'dashboard-error fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-xl z-50 max-w-md';
-            errorDiv.innerHTML = `
-                <div class="flex items-start">
-                    <i class="fas fa-exclamation-triangle mr-3 mt-0.5"></i>
-                    <div class="flex-1">
-                        <div class="font-medium">Dashboard Error</div>
-                        <div class="text-sm opacity-90 mt-1">${message}</div>
-                    </div>
-                    <button onclick="this.parentElement.parentElement.remove()" class="ml-3 hover:opacity-75">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            document.body.appendChild(errorDiv);
-            
-            // Auto-remove after 8 seconds
-            setTimeout(() => {
-                if (errorDiv.parentNode) {
-                    errorDiv.remove();
-                }
-            }, 8000);
+            window.location.href = 'index.html';
         }
     </script>
 </body>

@@ -1,21 +1,81 @@
-/* Custom Van Hool Parts Colors */
+/* ============================================
+   Design System - Custom Colors & Tokens
+   Brand color: #D04A42 (red)
+   ============================================ */
+
 :root {
+    /* --- Brand Red Palette --- */
     --vhp-red: #D04A42;
-    --vhp-red-light: #e87066;
+    --vhp-red-light: #e06b64;
     --vhp-red-dark: #b8382f;
-    --vhp-red-50: #fdf2f1;
-    --vhp-red-100: #fce4e2;
-    --vhp-red-200: #f9ccca;
+    --vhp-red-50: #fef2f2;
+    --vhp-red-100: #fde8e7;
+    --vhp-red-200: #f9cccb;
     --vhp-red-300: #f4a6a4;
     --vhp-red-400: #ec7975;
-    --vhp-red-500: var(--vhp-red);
-    --vhp-red-600: var(--vhp-red);
-    --vhp-red-700: var(--vhp-red-dark);
+    --vhp-red-500: #D04A42;
+    --vhp-red-600: #D04A42;
+    --vhp-red-700: #b8382f;
     --vhp-red-800: #9d2f27;
     --vhp-red-900: #822620;
+
+    /* --- Warm Slate / Neutral Palette --- */
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --slate-950: #020617;
+
+    /* --- Spacing Scale --- */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    /* --- Border Radii --- */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-full: 9999px;
+
+    /* --- Shadows --- */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+    --shadow-red: 0 4px 14px 0 rgb(208 74 66 / 0.2);
+    --shadow-red-lg: 0 8px 24px 0 rgb(208 74 66 / 0.25);
 }
 
-/* Override Tailwind red colors with Van Hool red */
+
+/* ============================================
+   Font utility
+   ============================================ */
+.font-inter {
+    font-family: 'Inter', sans-serif;
+}
+
+
+/* ============================================
+   Override Tailwind red colors with brand red
+   ============================================ */
+
+/* Text */
 .text-red-500,
 .text-red-600 {
     color: var(--vhp-red) !important;
@@ -39,7 +99,7 @@
     color: var(--vhp-red-800) !important;
 }
 
-/* Background colors */
+/* Backgrounds */
 .bg-red-50 {
     background-color: var(--vhp-red-50) !important;
 }
@@ -66,7 +126,7 @@
     background-color: var(--vhp-red-dark) !important;
 }
 
-/* Border colors */
+/* Borders */
 .border-red-300 {
     border-color: var(--vhp-red-300) !important;
 }
@@ -76,7 +136,7 @@
     border-color: var(--vhp-red) !important;
 }
 
-/* Focus ring colors */
+/* Focus rings */
 .focus\:ring-red-500:focus,
 .focus\:border-red-500:focus {
     --tw-ring-color: var(--vhp-red) !important;
@@ -87,108 +147,78 @@
     --tw-ring-color: var(--vhp-red-200) !important;
 }
 
-/* Custom gradient classes */
-.bg-vhp-gradient {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
-}
 
-.bg-vhp-gradient-soft {
-    background: linear-gradient(135deg, var(--vhp-red-50) 0%, var(--vhp-red-100) 100%);
-}
+/* ============================================
+   Buttons
+   ============================================ */
 
-.bg-vhp-gradient-hero {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 50%, var(--vhp-red-800) 100%);
-}
-
-.bg-vhp-gradient-button {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
-    transition: all 0.3s ease;
-}
-
-.bg-vhp-gradient-button:hover {
-    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
-}
-
-/* Text gradients */
-.text-vhp-gradient {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Button enhancements */
 .btn-vhp-primary {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    background-color: var(--vhp-red);
     border: none;
     color: white;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(208, 74, 66, 0.2);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: var(--shadow-xs);
 }
 
 .btn-vhp-primary:hover {
-    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
+    background-color: var(--vhp-red-dark);
+    box-shadow: var(--shadow-red);
+}
+
+.btn-vhp-primary:active {
+    background-color: var(--vhp-red-800);
 }
 
 .btn-vhp-outline {
     background: transparent;
-    border: 2px solid var(--vhp-red);
+    border: 1.5px solid var(--vhp-red);
     color: var(--vhp-red);
-    transition: all 0.3s ease;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-vhp-outline:hover {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    background-color: var(--vhp-red);
     color: white;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(208, 74, 66, 0.3);
+    box-shadow: var(--shadow-red);
 }
 
-/* Card enhancements with gradients */
-.card-vhp-gradient {
-    background: linear-gradient(135deg, white 0%, var(--vhp-red-50) 100%);
-    border: 1px solid var(--vhp-red-200);
+.btn-vhp-outline:active {
+    background-color: var(--vhp-red-dark);
+    color: white;
 }
 
-.card-vhp-gradient:hover {
-    background: linear-gradient(135deg, var(--vhp-red-50) 0%, var(--vhp-red-100) 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(208, 74, 66, 0.15);
-}
 
-/* Navigation gradients */
-.nav-vhp-gradient {
-    background: linear-gradient(135deg, white 0%, var(--vhp-red-50) 100%);
-    border-bottom: 2px solid var(--vhp-red-200);
-}
-
-/* Loading spinner with Van Hool colors */
+/* ============================================
+   Spinner
+   ============================================ */
 .spinner-vhp {
     border: 3px solid var(--vhp-red-200);
     border-top: 3px solid var(--vhp-red);
 }
 
-/* Custom scrollbar */
+
+/* ============================================
+   Scrollbar
+   ============================================ */
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, var(--vhp-red) 0%, var(--vhp-red-dark) 100%);
+    background: var(--slate-400);
     border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, var(--vhp-red-dark) 0%, var(--vhp-red-800) 100%);
+    background: var(--vhp-red);
 }
 
-/* Selection color */
+
+/* ============================================
+   Selection
+   ============================================ */
 ::selection {
     background-color: var(--vhp-red-200);
-    color: var(--vhp-red-800);
+    color: var(--vhp-red-900);
 }
 
 ::-moz-selection {
     background-color: var(--vhp-red-200);
-    color: var(--vhp-red-800);
+    color: var(--vhp-red-900);
 }

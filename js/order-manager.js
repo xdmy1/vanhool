@@ -52,13 +52,13 @@ class OrderManager {
             // Prepare simple order data - only essential fields
             const order = {
                 user_id: user.id,
-                
+
                 // Customer info (simple)
                 customer_name: orderData.fullName || '',
                 customer_email: user.email || '',
                 customer_phone: orderData.phone || '',
                 customer_address: orderData.address || '',
-                
+
                 // Order items as JSON
                 items: cart.items.map(item => ({
                     name: item.name || 'Produs',
@@ -66,13 +66,13 @@ class OrderManager {
                     price: item.price || 0,
                     total: (item.price || 0) * (item.quantity || 1)
                 })),
-                
+
                 // Pricing (simple numbers)
                 subtotal: parseFloat(cart.subtotal) || 0,
                 discount_amount: parseFloat(cart.discountAmount) || 0,
                 shipping_cost: parseFloat(cart.shipping) || 25.00,
                 total: parseFloat(cart.total) || 0,
-                
+
                 // Order details
                 status: 'pending',
                 payment_method: orderData.paymentMethod || 'transfer',
@@ -86,7 +86,7 @@ class OrderManager {
             
             // Update promo code usage if applied
             if (cart.promocode) {
-                await this.updatePromoCodeUsage(cart.promocode.id);
+                await this.updatePromoCodeUsage(cart.promocode.id, cart.promocode.code);
             }
             
             // Reserve stock for order items
@@ -179,61 +179,103 @@ class OrderManager {
     }
     
     // Update promo code usage
-    async updatePromoCodeUsage(promocodeId) {
-        try {
-            console.log('🎟️ Updating promo code usage for ID:', promocodeId);
-            
-            // First, get current promo code data to check if we need to disable it
-            const { data: currentPromo, error: fetchError } = await CONFIG.supabase
-                .from('promocodes')
-                .select('current_uses, max_uses, is_active, code')
-                .eq('id', promocodeId)
-                .single();
-                
-            if (fetchError) {
-                console.error('Error fetching current promo code data:', fetchError);
-                return;
-            }
-            
-            if (!currentPromo) {
-                console.error('Promo code not found with ID:', promocodeId);
-                return;
-            }
-            
-            console.log('📊 Current promo code data:', currentPromo);
-            
-            const newUsageCount = (currentPromo.current_uses || 0) + 1;
-            const maxUses = currentPromo.max_uses || 1;
-            
-            // Prepare update object
-            const updateData = {
-                current_uses: newUsageCount,
-                updated_at: new Date().toISOString()
-            };
-            
-            // If usage reaches or exceeds max_uses, disable the promo code
-            if (newUsageCount >= maxUses) {
-                updateData.is_active = false;
-                console.log(`🚫 Promo code "${currentPromo.code}" reached usage limit (${newUsageCount}/${maxUses}), disabling...`);
-            }
-            
-            // Update the promo code
-            const { error } = await CONFIG.supabase
-                .from('promocodes')
-                .update(updateData)
-                .eq('id', promocodeId);
-                
-            if (error) {
-                console.error('Error updating promo code usage:', error);
-                throw error;
-            }
-            
-            console.log(`✅ Promo code "${currentPromo.code}" usage updated: ${newUsageCount}/${maxUses}${updateData.is_active === false ? ' (DISABLED)' : ''}`);
-            
-        } catch (error) {
-            console.error('Error updating promo code usage:', error);
-            // Don't throw - this is not critical for order creation
+    async updatePromoCodeUsage(promocodeId, promocodeCode) {
+        // Get the best available Supabase client
+        const sb = CONFIG.supabase || window.supabase;
+        if (!sb) {
+            console.error('❌ No Supabase client available for promo code update');
+            return;
         }
+
+        console.log('🎟️ Updating promo code usage for ID:', promocodeId, 'Code:', promocodeCode);
+
+        if (!promocodeId && !promocodeCode) {
+            console.error('❌ No promo code ID or code provided');
+            return;
+        }
+
+        // Try RPC function first (bypasses RLS)
+        try {
+            if (promocodeId) {
+                const { data, error } = await sb.rpc('increment_promo_usage', { promo_code_id: promocodeId });
+                if (!error && data && data.success) {
+                    console.log(`✅ Promo code usage updated via RPC: ${data.code} ${data.new_uses}/${data.max_uses}${data.disabled ? ' (DISABLED)' : ''}`);
+                    return;
+                }
+                if (error) {
+                    console.warn('⚠️ RPC increment_promo_usage failed:', error.message);
+                }
+            }
+        } catch (rpcError) {
+            console.warn('⚠️ RPC method not available, trying fallback:', rpcError.message);
+        }
+
+        // Try RPC by code string
+        try {
+            if (promocodeCode) {
+                const { data, error } = await sb.rpc('increment_promo_usage_by_code', { promo_code: promocodeCode });
+                if (!error && data && data.success) {
+                    console.log(`✅ Promo code usage updated via RPC (by code): ${data.code} ${data.new_uses}/${data.max_uses}${data.disabled ? ' (DISABLED)' : ''}`);
+                    return;
+                }
+                if (error) {
+                    console.warn('⚠️ RPC increment_promo_usage_by_code failed:', error.message);
+                }
+            }
+        } catch (rpcError) {
+            console.warn('⚠️ RPC by code method not available:', rpcError.message);
+        }
+
+        // Fallback: direct table update
+        try {
+            await this.performDirectPromoUpdate(sb, promocodeId, promocodeCode);
+        } catch (error) {
+            console.error('❌ All promo code usage update methods failed:', error);
+        }
+    }
+
+    // Fallback: direct table update for promo code usage
+    async performDirectPromoUpdate(sb, promocodeId, promocodeCode) {
+        // Fetch current promo data
+        let fetchQuery = sb.from('promocodes').select('id, current_uses, max_uses, is_active, code');
+        if (promocodeId) {
+            fetchQuery = fetchQuery.eq('id', promocodeId);
+        } else {
+            fetchQuery = fetchQuery.eq('code', promocodeCode);
+        }
+        const { data: currentPromo, error: fetchError } = await fetchQuery.single();
+
+        if (fetchError || !currentPromo) {
+            console.error('❌ Error fetching promo code data:', fetchError);
+            return;
+        }
+
+        console.log('📊 Current promo code data:', currentPromo);
+
+        const newUsageCount = (currentPromo.current_uses || 0) + 1;
+        const maxUses = currentPromo.max_uses || 1;
+
+        const updateData = {
+            current_uses: newUsageCount,
+            updated_at: new Date().toISOString()
+        };
+
+        if (newUsageCount >= maxUses) {
+            updateData.is_active = false;
+            console.log(`🚫 Promo code "${currentPromo.code}" reached limit (${newUsageCount}/${maxUses}), disabling...`);
+        }
+
+        const { error } = await sb
+            .from('promocodes')
+            .update(updateData)
+            .eq('id', currentPromo.id);
+
+        if (error) {
+            console.error('❌ Direct promo code update failed (likely RLS). Run fix-promo-usage.sql in Supabase SQL Editor to fix this.', error);
+            return;
+        }
+
+        console.log(`✅ Promo code "${currentPromo.code}" usage updated: ${newUsageCount}/${maxUses}${updateData.is_active === false ? ' (DISABLED)' : ''}`);
     }
     
     // Reserve stock for order items

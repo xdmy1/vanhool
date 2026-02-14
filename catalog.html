@@ -4,178 +4,170 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inter Bus Catalog - Parts & Components</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+
     <!-- Custom styles -->
     <link href="css/custom-colors.css" rel="stylesheet">
-    
+    <link href="css/style.css" rel="stylesheet">
+
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <!-- Configuration and Dependencies -->
     <script src="js/config.js"></script>
     <script src="js/app-universal.js"></script>
     <script type="module" src="js/cart.js"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-slate-50" style="font-family: 'Inter', sans-serif;">
     <!-- Navigation -->
-    <nav class="bg-white shadow-lg sticky top-0 z-40">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
-                    <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
-                </a>
-
-                <!-- Desktop Navigation -->
-                <div class="hidden lg:flex items-center space-x-8">
-                    <!-- Regular Navigation Links -->
-                    <a href="catalog.html" class="text-red-600 font-semibold px-3 py-2 rounded-lg bg-red-50" data-translate="catalog">Catalog</a>
-                    <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
-                    <a href="contact.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
-                </div>
-
-                <!-- Right side auth/cart -->
-                <div class="flex items-center space-x-4">
-                    <!-- Cart -->
-                    <a href="cart.html" class="relative text-gray-600 hover:text-red-600 transition-colors">
-                        <i class="fas fa-shopping-cart text-xl"></i>
-                        <span id="cart-count" class="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+    <header class="bg-white sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4 lg:px-8">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
                     </a>
-                    
-                    <!-- Language Switcher -->
+                </div>
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="categories.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50">
+                        <i class="fas fa-th-large mr-1"></i><span data-translate="categories">Categories</span>
+                    </a>
+                    <a href="catalog.html" class="text-red-600 font-semibold px-3 py-2 rounded-lg bg-red-50" data-translate="catalog">Catalog</a>
+                    <a href="about.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                    <a href="contact.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="cart.html" class="relative text-slate-600 hover:text-red-600 transition-colors p-2">
+                        <i class="fas fa-shopping-cart text-lg"></i>
+                        <span id="cart-count" class="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </a>
                     <div class="relative group hidden sm:block">
-                        <button class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                        <button class="flex items-center space-x-1 text-slate-700 hover:text-red-600 py-2 px-2 rounded-md transition-colors">
                             <span id="current-lang" class="text-sm font-medium">EN</span>
                             <i class="fas fa-chevron-down text-xs"></i>
                         </button>
-                        <div class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden group-hover:block z-50 min-w-max">
-                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇬🇧 English</button>
-                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇴 Română</button>
-                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">🇷🇺 Русский</button>
+                        <div class="absolute top-full right-0 bg-white shadow-lg border border-slate-200 rounded-lg hidden group-hover:block z-50 min-w-max">
+                            <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">EN</button>
+                            <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">RO</button>
+                            <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 w-full text-left">RU</button>
                         </div>
                     </div>
-                    
-                    <!-- Mobile menu button -->
-                    <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                    <button id="mobile-menu-button" class="lg:hidden p-2 text-slate-600 hover:text-red-600">
                         <i class="fas fa-bars text-lg"></i>
                     </button>
-                    
-                    <!-- Auth Links - Managed by app-universal.js -->
-                    <div id="auth-links" class="flex items-center space-x-2">
-                        <!-- Will be populated by app-universal.js -->
-                        <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium" data-translate="login">Login</a>
-                        <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors" data-translate="register">Register</a>
+                    <div id="auth-links" class="hidden md:flex items-center space-x-3">
+                        <a href="login.html" class="text-slate-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
+                        <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium" data-translate="register">Register</a>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Mobile menu -->
-            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg max-h-screen overflow-y-auto">
-                <div class="px-4 py-3 space-y-2">
-                    <!-- Main Navigation -->
-                    <div class="space-y-1">
-                        <a href="catalog.html" class="block px-3 py-2 text-red-600 bg-red-50 rounded-lg font-medium">
-                            <i class="fas fa-th-grid mr-2"></i>Catalog
-                        </a>
-                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="about">
-                            <i class="fas fa-info-circle mr-2"></i>About
-                        </a>
-                        <a href="cart.html" class="flex items-center justify-between px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <span class="flex items-center">
-                                <i class="fas fa-shopping-cart mr-2"></i>Shopping Cart
-                            </span>
-                            <span id="mobile-cart-counter" class="hidden bg-red-500 text-white text-xs rounded-full px-2 py-1 font-medium">0</span>
-                        </a>
-                        <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" data-translate="contact">
-                            <i class="fas fa-envelope mr-2"></i>Contact
-                        </a>
-                    </div>
-                    
-                    <!-- Language Switcher -->
-                    <div class="border-t pt-2">
-                        <div class="flex justify-center space-x-4">
-                            <button onclick="setLanguage('en')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇬🇧 EN</button>
-                            <button onclick="setLanguage('ro')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇴 RO</button>
-                            <button onclick="setLanguage('ru')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">🇷🇺 RU</button>
-                        </div>
-                    </div>
+            </nav>
+            <div id="mobile-menu" class="lg:hidden hidden border-t border-slate-200 py-3">
+                <div class="space-y-1">
+                    <a href="catalog.html" class="block px-3 py-2 text-red-600 bg-red-50 rounded-lg font-medium" data-translate="catalog"><i class="fas fa-th-grid mr-2"></i>Catalog</a>
+                    <a href="about.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="about"><i class="fas fa-info-circle mr-2"></i>About</a>
+                    <a href="cart.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="cart"><i class="fas fa-shopping-cart mr-2"></i>Cart</a>
+                    <a href="contact.html" class="block px-3 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg" data-translate="contact"><i class="fas fa-envelope mr-2"></i>Contact</a>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
     <div class="container mx-auto px-4 py-8">
         <div class="flex flex-col lg:flex-row gap-8">
-            
+
             <!-- Filters Sidebar -->
             <div class="lg:w-1/4">
-                <div class="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-4" data-translate="filters">Filters</h3>
-                    
+                <div class="bg-white rounded-xl border border-slate-200 sticky top-24 overflow-hidden">
                     <!-- Search -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="search">Search</label>
-                        <input type="text" id="search-input" 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                               placeholder="Search by part code or name..." data-translate-placeholder="search_placeholder">
+                    <div class="p-4 border-b border-slate-100">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="search-input"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent focus:bg-white transition-colors"
+                                   placeholder="Search by part code or name..." data-translate-placeholder="search_placeholder">
+                        </div>
                     </div>
-                    
-                    <!-- Category -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="category">Category</label>
-                        <select id="category-filter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                            <option value="" data-translate="all_categories">All Categories</option>
-                        </select>
+
+                    <!-- Hidden select for compatibility -->
+                    <select id="category-filter" class="hidden">
+                        <option value="">All Categories</option>
+                    </select>
+
+                    <!-- Categories Tree -->
+                    <div class="border-b border-slate-100">
+                        <div class="px-4 py-3 flex items-center justify-between">
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider" data-translate="categories">Categories</h3>
+                            <button id="clear-category" class="hidden text-xs text-red-500 hover:text-red-700 font-medium transition-colors">
+                                <i class="fas fa-times mr-1"></i><span data-translate="clear">Clear</span>
+                            </button>
+                        </div>
+                        <div id="category-tree" class="pb-2 max-h-[420px] overflow-y-auto">
+                            <!-- Dynamically populated -->
+                            <div class="px-4 py-6 text-center">
+                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500 mx-auto mb-2"></div>
+                                <p class="text-xs text-slate-400">Loading...</p>
+                            </div>
+                        </div>
                     </div>
-                    
+
                     <!-- Price Range -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="price_range">Price Range</label>
-                        <div class="flex space-x-2">
-                            <input type="number" id="min-price" placeholder="Min" class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg">
-                            <input type="number" id="max-price" placeholder="Max" class="w-1/2 px-3 py-2 border border-gray-300 rounded-lg">
+                    <div class="p-4 border-b border-slate-100">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3" data-translate="price_range">Price Range</h3>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="min-price" placeholder="Min" data-translate-placeholder="price_min"
+                                   class="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:bg-white">
+                            <span class="text-slate-300">—</span>
+                            <input type="number" id="max-price" placeholder="Max" data-translate-placeholder="price_max"
+                                   class="w-1/2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:bg-white">
                         </div>
                     </div>
-                    
+
                     <!-- Availability -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="availability">Availability</label>
+                    <div class="p-4 border-b border-slate-100">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3" data-translate="availability">Availability</h3>
                         <div class="space-y-2">
-                            <label class="flex items-center">
-                                <input type="checkbox" id="in-stock-filter" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                                <span class="ml-2 text-sm text-gray-700" data-translate="in_stock">In Stock</span>
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="checkbox" id="in-stock-filter" class="rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                <span class="ml-2 text-sm text-slate-600 group-hover:text-slate-900 transition-colors" data-translate="in_stock">In Stock</span>
                             </label>
-                            <label class="flex items-center">
-                                <input type="checkbox" id="featured-filter" class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                                <span class="ml-2 text-sm text-gray-700" data-translate="featured">Featured</span>
+                            <label class="flex items-center cursor-pointer group">
+                                <input type="checkbox" id="featured-filter" class="rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                <span class="ml-2 text-sm text-slate-600 group-hover:text-slate-900 transition-colors" data-translate="featured">Featured</span>
                             </label>
                         </div>
                     </div>
-                    
-                    <button id="clear-filters" class="w-full px-4 py-2 text-sm text-red-600 border border-red-600 rounded-lg hover:bg-red-50" data-translate="clear_filters">Clear Filters</button>
+
+                    <!-- Clear All -->
+                    <div class="p-4">
+                        <button id="clear-filters" class="w-full px-4 py-2 text-sm text-slate-500 hover:text-red-600 border border-slate-200 hover:border-red-300 rounded-lg hover:bg-red-50 transition-all" data-translate="clear_filters">
+                            <i class="fas fa-times mr-1"></i>Clear Filters
+                        </button>
+                    </div>
                 </div>
             </div>
-            
+
             <!-- Products Section -->
             <div class="flex-1">
                 <!-- Products Header -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                     <div>
-                        <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-2" data-translate="title">Inter Bus Parts Catalog</h1>
-                        <p class="text-gray-600" data-translate="subtitle">Find the perfect part for your Inter Bus bus</p>
+                        <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-2" data-translate="title">Inter Bus Parts Catalog</h1>
+                        <p class="text-slate-600" data-translate="subtitle">Find the perfect part for your Inter Bus bus</p>
                     </div>
-                    
+
                     <!-- Sort -->
                     <div class="mt-4 sm:mt-0">
-                        <label class="block text-sm font-medium text-gray-700 mb-1" data-translate="sort_by">Sort by:</label>
-                        <select id="sort-select" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500">
+                        <label class="block text-sm font-medium text-slate-700 mb-1" data-translate="sort_by">Sort by:</label>
+                        <select id="sort-select" class="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500">
                             <option value="name" data-translate="sort_name">Name</option>
                             <option value="price_low" data-translate="sort_price_low">Price: Low to High</option>
                             <option value="price_high" data-translate="sort_price_high">Price: High to Low</option>
@@ -183,25 +175,25 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Loading -->
                 <div id="loading-products" class="text-center py-12">
                     <i class="fas fa-spinner fa-spin text-3xl text-red-600 mb-4"></i>
-                    <p class="text-gray-600" data-translate="loading">Loading products...</p>
+                    <p class="text-slate-600" data-translate="loading">Loading products...</p>
                 </div>
-                
+
                 <!-- Products Grid -->
                 <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                     <!-- Products will be loaded here -->
                 </div>
-                
+
                 <!-- No Results -->
                 <div id="no-results" class="text-center py-12 hidden">
-                    <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2" data-translate="no_results">No products found</h3>
-                    <p class="text-gray-600" data-translate="no_results_desc">Try adjusting your filters or search terms</p>
+                    <i class="fas fa-search text-4xl text-slate-400 mb-4"></i>
+                    <h3 class="text-lg font-semibold text-slate-900 mb-2" data-translate="no_results">No products found</h3>
+                    <p class="text-slate-600" data-translate="no_results_desc">Try adjusting your filters or search terms</p>
                 </div>
-                
+
                 <!-- Pagination -->
                 <div id="pagination" class="flex justify-center mt-8">
                     <!-- Pagination will be added here -->
@@ -210,28 +202,72 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16 mt-12">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center mb-4">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3">
+                        <span class="text-xl font-bold">Inter Bus</span>
+                    </div>
+                    <p class="text-slate-400 mb-4" data-translate="footer_description">Your trusted partner for authentic bus parts and components worldwide.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="quick_links">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-slate-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-slate-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-slate-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="contact.html" class="text-slate-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="categories">Categories</h4>
+                    <ul class="space-y-2">
+                        <li><a href="catalog.html?category=brakes" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_brakes">Brakes</a></li>
+                        <li><a href="catalog.html?category=air-pressure" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_air_pressure">Air Pressure</a></li>
+                        <li><a href="catalog.html?category=engine-extension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_engine_extension">Engine & Extension</a></li>
+                        <li><a href="catalog.html?category=chassis-suspension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_chassis_suspension">Chassis & Suspension</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="contact">Contact</h4>
+                    <ul class="space-y-3">
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-phone mr-3 text-red-500"></i>+373 123 456 789</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-envelope mr-3 text-red-500"></i>contact@interbus.md</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-map-marker-alt mr-3 text-red-500"></i><span data-translate="address">Chișinău, Moldova</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 mt-12 text-center text-slate-500 text-sm">
+                <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
+
     <script>
         console.log('🚀 New Catalog System Starting...');
-        
+
         // Global variables
         let allProducts = [];
         let filteredProducts = [];
         let currentPage = 1;
         const itemsPerPage = 12;
         let currentLang = 'en';
-        
+
         // Main product loading function
         async function loadProducts() {
             try {
                 document.getElementById('loading-products').style.display = 'block';
-                
+
                 console.log('🔍 Loading products from database...');
                 const supabaseClient = window.CONFIG?.supabase || window.supabase;
-                
+
                 if (!supabaseClient) {
                     throw new Error('Supabase client not available');
                 }
-                
+
                 // Load products with categories
                 const { data: products, error } = await supabaseClient
                     .from('products')
@@ -247,12 +283,12 @@
                         )
                     `)
                     .eq('is_active', true);
-                
+
                 if (error) {
                     console.error('❌ Products query failed:', error);
                     throw error;
                 }
-                
+
                 if (products && products.length > 0) {
                     console.log(`✅ Loaded ${products.length} products from database`);
                     allProducts = products;
@@ -260,13 +296,13 @@
                     console.log('📦 No products found in database, using demo data');
                     allProducts = getDemoProducts();
                 }
-                
+
                 window.allProducts = allProducts;
                 filteredProducts = [...allProducts];
                 window.filteredProducts = filteredProducts;
-                
+
                 renderProducts();
-                
+
             } catch (error) {
                 console.error('Error loading products:', error);
                 console.log('📦 Using demo products as fallback');
@@ -279,13 +315,13 @@
                 document.getElementById('loading-products').style.display = 'none';
             }
         }
-        
+
         // Get translated category name based on current language
         function getTranslatedCategoryName(category) {
             if (!category) return '';
-            
+
             const currentLang = localStorage.getItem('interbus_language') || 'en';
-            
+
             switch(currentLang) {
                 case 'ro':
                     return category.name_ro || category.name_en || category.name || 'Unknown Category';
@@ -296,7 +332,7 @@
                     return category.name_en || category.name || 'Unknown Category';
             }
         }
-        
+
         // Demo products fallback
         function getDemoProducts() {
             return [
@@ -309,12 +345,12 @@
                     stock_quantity: 15,
                     is_featured: true,
                     image_url: '/images/placeholder.jpg',
-                    categories: { 
-                        id: '1', 
-                        slug: 'brake-system', 
-                        name_en: 'Brake System',
-                        name_ro: 'Sistem Frânare',
-                        name_ru: 'Тормозная система'
+                    categories: {
+                        id: '1',
+                        slug: 'brake-pads',
+                        name_en: 'Brake Pads',
+                        name_ro: 'Plăcuțe de Frână',
+                        name_ru: 'Тормозные колодки'
                     }
                 },
                 {
@@ -326,12 +362,12 @@
                     stock_quantity: 3,
                     is_featured: true,
                     image_url: '/images/placeholder.jpg',
-                    categories: { 
-                        id: '2', 
-                        slug: 'air-pressure', 
-                        name_en: 'Air Pressure',
-                        name_ro: 'Presiune Aer',
-                        name_ru: 'Пневматическое давление'
+                    categories: {
+                        id: '2',
+                        slug: 'compressors-accessories',
+                        name_en: 'Compressors & Accessories',
+                        name_ro: 'Compresoare & Accesorii',
+                        name_ru: 'Компрессоры и аксессуары'
                     }
                 },
                 {
@@ -343,100 +379,199 @@
                     stock_quantity: 7,
                     is_featured: true,
                     image_url: '/images/placeholder.jpg',
-                    categories: { 
-                        id: '3', 
-                        slug: 'electrical', 
-                        name_en: 'Electrical',
-                        name_ro: 'Electrice',
-                        name_ru: 'Электрические'
+                    categories: {
+                        id: '3',
+                        slug: 'exterior-lighting',
+                        name_en: 'Exterior Lighting',
+                        name_ro: 'Iluminare Exterioară',
+                        name_ru: 'Наружное освещение'
                     }
                 }
             ];
         }
-        
-        // Refresh category filter translations when language changes
-        function refreshCategoryTranslations() {
+
+        // Category icons
+        const categoryIcons = {
+            'brakes': 'fas fa-stop-circle',
+            'air-pressure': 'fas fa-wind',
+            'chassis-suspension': 'fas fa-car-side',
+            'electro': 'fas fa-bolt',
+            'engine-extension': 'fas fa-cog',
+            'clutch-gearbox': 'fas fa-cogs',
+            'steering-axle-hubs': 'fas fa-steering-wheel',
+            'bodywork': 'fas fa-car',
+            'air-conditioning-heating': 'fas fa-thermometer-half',
+            'interior': 'fas fa-chair',
+            'silicone-pipe': 'fas fa-grip-lines',
+            'abc-raufoss-air-couplings': 'fas fa-plug'
+        };
+
+        let selectedCategorySlug = '';
+
+        // Select a category from the tree
+        function selectCategory(slug) {
+            selectedCategorySlug = slug;
+
+            // Update hidden select for filter compatibility
             const categoryFilter = document.getElementById('category-filter');
-            if (!categoryFilter || !window.allCategoriesForDropdown) return;
-            
-            const selectedValue = categoryFilter.value; // Preserve selection
-            
-            // Clear and rebuild options
-            categoryFilter.innerHTML = '<option value="" data-translate="all_categories">All Categories</option>';
-            
-            window.allCategoriesForDropdown.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.slug;
-                
-                const translatedName = getTranslatedCategoryName(cat);
-                const displayName = cat.parent_id ? 
-                    `  └ ${translatedName}` : 
-                    translatedName;
-                
-                option.textContent = displayName;
-                categoryFilter.appendChild(option);
+            categoryFilter.value = slug;
+
+            // Update visual state
+            document.querySelectorAll('.cat-parent-btn').forEach(btn => {
+                const parentSlug = btn.dataset.slug;
+                const isActive = parentSlug === slug;
+                const isParentOfActive = !isActive && window.allCategoriesForDropdown?.some(c =>
+                    c.slug === slug && c.parent_id && window.allCategoriesForDropdown.find(p => p.id === c.parent_id)?.slug === parentSlug
+                );
+                btn.classList.toggle('bg-red-50', isActive || isParentOfActive);
+                btn.classList.toggle('text-red-700', isActive);
+                btn.classList.toggle('border-red-200', isActive || isParentOfActive);
+                btn.classList.toggle('border-transparent', !isActive && !isParentOfActive);
             });
-            
-            // Restore selection
-            categoryFilter.value = selectedValue;
+
+            document.querySelectorAll('.cat-sub-btn').forEach(btn => {
+                const isActive = btn.dataset.slug === slug;
+                btn.classList.toggle('text-red-600', isActive);
+                btn.classList.toggle('font-semibold', isActive);
+                btn.classList.toggle('bg-red-50', isActive);
+            });
+
+            // Show/hide clear button
+            document.getElementById('clear-category').classList.toggle('hidden', !slug);
+
+            // Trigger filter
+            applyFilters();
         }
-        
-        // Load categories for filter dropdown
+
+        // Toggle subcategories visibility
+        function toggleSubcategories(parentSlug) {
+            const subsContainer = document.getElementById('subs-' + parentSlug);
+            const chevron = document.getElementById('chevron-' + parentSlug);
+            if (!subsContainer) return;
+
+            const isHidden = subsContainer.classList.contains('hidden');
+            subsContainer.classList.toggle('hidden');
+            if (chevron) {
+                chevron.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+            }
+        }
+
+        // Build category tree UI
+        function buildCategoryTree(allCategories) {
+            const tree = document.getElementById('category-tree');
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+
+            const parents = allCategories.filter(c => !c.parent_id);
+            const children = allCategories.filter(c => c.parent_id);
+
+            // Also populate hidden select
+            const categoryFilter = document.getElementById('category-filter');
+            categoryFilter.innerHTML = '<option value="">All Categories</option>';
+            allCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.slug;
+                opt.textContent = cat.parent_id ? `  └ ${cat.name_en}` : cat.name_en;
+                categoryFilter.appendChild(opt);
+            });
+
+            tree.innerHTML = `
+                <!-- All Categories -->
+                <button onclick="selectCategory('')"
+                    class="cat-parent-btn w-full flex items-center px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors border-l-2 border-transparent"
+                    data-slug="">
+                    <i class="fas fa-th-large w-5 text-center text-slate-400 mr-2.5 text-xs"></i>
+                    <span data-translate="all_categories">All Categories</span>
+                </button>
+                ${parents.map(parent => {
+                    const subs = children.filter(c => c.parent_id === parent.id);
+                    const icon = categoryIcons[parent.slug] || 'fas fa-cog';
+                    const parentName = parent[`name_${currentLang}`] || parent.name_en;
+                    const hasSubs = subs.length > 0;
+
+                    return `
+                        <div class="category-group">
+                            <div class="flex items-center">
+                                <button onclick="selectCategory('${parent.slug}')"
+                                    class="cat-parent-btn flex-1 flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-all border-l-2 border-transparent"
+                                    data-slug="${parent.slug}">
+                                    <i class="${icon} w-5 text-center text-slate-400 mr-2.5 text-xs"></i>
+                                    <span class="truncate">${parentName}</span>
+                                </button>
+                                ${hasSubs ? `
+                                    <button onclick="toggleSubcategories('${parent.slug}')" class="px-3 py-2 text-slate-400 hover:text-slate-600 transition-colors">
+                                        <i id="chevron-${parent.slug}" class="fas fa-chevron-right text-xs transition-transform duration-200"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            ${hasSubs ? `
+                                <div id="subs-${parent.slug}" class="hidden">
+                                    ${subs.map(sub => {
+                                        const subName = sub[`name_${currentLang}`] || sub.name_en;
+                                        return `
+                                            <button onclick="selectCategory('${sub.slug}')"
+                                                class="cat-sub-btn w-full flex items-center pl-11 pr-4 py-1.5 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50/50 transition-colors rounded-none"
+                                                data-slug="${sub.slug}">
+                                                <span class="text-slate-300 mr-2">›</span>
+                                                <span class="truncate">${subName}</span>
+                                            </button>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('')}
+            `;
+        }
+
+        // Refresh category tree when language changes
+        function refreshCategoryTranslations() {
+            if (window.allCategoriesForDropdown) {
+                buildCategoryTree(window.allCategoriesForDropdown);
+                // Re-apply selection visual state
+                if (selectedCategorySlug) {
+                    selectCategory(selectedCategorySlug);
+                }
+            }
+        }
+
+        // Load categories for filter
         async function loadCategoriesForFilter() {
             try {
                 const supabaseClient = window.CONFIG?.supabase || window.supabase;
-                
                 if (!supabaseClient) {
                     console.warn('Supabase not available for categories');
                     return;
                 }
-                
+
                 const { data: allCategories, error } = await supabaseClient
                     .from('categories')
                     .select('*')
+                    .eq('is_active', true)
                     .order('sort_order');
-                
+
                 if (error) {
                     console.error('Error loading categories for filter:', error);
                     return;
                 }
 
-                // Store globally for category filtering
                 window.allCategoriesForDropdown = allCategories;
-                window.allCategoriesData = allCategories; // Also store with admin variable name
+                window.allCategoriesData = allCategories;
 
-                const categoryFilter = document.getElementById('category-filter');
-                if (categoryFilter && allCategories) {
-                    // Clear existing options except "All Categories"
-                    categoryFilter.innerHTML = '<option value="" data-translate="all_categories">All Categories</option>';
-                    
-                    // Add all categories (both parent and subcategories) for filtering
-                    allCategories.forEach(cat => {
-                        const option = document.createElement('option');
-                        option.value = cat.slug;
-                        
-                        // Indent subcategories to show hierarchy
-                        const translatedName = getTranslatedCategoryName(cat);
-                        const displayName = cat.parent_id ? 
-                            `  └ ${translatedName}` : 
-                            translatedName;
-                        
-                        option.textContent = displayName;
-                        categoryFilter.appendChild(option);
-                    });
-                    
-                    console.log(`✅ Loaded ${allCategories.length} categories for filter`);
+                if (allCategories && allCategories.length > 0) {
+                    buildCategoryTree(allCategories);
+                    console.log(`✅ Loaded ${allCategories.length} categories for filter tree`);
                 }
-                
+
             } catch (error) {
                 console.error('Error loading categories for filter:', error);
             }
         }
-        
+
         // Apply filters function
         function applyFilters() {
             console.log('🔍 Applying filters...');
-            
+
             // Get filter values
             const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
             const selectedCategory = document.getElementById('category-filter').value.trim();
@@ -445,7 +580,7 @@
             const inStockOnly = document.getElementById('in-stock-filter').checked;
             const featuredOnly = document.getElementById('featured-filter').checked;
             const sortBy = document.getElementById('sort-select').value;
-            
+
             console.log('Filter values:', {
                 searchTerm,
                 selectedCategory,
@@ -456,28 +591,28 @@
                 sortBy,
                 totalProducts: allProducts.length
             });
-            
+
             // Apply filters
             filteredProducts = allProducts.filter(product => {
                 // Search filter
-                const searchMatch = !searchTerm || 
+                const searchMatch = !searchTerm ||
                     product.part_code.toLowerCase().includes(searchTerm) ||
                     (product.name_en || '').toLowerCase().includes(searchTerm) ||
                     (product.description_en || '').toLowerCase().includes(searchTerm);
-                
+
                 // Category filter - supports both main categories and subcategories
                 let categoryMatch = true;
                 if (selectedCategory) {
                     // Get product's category info
                     let productCategory = '';
                     let productParentCategory = '';
-                    
+
                     if (product.categories) {
                         productCategory = product.categories.slug;
-                        
+
                         // If this is a subcategory, find its parent category
                         if (product.categories.parent_id && window.allCategoriesForDropdown) {
-                            const parentCat = window.allCategoriesForDropdown.find(cat => 
+                            const parentCat = window.allCategoriesForDropdown.find(cat =>
                                 cat.id.toString() === product.categories.parent_id.toString()
                             );
                             if (parentCat) {
@@ -487,67 +622,67 @@
                     } else if (product.category_slug) {
                         productCategory = product.category_slug;
                     }
-                    
+
                     // Determine if selected category is a main category or subcategory
                     const selectedCategoryData = window.allCategoriesForDropdown?.find(cat => cat.slug === selectedCategory);
                     const isSelectedCategoryMain = selectedCategoryData && !selectedCategoryData.parent_id;
-                    
+
                     if (isSelectedCategoryMain) {
                         // If main category is selected, show products from:
                         // 1. This main category directly, OR
                         // 2. Any subcategory of this main category
-                        categoryMatch = (productCategory === selectedCategory) || 
+                        categoryMatch = (productCategory === selectedCategory) ||
                                        (productParentCategory === selectedCategory);
                     } else {
                         // If subcategory is selected, show only products from this exact subcategory
                         categoryMatch = (productCategory === selectedCategory);
                     }
-                    
+
                     console.log(`Product ${product.part_code}: category="${productCategory}", parent="${productParentCategory}", selected="${selectedCategory}", isMainCategory=${isSelectedCategoryMain}, match=${categoryMatch}`);
                 }
-                
+
                 // Price filter
                 const price = parseFloat(product.price) || 0;
                 const priceMatch = price >= minPrice && price <= maxPrice;
-                
+
                 // Stock filter
                 const stockMatch = !inStockOnly || (product.stock_quantity > 0);
-                
+
                 // Featured filter
                 const featuredMatch = !featuredOnly || product.is_featured;
-                
+
                 const finalMatch = searchMatch && categoryMatch && priceMatch && stockMatch && featuredMatch;
-                
+
                 if (!finalMatch && selectedCategory) {
                     console.log(`❌ Product ${product.part_code} filtered out - category mismatch`);
                 }
-                
+
                 return finalMatch;
             });
-            
+
             console.log(`✅ Filtered ${allProducts.length} products down to ${filteredProducts.length}`);
-            
+
             // Apply sorting
             if (sortBy && filteredProducts.length > 0) {
                 console.log(`🔄 Sorting products by: ${sortBy}`);
-                
+
                 filteredProducts.sort((a, b) => {
                     switch (sortBy) {
                         case 'price_low':
                             const priceA = parseFloat(a.sale_price || a.price) || 0;
                             const priceB = parseFloat(b.sale_price || b.price) || 0;
                             return priceA - priceB;
-                            
+
                         case 'price_high':
                             const priceHighA = parseFloat(a.sale_price || a.price) || 0;
                             const priceHighB = parseFloat(b.sale_price || b.price) || 0;
                             return priceHighB - priceHighA;
-                            
+
                         case 'name':
                             const nameA = (a.name_en || a.name || '').toLowerCase();
                             const nameB = (b.name_en || b.name || '').toLowerCase();
                             return nameA.localeCompare(nameB);
-                            
+
                         case 'featured':
                             // Featured products first, then by name
                             if (a.is_featured && !b.is_featured) return -1;
@@ -555,43 +690,43 @@
                             const featNameA = (a.name_en || a.name || '').toLowerCase();
                             const featNameB = (b.name_en || b.name || '').toLowerCase();
                             return featNameA.localeCompare(featNameB);
-                            
+
                         default:
                             return 0;
                     }
                 });
-                
+
                 console.log(`✅ Products sorted by ${sortBy}`);
             }
-            
+
             // Update global reference
             window.filteredProducts = filteredProducts;
-            
+
             // Reset to first page
             currentPage = 1;
-            
+
             // Re-render products
             renderProducts();
         }
-        
+
         // Render products
         function renderProducts() {
             const grid = document.getElementById('products-grid');
             const noResults = document.getElementById('no-results');
-            
+
             if (filteredProducts.length === 0) {
                 grid.innerHTML = '';
                 noResults.classList.remove('hidden');
                 return;
             }
-            
+
             noResults.classList.add('hidden');
-            
+
             // Calculate pagination
             const startIndex = (currentPage - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const pageProducts = filteredProducts.slice(startIndex, endIndex);
-            
+
             // Render products
             grid.innerHTML = pageProducts.map(product => {
                 const productName = product.name_en || product.name || 'Unknown Product';
@@ -600,37 +735,42 @@
                 const productImage = product.image_url || '/images/placeholder.svg';
                 const categoryName = getTranslatedCategoryName(product.categories) || product.category || '';
                 const inStock = (product.stock_quantity || 0) > 0;
-                
+                const productSlug = product.slug || product.id;
+
                 return `
                     <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-all duration-200 group">
-                        <div class="relative">
-                            <!-- Product Image -->
-                            <div class="aspect-square w-full bg-gray-100 rounded-t-lg overflow-hidden">
-                                <img src="${productImage}" 
-                                     alt="${productName}" 
-                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                     onerror="this.src='/images/placeholder.svg'">
+                        <a href="product.html?id=${product.id}" class="block">
+                            <div class="relative">
+                                <!-- Product Image -->
+                                <div class="aspect-square w-full bg-gray-100 rounded-t-lg overflow-hidden">
+                                    <img src="${productImage}"
+                                         alt="${productName}"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                         onerror="this.src='/images/placeholder.svg'">
+                                </div>
+
+                                <!-- Featured badge -->
+                                ${product.is_featured ? '<div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Featured</div>' : ''}
+
+                                <!-- Stock indicator -->
+                                <div class="absolute top-2 right-2 ${inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs px-2 py-1 rounded">
+                                    ${inStock ? 'In Stock' : 'Out of Stock'}
+                                </div>
                             </div>
-                            
-                            <!-- Featured badge -->
-                            ${product.is_featured ? '<div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Featured</div>' : ''}
-                            
-                            <!-- Stock indicator -->
-                            <div class="absolute top-2 right-2 ${inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs px-2 py-1 rounded">
-                                ${inStock ? 'In Stock' : 'Out of Stock'}
+
+                            <div class="p-4">
+                                <!-- Product Info -->
+                                <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">${productName}</h3>
+                                <p class="text-sm text-gray-600 mb-1">Part: ${product.part_code}</p>
+                                ${categoryName ? `<p class="text-sm text-gray-500 mb-3">${categoryName}</p>` : ''}
                             </div>
-                        </div>
-                        
-                        <div class="p-4">
-                            <!-- Product Info -->
-                            <h3 class="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">${productName}</h3>
-                            <p class="text-sm text-gray-600 mb-1">Part: ${product.part_code}</p>
-                            ${categoryName ? `<p class="text-sm text-gray-500 mb-3">${categoryName}</p>` : ''}
-                            
+                        </a>
+
+                        <div class="px-4 pb-4">
                             <!-- Price -->
                             <div class="flex items-center justify-between mb-4">
                                 <div>
-                                    ${productPrice !== originalPrice && originalPrice ? 
+                                    ${productPrice !== originalPrice && originalPrice ?
                                         `<span class="text-lg font-bold text-red-600">$${productPrice}</span>
                                          <span class="text-sm text-gray-500 line-through ml-2">$${originalPrice}</span>` :
                                         `<span class="text-lg font-bold text-gray-900">$${productPrice}</span>`
@@ -640,14 +780,14 @@
                                     ${inStock ? `${product.stock_quantity} available` : 'Out of stock'}
                                 </span>
                             </div>
-                            
+
                             <!-- Add to Cart Button -->
-                            <button onclick="addToCart('${product.id}')" 
+                            <button onclick="addToCart('${product.id}')"
                                     class="w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                                        inStock 
-                                            ? 'bg-red-600 text-white hover:bg-red-700' 
+                                        inStock
+                                            ? 'bg-red-600 text-white hover:bg-red-700'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }" 
+                                    }"
                                     ${!inStock ? 'disabled' : ''}>
                                 <i class="fas fa-cart-plus mr-2"></i>
                                 ${inStock ? 'Add to Cart' : 'Out of Stock'}
@@ -657,63 +797,75 @@
                 `;
             }).join('');
         }
-        
+
         // Handle URL parameters
         function handleUrlParameters() {
             const urlParams = new URLSearchParams(window.location.search);
-            
+
             // Handle category filter
             const categoryParam = urlParams.get('category');
             if (categoryParam) {
                 console.log(`Setting category filter to: ${categoryParam}`);
-                document.getElementById('category-filter').value = categoryParam;
+                selectCategory(categoryParam);
+
+                // Auto-expand parent if subcategory was selected
+                if (window.allCategoriesForDropdown) {
+                    const cat = window.allCategoriesForDropdown.find(c => c.slug === categoryParam);
+                    if (cat && cat.parent_id) {
+                        const parent = window.allCategoriesForDropdown.find(c => c.id === cat.parent_id);
+                        if (parent) toggleSubcategories(parent.slug);
+                    } else if (cat && !cat.parent_id) {
+                        // If parent category selected, expand its subs
+                        toggleSubcategories(categoryParam);
+                    }
+                }
             }
-            
+
             // Handle featured filter
             const featuredParam = urlParams.get('featured');
             if (featuredParam === 'true') {
                 document.getElementById('featured-filter').checked = true;
             }
-            
+
             // Handle in stock filter
             const inStockParam = urlParams.get('in_stock');
             if (inStockParam === 'true') {
                 document.getElementById('in-stock-filter').checked = true;
             }
-            
+
             // Handle sort
             const sortParam = urlParams.get('sort');
             if (sortParam) {
                 document.getElementById('sort-select').value = sortParam;
             }
-            
+
             // Handle price range
             const minPrice = urlParams.get('min_price');
             const maxPrice = urlParams.get('max_price');
             if (minPrice) document.getElementById('min-price').value = minPrice;
             if (maxPrice) document.getElementById('max-price').value = maxPrice;
-            
+
             // Apply filters if any URL parameters were found
             if (categoryParam || featuredParam || inStockParam || minPrice || maxPrice) {
                 applyFilters();
             }
         }
-        
-        
+
+
         // Add to cart function
         async function addToCart(productId) {
             try {
                 console.log('Adding product to cart:', productId);
-                
+
                 // Find the product from our loaded products
                 const product = window.allProducts?.find(p => p.id === productId);
-                
+
                 if (!product) {
                     console.error('Product not found:', productId);
                     showNotification('Product not found', 'error');
                     return;
                 }
-                
+
                 // Check if CartManager is available
                 if (!window.cartManager) {
                     // Wait for cart manager to be available
@@ -722,14 +874,14 @@
                         await new Promise(resolve => setTimeout(resolve, 100));
                         retries++;
                     }
-                    
+
                     if (!window.cartManager) {
                         console.error('Cart manager not available');
                         showNotification('Cart system not available', 'error');
                         return;
                     }
                 }
-                
+
                 // Add to cart using CartManager API
                 const result = await window.cartManager.addItem(product.id, 1, {
                     productDetails: {
@@ -741,7 +893,7 @@
                         sku: product.part_code || product.id
                     }
                 });
-                
+
                 if (result.success) {
                     const productName = product.name_en || product.name || 'Product';
                     showNotification(`${productName} added to cart!`, 'success');
@@ -749,13 +901,13 @@
                 } else {
                     showNotification(result.error || 'Failed to add item to cart', 'error');
                 }
-                
+
             } catch (error) {
                 console.error('Error adding to cart:', error);
                 showNotification('Error adding item to cart', 'error');
             }
         }
-        
+
         // Update cart counter
         function updateCartCounter() {
             try {
@@ -769,25 +921,25 @@
                 console.error('Error updating cart counter:', error);
             }
         }
-        
+
         // Initialize cart system
         async function initializeCartSystem() {
             try {
                 console.log('🛒 Initializing cart system...');
-                
+
                 // Wait for CartManager to be available
                 let retries = 0;
                 while (!window.cartManager && retries < 30) {
                     await new Promise(resolve => setTimeout(resolve, 200));
                     retries++;
                 }
-                
+
                 if (window.cartManager) {
                     console.log('✅ Cart manager available');
-                    
+
                     // Initial cart counter update
                     updateCartCounter();
-                    
+
                     // Listen for cart changes
                     if (typeof window.cartManager.addListener === 'function') {
                         window.cartManager.addListener('cart_updated', updateCartCounter);
@@ -795,34 +947,34 @@
                 } else {
                     console.warn('⚠️ Cart manager not available after timeout');
                 }
-                
+
             } catch (error) {
                 console.error('Error initializing cart system:', error);
             }
         }
-        
+
         // Show notification
         function showNotification(message, type = 'info') {
             // Remove existing notifications
             const existing = document.querySelectorAll('.catalog-notification');
             existing.forEach(el => el.remove());
-            
+
             const notification = document.createElement('div');
             notification.className = `catalog-notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${
                 type === 'success' ? 'bg-green-500 text-white' :
                 type === 'error' ? 'bg-red-500 text-white' :
                 'bg-blue-500 text-white'
             }`;
-            
+
             notification.innerHTML = `
                 <div class="flex items-center space-x-2">
                     <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
                     <span>${message}</span>
                 </div>
             `;
-            
+
             document.body.appendChild(notification);
-            
+
             // Auto remove after 3 seconds
             setTimeout(() => {
                 if (notification.parentNode) {
@@ -830,14 +982,14 @@
                 }
             }, 3000);
         }
-        
+
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Catalog ready, setting up...');
-            
+
             // Initialize cart system
             initializeCartSystem();
-            
+
             // Set up filter event listeners
             document.getElementById('search-input').addEventListener('input', applyFilters);
             document.getElementById('category-filter').addEventListener('change', applyFilters);
@@ -846,26 +998,30 @@
             document.getElementById('in-stock-filter').addEventListener('change', applyFilters);
             document.getElementById('featured-filter').addEventListener('change', applyFilters);
             document.getElementById('sort-select').addEventListener('change', applyFilters);
-            
+
             // Clear filters
             document.getElementById('clear-filters').addEventListener('click', function() {
                 document.getElementById('search-input').value = '';
-                document.getElementById('category-filter').value = '';
                 document.getElementById('min-price').value = '';
                 document.getElementById('max-price').value = '';
                 document.getElementById('in-stock-filter').checked = false;
                 document.getElementById('featured-filter').checked = false;
                 document.getElementById('sort-select').value = 'name';
-                applyFilters();
+                selectCategory('');
             });
-            
+
+            // Clear category button
+            document.getElementById('clear-category').addEventListener('click', function() {
+                selectCategory('');
+            });
+
             // Listen for language changes to refresh category translations
             window.addEventListener('language-changed', function() {
                 console.log('🌍 Language changed, refreshing category translations...');
                 refreshCategoryTranslations();
                 renderProducts(); // Re-render products to show translated category names
             });
-            
+
             // Also listen for storage changes (when language is changed from another tab)
             window.addEventListener('storage', function(e) {
                 if (e.key === 'interbus_language') {
@@ -875,11 +1031,11 @@
                 }
             });
         });
-        
+
         // Initialize after dependencies load
         window.addEventListener('load', async function() {
             console.log('🎯 Window loaded, initializing catalog...');
-            
+
             try {
                 // Wait for config to load
                 await new Promise(resolve => {
@@ -896,18 +1052,18 @@
                         checkConfig();
                     }
                 });
-                
+
                 // Load categories first
                 await loadCategoriesForFilter();
-                
+
                 // Load products
                 await loadProducts();
-                
+
                 // Handle URL parameters
                 handleUrlParameters();
-                
+
                 console.log('✅ Catalog initialized successfully');
-                
+
             } catch (error) {
                 console.error('Error initializing catalog:', error);
             }

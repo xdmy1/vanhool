@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inter Bus - Categories</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="css/custom-colors.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .category-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            transition: box-shadow 0.2s;
+        }
+        .category-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .category-header {
+            background: #e8e8e8;
+            padding: 10px 16px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #333;
+        }
+        .category-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #1a1a2e;
+            display: block;
+        }
+        .category-image-placeholder {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .category-image-placeholder i {
+            font-size: 48px;
+            color: rgba(255,255,255,0.3);
+        }
+        .subcategory-list {
+            padding: 12px 16px;
+        }
+        .subcategory-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: #555;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            transition: color 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .subcategory-item:hover {
+            color: #D04A42;
+        }
+        .subcategory-item::before {
+            content: '»';
+            margin-right: 10px;
+            color: #999;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .subcategory-item:hover::before {
+            color: #D04A42;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen" style="font-family: 'Inter', sans-serif;">
+    <!-- Header -->
+    <header class="bg-white sticky top-0 z-50 border-b border-slate-200">
+        <div class="container mx-auto px-4 lg:px-8">
+            <nav class="flex items-center justify-between h-16 lg:h-20">
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center hover:opacity-80 transition-opacity">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 lg:h-10 w-auto">
+                    </a>
+                </div>
+                <div class="flex-1 flex justify-center">
+                    <div class="hidden lg:flex items-center space-x-8">
+                        <a href="categories.html" class="flex items-center space-x-1 text-red-600 font-medium transition-colors">
+                            <i class="fas fa-th-large mr-1"></i>
+                            <span data-translate="categories">Categories</span>
+                        </a>
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="catalog">Catalog</a>
+                        <a href="about.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="about">About</a>
+                        <a href="contact.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-red-50" data-translate="contact">Contact</a>
+                    </div>
+                    <div class="hidden md:flex lg:hidden items-center space-x-4">
+                        <a href="categories.html" class="text-red-600 font-medium transition-colors" data-translate="categories">Categories</a>
+                        <a href="catalog.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="catalog">Catalog</a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-2 lg:space-x-4">
+                        <button id="mobile-menu-button" class="lg:hidden flex items-center px-3 py-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div class="relative hidden sm:block">
+                            <button onclick="toggleLanguageDropdown()" class="flex items-center space-x-1 text-gray-700 hover:text-red-600 py-2 px-2 lg:px-3 rounded-md transition-colors">
+                                <span id="current-lang" class="text-sm font-medium">EN</span>
+                                <i class="fas fa-chevron-down text-xs"></i>
+                            </button>
+                            <div id="language-dropdown" class="absolute top-full right-0 bg-white shadow-lg border rounded-lg hidden z-50 min-w-max">
+                                <button onclick="setLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">EN</button>
+                                <button onclick="setLanguage('ro')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">RO</button>
+                                <button onclick="setLanguage('ru')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 w-full text-left">RU</button>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <a href="cart.html" class="flex items-center text-gray-600 hover:text-red-600 transition-colors p-2 rounded-lg hover:bg-red-50">
+                                <i class="fas fa-shopping-cart text-lg"></i>
+                                <span id="cart-counter" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">0</span>
+                            </a>
+                        </div>
+                        <div id="auth-links" class="hidden md:flex items-center space-x-3">
+                            <a href="login.html" class="text-gray-600 hover:text-red-600 font-medium transition-colors" data-translate="login">Login</a>
+                            <a href="register.html" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md" data-translate="register">Register</a>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="lg:hidden hidden bg-white border-t shadow-lg max-h-screen overflow-y-auto">
+                <div class="px-4 py-3 space-y-2">
+                    <div class="space-y-1">
+                        <a href="categories.html" class="block px-3 py-2 text-red-600 bg-red-50 rounded-lg font-medium">
+                            <i class="fas fa-th-large mr-2"></i>Categories
+                        </a>
+                        <a href="catalog.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="catalog">
+                            <i class="fas fa-th-grid mr-2"></i>Catalog
+                        </a>
+                        <a href="about.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="about">
+                            <i class="fas fa-info-circle mr-2"></i>About
+                        </a>
+                        <a href="contact.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" data-translate="contact">
+                            <i class="fas fa-envelope mr-2"></i>Contact
+                        </a>
+                        <a href="cart.html" class="block px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            <i class="fas fa-shopping-cart mr-2"></i><span data-translate="shopping_cart">Shopping Cart</span>
+                        </a>
+                    </div>
+                    <div class="border-t pt-2">
+                        <div class="flex justify-center space-x-4">
+                            <button onclick="setLanguage('en')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">EN</button>
+                            <button onclick="setLanguage('ro')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">RO</button>
+                            <button onclick="setLanguage('ru')" class="px-2 py-1 text-sm text-gray-600 hover:text-red-600 transition-colors">RU</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="container mx-auto px-4 lg:px-8 py-8">
+        <!-- Loading State -->
+        <div id="categories-loading" class="text-center py-16">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p class="text-gray-500" data-translate="loading_categories">Loading categories...</p>
+        </div>
+
+        <!-- Categories Grid -->
+        <div id="categories-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Dynamically populated -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16">
+        <div class="container mx-auto px-4 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="md:col-span-1">
+                    <div class="flex items-center mb-4">
+                        <img src="LOGO1 1.svg" alt="Inter Bus" class="h-8 w-auto mr-3">
+                        <span class="text-xl font-bold">Inter Bus</span>
+                    </div>
+                    <p class="text-slate-400 mb-4" data-translate="footer_description">Your trusted partner for authentic bus parts and components worldwide.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="quick_links">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-slate-400 hover:text-white transition-colors" data-translate="home">Home</a></li>
+                        <li><a href="catalog.html" class="text-slate-400 hover:text-white transition-colors" data-translate="catalog">Catalog</a></li>
+                        <li><a href="about.html" class="text-slate-400 hover:text-white transition-colors" data-translate="about">About</a></li>
+                        <li><a href="contact.html" class="text-slate-400 hover:text-white transition-colors" data-translate="contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="categories">Categories</h4>
+                    <ul class="space-y-2">
+                        <li><a href="catalog.html?category=brakes" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_brakes">Brakes</a></li>
+                        <li><a href="catalog.html?category=air-pressure" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_air_pressure">Air Pressure</a></li>
+                        <li><a href="catalog.html?category=engine-extension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_engine_extension">Engine & Extension</a></li>
+                        <li><a href="catalog.html?category=chassis-suspension" class="text-slate-400 hover:text-white transition-colors" data-translate="footer_chassis_suspension">Chassis & Suspension</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4 text-slate-200" data-translate="contact">Contact</h4>
+                    <ul class="space-y-3">
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-phone mr-3 text-red-500"></i>+373 123 456 789</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-envelope mr-3 text-red-500"></i>contact@interbus.md</li>
+                        <li class="text-slate-400 flex items-center"><i class="fas fa-map-marker-alt mr-3 text-red-500"></i><span data-translate="address">Chișinău, Moldova</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 mt-12 text-center text-slate-500 text-sm">
+                <p>&copy; 2025 Inter Bus. <span data-translate="all_rights_reserved">All rights reserved.</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/app-universal.js"></script>
+    <script>
+        const categoryIcons = {
+            'brakes': 'fas fa-stop-circle',
+            'air-pressure': 'fas fa-wind',
+            'chassis-suspension': 'fas fa-car-side',
+            'electro': 'fas fa-bolt',
+            'engine-extension': 'fas fa-cog',
+            'clutch-gearbox': 'fas fa-cogs',
+            'steering-axle-hubs': 'fas fa-steering-wheel',
+            'bodywork': 'fas fa-car',
+            'air-conditioning-heating': 'fas fa-thermometer-half',
+            'interior': 'fas fa-chair',
+            'silicone-pipe': 'fas fa-grip-lines',
+            'abc-raufoss-air-couplings': 'fas fa-plug'
+        };
+
+        async function loadCategories() {
+            const loading = document.getElementById('categories-loading');
+            const grid = document.getElementById('categories-grid');
+            const currentLang = localStorage.getItem('interbus_language') || 'en';
+
+            try {
+                const supabaseClient = window.CONFIG?.supabase || window.supabase;
+                if (!supabaseClient) throw new Error('Supabase not available');
+
+                const { data: allCategories, error } = await supabaseClient
+                    .from('categories')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('sort_order', { ascending: true });
+
+                if (error) throw error;
+                if (!allCategories || allCategories.length === 0) throw new Error('No categories');
+
+                const parents = allCategories.filter(c => !c.parent_id);
+                const children = allCategories.filter(c => c.parent_id);
+
+                grid.innerHTML = parents.map(parent => {
+                    const subs = children.filter(c => c.parent_id === parent.id);
+                    const icon = categoryIcons[parent.slug] || 'fas fa-cog';
+                    const parentName = parent[`name_${currentLang}`] || parent.name_en || parent.name;
+
+                    return `
+                        <div class="category-card rounded-lg overflow-hidden">
+                            <div class="category-header">${parentName}</div>
+                            <a href="catalog.html?category=${parent.slug}" class="category-image-placeholder block" title="Show products in the ${parentName} category">
+                                <i class="${icon}"></i>
+                            </a>
+                            <div class="subcategory-list">
+                                ${subs.map(sub => {
+                                    const subName = sub[`name_${currentLang}`] || sub.name_en || sub.name;
+                                    return `<a href="catalog.html?category=${sub.slug}" class="subcategory-item">${subName}</a>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                loading.classList.add('hidden');
+                grid.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                loading.innerHTML = '<p class="text-red-500">Failed to load categories. Please refresh.</p>';
+            }
+        }
+
+        window.addEventListener('load', function() {
+            loadCategories();
+        });
+    </script>
+</body>
+</html>

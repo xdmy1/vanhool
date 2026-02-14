@@ -134,6 +134,7 @@ class CatalogManager {
             const { data, error } = await supabase
                 .from('categories')
                 .select('*')
+                .eq('is_active', true)
                 .order('sort_order', { ascending: true });
 
             if (error) throw error;
@@ -589,9 +590,18 @@ class CatalogManager {
     // Fallback methods for when Supabase is not available
     getStaticCategories() {
         return [
-            { id: '1', slug: 'brake-system', name_en: 'Brake System', name_ro: 'Sistem de Frânare', name_ru: 'Тормозная система', parent_id: null, sort_order: 1 },
-            { id: '2', slug: 'air-pressure', name_en: 'Air Pressure', name_ro: 'Presiune Aer', name_ru: 'Пневматическая система', parent_id: null, sort_order: 2 },
-            { id: '3', slug: 'chassis-suspension', name_en: 'Chassis & Suspension', name_ro: 'Șasiu și Suspensie', name_ru: 'Шасси и подвеска', parent_id: null, sort_order: 3 }
+            { id: '1', slug: 'brakes', name_en: 'Brakes', name_ro: 'Frâne', name_ru: 'Тормоза', parent_id: null, sort_order: 1 },
+            { id: '2', slug: 'air-pressure', name_en: 'Air Pressure', name_ro: 'Presiune Aer', name_ru: 'Пневматика', parent_id: null, sort_order: 2 },
+            { id: '3', slug: 'chassis-suspension', name_en: 'Chassis & Suspension', name_ro: 'Sasiu & Suspensie', name_ru: 'Шасси и подвеска', parent_id: null, sort_order: 3 },
+            { id: '4', slug: 'electro', name_en: 'Electro', name_ro: 'Electro', name_ru: 'Электрика', parent_id: null, sort_order: 4 },
+            { id: '5', slug: 'engine-extension', name_en: 'Engine & Extension', name_ro: 'Motor & Extensie', name_ru: 'Двигатель и комплектующие', parent_id: null, sort_order: 5 },
+            { id: '6', slug: 'clutch-gearbox', name_en: 'Clutch & Gearbox', name_ro: 'Ambreiaj & Cutie de Viteze', name_ru: 'Сцепление и КПП', parent_id: null, sort_order: 6 },
+            { id: '7', slug: 'steering-axle-hubs', name_en: 'Steering & Axle Hubs', name_ro: 'Direcție & Butuci Axe', name_ru: 'Рулевое управление и ступицы', parent_id: null, sort_order: 7 },
+            { id: '8', slug: 'bodywork', name_en: 'Bodywork', name_ro: 'Caroserie', name_ru: 'Кузов', parent_id: null, sort_order: 8 },
+            { id: '9', slug: 'air-conditioning-heating', name_en: 'Air Conditioning & Heating', name_ro: 'Aer Condiționat & Încălzire', name_ru: 'Кондиционер и отопление', parent_id: null, sort_order: 9 },
+            { id: '10', slug: 'interior', name_en: 'Interior', name_ro: 'Interior', name_ru: 'Интерьер', parent_id: null, sort_order: 10 },
+            { id: '11', slug: 'silicone-pipe', name_en: 'Silicone Pipe', name_ro: 'Țeavă Silicon', name_ru: 'Силиконовые трубки', parent_id: null, sort_order: 11 },
+            { id: '12', slug: 'abc-raufoss-air-couplings', name_en: 'ABC Raufoss Air Couplings', name_ro: 'Cuplaje Aer ABC Raufoss', name_ru: 'Воздушные муфты ABC Raufoss', parent_id: null, sort_order: 12 }
         ];
     }
 
