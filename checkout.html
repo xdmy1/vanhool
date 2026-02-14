@@ -82,7 +82,7 @@
                         <div class="flex items-center">
                             <i class="fas fa-info-circle text-green-600 mr-2"></i>
                             <p class="text-sm text-green-800" data-translate="simplified_process_info">
-                                <strong>Proces simplificat:</strong> Completati doar numele si adresa. Plata se face la primirea produselor.
+                                <strong>Proces simplificat:</strong> Completati datele si alegeti metoda de plata.
                             </p>
                         </div>
                     </div>
@@ -98,9 +98,27 @@
                                            class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm">
                                 </div>
                                 <div>
-                                    <label for="phone" class="block text-sm font-medium text-slate-700" data-translate="phone_label">Telefon *</label>
-                                    <input type="tel" id="phone" name="phone" required placeholder="Telefonul dumneavoastra" data-translate-placeholder="phone_placeholder"
+                                    <label for="email" class="block text-sm font-medium text-slate-700" data-translate="checkout_email">Email *</label>
+                                    <input type="email" id="email" name="email" required placeholder="email@exemplu.com" data-translate-placeholder="checkout_email_placeholder"
                                            class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label for="phone" class="block text-sm font-medium text-slate-700" data-translate="phone_label">Telefon *</label>
+                                    <div class="mt-1 flex">
+                                        <select id="countryCode" name="countryCode"
+                                                class="border-slate-300 rounded-l-lg shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm w-28 flex-shrink-0">
+                                            <option value="+373">+373 MD</option>
+                                            <option value="+40">+40 RO</option>
+                                            <option value="+7">+7 RU</option>
+                                            <option value="+44">+44 UK</option>
+                                            <option value="+49">+49 DE</option>
+                                            <option value="+33">+33 FR</option>
+                                            <option value="+39">+39 IT</option>
+                                            <option value="+34">+34 ES</option>
+                                        </select>
+                                        <input type="tel" id="phone" name="phone" required placeholder="6X XXX XXX" data-translate-placeholder="checkout_phone_placeholder"
+                                               class="block w-full border-slate-300 rounded-r-lg shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm border-l-0">
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -121,24 +139,41 @@
 
                         <!-- Payment Method -->
                         <section>
-                            <h2 class="text-lg font-semibold text-slate-900 mb-4" data-translate="payment_method">Metoda de plata</h2>
-                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div class="flex items-center">
-                                    <input type="radio" name="paymentMethod" value="cash" checked disabled
-                                           class="text-green-600 focus:ring-green-500 border-slate-300">
-                                    <div class="ml-3">
-                                        <div class="text-sm font-medium text-slate-900 flex items-center">
-                                            <i class="fas fa-money-bill-wave mr-2 text-green-600"></i>
-                                            <span data-translate="cash_on_delivery">Plata la livrare (Ramburs)</span>
+                            <h2 class="text-lg font-semibold text-slate-900 mb-4" data-translate="payment_method_title">Metoda de plata</h2>
+                            <div class="space-y-3">
+                                <!-- Cash on Delivery -->
+                                <label class="block cursor-pointer">
+                                    <div class="payment-option border border-slate-200 rounded-lg p-4 hover:border-red-300 transition-colors" id="payment-cash-option">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="paymentMethod" value="cash" checked
+                                                   class="text-red-600 focus:ring-red-500 border-slate-300">
+                                            <div class="ml-3 flex-1">
+                                                <div class="text-sm font-medium text-slate-900 flex items-center">
+                                                    <i class="fas fa-money-bill-wave mr-2 text-green-600"></i>
+                                                    <span data-translate="payment_cash">Plata la livrare (Ramburs)</span>
+                                                </div>
+                                                <div class="text-sm text-slate-500 mt-1" data-translate="payment_cash_desc">Platiti cu bani cash la primirea produselor</div>
+                                            </div>
                                         </div>
-                                        <div class="text-sm text-green-700" data-translate="cash_on_delivery_desc">Platiti cu bani cash la primirea produselor</div>
                                     </div>
-                                </div>
+                                </label>
+                                <!-- Bank Transfer -->
+                                <label class="block cursor-pointer">
+                                    <div class="payment-option border border-slate-200 rounded-lg p-4 hover:border-red-300 transition-colors" id="payment-transfer-option">
+                                        <div class="flex items-center">
+                                            <input type="radio" name="paymentMethod" value="transfer"
+                                                   class="text-red-600 focus:ring-red-500 border-slate-300">
+                                            <div class="ml-3 flex-1">
+                                                <div class="text-sm font-medium text-slate-900 flex items-center">
+                                                    <i class="fas fa-university mr-2 text-blue-600"></i>
+                                                    <span data-translate="payment_transfer">Transfer bancar</span>
+                                                </div>
+                                                <div class="text-sm text-slate-500 mt-1" data-translate="payment_transfer_desc">Veti primi o factura pe email pentru plata</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
                             </div>
-                            <p class="mt-2 text-xs text-slate-500" data-translate="payment_info_note">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                Plata se face direct curierului la primirea coletului. Nu este necesara plata in avans.
-                            </p>
                         </section>
 
                         <!-- Order Notes -->
@@ -154,7 +189,7 @@
                                 <input type="checkbox" id="acceptTerms" name="acceptTerms" required
                                        class="mt-1 rounded border-slate-300 text-red-600 shadow-sm focus:border-red-300 focus:ring focus:ring-red-200 focus:ring-opacity-50">
                                 <span class="ml-2 text-sm text-slate-600" data-translate="accept_terms_label">
-                                    Sunt de acord sa primesc aceasta comanda si sa platesc la livrare *
+                                    Sunt de acord cu termenii si conditiile comenzii *
                                 </span>
                             </label>
                         </section>

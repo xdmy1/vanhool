@@ -55,7 +55,7 @@ class OrderManager {
 
                 // Customer info (simple)
                 customer_name: orderData.fullName || '',
-                customer_email: user.email || '',
+                customer_email: orderData.email || user.email || '',
                 customer_phone: orderData.phone || '',
                 customer_address: orderData.address || '',
 
@@ -302,6 +302,27 @@ class OrderManager {
         }
     }
     
+    // Update order with invoice info after creation
+    async updateOrderInvoice(orderId, invoiceId, invoiceUrl) {
+        try {
+            const updateData = { invoice_id: invoiceId };
+            if (invoiceUrl) {
+                updateData.invoice_url = invoiceUrl;
+            }
+            const { error } = await CONFIG.supabase
+                .from('orders')
+                .update(updateData)
+                .eq('id', orderId);
+            if (error) {
+                console.error('Failed to update order with invoice info:', error);
+            } else {
+                console.log('✅ Order updated with invoice info:', invoiceId);
+            }
+        } catch (error) {
+            console.error('Error updating order invoice:', error);
+        }
+    }
+
     // Get order by ID
     async getOrder(orderId, includeItems = true) {
         try {

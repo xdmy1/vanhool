@@ -103,11 +103,61 @@ class ThankYouManager {
     
     renderOrderDetails() {
         if (!this.order) return;
-        
+
         this.renderOrderInfo();
         this.renderOrderItems();
         this.renderPaymentInfo();
         this.renderOrderSummary();
+        this.renderPaymentMessage();
+    }
+
+    renderPaymentMessage() {
+        const container = document.getElementById('payment-message-section');
+        if (!container) return;
+
+        const paymentMethod = sessionStorage.getItem('payment_method') || this.order.payment_method || 'cash';
+        const customerEmail = sessionStorage.getItem('customer_email') || this.order.customer_email || '';
+
+        // Clean up sessionStorage
+        sessionStorage.removeItem('payment_method');
+        sessionStorage.removeItem('customer_email');
+        sessionStorage.removeItem('invoice_data');
+
+        if (paymentMethod === 'transfer') {
+            container.innerHTML = `
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-file-invoice text-2xl text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-blue-900" data-translate="thankyou_transfer_title">Invoice sent!</h3>
+                            <p class="text-sm text-blue-800 mt-1" data-translate="thankyou_transfer_desc">An invoice has been sent to your email. Please complete the payment and contact us for confirmation.</p>
+                            ${customerEmail ? `<p class="text-sm text-blue-700 mt-2"><i class="fas fa-envelope mr-1"></i> ${customerEmail}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-phone-alt text-2xl text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg font-semibold text-green-900" data-translate="thankyou_cash_title">Order confirmed!</h3>
+                            <p class="text-sm text-green-800 mt-1" data-translate="thankyou_cash_desc">Your order is confirmed. We will contact you soon to arrange delivery and payment.</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Re-apply translations
+        if (typeof updateTranslations === 'function') {
+            updateTranslations();
+        }
     }
     
     renderOrderInfo() {

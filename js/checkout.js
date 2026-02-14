@@ -221,21 +221,19 @@ class CheckoutManager {
     }
     
     setupEventListeners() {
-        // Skip shipping address logic since we have a simple form
-        
         // Promo code functionality
         document.getElementById('toggle-promo-code').addEventListener('click', () => {
             document.getElementById('promo-code-form').classList.toggle('hidden');
         });
-        
+
         document.getElementById('apply-promo-code').addEventListener('click', () => {
             this.applyPromoCode();
         });
-        
+
         document.getElementById('remove-promo-code').addEventListener('click', () => {
             this.removePromoCode();
         });
-        
+
         // Promo code input enter key
         document.getElementById('promo-code-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -243,25 +241,43 @@ class CheckoutManager {
                 this.applyPromoCode();
             }
         });
-        
+
         // Form submission
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.processOrder();
         });
-        
-        // Phone number formatting
+
+        // Phone number - digits only
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', (e) => {
-            const value = e.target.value.replace(/[^\d+]/g, '');
-            if (!value.startsWith('+')) {
-                e.target.value = '+40' + value.replace(/^\+?40?/, '');
-            } else {
-                e.target.value = value;
-            }
+            e.target.value = e.target.value.replace(/[^\d]/g, '');
         });
-        
-        // Skip postal code validation since we don't have separate postal code fields
+
+        // Payment method selection - highlight selected option
+        const paymentRadios = document.querySelectorAll('input[name="paymentMethod"]');
+        paymentRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.payment-option').forEach(opt => {
+                    opt.classList.remove('border-red-500', 'bg-red-50');
+                    opt.classList.add('border-slate-200');
+                });
+                const selected = document.querySelector('input[name="paymentMethod"]:checked');
+                if (selected) {
+                    const parent = selected.closest('.payment-option');
+                    if (parent) {
+                        parent.classList.remove('border-slate-200');
+                        parent.classList.add('border-red-500', 'bg-red-50');
+                    }
+                }
+            });
+        });
+
+        // Trigger initial highlight
+        const initialSelected = document.querySelector('input[name="paymentMethod"]:checked');
+        if (initialSelected) {
+            initialSelected.dispatchEvent(new Event('change'));
+        }
     }
     
     clearShippingFields() {
@@ -275,13 +291,18 @@ class CheckoutManager {
                 // Pre-fill basic info
                 const fullNameField = document.getElementById('fullName');
                 const phoneField = document.getElementById('phone');
-                
+                const emailField = document.getElementById('email');
+
                 if (user.first_name && user.last_name && fullNameField) {
                     fullNameField.value = `${user.first_name} ${user.last_name}`;
                 } else if (user.full_name && fullNameField) {
                     fullNameField.value = user.full_name;
                 }
-                
+
+                if (user.email && emailField) {
+                    emailField.value = user.email;
+                }
+
                 if (user.phone && phoneField) {
                     phoneField.value = user.phone;
                 }
@@ -360,35 +381,38 @@ class CheckoutManager {
     validateForm() {
         const formData = new FormData(this.form);
         const errors = [];
-        
+
         // Required fields validation
         const requiredFields = [
             { field: 'fullName', message: 'Numele complet este obligatoriu' },
+            { field: 'email', message: 'Email-ul este obligatoriu' },
             { field: 'phone', message: 'Telefonul este obligatoriu' },
             { field: 'address', message: 'Adresa este obligatorie' }
         ];
-        
+
         requiredFields.forEach(({ field, message }) => {
             if (!formData.get(field)?.trim()) {
                 errors.push(message);
             }
         });
-        
-        // Skip email validation since it's not in the form
-        
-        // Phone validation - allow any phone format
-        const phone = formData.get('phone');
-        if (!phone || phone.trim().length === 0) {
-            errors.push('Numărul de telefon este obligatoriu');
+
+        // Email format validation
+        const email = formData.get('email')?.trim();
+        if (email && !UTILS.isValidEmail(email)) {
+            errors.push('Adresa de email nu este validă');
         }
-        
-        // Skip postal code validation since we use simple address field
-        
+
+        // Phone validation
+        const phone = formData.get('phone');
+        if (phone && phone.trim().length < 3) {
+            errors.push('Numărul de telefon este prea scurt');
+        }
+
         // Terms acceptance
         if (!formData.get('acceptTerms')) {
             errors.push('Trebuie să acceptați termenii și condițiile');
         }
-        
+
         return {
             isValid: errors.length === 0,
             errors
@@ -397,39 +421,46 @@ class CheckoutManager {
     
     buildOrderData() {
         const formData = new FormData(this.form);
-        
+
         // Parse full name
         const fullName = formData.get('fullName').trim();
         const nameParts = fullName.split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
-        
+
+        // Build full phone with country code
+        const countryCode = formData.get('countryCode') || '+373';
+        const phoneNumber = (formData.get('phone') || '').replace(/[^\d]/g, '');
+        const fullPhone = countryCode + phoneNumber;
+
         const orderData = {
             // Customer info
             firstName: firstName,
             lastName: lastName,
             fullName: fullName,
-            phone: UTILS.normalizePhone(formData.get('phone')),
-            
-            // Address (simplified - using the single address field)
+            email: formData.get('email').trim(),
+            phone: fullPhone,
+            countryCode: countryCode,
+
+            // Address
             address: formData.get('address').trim(),
             billingAddress: formData.get('address').trim(),
             shippingAddress: formData.get('address').trim(),
-            
+
             // Payment and shipping
             paymentMethod: formData.get('paymentMethod') || 'cash',
             shippingMethod: 'standard',
-            
+
             // Notes
             notes: formData.get('notes')?.trim() || null
         };
-        
+
         return orderData;
     }
     
     async processOrder() {
         if (this.isProcessing) return;
-        
+
         try {
             // Validate form
             const validation = this.validateForm();
@@ -437,43 +468,96 @@ class CheckoutManager {
                 this.showValidationErrors(validation.errors);
                 return;
             }
-            
+
             // Show processing state
             this.setProcessingState(true);
-            
-            // Skip cart validation - proceed directly
-            
+
             // Build order data
             const orderData = this.buildOrderData();
-            
+
             // Create order
             const result = await window.orderManager.createOrder(orderData);
-            
+
             if (result.success) {
                 // Save order info for thank you page
                 sessionStorage.setItem('completed_order', JSON.stringify(result.order));
-                
+
+                // Store payment method for thank-you page
+                sessionStorage.setItem('payment_method', orderData.paymentMethod);
+                sessionStorage.setItem('customer_email', orderData.email);
+
+                // Call Edge Function based on payment method
+                let invoiceData = null;
+                try {
+                    invoiceData = await this.callInvoiceFunction(orderData, result.order);
+                    if (invoiceData && invoiceData.invoiceId) {
+                        sessionStorage.setItem('invoice_data', JSON.stringify(invoiceData));
+                        // Update order with invoice info
+                        await window.orderManager.updateOrderInvoice(
+                            result.order.id,
+                            invoiceData.invoiceId,
+                            invoiceData.invoiceUrl
+                        );
+                    }
+                } catch (invoiceError) {
+                    console.error('Invoice function error (non-blocking):', invoiceError);
+                    // Order is already saved, continue to thank-you
+                }
+
                 // Clear cart
                 window.cartManager.clear();
-                
-                // Handle payment method
-                if (orderData.paymentMethod === 'paynet') {
-                    // Redirect to payment gateway
-                    this.redirectToPayment(result.order);
-                } else {
-                    // Redirect to thank you page
-                    this.redirectToThankYou(result.order);
-                }
-                
+
+                // Redirect to thank you page
+                this.redirectToThankYou(result.order);
+
             } else {
                 throw new Error(result.error);
             }
-            
+
         } catch (error) {
             console.error('Order processing error:', error);
             this.showError(error.message || 'Eroare la procesarea comenzii');
             this.setProcessingState(false);
         }
+    }
+
+    async callInvoiceFunction(orderData, savedOrder) {
+        const SUPABASE_URL = 'https://iqsfmofoezkdnmhbxwbn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxc2Ztb2ZvZXprZG5taGJ4d2JuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1NTA3MTksImV4cCI6MjA3OTEyNjcxOX0.w6BinbOGMZPTxyQ2e65bnSuEyHuEeQ59NQOPOtDW56I';
+        const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/create-invoice`;
+
+        const payload = {
+            action: orderData.paymentMethod === 'transfer' ? 'invoice' : 'confirmation',
+            customerName: orderData.fullName,
+            customerEmail: orderData.email,
+            orderId: savedOrder.id,
+            items: this.cart.items.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price
+            })),
+            subtotal: this.cart.subtotal,
+            shipping: this.cart.shipping,
+            discount: this.cart.discountAmount || 0,
+            total: this.cart.total,
+            countryCode: orderData.countryCode || '+373'
+        };
+
+        const response = await fetch(EDGE_FUNCTION_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Edge function error: ${errText}`);
+        }
+
+        return await response.json();
     }
     
     setProcessingState(processing) {
@@ -492,14 +576,6 @@ class CheckoutManager {
             loadingOverlay.classList.add('hidden');
             this.form.style.pointerEvents = '';
         }
-    }
-    
-    redirectToPayment(order) {
-        // In a real implementation, you would integrate with Paynet or other payment gateway
-        // For now, simulate payment processing
-        setTimeout(() => {
-            this.redirectToThankYou(order);
-        }, 2000);
     }
     
     redirectToThankYou(order) {
