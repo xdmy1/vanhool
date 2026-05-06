@@ -1,4 +1,0 @@
-the dropdown with categories from index.html does not link to anything nor the correct category. make it do so and then take it and put on the other navs on the other pages having navbar
-on product.html on related products section, the related products are not being displayed, also add the footer on that page as well
-filtering does not work normally on catalog.html and the dropdown from index.html
-translations 

@@ -1,142 +1,84 @@
-# Van Hool Parts - Complete E-commerce Application
+# Inter Bus — Next.js
 
-A complete e-commerce application specifically designed for selling rare Van Hool bus parts and components. Features multi-language support (English, Romanian, Russian), SEO optimization for part codes, and complete user management.
+Magazin online de piese auto pentru autobuze **Inter Bus**, migrat de pe site static vanilla JS pe Next.js 16 App Router + Supabase + next-intl. Deployment: Vercel.
 
-## ✨ Features
+## Status
 
-### Core Features
-- 🛒 **Complete E-commerce Functionality**: Product catalog, shopping cart, checkout
-- 🌍 **Multi-language Support**: English, Romanian, Russian
-- 🔍 **SEO Optimized**: Part codes in URLs for Google discoverability  
-- 🚌 **Van Hool Specific Categories**: Brake systems, air pressure, chassis, etc.
-- 👤 **User Authentication**: Registration, login, profile management
-- 📱 **Responsive Design**: Works perfectly on mobile, tablet, and desktop
+Faza 1 — **Fundație**. Baza Next.js + design system + routing + Supabase SSR + layout + home placeholder. Paginile de catalog, produs, cart, checkout, dashboard, admin vin în fazele următoare.
 
-### Van Hool Categories
-- **Brake System**: Brake pads, discs, drums, calipers, lines, valves
-- **Air Pressure**: Compressors, tanks, dryers, regulators, lines
-- **Chassis & Suspension**: Shock absorbers, springs, stabilizers, bushings
-- **Axles & Transmission**: Drive axles, differentials, gearboxes, clutches
-- **Body & Interior**: Doors, windows, seats, panels, mirrors
-- **Engine & Cooling**: Radiators, fans, pumps, thermostats, filters
-- **Electrical System**: Lighting, wiring, switches, batteries, sensors
+## Stack
 
-### Technical Features
-- 🔐 **Secure Authentication**: Supabase Auth with social login options
-- 🛡️ **Row Level Security**: Database protection with RLS policies
-- 💳 **Payment Integration**: Paynet payment gateway ready
-- 🎯 **Admin Panel**: Comprehensive management interface
-- 📊 **Analytics Ready**: Track conversions and user behavior
-- ⚡ **Performance Optimized**: Fast loading with caching
+- Next.js 16 App Router · React 19.2 · TypeScript
+- Tailwind CSS v4 (CSS-first config, CSS variables)
+- shadcn/ui primitives (Radix + copy-in)
+- @supabase/ssr (Server Components first)
+- next-intl 4.x (3 locale-uri: ro, en, ru)
+- Zustand (cart — Faza 3), react-hook-form + zod, sonner, lucide-react
+- Geist Sans/Mono
+- Turbopack (default în Next.js 16)
 
-## 🚀 Setup Instructions
+## Setup
 
-### 1. Supabase Configuration
+```bash
+cp .env.local.example .env.local
+# (optional) add SUPABASE_SERVICE_ROLE_KEY for admin features in Faza 5
 
-1. **Create Supabase Project**
-   - Go to [supabase.com](https://supabase.com)
-   - Create a new project
-   - Note down your Project URL and API Key
+npm install
+npm run dev      # http://localhost:3000
+npm run typecheck
+npm run lint
+npm run build
+```
 
-2. **Configure Database**
-   - In your Supabase dashboard, go to SQL Editor
-   - Run the commands from `supabase-schema.sql` to create all tables
-   - Run the commands from `initial-data.sql` to populate with sample data
+## Structure
 
-3. **Setup Storage**
-   - Go to Storage in your Supabase dashboard
-   - Create a new bucket called `product-images`
-   - Make it public for product image access
+```
+app/
+├── layout.tsx             # root — html/body, Geist, metadata
+├── [locale]/
+│   ├── layout.tsx         # locale-aware layout: NextIntlClientProvider, Navbar, Footer
+│   ├── page.tsx           # home
+│   ├── not-found.tsx
+│   └── {catalog,categories,product,cart,checkout,about,contact,login,register,dashboard,admin}/
+└── globals.css            # design tokens + Tailwind v4 @theme
 
-4. **Configure Application**
-   - Open `js/config.js`
-   - Replace `SUPABASE_URL` with your project URL
-   - Replace `SUPABASE_ANON_KEY` with your anon/public key
+components/
+├── ui/                    # button, input, dropdown-menu (shadcn copy-in)
+├── layout/                # Navbar, Footer, Logo, LocaleSwitcher, Container
+└── common/                # PlaceholderPage (Faza 1), etc.
 
-### 2. Admin Access
+lib/
+├── supabase/              # client.ts, server.ts, middleware.ts, admin.ts, database.types.ts
+├── i18n/                  # routing.ts (defineRouting + createNavigation), request.ts, config.ts
+├── cart/                  # Zustand store + pricing + sync (Faza 3)
+└── utils/cn.ts
 
-- The admin panel is accessible at `/admin/index.html`
-- First user to register can be made admin by updating the database:
-  ```sql
-  UPDATE profiles SET is_admin = true WHERE email = 'your-admin-email@example.com';
-  ```
+messages/
+├── ro.json / en.json / ru.json
 
-### 3. Development Setup
+proxy.ts                   # Next.js 16 proxy: next-intl locale + Supabase session refresh
+next.config.ts             # withNextIntl + images remotePatterns (Supabase storage)
+tailwind.config.ts         # (nu mai e necesar — config în globals.css cu @theme)
+```
 
-1. **Local Development**
-   - Use a local server (Live Server extension in VS Code recommended)
-   - All features work offline with demo data if Supabase isn't configured
+## Design tokens
 
-2. **Production Deployment**
-   - Upload all files to your web server
-   - Ensure HTTPS is enabled for Supabase authentication
-   - Update the site URL in Supabase dashboard settings
+Definite în `app/globals.css`:
 
-## 📊 Database Schema
+- `--background: #0a0a0a`, `--surface: #141414`, `--surface-elevated: #1c1c1c`
+- `--primary: #D04941` (roșu din logo), `--accent-dark: #2B2B2B` (negru din logo)
+- `--foreground: #fafafa`, `--muted: #a1a1a1`, `--muted-strong: #d4d4d4`
+- `--border: #262626`, `--border-strong: #333333`
 
-### Core Tables
-- **products**: Product information with multi-language support
-- **categories**: Hierarchical category structure  
-- **profiles**: User profiles extending Supabase auth
-- **orders**: Order management with status tracking
-- **cart_items**: Shopping cart persistence
-- **reviews**: Product reviews and ratings
-- **promo_codes**: Discount code system
+Access în Tailwind: `bg-background`, `bg-primary`, `text-muted`, `border-border`, etc.
 
-## 🔧 Configuration Options
+## Roadmap
 
-### Payment Methods (in `js/config.js`)
-- **Paynet**: Primary payment gateway
-- **Cash on Delivery**: For local orders  
-- **Bank Transfer**: For larger orders
+- [x] **Faza 1** — Fundație (bootstrap, design system, routing, SSR Supabase, home)
+- [ ] **Faza 2** — Catalog, categorii, product detail
+- [ ] **Faza 3** — Cart, checkout, auth, dashboard
+- [ ] **Faza 4** — Marketing pages (about, contact)
+- [ ] **Faza 5** — Admin panel complet
+- [ ] **Faza 6** — Polish, SEO, DNS cutover la Vercel
 
-### Languages
-Supported languages with complete translations:
-- **English** (en) - Default
-- **Romanian** (ro) - Complete translations
-- **Russian** (ru) - Complete translations
-
-## 🔐 Security Features
-
-- **Authentication**: Supabase Auth with social login
-- **Row Level Security**: Database-level access control
-- **Input Validation**: Frontend and backend validation
-- **CSRF Protection**: Built-in Supabase protection
-
-## 📈 SEO Optimization
-
-- Part codes included in product URLs for Google discoverability
-- Sitemap.xml for search engine indexing
-- Meta tags optimized for Van Hool parts
-- Mobile-first responsive design
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-1. **Supabase Connection Fails**
-   - Check your project URL and API key in config.js
-   - Verify your project is not paused in Supabase dashboard
-
-2. **Products Not Loading**
-   - Ensure database schema is properly created
-   - Check if sample data is inserted
-   - Verify RLS policies are correctly set
-
-3. **Authentication Issues**
-   - Check Supabase Auth settings
-   - Verify site URL is configured correctly
-   - Ensure HTTPS is used in production
-
-## 📞 Support
-
-For questions or issues with this Van Hool Parts application:
-
-- **Email**: contact@vanhoolparts.com
-- **Phone**: +31 20 123 4567
-- **Address**: Bernard Connellystraat 86, 2500 Lier, Belgium
-
----
-
-**Built with**: Supabase, Tailwind CSS, Vanilla JavaScript
-**Optimized for**: Van Hool bus parts, Multi-language support, SEO performance
+Plan complet: `/Users/bobernagadamian/.claude/plans/parallel-dreaming-anchor.md`.

@@ -1,0 +1,5 @@
+ insert into public.profiles (id, email, full_name, is_admin)                                                                                                         
+  select id, email, coalesce(raw_user_meta_data->>'full_name', email), true
+  from auth.users                                                                                                                                                      
+  where email = 'bobernagadamianw2312@gmail.com'
+  on conflict (id) do update set is_admin = true;  

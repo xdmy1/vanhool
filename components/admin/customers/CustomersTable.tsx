@@ -1,0 +1,178 @@
+"use client";
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ShieldCheck, ShieldOff, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
+
+import { Price } from "@/components/common/Price";
+import { setCustomerAdmin } from "@/lib/admin/customers/actions";
+import type { AdminCustomerRow } from "@/lib/admin/queries";
+import { cn } from "@/lib/utils/cn";
+
+type Labels = {
+  empty: string;
+  name: string;
+  email: string;
+  phone: string;
+  orders: string;
+  spent: string;
+  role: string;
+  role_admin: string;
+  role_customer: string;
+  promote: string;
+  demote: string;
+};
+
+export function CustomersTable({
+  rows,
+  currentUserId,
+  locale,
+  labels,
+}: {
+  rows: AdminCustomerRow[];
+  currentUserId: string;
+  locale: string;
+  labels: Labels;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const onToggle = (userId: string, currentlyAdmin: boolean) => {
+    if (userId === currentUserId && currentlyAdmin) {
+      toast.error("Cannot revoke your own admin role");
+      return;
+    }
+    startTransition(async () => {
+      const res = await setCustomerAdmin(userId, !currentlyAdmin);
+      if (!res.ok) {
+        toast.error(res.message ?? "error");
+        return;
+      }
+      toast.success("✓");
+      router.refresh();
+    });
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div className="flex items-center justify-center rounded-md border border-border bg-surface px-6 py-16 text-sm text-muted">
+        {labels.empty}
+      </div>
+    );
+  }
+
+  const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
+
+  return (
+    <div className="overflow-hidden rounded-md border border-border bg-surface">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+            <th className="px-3 py-3">{labels.name}</th>
+            <th className="hidden px-3 py-3 md:table-cell">{labels.phone}</th>
+            <th className="px-3 py-3 text-right">{labels.orders}</th>
+            <th className="px-3 py-3 text-right">{labels.spent}</th>
+            <th className="px-3 py-3">{labels.role}</th>
+            <th className="px-3 py-3 text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => {
+            const isSelf = c.id === currentUserId;
+            const initial = (c.full_name || c.email || "?").charAt(0).toUpperCase();
+            return (
+              <tr
+                key={c.id}
+                className={cn(
+                  "border-b border-border last:border-b-0 transition-colors hover:bg-background/30",
+                  pending && "opacity-60",
+                )}
+              >
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-full border font-mono text-xs font-bold",
+                        c.is_admin
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-accent-dark text-muted-strong",
+                      )}
+                    >
+                      {initial}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">
+                        {c.full_name ?? "—"}
+                        {isSelf ? (
+                          <span className="ml-2 font-mono text-[10px] uppercase text-muted">
+                            (you)
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="truncate font-mono text-[11px] text-muted">
+                        {c.email ?? "—"}
+                      </div>
+                      {c.created_at ? (
+                        <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                          {new Date(c.created_at).toLocaleDateString(dateLocale)}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </td>
+                <td className="hidden px-3 py-2.5 font-mono text-xs text-muted-strong md:table-cell">
+                  {c.phone ?? "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
+                  {c.orders_count}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <Price value={c.orders_total} size="sm" accent={false} />
+                </td>
+                <td className="px-3 py-2.5">
+                  {c.is_admin ? (
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+                      <ShieldCheck className="size-3" />
+                      {labels.role_admin}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <UserIcon className="size-3" />
+                      {labels.role_customer}
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <button
+                    type="button"
+                    onClick={() => onToggle(c.id, !!c.is_admin)}
+                    disabled={isSelf && !!c.is_admin}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors",
+                      "border-border bg-surface text-muted-strong",
+                      "hover:border-border-strong hover:text-foreground",
+                      "disabled:cursor-not-allowed disabled:opacity-40",
+                    )}
+                  >
+                    {c.is_admin ? (
+                      <>
+                        <ShieldOff className="size-3" />
+                        {labels.demote}
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="size-3" />
+                        {labels.promote}
+                      </>
+                    )}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
