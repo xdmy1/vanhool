@@ -33,7 +33,8 @@ export class OdooClient {
       this.config.apiKey,
       {},
     ]);
-    if (typeof res !== "number" || res === 0 || res === false) {
+    // Odoo returns false for auth failure, otherwise a positive uid number.
+    if (typeof res !== "number" || res === 0) {
       throw new OdooError("Odoo authentication failed", 401, res);
     }
     this.uid = res;

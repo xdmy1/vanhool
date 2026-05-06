@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 import { getOdooClient, OdooError } from "./client";
 import { isOdooConfigured } from "./config";
 import {
@@ -481,7 +482,8 @@ export async function applyProductUpdate(payload: {
   active?: boolean;
 }): Promise<boolean> {
   const supabase = getSupabaseAdmin();
-  const update: Record<string, unknown> = {
+  type ProductUpdate = Database["public"]["Tables"]["products"]["Update"];
+  const update: ProductUpdate = {
     odoo_synced_at: new Date().toISOString(),
   };
   if (typeof payload.qty_available === "number") {
