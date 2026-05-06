@@ -106,49 +106,63 @@ export async function listModelsByMake(makeSlug: string): Promise<{
   make: VehicleMake;
   models: VehicleModel[];
 } | null> {
-  const make = await getMakeBySlug(makeSlug);
-  if (!make) return null;
+  try {
+    const make = await getMakeBySlug(makeSlug);
+    if (!make) return null;
 
-  const supabase = await createClient();
-  const { data: models } = await supabase
-    .from("vehicle_models")
-    .select("id, make_id, slug, name, year_from, year_to, body_type, image_url")
-    .eq("make_id", make.id)
-    .eq("is_active", true)
-    .order("name", { ascending: true });
+    const supabase = await createClient();
+    const { data: models, error: modelsErr } = await supabase
+      .from("vehicle_models")
+      .select("id, make_id, slug, name, year_from, year_to, body_type, image_url")
+      .eq("make_id", make.id)
+      .eq("is_active", true)
+      .order("name", { ascending: true });
 
-  if (!models || models.length === 0) {
-    return { make, models: [] };
+    if (modelsErr) {
+      console.error("[listModelsByMake] models query error:", modelsErr);
+      return { make, models: [] };
+    }
+    if (!models || models.length === 0) {
+      return { make, models: [] };
+    }
+
+    // Chunk IN() into batches of 100 so URL stays small.
+    const counts = new Map<string, number>();
+    const ids = models.map((m) => m.id);
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const { data: typeRows, error: typesErr } = await supabase
+        .from("vehicle_types")
+        .select("model_id")
+        .eq("is_active", true)
+        .in("model_id", chunk);
+      if (typesErr) {
+        console.error("[listModelsByMake] types query error:", typesErr);
+        continue;
+      }
+      for (const r of typeRows ?? []) {
+        counts.set(r.model_id, (counts.get(r.model_id) ?? 0) + 1);
+      }
+    }
+
+    return {
+      make,
+      models: models.map((m) => ({
+        id: m.id,
+        makeId: m.make_id,
+        slug: m.slug,
+        name: m.name,
+        yearFrom: m.year_from,
+        yearTo: m.year_to,
+        bodyType: m.body_type,
+        imageUrl: m.image_url,
+        typeCount: counts.get(m.id) ?? 0,
+      })),
+    };
+  } catch (e) {
+    console.error("[listModelsByMake] unexpected error for slug=" + makeSlug, e);
+    throw e;
   }
-
-  const { data: typeRows } = await supabase
-    .from("vehicle_types")
-    .select("model_id")
-    .eq("is_active", true)
-    .in(
-      "model_id",
-      models.map((m) => m.id),
-    );
-
-  const counts = new Map<string, number>();
-  for (const r of typeRows ?? []) {
-    counts.set(r.model_id, (counts.get(r.model_id) ?? 0) + 1);
-  }
-
-  return {
-    make,
-    models: models.map((m) => ({
-      id: m.id,
-      makeId: m.make_id,
-      slug: m.slug,
-      name: m.name,
-      yearFrom: m.year_from,
-      yearTo: m.year_to,
-      bodyType: m.body_type,
-      imageUrl: m.image_url,
-      typeCount: counts.get(m.id) ?? 0,
-    })),
-  };
 }
 
 export async function getModelBySlug(
