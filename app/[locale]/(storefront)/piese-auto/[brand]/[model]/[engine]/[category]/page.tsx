@@ -10,11 +10,8 @@ import {
 } from "@/lib/db/vehicles";
 import { getCategoryBySlug } from "@/lib/db/categories";
 import type { Locale } from "@/lib/db/types";
-import { routing } from "@/lib/i18n/routing";
 
-export async function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function PartsPage({
   params,

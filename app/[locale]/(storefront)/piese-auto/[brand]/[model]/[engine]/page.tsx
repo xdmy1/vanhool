@@ -21,11 +21,8 @@ import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { VehicleCategoryTile } from "@/components/vehicles/VehicleCategoryTile";
 import { getTypeBySlug, listCategoriesForType } from "@/lib/db/vehicles";
 import type { Locale } from "@/lib/db/types";
-import { routing } from "@/lib/i18n/routing";
 
-export async function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
+export const dynamic = "force-dynamic";
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement>>;
 

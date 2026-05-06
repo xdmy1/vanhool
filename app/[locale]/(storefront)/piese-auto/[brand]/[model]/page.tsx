@@ -5,11 +5,8 @@ import { Container } from "@/components/layout/Container";
 import { EngineRow } from "@/components/vehicles/EngineRow";
 import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { listTypesByModel } from "@/lib/db/vehicles";
-import { routing } from "@/lib/i18n/routing";
 
-export async function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function ModelPage({
   params,
