@@ -44,12 +44,12 @@ export function ProductBuyBox({
     <div className="flex flex-col gap-5 rounded-md border border-border bg-surface p-5 md:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <span className="text-xs text-muted">
             {product.brand}
           </span>
           <Price value={product.price} size="xl" className="mt-1 text-3xl md:text-4xl" />
           {product.oldPrice ? (
-            <span className="font-mono text-sm text-muted line-through">
+            <span className="text-sm text-muted line-through">
               €{product.oldPrice.toFixed(2)}
             </span>
           ) : null}
@@ -60,7 +60,7 @@ export function ProductBuyBox({
       {/* Quantity + CTA */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <label className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <label className="text-xs text-muted">
             {labels.quantity}
           </label>
           <div className="inline-flex items-stretch overflow-hidden rounded-md border border-border">
@@ -84,7 +84,7 @@ export function ProductBuyBox({
               max={max}
               disabled={unavailable}
               className={cn(
-                "w-14 bg-transparent text-center font-mono text-sm tabular-nums outline-none",
+                "w-14 bg-transparent text-center text-sm tabular-nums outline-none",
                 "[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
               )}
             />
@@ -106,7 +106,7 @@ export function ProductBuyBox({
             variant="primary"
             size="lg"
             disabled={unavailable}
-            className="flex-1 uppercase tracking-wider"
+            className="flex-1"
           >
             <ShoppingBag className="size-4" /> {labels.addToCart}
           </Button>
@@ -115,7 +115,7 @@ export function ProductBuyBox({
             variant="secondary"
             size="lg"
             disabled={unavailable}
-            className="flex-1 uppercase tracking-wider"
+            className="flex-1"
           >
             {labels.buyNow}
           </Button>

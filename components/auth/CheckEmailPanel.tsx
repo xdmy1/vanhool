@@ -55,11 +55,11 @@ export function CheckEmailPanel({
       <h2 className="mt-4 text-xl font-bold tracking-tight">{labels.title}</h2>
       <p className="mt-2 max-w-sm text-sm text-muted-strong">
         {labels.body_prefix}{" "}
-        <span className="font-mono font-semibold text-foreground">{email}</span>
+        <span className="font-semibold text-foreground">{email}</span>
         {" "}
         {labels.body_suffix}
       </p>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-muted">
+      <p className="mt-2 text-xs text-muted">
         {labels.spam_hint}
       </p>
 
@@ -67,7 +67,7 @@ export function CheckEmailPanel({
         type="button"
         size="md"
         variant="secondary"
-        className="mt-6 uppercase tracking-wider"
+        className="mt-6"
         onClick={onResend}
         disabled={pending}
       >
@@ -78,7 +78,7 @@ export function CheckEmailPanel({
       <Link
         href="/login"
         locale={locale}
-        className="mt-6 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:text-primary"
+        className="mt-6 text-xs text-muted transition-colors hover:text-primary"
       >
         ← {labels.back_to_login}
       </Link>

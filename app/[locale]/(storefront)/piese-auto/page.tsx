@@ -33,7 +33,7 @@ export default async function PieseAutoPage({
       <section className="border-b border-border bg-surface/40">
         <Container className="py-8">
           <VehicleBreadcrumb crumbs={[]} locale={locale} rootLabel={t("root_label")} />
-          <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+          <div className="mt-4 flex items-center gap-2 text-xs text-primary">
             <span className="h-px w-6 bg-primary" />
             {t("step_1")}
           </div>
@@ -47,7 +47,7 @@ export default async function PieseAutoPage({
       <Container className="py-10">
         {popular.length > 0 && (
           <>
-            <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.3em] text-muted">
+            <h2 className="mb-4 text-xs text-muted">
               {t("brand_popular")}
             </h2>
             <div className="mb-10 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -68,7 +68,7 @@ export default async function PieseAutoPage({
 
         {others.length > 0 && (
           <>
-            <h2 className="mb-4 font-mono text-[11px] uppercase tracking-[0.3em] text-muted">
+            <h2 className="mb-4 text-xs text-muted">
               {t("brand_all")}
             </h2>
             <div className="grid gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">

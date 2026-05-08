@@ -102,7 +102,7 @@ export default async function AdminOdooPage({
               href={odooUrl}
               target="_blank"
               rel="noopener"
-              className="mt-2 inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-wider text-primary hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
               {t("odoo_open_instance")}
               <ExternalLink className="size-3" />
@@ -137,7 +137,7 @@ export default async function AdminOdooPage({
 
       {/* Failed pushes */}
       <section className="mt-8">
-        <h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+        <h3 className="mb-3 text-[11px] font-semibold">
           {t("odoo_failed_pushes")} ({failed.length})
         </h3>
         {failed.length === 0 ? (
@@ -154,7 +154,7 @@ export default async function AdminOdooPage({
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold tracking-wider">
+                    <span className="text-sm font-bold">
                       #{o.short_id}
                     </span>
                     <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
@@ -163,7 +163,7 @@ export default async function AdminOdooPage({
                     {o.customer_name ?? o.customer_email ?? "—"}
                   </div>
                   {o.odoo_sync_error ? (
-                    <div className="mt-2 break-words rounded-sm border border-destructive/30 bg-background/40 p-2 font-mono text-[10px] text-destructive">
+                    <div className="mt-2 break-words rounded-sm border border-destructive/30 bg-background/40 p-2 text-[10px] text-destructive">
                       {o.odoo_sync_error}
                     </div>
                   ) : null}
@@ -177,7 +177,7 @@ export default async function AdminOdooPage({
 
       {/* Sync log */}
       <section className="mt-10">
-        <h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+        <h3 className="mb-3 text-[11px] font-semibold">
           {t("odoo_sync_log")}
         </h3>
         {log.length === 0 ? (
@@ -189,7 +189,7 @@ export default async function AdminOdooPage({
           <div className="overflow-hidden rounded-md border border-border bg-surface">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                <tr className="border-b border-border bg-background/40 text-xs text-muted">
                   <th className="px-3 py-2.5">When</th>
                   <th className="px-3 py-2.5">Direction</th>
                   <th className="px-3 py-2.5">Operation</th>
@@ -201,7 +201,7 @@ export default async function AdminOdooPage({
               <tbody>
                 {log.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-b-0">
-                    <td className="whitespace-nowrap px-3 py-2 font-mono text-[10px] text-muted-strong">
+                    <td className="whitespace-nowrap px-3 py-2 text-[10px] text-muted-strong">
                       {new Date(row.created_at).toLocaleString(dateLocale, {
                         day: "2-digit",
                         month: "short",
@@ -213,7 +213,7 @@ export default async function AdminOdooPage({
                     <td className="px-3 py-2">
                       <span
                         className={cn(
-                          "rounded-sm border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                          "rounded-sm border px-1.5 py-0.5 text-xs",
                           row.direction === "pull"
                             ? "border-primary/40 bg-primary/10 text-primary"
                             : row.direction === "push"
@@ -224,13 +224,13 @@ export default async function AdminOdooPage({
                         {row.direction}
                       </span>
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs">{row.operation}</td>
+                    <td className="px-3 py-2 text-xs">{row.operation}</td>
                     <td className="px-3 py-2">
                       <details>
-                        <summary className="cursor-pointer font-mono text-[10px] text-muted">
+                        <summary className="cursor-pointer text-[10px] text-muted">
                           {detailSummary(row.detail)}
                         </summary>
-                        <pre className="mt-1 max-h-40 overflow-auto rounded-sm border border-border bg-background/40 p-2 font-mono text-[10px] text-muted-strong">
+                        <pre className="mt-1 max-h-40 overflow-auto rounded-sm border border-border bg-background/40 p-2 text-[10px] text-muted-strong">
                           {JSON.stringify(row.detail, null, 2)}
                         </pre>
                       </details>
@@ -242,7 +242,7 @@ export default async function AdminOdooPage({
                         <XCircle className="size-3.5 text-destructive" />
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-muted">
+                    <td className="px-3 py-2 text-right text-[10px] tabular-nums text-muted">
                       {row.duration_ms ?? "—"}
                     </td>
                   </tr>
@@ -256,7 +256,7 @@ export default async function AdminOdooPage({
       {/* Quick links */}
       {enabled ? (
         <section className="mt-10 rounded-md border border-border bg-surface p-5">
-          <h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+          <h3 className="mb-3 text-[11px] font-semibold">
             {t("odoo_quick_links")}
           </h3>
           <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
@@ -305,7 +305,7 @@ function StatCard({
   } as const;
   return (
     <div className={cn("rounded-md border bg-surface p-5", tones[tone])}>
-      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <div className="text-xs text-muted">
         {label}
       </div>
       <div className="mt-1 text-2xl font-bold tracking-tight">{value}</div>
@@ -321,7 +321,7 @@ function QuickLink({ href, label }: { href: string; label: string }) {
       rel="noopener"
       className="flex items-center justify-between rounded-md border border-border bg-background/40 px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
     >
-      <span className="font-mono text-[11px] uppercase tracking-wider">{label}</span>
+      <span className="text-xs">{label}</span>
       <ChevronRight className="size-3.5 text-muted" />
     </a>
   );

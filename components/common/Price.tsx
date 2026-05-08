@@ -29,7 +29,7 @@ export function Price({
   return (
     <span
       className={cn(
-        "inline-flex items-baseline gap-0.5 font-mono font-semibold tabular-nums",
+        "inline-flex items-baseline gap-0.5 font-semibold tabular-nums",
         accent ? "text-primary" : "text-foreground",
         sizes[size],
         className,

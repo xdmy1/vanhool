@@ -92,7 +92,7 @@ export default async function ProductDetailPage({
     <div className="bg-background">
       {/* Breadcrumbs */}
       <div className="border-b border-border bg-surface/40">
-        <Container className="flex items-center gap-2 py-4 font-mono text-[11px] uppercase tracking-wider text-muted">
+        <Container className="flex items-center gap-2 py-4 text-xs text-muted">
           <Link href="/" locale={loc} className="transition-colors hover:text-foreground">
             {tNav("home")}
           </Link>
@@ -126,7 +126,7 @@ export default async function ProductDetailPage({
 
           <div className="flex flex-col gap-5">
             <div>
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
+              <div className="flex items-center gap-2 text-xs text-primary">
                 <span className="h-px w-6 bg-primary" />
                 {category?.name ?? tNav("catalog")}
               </div>
@@ -150,7 +150,7 @@ export default async function ProductDetailPage({
 
           <section className="rounded-md border border-border bg-surface">
             <div className="border-b border-border px-5 py-3">
-              <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+              <h3 className="text-[11px] font-semibold text-foreground">
                 {tProd("compatibility")}
               </h3>
             </div>
@@ -159,7 +159,7 @@ export default async function ProductDetailPage({
               <p>{tProd("compatibility_empty")}</p>
             </div>
             <div className="border-t border-border p-5">
-              <Button asChild variant="secondary" size="md" className="w-full uppercase tracking-wider">
+              <Button asChild variant="secondary" size="md" className="w-full">
                 <Link href="/contact" locale={loc}>
                   <Headphones className="size-4" /> {tProd("ask_support")}
                 </Link>
@@ -171,7 +171,7 @@ export default async function ProductDetailPage({
         {/* Related */}
         {related.length > 0 ? (
           <section className="mt-16">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            <div className="flex items-center gap-2 text-xs text-primary">
               <span className="h-px w-6 bg-primary" />
               {tProd("related")}
             </div>

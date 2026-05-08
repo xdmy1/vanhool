@@ -25,7 +25,7 @@ export default async function AdminPromosPage({
         eyebrow={t("nav_promocodes")}
         title={t("promocodes_title")}
         actions={
-          <Button asChild size="md" className="uppercase tracking-wider">
+          <Button asChild size="md" className="">
             <Link href={"/admin/promocodes/new" as "/admin/promocodes"} locale={locale}>
               <Plus className="size-4" />
               {t("promocodes_new")}
@@ -43,7 +43,7 @@ export default async function AdminPromosPage({
           <div className="overflow-hidden rounded-md border border-border bg-surface">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                <tr className="border-b border-border bg-background/40 text-xs text-muted">
                   <th className="px-3 py-3">{t("promocodes_col_code")}</th>
                   <th className="px-3 py-3">{t("promocodes_col_type")}</th>
                   <th className="px-3 py-3 text-right">{t("promocodes_col_value")}</th>
@@ -65,38 +65,38 @@ export default async function AdminPromosPage({
                       <Link
                         href={`/admin/promocodes/${p.id}` as "/admin/promocodes"}
                         locale={locale}
-                        className="font-mono text-sm font-bold uppercase tracking-wider transition-colors hover:text-primary"
+                        className="text-sm font-bold transition-colors hover:text-primary"
                       >
                         {p.code}
                       </Link>
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted-strong">
+                      <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-xs text-muted-strong">
                         {p.discount_type === "percentage" ? "%" : "€"}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
+                    <td className="px-3 py-2.5 text-right text-sm tabular-nums">
                       {p.discount_type === "percentage"
                         ? `${p.discount_value}%`
                         : `€${Number(p.discount_value ?? 0).toFixed(2)}`}
                     </td>
-                    <td className="hidden px-3 py-2.5 text-right font-mono text-sm tabular-nums md:table-cell">
+                    <td className="hidden px-3 py-2.5 text-right text-sm tabular-nums md:table-cell">
                       {p.min_order_amount
                         ? `€${Number(p.min_order_amount).toFixed(2)}`
                         : "—"}
                     </td>
-                    <td className="px-3 py-2.5 text-right font-mono text-xs tabular-nums">
+                    <td className="px-3 py-2.5 text-right text-xs tabular-nums">
                       {(p.current_uses ?? 0)}
                       {p.max_uses ? ` / ${p.max_uses}` : ""}
                     </td>
                     <td className="px-3 py-2.5">
                       {p.is_active ? (
-                        <span className="inline-flex items-center gap-1 rounded-sm border border-success/40 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-success">
+                        <span className="inline-flex items-center gap-1 rounded-sm border border-success/40 bg-success/10 px-1.5 py-0.5 text-xs text-success">
                           <CheckCircle2 className="size-3" />
                           {t("products_status_active")}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                        <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-xs text-muted">
                           <XCircle className="size-3" />
                           {t("products_status_inactive")}
                         </span>

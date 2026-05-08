@@ -28,9 +28,7 @@ export function AdminTopbar({
         <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex">
           <Link href="/" locale={locale}>
             <ExternalLink className="size-4" />
-            <span className="font-mono text-[11px] uppercase tracking-wider">
-              {labels.visitSite}
-            </span>
+            <span className="text-sm">{labels.visitSite}</span>
           </Link>
         </Button>
         <button

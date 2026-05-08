@@ -50,7 +50,7 @@ export function OrdersList({
         </div>
         <h3 className="text-lg font-semibold">{labels.empty_title}</h3>
         <p className="mt-1 max-w-sm text-sm text-muted-strong">{labels.empty_body}</p>
-        <Button asChild size="md" className="mt-5 uppercase tracking-wider">
+        <Button asChild size="md" className="mt-5">
           <Link href="/catalog" locale={locale}>
             {labels.empty_cta}
           </Link>
@@ -73,7 +73,7 @@ export function OrdersList({
       <div className="hidden overflow-hidden rounded-md border border-border bg-surface md:block">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+            <tr className="border-b border-border bg-background/40 text-xs text-muted">
               <th className="px-4 py-3">{labels.number}</th>
               <th className="px-4 py-3">{labels.date}</th>
               <th className="px-4 py-3">{labels.items}</th>
@@ -85,7 +85,7 @@ export function OrdersList({
           <tbody>
             {orders.map((o) => (
               <tr key={o.id} className="border-b border-border last:border-b-0">
-                <td className="px-4 py-3 font-mono text-xs">#{o.shortId}</td>
+                <td className="px-4 py-3 text-xs">#{o.shortId}</td>
                 <td className="px-4 py-3 text-muted-strong">
                   {new Date(o.createdAt).toLocaleDateString(dateLocale)}
                 </td>
@@ -95,7 +95,7 @@ export function OrdersList({
                 <td className="px-4 py-3">
                   <span
                     className={cn(
-                      "inline-flex items-center rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                      "inline-flex items-center rounded-sm border px-2 py-0.5 text-xs",
                       STATUS_TONES[o.status] ?? "border-border bg-accent-dark text-muted",
                     )}
                   >
@@ -109,7 +109,7 @@ export function OrdersList({
                   <Link
                     href={`/thank-you?order=${o.id}`}
                     locale={locale}
-                    className="font-mono text-xs uppercase tracking-wider text-primary hover:underline"
+                    className="text-xs text-primary hover:underline"
                   >
                     {labels.view}
                   </Link>
@@ -130,12 +130,12 @@ export function OrdersList({
             className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4 transition-colors hover:border-border-strong"
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="font-mono text-sm font-bold tracking-wider">
+              <span className="text-sm font-bold">
                 #{o.shortId}
               </span>
               <span
                 className={cn(
-                  "rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                  "rounded-sm border px-2 py-0.5 text-xs",
                   STATUS_TONES[o.status] ?? "border-border bg-accent-dark text-muted",
                 )}
               >
@@ -143,7 +143,7 @@ export function OrdersList({
               </span>
             </div>
             <div className="flex items-end justify-between gap-3">
-              <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+              <div className="text-xs text-muted">
                 {new Date(o.createdAt).toLocaleDateString(dateLocale)} ·{" "}
                 {o.items.reduce((acc, i) => acc + i.quantity, 0)}× {labels.items}
               </div>

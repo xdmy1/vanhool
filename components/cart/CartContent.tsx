@@ -32,7 +32,7 @@ export function CartContent({ locale }: { locale: string }) {
         </div>
         <h2 className="text-2xl font-bold tracking-tight">{t("empty_title")}</h2>
         <p className="mt-2 text-sm text-muted-strong">{t("empty_body")}</p>
-        <Button asChild size="lg" className="mt-6 uppercase tracking-wider">
+        <Button asChild size="lg" className="mt-6">
           <Link href="/catalog" locale={locale}>
             {t("empty_cta")}
           </Link>
@@ -44,7 +44,7 @@ export function CartContent({ locale }: { locale: string }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <div className="min-w-0">
-        <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="mb-3 text-xs text-muted">
           {t("items_count", { count: items.length })}
         </div>
         <div className="overflow-hidden rounded-md border border-border">

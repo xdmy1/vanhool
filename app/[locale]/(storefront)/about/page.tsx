@@ -106,16 +106,11 @@ export default async function AboutPage({
   return (
     <div className="bg-background">
       {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div aria-hidden className="absolute inset-0 -z-10 bg-grid-dim opacity-30" />
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_-20%,rgba(208,73,65,0.18),transparent_60%)]"
-        />
+      <section className="border-b border-border bg-surface">
         <Container className="py-16 md:py-24">
           <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
             <div>
-              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+              <div className="flex items-center gap-2 text-xs text-primary">
                 <span className="h-px w-6 bg-primary" />
                 {tn("about")}
               </div>
@@ -126,12 +121,12 @@ export default async function AboutPage({
                 {ta("hero_subtitle")}
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="uppercase tracking-wider">
+                <Button asChild size="lg" className="">
                   <Link href="/catalog" locale={locale}>
                     {ta("cta_catalog")}
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="secondary" className="uppercase tracking-wider">
+                <Button asChild size="lg" variant="secondary" className="">
                   <Link href="/contact" locale={locale}>
                     {ta("cta_contact")}
                   </Link>
@@ -146,10 +141,10 @@ export default async function AboutPage({
                   key={s.label}
                   className="flex flex-col rounded-md border border-border bg-surface p-5"
                 >
-                  <span className="font-mono text-3xl font-bold tabular-nums tracking-tight text-primary">
+                  <span className="text-3xl font-bold tabular-nums tracking-tight text-primary">
                     {s.value}
                   </span>
-                  <span className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                  <span className="mt-1 text-xs text-muted">
                     {s.label}
                   </span>
                 </div>
@@ -163,7 +158,7 @@ export default async function AboutPage({
       <section className="border-b border-border">
         <Container className="py-14 md:py-20">
           <div className="mb-10">
-            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            <div className="text-xs text-primary">
               {ta("values_eyebrow")}
             </div>
             <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
@@ -195,7 +190,7 @@ export default async function AboutPage({
         <Container className="py-14 md:py-20">
           <div className="grid gap-12 md:grid-cols-[1fr_1.3fr]">
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+              <div className="text-xs text-primary">
                 {ta("story_eyebrow")}
               </div>
               <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
@@ -219,7 +214,7 @@ export default async function AboutPage({
       <section className="border-b border-border">
         <Container className="py-14 md:py-20">
           <div className="mb-10 flex flex-col gap-2">
-            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            <div className="text-xs text-primary">
               {ta("policies_eyebrow")}
             </div>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
@@ -238,7 +233,7 @@ export default async function AboutPage({
                 <span className="grid size-10 place-items-center rounded-sm border border-primary/40 bg-primary/10 text-primary">
                   <p.icon className="size-5" />
                 </span>
-                <div className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                <div className="mt-4 text-xs text-muted">
                   {p.eyebrow}
                 </div>
                 <h3 className="mt-1 text-lg font-semibold tracking-tight">{p.title}</h3>
@@ -261,7 +256,7 @@ export default async function AboutPage({
         <Container className="py-14 md:py-20">
           <div className="grid gap-8 md:grid-cols-[1.4fr_1fr]">
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+              <div className="text-xs text-primary">
                 {ta("contact_eyebrow")}
               </div>
               <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">
@@ -269,7 +264,7 @@ export default async function AboutPage({
               </h2>
               <p className="mt-3 max-w-xl text-muted-strong">{ta("contact_subtitle")}</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="uppercase tracking-wider">
+                <Button asChild size="lg" className="">
                   <Link href="/contact" locale={locale}>
                     {ta("cta_contact")}
                   </Link>
@@ -278,7 +273,7 @@ export default async function AboutPage({
                   asChild
                   size="lg"
                   variant="secondary"
-                  className="uppercase tracking-wider"
+                  className=""
                 >
                   <a href={`tel:${tf("contact_phone").replace(/\s/g, "")}`}>
                     <Phone className="size-4" />
@@ -315,7 +310,7 @@ function ContactRow({
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="text-xs text-muted">
           {hint}
         </div>
         <div className="mt-0.5 truncate text-sm font-semibold text-foreground">{label}</div>

@@ -121,14 +121,14 @@ export function LoginForm({ labels }: { labels: Labels }) {
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
             <p className="text-foreground">
               {labels.errorEmailNotConfirmed}{" "}
-              <span className="font-mono font-semibold">{unconfirmedEmail}</span>
+              <span className="font-semibold">{unconfirmedEmail}</span>
             </p>
           </div>
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            className="self-start uppercase tracking-wider"
+            className="self-start"
             onClick={onResend}
             disabled={resendPending}
           >
@@ -146,7 +146,7 @@ export function LoginForm({ labels }: { labels: Labels }) {
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" className="mt-2 uppercase tracking-wider" disabled={pending}>
+      <Button type="submit" size="lg" className="mt-2" disabled={pending}>
         {pending ? "…" : labels.submit}
       </Button>
 
@@ -176,7 +176,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">{label}</span>
+      <span className="text-xs text-muted">{label}</span>
       {children}
       {error ? (
         <span className="text-xs text-destructive">{error}</span>

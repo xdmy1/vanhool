@@ -74,16 +74,12 @@ export function AdminSidebar({
   const stripped = pathname.replace(new RegExp(`^/${locale}`), "");
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface-elevated md:flex">
       <div className="flex h-16 items-center gap-3 border-b border-border px-5">
         <Logo className="h-7 w-auto text-foreground" />
         <div className="flex flex-col leading-tight">
-          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-muted">
-            INTER BUS
-          </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
-            ADMIN
-          </span>
+          <span className="text-base font-semibold text-foreground">Inter Bus</span>
+          <span className="text-xs text-primary">Admin</span>
         </div>
       </div>
 
@@ -101,8 +97,8 @@ export function AdminSidebar({
                   className={cn(
                     "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                     active
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-strong hover:bg-background/40 hover:text-foreground",
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-strong hover:bg-surface hover:text-foreground",
                   )}
                 >
                   <item.icon
@@ -111,16 +107,16 @@ export function AdminSidebar({
                       active ? "text-primary" : "text-muted",
                     )}
                   />
-                  <span className="flex-1 font-mono text-[12px] uppercase tracking-[0.1em]">
+                  <span className="flex-1 text-sm">
                     {item.label}
                   </span>
                   {typeof item.badge === "number" && item.badge > 0 ? (
                     <span
                       className={cn(
-                        "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px font-mono text-[10px] tabular-nums",
+                        "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-[10px] tabular-nums",
                         active
                           ? "bg-primary text-primary-foreground"
-                          : "bg-accent-dark text-muted-strong",
+                          : "bg-surface text-muted-strong",
                       )}
                     >
                       {item.badge}
@@ -137,7 +133,7 @@ export function AdminSidebar({
         <Link
           href="/"
           locale={locale}
-          className="flex items-center gap-2 rounded-md px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-muted transition-colors hover:bg-background/40 hover:text-foreground"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-muted transition-colors hover:bg-surface hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" />
           {labels.back}

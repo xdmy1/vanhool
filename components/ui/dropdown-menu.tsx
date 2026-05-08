@@ -148,7 +148,7 @@ function DropdownMenuLabel({
   return (
     <DropdownMenuPrimitive.Label
       className={cn(
-        "px-2 py-1.5 text-xs font-medium uppercase tracking-widest text-muted",
+        "px-2 py-1.5 text-xs font-medium text-muted",
         inset && "pl-8",
         className,
       )}
@@ -175,7 +175,7 @@ function DropdownMenuShortcut({
 }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("ml-auto text-xs tracking-widest text-muted", className)}
+      className={cn("ml-auto text-xs text-muted", className)}
       {...props}
     />
   );

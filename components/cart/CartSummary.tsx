@@ -38,7 +38,7 @@ export function CartSummary({
 
   return (
     <div className="rounded-md border border-border bg-surface p-5 md:p-6">
-      <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+      <h2 className="mb-4 text-[11px] font-semibold text-foreground">
         {labels.title}
       </h2>
 
@@ -55,7 +55,7 @@ export function CartSummary({
           label={labels.shipping}
           value={
             totals.shipping === 0 ? (
-              <span className="font-mono uppercase tracking-wider text-success">
+              <span className="text-success">
                 {labels.free}
               </span>
             ) : (
@@ -69,13 +69,13 @@ export function CartSummary({
       {items.length > 0 ? (
         <div className="mt-4 rounded-sm border border-border bg-background/40 p-3">
           {totals.shipping === 0 ? (
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-success">
+            <div className="flex items-center gap-2 text-xs text-success">
               <Truck className="size-3" /> {labels.freeShippingHint}
             </div>
           ) : (
             <>
-              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-muted">
-                <span className="font-mono">{labels.almostFreeShipping(`€${remaining.toFixed(2)}`)}</span>
+              <div className="mb-2 flex items-center justify-between text-xs text-muted">
+                <span className="">{labels.almostFreeShipping(`€${remaining.toFixed(2)}`)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-accent-dark">
                 <div
@@ -91,7 +91,7 @@ export function CartSummary({
       ) : null}
 
       <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+        <span className="text-[11px] font-semibold text-foreground">
           {labels.total}
         </span>
         <Price value={totals.total} size="xl" />
@@ -102,7 +102,7 @@ export function CartSummary({
         size="lg"
         disabled={items.length === 0}
         className={cn(
-          "mt-5 w-full uppercase tracking-wider",
+          "mt-5 w-full",
           items.length === 0 && "pointer-events-none opacity-50",
         )}
       >
@@ -129,7 +129,7 @@ function Row({
       <dt className="text-muted">{label}</dt>
       <dd
         className={cn(
-          "font-mono tabular-nums",
+          "tabular-nums",
           tone === "success" ? "text-success" : "text-foreground",
         )}
       >

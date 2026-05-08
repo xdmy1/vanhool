@@ -60,7 +60,7 @@ export default async function PartsPage({
             locale={locale}
             rootLabel={tVehicles("root_label")}
           />
-          <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+          <div className="mt-4 flex items-center gap-2 text-xs text-primary">
             <span className="h-px w-6 bg-primary" />
             {tVehicles("step_5")}
           </div>
@@ -82,7 +82,7 @@ export default async function PartsPage({
           </div>
         ) : (
           <>
-            <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.3em] text-muted">
+            <div className="mb-4 text-xs text-muted">
               {tVehicles("parts_found", { count: products.length })}
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

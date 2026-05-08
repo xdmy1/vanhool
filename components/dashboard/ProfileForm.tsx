@@ -133,13 +133,13 @@ export function ProfileForm({
             disabled
             className="cursor-not-allowed bg-accent-dark"
           />
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+          <span className="text-xs text-muted">
             {labels.email_locked}
           </span>
         </Field>
 
         <div className="flex flex-col gap-1.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <span className="text-xs text-muted">
             {labels.language}
           </span>
           <div className="flex gap-1.5">
@@ -149,7 +149,7 @@ export function ProfileForm({
                 type="button"
                 onClick={() => setLanguage(l.code)}
                 className={cn(
-                  "rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                  "rounded-sm border px-3 py-1.5 text-xs transition-colors",
                   language === l.code
                     ? "border-primary bg-primary/15 text-primary"
                     : "border-border bg-background text-muted-strong hover:border-border-strong",
@@ -170,7 +170,7 @@ export function ProfileForm({
         <Button
           type="submit"
           size="md"
-          className="self-start uppercase tracking-wider"
+          className="self-start"
           disabled={pending}
         >
           <Save className="size-4" />
@@ -184,7 +184,7 @@ export function ProfileForm({
         className="flex flex-col gap-4 rounded-md border border-border bg-surface p-6"
       >
         <div>
-          <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+          <h3 className="text-[11px] font-semibold">
             {labels.password_section}
           </h3>
         </div>
@@ -231,7 +231,7 @@ export function ProfileForm({
           type="submit"
           size="md"
           variant="secondary"
-          className="self-start uppercase tracking-wider"
+          className="self-start"
           disabled={pwPending}
         >
           {pwPending ? labels.saving : labels.change_password}
@@ -252,7 +252,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>

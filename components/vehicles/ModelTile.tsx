@@ -43,7 +43,7 @@ export function ModelTile({
         <div className="truncate text-[15px] font-semibold leading-tight">
           {name}
         </div>
-        <div className="mt-1 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="mt-1 flex items-center gap-3 text-xs text-muted">
           {yearRange && (
             <span className="flex items-center gap-1">
               <Calendar className="size-3" /> {yearRange}

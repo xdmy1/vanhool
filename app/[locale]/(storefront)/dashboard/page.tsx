@@ -112,18 +112,18 @@ export default async function DashboardPage({
         <Container className="py-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <span className="grid size-12 place-items-center rounded-full border border-primary/40 bg-primary/10 font-mono text-base font-bold text-primary">
+              <span className="grid size-12 place-items-center rounded-full border border-primary/40 bg-primary/10 text-base font-bold text-primary">
                 {(profile?.full_name ?? user.email ?? "?").charAt(0).toUpperCase()}
               </span>
               <div>
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+                <div className="flex items-center gap-2 text-xs text-primary">
                   <span className="h-px w-6 bg-primary" />
                   {t("dashboard_title")}
                 </div>
                 <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
                   {profile?.full_name ?? user.email}
                 </h1>
-                <p className="mt-1 font-mono text-xs text-muted">{user.email}</p>
+                <p className="mt-1 text-xs text-muted">{user.email}</p>
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ function StatCard({
       <div className="mb-3 grid size-9 place-items-center rounded-sm border border-primary/30 bg-primary/10 text-primary">
         <Icon className="size-4" />
       </div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <div className="text-xs text-muted">
         {label}
       </div>
       <div className="mt-1 text-xl font-bold tracking-tight">{value}</div>

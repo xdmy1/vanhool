@@ -142,7 +142,7 @@ export function TecdocImportModal({
         type="button"
         size="md"
         variant="secondary"
-        className="uppercase tracking-wider"
+        className=""
         onClick={() => setOpen(true)}
         disabled={!isAvailable}
         title={isAvailable ? undefined : labels.not_configured}
@@ -157,7 +157,7 @@ export function TecdocImportModal({
             {/* Header */}
             <header className="flex items-start justify-between gap-3 border-b border-border p-5">
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+                <div className="text-xs text-primary">
                   TECDOC · APIFY
                 </div>
                 <h2 className="mt-1 text-xl font-bold tracking-tight">
@@ -189,14 +189,14 @@ export function TecdocImportModal({
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder={labels.search_placeholder}
-                    className="pl-9 font-mono uppercase tracking-wider"
+                    className="pl-9"
                     autoFocus
                   />
                 </div>
                 <Button
                   type="submit"
                   size="md"
-                  className="uppercase tracking-wider"
+                  className=""
                   disabled={pending || !code.trim()}
                 >
                   {pending ? (
@@ -210,7 +210,7 @@ export function TecdocImportModal({
                   type="button"
                   size="md"
                   variant="ghost"
-                  className="uppercase tracking-wider"
+                  className=""
                   onClick={() => onSearch(undefined as never, true)}
                   disabled={pending || !code.trim()}
                   title="Bypass cache"
@@ -221,7 +221,7 @@ export function TecdocImportModal({
               </form>
 
               {source ? (
-                <div className="mt-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-muted">
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted">
                   {source === "apify" ? (
                     <>
                       <span className="size-2 rounded-full bg-primary" />
@@ -347,14 +347,14 @@ function ResultCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+            <span className="text-xs text-muted">
               {part.brand ?? "—"}
             </span>
-            <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-strong">
+            <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-[10px] text-muted-strong">
               {part.partCode}
             </span>
             {part.tecdocId ? (
-              <span className="font-mono text-[9px] text-muted">
+              <span className="text-[9px] text-muted">
                 tecdoc · {part.tecdocId}
               </span>
             ) : null}
@@ -383,14 +383,14 @@ function ResultCard({
 
           {part.specs.length > 0 ? (
             <details className="mt-3 rounded-sm border border-border bg-surface px-3 py-2 text-xs">
-              <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-muted">
+              <summary className="cursor-pointer text-xs text-muted">
                 {labels.specs} ({part.specs.length})
               </summary>
               <dl className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
                 {part.specs.slice(0, 12).map((s, i) => (
                   <div key={`${s.key}-${i}`} className="flex items-baseline gap-2">
                     <dt className="text-muted">{s.key}:</dt>
-                    <dd className="font-mono text-muted-strong">{s.value}</dd>
+                    <dd className="text-muted-strong">{s.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -439,7 +439,7 @@ function ResultCard({
             type="button"
             size="md"
             className={cn(
-              "w-full uppercase tracking-wider sm:w-auto",
+              "w-full sm:w-auto",
               imported && "pointer-events-none opacity-60",
             )}
             onClick={() =>
@@ -472,7 +472,7 @@ function ResultCard({
         </div>
       </div>
       {imported ? (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-muted">
+        <p className="mt-2 text-xs text-muted">
           {labels.edit_after}
         </p>
       ) : null}
@@ -482,8 +482,8 @@ function ResultCard({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-sm border border-border bg-surface px-2 py-1.5 font-mono">
-      <div className="text-[9px] uppercase tracking-wider text-muted">{label}</div>
+    <div className="rounded-sm border border-border bg-surface px-2 py-1.5">
+      <div className="text-[9px] text-muted">{label}</div>
       <div className="text-xs font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
@@ -498,7 +498,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
       </span>
       {children}

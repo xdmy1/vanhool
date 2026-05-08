@@ -46,7 +46,7 @@ export function LocaleSwitcher({ variant = "ghost" }: { variant?: "ghost" | "sec
         <Button
           variant={variant}
           size="sm"
-          className="gap-1.5 font-mono uppercase tracking-widest"
+          className="gap-1.5"
           aria-label="Change language"
         >
           <Languages className="size-4" />
@@ -63,7 +63,7 @@ export function LocaleSwitcher({ variant = "ghost" }: { variant?: "ghost" | "sec
             className="justify-between"
           >
             <span className="flex items-center gap-2">
-              <span className="font-mono text-xs uppercase tracking-widest text-muted">
+              <span className="text-xs text-muted">
                 {LOCALE_LABELS[loc as Locale].short}
               </span>
               <span>{LOCALE_LABELS[loc as Locale].long}</span>

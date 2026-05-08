@@ -20,7 +20,7 @@ export function VehicleBreadcrumb({
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex flex-wrap items-center gap-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted"
+      className="flex flex-wrap items-center gap-1 text-xs text-muted"
     >
       <Link
         href="/"

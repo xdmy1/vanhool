@@ -105,7 +105,7 @@ export default async function AdminOrderDetailPage({
           {/* Items */}
           <section className="overflow-hidden rounded-md border border-border bg-surface">
             <header className="border-b border-border bg-background/40 px-5 py-3">
-              <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+              <h2 className="text-[10px] font-semibold text-muted">
                 {t("order_detail_items")}
               </h2>
             </header>
@@ -115,16 +115,16 @@ export default async function AdminOrderDetailPage({
                   key={`${item.productId}-${i}`}
                   className="flex items-start gap-3 px-5 py-3"
                 >
-                  <div className="grid size-10 shrink-0 place-items-center rounded-sm border border-border bg-accent-dark font-mono text-[10px] uppercase tracking-wider text-muted">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-sm border border-border bg-accent-dark text-xs text-muted">
                     {(item.partCode || item.brand).slice(0, 3) || "—"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <span className="text-xs text-muted">
                         {item.brand}
                       </span>
                       {item.partCode ? (
-                        <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-strong">
+                        <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-[10px] text-muted-strong">
                           {item.partCode}
                         </span>
                       ) : null}
@@ -132,11 +132,11 @@ export default async function AdminOrderDetailPage({
                     <div className="mt-0.5 line-clamp-1 text-sm font-semibold">
                       {item.name}
                     </div>
-                    <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                    <div className="mt-0.5 text-xs text-muted">
                       {item.quantity} × €{item.price.toFixed(2)}
                     </div>
                   </div>
-                  <div className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                  <div className="shrink-0 text-sm font-semibold tabular-nums">
                     €{(item.price * item.quantity).toFixed(2)}
                   </div>
                 </li>
@@ -146,7 +146,7 @@ export default async function AdminOrderDetailPage({
 
           {/* Customer */}
           <section className="rounded-md border border-border bg-surface p-5">
-            <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+            <h2 className="mb-4 text-[10px] font-semibold text-muted">
               {t("order_detail_customer")}
             </h2>
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -178,7 +178,7 @@ export default async function AdminOrderDetailPage({
 
         <aside className="flex flex-col gap-4">
           <section className="rounded-md border border-border bg-surface p-5">
-            <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+            <h2 className="mb-4 text-[10px] font-semibold text-muted">
               {t("order_detail_summary")}
             </h2>
             <dl className="space-y-2 text-sm">
@@ -194,7 +194,7 @@ export default async function AdminOrderDetailPage({
                 label={tCart("shipping")}
                 value={
                   Number(order.shipping_cost ?? 0) === 0 ? (
-                    <span className="font-mono text-success">{tCart("free")}</span>
+                    <span className="text-success">{tCart("free")}</span>
                   ) : (
                     `€${Number(order.shipping_cost).toFixed(2)}`
                   )
@@ -202,7 +202,7 @@ export default async function AdminOrderDetailPage({
               />
             </dl>
             <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+              <span className="text-[11px] font-semibold">
                 {tCart("total")}
               </span>
               <Price value={Number(order.total ?? 0)} size="xl" />
@@ -210,10 +210,10 @@ export default async function AdminOrderDetailPage({
           </section>
 
           <section className="rounded-md border border-border bg-surface p-5">
-            <h2 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+            <h2 className="mb-3 text-[10px] font-semibold text-muted">
               {t("order_detail_payment")}
             </h2>
-            <div className="font-mono text-sm uppercase tracking-wider">
+            <div className="text-sm">
               {order.payment_method ?? "—"}
             </div>
           </section>
@@ -237,7 +237,7 @@ function Row({
       <dt className="text-muted">{label}</dt>
       <dd
         className={cn(
-          "font-mono tabular-nums",
+          "tabular-nums",
           tone === "success" ? "text-success" : "text-foreground",
         )}
       >
@@ -264,7 +264,7 @@ function DefRow({
         <Icon className="size-3.5" />
       </span>
       <div className="min-w-0">
-        <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">{label}</dt>
+        <dt className="text-xs text-muted">{label}</dt>
         <dd className="mt-0.5 break-words text-sm text-foreground">{value}</dd>
       </div>
     </div>

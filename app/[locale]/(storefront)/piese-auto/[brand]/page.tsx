@@ -35,7 +35,7 @@ export default async function BrandPage({
             locale={locale}
             rootLabel={t("root_label")}
           />
-          <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+          <div className="mt-4 flex items-center gap-2 text-xs text-primary">
             <span className="h-px w-6 bg-primary" />
             {t("step_2")}
           </div>

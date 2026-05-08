@@ -48,15 +48,10 @@ export default async function ContactPage({
 
   return (
     <div className="bg-background">
-      <section className="relative overflow-hidden border-b border-border bg-surface/40">
-        <div aria-hidden className="absolute inset-0 -z-10 bg-grid-dim opacity-30" />
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_30%_-20%,rgba(208,73,65,0.15),transparent_60%)]"
-        />
+      <section className="border-b border-border bg-surface">
         <Container className="py-14 md:py-20">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            <div className="flex items-center gap-2 text-xs text-primary">
               <span className="h-px w-6 bg-primary" />
               {tn("contact")}
             </div>
@@ -79,7 +74,7 @@ export default async function ContactPage({
                 <MessageSquare className="size-4" />
               </span>
               <div>
-                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                <div className="text-xs text-muted">
                   {tc("form_eyebrow")}
                 </div>
                 <h2 className="text-xl font-semibold tracking-tight">
@@ -148,7 +143,7 @@ export default async function ContactPage({
                   <Truck className="size-4" />
                 </span>
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">
+                  <div className="text-xs text-primary">
                     {tc("delivery_eyebrow")}
                   </div>
                   <h3 className="mt-1 text-sm font-semibold tracking-tight">
@@ -186,7 +181,7 @@ function ContactCard({
         <Icon className="size-4" />
       </span>
       <div className="min-w-0">
-        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="text-xs text-muted">
           {eyebrow}
         </div>
         <div className="mt-0.5 truncate text-base font-semibold text-foreground">

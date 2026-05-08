@@ -48,14 +48,11 @@ export default async function AdminOverviewPage({
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
-      <div className="mb-8 flex flex-col gap-2">
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
-          ADMIN
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+      <div className="mb-8 flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
           {t("overview_title")}
         </h1>
-        <p className="text-muted-strong">{t("overview_subtitle")}</p>
+        <p className="text-sm text-muted-strong md:text-base">{t("overview_subtitle")}</p>
       </div>
 
       {/* Stats grid */}
@@ -123,16 +120,16 @@ export default async function AdminOverviewPage({
                   <Link
                     href={`/admin/orders/${o.id}` as "/admin/orders"}
                     locale={locale}
-                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background/40"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold tracking-wider">
+                        <span className="text-xs font-bold">
                           #{stripped(o.id)}
                         </span>
                         <span
                           className={cn(
-                            "rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider",
+                            "rounded-sm border px-1.5 py-0.5 text-[9px]",
                             STATUS_TONES[o.status ?? "pending"] ??
                               "border-border bg-accent-dark text-muted",
                           )}
@@ -146,7 +143,7 @@ export default async function AdminOverviewPage({
                     </div>
                     <div className="text-right">
                       <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
-                      <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <div className="text-xs text-muted">
                         {o.created_at
                           ? new Date(o.created_at).toLocaleDateString(dateLocale)
                           : "—"}
@@ -174,7 +171,7 @@ export default async function AdminOverviewPage({
                   <Link
                     href={`/admin/messages` as "/admin/messages"}
                     locale={locale}
-                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-background/40"
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface"
                   >
                     <span
                       className={cn(
@@ -188,7 +185,7 @@ export default async function AdminOverviewPage({
                         <span className="truncate text-sm font-semibold">
                           {m.name}
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                        <span className="text-xs text-muted">
                           {m.topic ?? "general"}
                         </span>
                       </div>
@@ -196,7 +193,7 @@ export default async function AdminOverviewPage({
                         {m.subject ?? m.message.slice(0, 80)}
                       </div>
                     </div>
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted">
+                    <span className="shrink-0 text-xs text-muted">
                       {m.created_at
                         ? new Date(m.created_at).toLocaleDateString(dateLocale)
                         : "—"}
@@ -227,10 +224,10 @@ export default async function AdminOverviewPage({
                   <Link
                     href={`/admin/products/${p.id}` as "/admin/products"}
                     locale={locale}
-                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-background/40"
+                    className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <div className="text-xs text-muted">
                         {p.brand ?? "—"} · {p.part_code ?? "—"}
                       </div>
                       <div className="line-clamp-1 text-sm font-semibold">
@@ -239,7 +236,7 @@ export default async function AdminOverviewPage({
                     </div>
                     <span
                       className={cn(
-                        "shrink-0 rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+                        "shrink-0 rounded-sm border px-2 py-0.5 text-xs",
                         (p.stock_quantity ?? 0) === 0
                           ? "border-destructive/40 bg-destructive/10 text-destructive"
                           : "border-warning/40 bg-warning/10 text-warning",
@@ -286,7 +283,7 @@ function StatCard({
       >
         <Icon className="size-4" />
       </div>
-      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <div className="text-xs text-muted">
         {label}
       </div>
       <div className="mt-1 text-2xl font-bold tracking-tight">{value}</div>
@@ -310,14 +307,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-md border border-border bg-surface">
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-background/40 px-4 py-3">
+    <section className="overflow-hidden rounded-md border border-border bg-surface-elevated">
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
         <div>
-          <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
-            {title}
-          </h2>
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           {subtitle ? (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+            <span className="text-xs text-muted">
               {subtitle}
             </span>
           ) : null}
@@ -325,7 +320,7 @@ function Section({
         <Link
           href={href as "/admin/orders"}
           locale={locale}
-          className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
         >
           {ctaLabel}
           <ArrowRight className="size-3" />

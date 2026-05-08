@@ -97,14 +97,14 @@ export default async function CatalogPage({
       <section className="border-b border-border bg-surface/40">
         <Container className="py-8">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            <div className="flex items-center gap-2 text-xs text-primary">
               <span className="h-px w-6 bg-primary" />
               {tNav("catalog")}
             </div>
             <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
               {tCat("page_title")}
             </h1>
-            <p className="font-mono text-xs text-muted-strong">
+            <p className="text-xs text-muted-strong">
               {tCat("results_count", { count: result.total })}
               {filters.q ? ` ${tCat("results_for", { q: filters.q })}` : ""}
             </p>
@@ -136,7 +136,7 @@ export default async function CatalogPage({
           <div className="min-w-0">
             {/* Toolbar */}
             <div className="mb-6 flex items-center justify-between gap-3">
-              <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-muted">
+              <div className="inline-flex items-center gap-2 text-xs text-muted">
                 <SlidersHorizontal className="size-3.5" />
                 <span className="hidden sm:inline">{tCat("results_count", { count: result.total })}</span>
                 <span className="sm:hidden">{result.total}</span>

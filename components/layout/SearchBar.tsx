@@ -39,8 +39,8 @@ export function SearchBar({
       onSubmit={onSubmit}
       role="search"
       className={cn(
-        "group relative flex items-stretch overflow-hidden rounded-md border border-border bg-surface",
-        "transition-all focus-within:border-primary focus-within:shadow-[0_0_0_1px_rgba(208,73,65,0.35)]",
+        "group relative flex items-stretch overflow-hidden rounded-md border border-border bg-surface-elevated",
+        "transition-shadow focus-within:border-primary focus-within:shadow-[var(--shadow-card)]",
         heights[size],
         className,
       )}
@@ -66,8 +66,8 @@ export function SearchBar({
         variant="primary"
         size={size === "lg" ? "lg" : "md"}
         className={cn(
-          "shrink-0 rounded-none px-5 font-semibold uppercase tracking-wider",
-          size === "lg" ? "text-sm" : "text-xs",
+          "shrink-0 rounded-none px-5 font-semibold",
+          size === "lg" ? "text-sm" : "text-sm",
         )}
       >
         <Search className="size-4 md:hidden" />

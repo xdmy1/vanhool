@@ -33,7 +33,7 @@ export function OrderNotes({
 
   return (
     <form onSubmit={onSubmit} className="rounded-md border border-border bg-surface p-5">
-      <h3 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+      <h3 className="mb-3 text-[10px] font-semibold text-muted">
         {labels.title}
       </h3>
       <textarea
@@ -47,7 +47,7 @@ export function OrderNotes({
         type="submit"
         size="sm"
         variant="secondary"
-        className="mt-3 uppercase tracking-wider"
+        className="mt-3"
         disabled={pending}
       >
         <Save className="size-3.5" />

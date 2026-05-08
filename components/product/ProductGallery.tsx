@@ -15,7 +15,7 @@ export function ProductGallery({ product }: { product: Product }) {
     <div className="flex flex-col gap-3 lg:flex-row-reverse lg:items-start">
       <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-accent-dark">
         <PartImage variant={product.illustration} />
-        <div className="absolute left-4 top-4 rounded-sm border border-border bg-background/80 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-strong backdrop-blur">
+        <div className="absolute left-4 top-4 rounded-sm border border-border bg-background/80 px-2 py-1 text-xs text-muted-strong backdrop-blur">
           {product.partCode || product.slug}
         </div>
       </div>

@@ -70,7 +70,7 @@ export function Pagination({
             href={buildHref(p)}
             locale={locale}
             className={cn(
-              "inline-flex h-10 min-w-10 items-center justify-center rounded-md border px-3 font-mono text-sm tabular-nums transition-colors",
+              "inline-flex h-10 min-w-10 items-center justify-center rounded-md border px-3 text-sm tabular-nums transition-colors",
               p === page
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-surface text-muted-strong hover:border-primary/60 hover:text-primary",
@@ -97,7 +97,7 @@ export function Pagination({
         <ChevronRight className="size-4" />
       </Link>
 
-      <span className="ml-2 font-mono text-[11px] uppercase tracking-wider text-muted">
+      <span className="ml-2 text-xs text-muted">
         {labels.page} {page} {labels.of} {totalPages}
       </span>
     </nav>

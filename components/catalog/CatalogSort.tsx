@@ -31,7 +31,7 @@ export function CatalogSort({
   return (
     <label className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm">
       <ArrowDownUp className="size-3.5 text-muted" />
-      <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-muted md:inline">
+      <span className="hidden text-xs text-muted md:inline">
         {labels.sort}
       </span>
       <select

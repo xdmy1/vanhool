@@ -37,19 +37,19 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-md border border-border bg-surface transition-all",
-        "hover:border-primary/60 hover:shadow-[0_0_0_1px_rgba(208,73,65,0.35)]",
+        "group relative flex flex-col overflow-hidden rounded-md border border-border bg-surface-elevated transition-shadow",
+        "hover:shadow-[var(--shadow-elevated)]",
       )}
     >
       <Link
         href={`/product/${product.slug}`}
         locale={locale}
-        className="relative block aspect-square border-b border-border bg-[color:var(--accent-dark)]"
+        className="relative block aspect-square border-b border-border bg-surface"
         aria-label={product.name}
       >
         <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
           {product.oldPrice ? (
-            <span className="rounded-sm bg-primary px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
+            <span className="rounded-sm bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
               -{Math.round((1 - product.price / product.oldPrice) * 100)}%
             </span>
           ) : null}
@@ -61,23 +61,7 @@ export function ProductCard({
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            {product.brand}
-          </span>
-          {product.partCode ? (
-            <span
-              className={cn(
-                "rounded-sm border border-border bg-accent-dark px-1.5 py-0.5",
-                "font-mono text-[10px] tracking-wider text-muted-strong",
-              )}
-              title={`${labels.partCode} ${product.partCode}`}
-            >
-              {product.partCode}
-            </span>
-          ) : null}
-        </div>
-        <h3 className="mb-3 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-tight text-foreground">
+        <h3 className="mb-2 line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-foreground">
           <Link
             href={`/product/${product.slug}`}
             locale={locale}
@@ -87,10 +71,18 @@ export function ProductCard({
           </Link>
         </h3>
 
+        {product.partCode || product.brand ? (
+          <div className="mb-3 text-xs text-muted">
+            {product.brand}
+            {product.brand && product.partCode ? " · " : ""}
+            {product.partCode ? `${labels.partCode} ${product.partCode}` : ""}
+          </div>
+        ) : null}
+
         <div className="mt-auto flex items-end justify-between gap-3">
           <div className="flex flex-col">
             {product.oldPrice ? (
-              <span className="font-mono text-xs text-muted line-through">
+              <span className="text-xs text-muted line-through">
                 €{product.oldPrice.toFixed(2)}
               </span>
             ) : null}

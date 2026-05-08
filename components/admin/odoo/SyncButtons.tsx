@@ -35,7 +35,7 @@ export function PullProductsButton({ enabled, labels }: { enabled: boolean; labe
       type="button"
       size="md"
       variant="primary"
-      className="uppercase tracking-wider"
+      className=""
       disabled={!enabled || pending}
       onClick={() =>
         start(async () => {
@@ -66,7 +66,7 @@ export function RefreshStockButton({ enabled, labels }: { enabled: boolean; labe
       type="button"
       size="md"
       variant="secondary"
-      className="uppercase tracking-wider"
+      className=""
       disabled={!enabled || pending}
       onClick={() =>
         start(async () => {
@@ -104,7 +104,7 @@ export function RetryPushButton({
     <button
       type="button"
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 font-mono text-[11px] uppercase tracking-wider text-muted-strong transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary",
+        "inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 text-xs text-muted-strong transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary",
         pending && "opacity-60",
         className,
       )}
@@ -141,7 +141,7 @@ export function GenerateInvoiceButton({
       type="button"
       size="sm"
       variant="secondary"
-      className="uppercase tracking-wider"
+      className=""
       disabled={pending}
       onClick={() =>
         start(async () => {

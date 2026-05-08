@@ -55,7 +55,7 @@ export default async function AdminCategoriesPage({
         eyebrow={t("nav_categories")}
         title={t("categories_title")}
         actions={
-          <Button asChild size="md" className="uppercase tracking-wider">
+          <Button asChild size="md" className="">
             <Link href={"/admin/categories/new" as "/admin/categories"} locale={locale}>
               <Plus className="size-4" />
               {t("categories_new")}
@@ -71,7 +71,7 @@ export default async function AdminCategoriesPage({
           </div>
         ) : (
           <div className="overflow-hidden rounded-md border border-border bg-surface">
-            <header className="grid grid-cols-[1fr_140px_120px_80px_44px] items-center gap-3 border-b border-border bg-background/40 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+            <header className="grid grid-cols-[1fr_140px_120px_80px_44px] items-center gap-3 border-b border-border bg-background/40 px-4 py-3 text-xs text-muted">
               <span>{t("categories_col_name")}</span>
               <span>{t("categories_col_slug")}</span>
               <span className="text-right">{t("categories_col_products")}</span>
@@ -151,16 +151,16 @@ function Row({
             {nameFor(category, locale)}
           </Link>
           {!category.is_active ? (
-            <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted">
+            <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-[9px] text-muted">
               inactive
             </span>
           ) : null}
         </div>
-        <span className="font-mono text-xs text-muted-strong">{category.slug ?? "—"}</span>
-        <span className="text-right font-mono text-sm tabular-nums text-muted-strong">
+        <span className="text-xs text-muted-strong">{category.slug ?? "—"}</span>
+        <span className="text-right text-sm tabular-nums text-muted-strong">
           {counts.get(category.id) ?? 0}
         </span>
-        <span className="text-right font-mono text-xs tabular-nums text-muted">
+        <span className="text-right text-xs tabular-nums text-muted">
           {category.sort_order ?? 0}
         </span>
         <Link

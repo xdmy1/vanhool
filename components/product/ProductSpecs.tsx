@@ -44,7 +44,7 @@ export function ProductSpecs({
   return (
     <section className="rounded-md border border-border bg-surface">
       <div className="border-b border-border px-5 py-3">
-        <h3 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+        <h3 className="text-[11px] font-semibold text-foreground">
           {labels.specifications}
         </h3>
       </div>
@@ -55,7 +55,7 @@ export function ProductSpecs({
             className="grid grid-cols-[1fr_1.5fr] gap-4 px-5 py-3 text-sm"
           >
             <dt className="text-muted">{row.label}</dt>
-            <dd className="font-mono text-foreground">{row.value}</dd>
+            <dd className="text-foreground">{row.value}</dd>
           </div>
         ))}
       </dl>

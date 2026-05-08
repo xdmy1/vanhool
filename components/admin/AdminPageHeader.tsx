@@ -26,17 +26,15 @@ export function AdminPageHeader({
           <Link
             href={back.href as "/admin"}
             locale={back.locale}
-            className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted transition-colors hover:text-primary"
+            className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-primary"
           >
-            <ArrowLeft className="size-3" />
+            <ArrowLeft className="size-3.5" />
             {back.label}
           </Link>
         ) : eyebrow ? (
-          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
-            {eyebrow}
-          </div>
+          <div className="text-xs font-medium text-primary">{eyebrow}</div>
         ) : null}
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
         {subtitle ? <p className="text-sm text-muted-strong">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}

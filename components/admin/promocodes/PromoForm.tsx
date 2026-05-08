@@ -128,7 +128,7 @@ export function PromoForm({
           name="code"
           defaultValue={initial?.code ?? ""}
           placeholder="WELCOME10"
-          className="font-mono uppercase tracking-wider"
+          className=""
           required
         />
       </Field>
@@ -140,7 +140,7 @@ export function PromoForm({
               type="button"
               onClick={() => setDiscountType("percentage")}
               className={cn(
-                "px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                "px-3 py-2 text-xs transition-colors",
                 discountType === "percentage"
                   ? "bg-primary/15 text-primary"
                   : "bg-surface text-muted-strong hover:text-foreground",
@@ -152,7 +152,7 @@ export function PromoForm({
               type="button"
               onClick={() => setDiscountType("fixed")}
               className={cn(
-                "px-3 py-2 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                "px-3 py-2 text-xs transition-colors",
                 discountType === "fixed"
                   ? "bg-primary/15 text-primary"
                   : "bg-surface text-muted-strong hover:text-foreground",
@@ -208,7 +208,7 @@ export function PromoForm({
         <Button
           type="submit"
           size="md"
-          className="uppercase tracking-wider"
+          className=""
           disabled={pending || delPending}
         >
           <Save className="size-4" />
@@ -219,7 +219,7 @@ export function PromoForm({
           type="button"
           size="md"
           variant="ghost"
-          className="uppercase tracking-wider"
+          className=""
         >
           <Link href={"/admin/promocodes" as "/admin/promocodes"} locale={locale}>
             {labels.cancel}
@@ -230,7 +230,7 @@ export function PromoForm({
             type="button"
             size="md"
             variant="destructive"
-            className="ml-auto uppercase tracking-wider"
+            className="ml-auto"
             onClick={onDelete}
             disabled={delPending || pending}
           >
@@ -254,7 +254,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>

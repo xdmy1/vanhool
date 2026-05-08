@@ -166,7 +166,7 @@ export function ProductForm({
               name="slug"
               defaultValue={initial?.slug ?? ""}
               placeholder="my-product-slug"
-              className="font-mono"
+              className=""
             />
           </Field>
         </Card>
@@ -307,7 +307,7 @@ export function ProductForm({
           <Button
             type="submit"
             size="lg"
-            className="w-full uppercase tracking-wider"
+            className="w-full"
             disabled={pending || delPending}
           >
             <Save className="size-4" />
@@ -324,7 +324,7 @@ export function ProductForm({
             type="button"
             size="md"
             variant="ghost"
-            className="w-full uppercase tracking-wider"
+            className="w-full"
           >
             <Link href={"/admin/products" as "/admin/products"} locale={locale}>
               {labels.cancel}
@@ -335,7 +335,7 @@ export function ProductForm({
               type="button"
               size="md"
               variant="destructive"
-              className="mt-4 w-full uppercase tracking-wider"
+              className="mt-4 w-full"
               onClick={onDelete}
               disabled={delPending || pending}
             >
@@ -358,7 +358,7 @@ function Card({
 }) {
   return (
     <section className="rounded-md border border-border bg-surface p-5 md:p-6">
-      <h3 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+      <h3 className="mb-4 text-[10px] font-semibold text-muted">
         {title}
       </h3>
       <div className="flex flex-col gap-3">{children}</div>
@@ -379,13 +379,13 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>
       {children}
       {hint && !error ? (
-        <span className="font-mono text-[10px] text-muted">{hint}</span>
+        <span className="text-[10px] text-muted">{hint}</span>
       ) : null}
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
     </label>

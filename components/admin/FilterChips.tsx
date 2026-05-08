@@ -33,7 +33,7 @@ export function FilterChips({
           type="button"
           onClick={() => onSelect(o.value)}
           className={cn(
-            "rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+            "rounded-sm border px-3 py-1.5 text-xs transition-colors",
             current === o.value
               ? "border-primary bg-primary/15 text-primary"
               : "border-border bg-surface text-muted-strong hover:border-border-strong",

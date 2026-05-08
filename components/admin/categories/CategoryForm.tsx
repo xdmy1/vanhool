@@ -119,7 +119,7 @@ export function CategoryForm({
           name="slug"
           defaultValue={initial?.slug ?? ""}
           placeholder="my-category"
-          className="font-mono"
+          className=""
           required
         />
       </Field>
@@ -173,11 +173,11 @@ export function CategoryForm({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" size="md" className="uppercase tracking-wider" disabled={pending || delPending}>
+        <Button type="submit" size="md" className="" disabled={pending || delPending}>
           <Save className="size-4" />
           {pending ? (isEdit ? labels.saving : labels.creating) : isEdit ? labels.save : labels.create}
         </Button>
-        <Button asChild type="button" size="md" variant="ghost" className="uppercase tracking-wider">
+        <Button asChild type="button" size="md" variant="ghost" className="">
           <Link href={"/admin/categories" as "/admin/categories"} locale={locale}>
             {labels.cancel}
           </Link>
@@ -187,7 +187,7 @@ export function CategoryForm({
             type="button"
             size="md"
             variant="destructive"
-            className="ml-auto uppercase tracking-wider"
+            className="ml-auto"
             onClick={onDelete}
             disabled={delPending || pending}
           >
@@ -211,7 +211,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>

@@ -99,7 +99,7 @@ export function MessageCard({
     >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <div className="flex items-center gap-2 text-xs text-muted">
             <span>{formatted}</span>
             <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-[9px] text-muted-strong">
               {message.topic ?? "general"}
@@ -108,7 +108,7 @@ export function MessageCard({
           <h3 className="mt-1 truncate text-base font-semibold tracking-tight">
             {message.name}
           </h3>
-          <div className="mt-0.5 flex flex-wrap items-center gap-3 font-mono text-[11px] text-muted-strong">
+          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-strong">
             <a
               href={`mailto:${message.email}`}
               className="inline-flex items-center gap-1 hover:text-primary"
@@ -129,7 +129,7 @@ export function MessageCard({
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider",
+            "shrink-0 rounded-sm border px-2 py-0.5 text-xs",
             STATUS_TONES[status] ?? "border-border bg-accent-dark text-muted",
           )}
         >
@@ -138,7 +138,7 @@ export function MessageCard({
       </header>
 
       {message.subject ? (
-        <div className="mt-3 font-mono text-[10px] uppercase tracking-wider text-muted">
+        <div className="mt-3 text-xs text-muted">
           {message.subject}
         </div>
       ) : null}
@@ -148,7 +148,7 @@ export function MessageCard({
       <footer className="mt-4 flex flex-wrap items-center gap-2">
         <a
           href={replyHref}
-          className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+          className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary transition-colors hover:bg-primary/20"
         >
           <Reply className="size-3" />
           {labels.reply_email}
@@ -198,7 +198,7 @@ function ActionBtn({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-strong transition-colors hover:border-border-strong hover:text-foreground"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-3 py-1.5 text-xs text-muted-strong transition-colors hover:border-border-strong hover:text-foreground"
     >
       <Icon className="size-3" />
       {label}

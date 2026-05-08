@@ -100,7 +100,7 @@ export default async function AdminProductsPage({
                 close: t("common_cancel"),
               }}
             />
-            <Button asChild size="md" className="uppercase tracking-wider">
+            <Button asChild size="md" className="">
               <Link href={"/admin/products/new" as "/admin/products"} locale={locale}>
                 <Plus className="size-4" />
                 {t("products_new")}

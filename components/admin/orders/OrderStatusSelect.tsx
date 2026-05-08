@@ -63,7 +63,7 @@ export function OrderStatusSelect({
           type="button"
           disabled={pending}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-wider transition-opacity",
+            "inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 text-xs transition-opacity",
             STATUS_TONES[status] ?? "border-border bg-accent-dark text-muted",
             pending && "opacity-60",
             size === "sm" && "px-1.5 py-0.5",
@@ -90,7 +90,7 @@ export function OrderStatusSelect({
           >
             <span>{labels[s]}</span>
             {s === status ? (
-              <span className="font-mono text-[10px] uppercase text-muted">●</span>
+              <span className="text-xs text-muted">●</span>
             ) : null}
           </DropdownMenuItem>
         ))}

@@ -96,7 +96,7 @@ export function ProductsTable({
     <div className="overflow-hidden rounded-md border border-border bg-surface">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <tr className="border-b border-border bg-background/40 text-xs text-muted">
             <th className="w-14 px-3 py-3" />
             <th className="px-3 py-3">{labels.name}</th>
             <th className="px-3 py-3">{labels.code}</th>
@@ -133,11 +133,11 @@ export function ProductsTable({
                   >
                     {name}
                   </Link>
-                  <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                  <div className="text-xs text-muted">
                     {p.brand ?? "—"}
                   </div>
                 </td>
-                <td className="px-3 py-2.5 font-mono text-xs text-muted-strong">
+                <td className="px-3 py-2.5 text-xs text-muted-strong">
                   {p.part_code ?? "—"}
                 </td>
                 <td className="hidden px-3 py-2.5 lg:table-cell">
@@ -149,7 +149,7 @@ export function ProductsTable({
                 <td className="px-3 py-2.5 text-right">
                   <span
                     className={cn(
-                      "rounded-sm border px-2 py-0.5 font-mono text-[10px] tabular-nums",
+                      "rounded-sm border px-2 py-0.5 text-[10px] tabular-nums",
                       (p.stock_quantity ?? 0) === 0
                         ? "border-destructive/40 bg-destructive/10 text-destructive"
                         : (p.stock_quantity ?? 0) <= 5
@@ -163,18 +163,18 @@ export function ProductsTable({
                 <td className="hidden px-3 py-2.5 md:table-cell">
                   <div className="flex items-center gap-1">
                     {p.is_active ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm border border-success/40 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-success">
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-success/40 bg-success/10 px-1.5 py-0.5 text-xs text-success">
                         <CheckCircle2 className="size-3" />
                         {labels.active}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-xs text-muted">
                         <XCircle className="size-3" />
                         {labels.inactive}
                       </span>
                     )}
                     {p.is_featured ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                         <Star className="size-3" />
                         {labels.featured}
                       </span>

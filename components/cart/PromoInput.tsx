@@ -51,11 +51,11 @@ export function PromoInput({
   if (promo) {
     return (
       <div className="rounded-md border border-success/40 bg-success/10 p-3">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-success">
+        <div className="flex items-center gap-2 text-xs text-success">
           <Tag className="size-3" /> {labels.applied}
         </div>
         <div className="mt-1 flex items-center justify-between gap-3">
-          <span className="font-mono text-sm font-semibold text-foreground">
+          <span className="text-sm font-semibold text-foreground">
             {promo.code}
           </span>
           <button
@@ -73,7 +73,7 @@ export function PromoInput({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
-      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <div className="flex items-center gap-1.5 text-xs text-muted">
         <Tag className="size-3" /> {labels.title}
       </div>
       <div className="flex items-stretch gap-2">
@@ -81,7 +81,7 @@ export function PromoInput({
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder={labels.placeholder}
-          className="font-mono uppercase tracking-wider"
+          className=""
         />
         <Button type="submit" variant="secondary" size="md" disabled={pending || !code}>
           {labels.apply}

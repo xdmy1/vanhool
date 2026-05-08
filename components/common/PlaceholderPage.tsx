@@ -23,7 +23,7 @@ export function PlaceholderPage({
         <div className="mx-auto mb-6 inline-flex size-14 items-center justify-center rounded-full border border-border bg-surface text-primary">
           <Construction className="size-6" />
         </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+        <div className="text-xs text-primary">
           {eyebrow}
         </div>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">

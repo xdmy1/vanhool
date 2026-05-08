@@ -49,12 +49,12 @@ export function EngineRow({
         <div className="flex items-baseline gap-3">
           <span className="text-[15px] font-semibold tracking-tight">{name}</span>
           {engineCode && (
-            <span className="font-mono text-[11px] text-muted">
+            <span className="text-[11px] text-muted">
               {engineCode}
             </span>
           )}
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.15em] text-muted-strong">
+        <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-strong">
           {(powerKw || powerHp) && (
             <span className="flex items-center gap-1">
               <Gauge className="size-3 text-primary" />

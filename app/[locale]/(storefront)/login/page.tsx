@@ -33,7 +33,6 @@ export default async function LoginPage({
 
   return (
     <AuthShell
-      eyebrow="LOGIN"
       title={t("login_title")}
       subtitle={t("login_subtitle")}
     >

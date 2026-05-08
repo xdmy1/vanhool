@@ -41,7 +41,7 @@ export function VehicleCategoryTile({
         <div className="truncate text-[15px] font-semibold leading-tight">
           {label}
         </div>
-        <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="mt-0.5 text-xs text-muted">
           {count} {countLabel}
         </div>
       </div>

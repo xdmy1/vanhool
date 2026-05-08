@@ -93,7 +93,7 @@ export default async function AdminOrdersPage({
           <div className="overflow-hidden rounded-md border border-border bg-surface">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                <tr className="border-b border-border bg-background/40 text-xs text-muted">
                   <th className="px-3 py-3">{t("orders_col_number")}</th>
                   <th className="px-3 py-3">{t("orders_col_date")}</th>
                   <th className="px-3 py-3">{t("orders_col_customer")}</th>
@@ -113,12 +113,12 @@ export default async function AdminOrdersPage({
                       <Link
                         href={`/admin/orders/${o.id}` as "/admin/orders"}
                         locale={locale}
-                        className="font-mono text-xs font-bold tracking-wider transition-colors hover:text-primary"
+                        className="text-xs font-bold transition-colors hover:text-primary"
                       >
                         #{o.id.slice(0, 8).toUpperCase()}
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-muted-strong">
+                    <td className="px-3 py-2.5 text-xs text-muted-strong">
                       {o.created_at
                         ? new Date(o.created_at).toLocaleString(dateLocale, {
                             day: "2-digit",
@@ -130,12 +130,12 @@ export default async function AdminOrdersPage({
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="font-semibold">{o.customer_name ?? "—"}</div>
-                      <div className="font-mono text-[10px] text-muted">
+                      <div className="text-[10px] text-muted">
                         {o.customer_email ?? ""}
                       </div>
                     </td>
                     <td className="hidden px-3 py-2.5 lg:table-cell">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-strong">
+                      <span className="text-xs text-muted-strong">
                         {o.payment_method ?? "—"}
                       </span>
                     </td>
@@ -154,7 +154,7 @@ export default async function AdminOrdersPage({
                       <Link
                         href={`/admin/orders/${o.id}` as "/admin/orders"}
                         locale={locale}
-                        className="font-mono text-[10px] uppercase tracking-wider text-primary hover:underline"
+                        className="text-xs text-primary hover:underline"
                       >
                         {t("common_view")} →
                       </Link>

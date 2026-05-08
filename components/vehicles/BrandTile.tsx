@@ -33,7 +33,7 @@ export function BrandTile({
     >
       <span
         className={cn(
-          "grid size-10 shrink-0 place-items-center rounded-md border font-mono text-xs font-bold uppercase tracking-tight",
+          "grid size-10 shrink-0 place-items-center rounded-md border text-xs font-bold tracking-tight",
           popular
             ? "border-primary/40 bg-primary/10 text-primary"
             : "border-border bg-accent-dark text-foreground/80 group-hover:border-primary/40 group-hover:text-primary",
@@ -45,7 +45,7 @@ export function BrandTile({
         <div className="truncate text-[14px] font-semibold leading-tight">
           {name}
         </div>
-        <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="mt-0.5 text-xs text-muted">
           {modelCount} {countLabel}
         </div>
       </div>

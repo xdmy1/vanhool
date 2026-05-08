@@ -96,7 +96,7 @@ export function CatalogFilters({
       className="sticky top-32 flex flex-col gap-5 rounded-md border border-border bg-surface p-5"
     >
       <div className="flex items-center justify-between">
-        <h2 className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+        <h2 className="text-[11px] font-semibold text-foreground">
           {labels.filters}
         </h2>
         {hasAny ? (
@@ -154,7 +154,7 @@ export function CatalogFilters({
                     ) : null}
                   </span>
                   <span className="flex-1 truncate">{cat.name}</span>
-                  <span className="font-mono text-[10px] text-muted">
+                  <span className="text-[10px] text-muted">
                     {cat.productCount}
                   </span>
                 </label>
@@ -172,7 +172,7 @@ export function CatalogFilters({
             placeholder={labels.from}
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
-            className="font-mono"
+            className=""
           />
           <span className="text-muted">–</span>
           <Input
@@ -181,7 +181,7 @@ export function CatalogFilters({
             placeholder={labels.to}
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
-            className="font-mono"
+            className=""
           />
         </div>
       </FilterGroup>
@@ -201,7 +201,7 @@ export function CatalogFilters({
         </div>
       </FilterGroup>
 
-      <Button type="submit" variant="primary" size="md" className="uppercase tracking-wider">
+      <Button type="submit" variant="primary" size="md" className="">
         {labels.apply}
       </Button>
     </form>
@@ -220,7 +220,7 @@ function FilterGroup({
   return (
     <div>
       {title ? (
-        <div className="mb-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <div className="mb-2 flex items-center gap-1.5 text-xs text-muted">
           <Icon className="size-3" />
           {title}
         </div>

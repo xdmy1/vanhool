@@ -159,7 +159,7 @@ export function CheckoutContent({
               <select
                 value={phoneCountry}
                 onChange={(e) => setPhoneCountry(e.target.value)}
-                className="rounded-md border border-border bg-surface px-3 font-mono text-sm outline-none transition-colors focus:border-primary"
+                className="rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary"
               >
                 {PHONE_PREFIXES.map((p) => (
                   <option key={p.code} value={p.code}>
@@ -272,7 +272,7 @@ export function CheckoutContent({
       {/* SUMMARY SIDEBAR */}
       <aside className="flex flex-col gap-4">
         <div className="rounded-md border border-border bg-surface p-5">
-          <h2 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em] text-foreground">
+          <h2 className="mb-4 text-[11px] font-semibold text-foreground">
             {t("summary_title")}
           </h2>
 
@@ -281,20 +281,20 @@ export function CheckoutContent({
               <div key={item.productId} className="flex items-start gap-3">
                 <div className="relative size-12 shrink-0 overflow-hidden rounded-sm border border-border bg-accent-dark">
                   <PartImage variant={item.illustration} />
-                  <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background font-mono text-[10px] font-bold tabular-nums text-foreground">
+                  <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-[10px] font-bold tabular-nums text-foreground">
                     {item.quantity}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                  <div className="text-xs text-muted">
                     {item.brand} · {item.partCode}
                   </div>
                   <div className="line-clamp-2 text-xs font-semibold">{item.name}</div>
-                  <div className="mt-0.5 font-mono text-[10px] text-muted">
+                  <div className="mt-0.5 text-[10px] text-muted">
                     {item.quantity} × €{item.price.toFixed(2)}
                   </div>
                 </div>
-                <div className="shrink-0 font-mono text-sm tabular-nums">
+                <div className="shrink-0 text-sm tabular-nums">
                   €{(item.price * item.quantity).toFixed(2)}
                 </div>
               </div>
@@ -314,7 +314,7 @@ export function CheckoutContent({
               label={tCart("shipping")}
               value={
                 totals.shipping === 0 ? (
-                  <span className="font-mono text-success">{tCart("free")}</span>
+                  <span className="text-success">{tCart("free")}</span>
                 ) : (
                   `€${totals.shipping.toFixed(2)}`
                 )
@@ -323,7 +323,7 @@ export function CheckoutContent({
           </dl>
 
           <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+            <span className="text-[11px] font-semibold">
               {tCart("total")}
             </span>
             <Price value={totals.total} size="xl" />
@@ -332,7 +332,7 @@ export function CheckoutContent({
           <Button
             type="submit"
             size="lg"
-            className="mt-5 w-full uppercase tracking-wider"
+            className="mt-5 w-full"
             disabled={pending}
           >
             {pending ? t("submit_processing") : t("submit")}
@@ -365,7 +365,7 @@ function Section({
   return (
     <section className="rounded-md border border-border bg-surface p-5 md:p-6">
       <div className="mb-5 flex items-center gap-3">
-        <span className="grid size-9 place-items-center rounded-sm border border-primary/40 bg-primary/10 font-mono text-xs font-bold text-primary">
+        <span className="grid size-9 place-items-center rounded-sm border border-primary/40 bg-primary/10 text-xs font-bold text-primary">
           {step}
         </span>
         <h3 className="text-base font-semibold tracking-tight">{title}</h3>
@@ -386,7 +386,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>
@@ -410,7 +410,7 @@ function Row({
       <dt className="text-muted">{label}</dt>
       <dd
         className={cn(
-          "font-mono tabular-nums",
+          "tabular-nums",
           tone === "success" ? "text-success" : "text-foreground",
         )}
       >

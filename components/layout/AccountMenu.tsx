@@ -51,10 +51,10 @@ export function AccountMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-2" aria-label={labels.account}>
-          <span className="grid size-7 place-items-center rounded-full border border-primary/40 bg-primary/10 font-mono text-xs font-bold text-primary">
+          <span className="grid size-7 place-items-center rounded-full border border-primary/40 bg-primary/10 text-xs font-bold text-primary">
             {initial}
           </span>
-          <span className="hidden font-mono text-[11px] uppercase tracking-wider text-muted-strong lg:inline">
+          <span className="hidden text-xs text-muted-strong lg:inline">
             {labels.account}
           </span>
         </Button>
@@ -67,7 +67,7 @@ export function AccountMenu({
                 {displayName}
               </span>
             ) : null}
-            <span className="font-mono text-[10px] normal-case text-muted">{email}</span>
+            <span className="text-[10px] normal-case text-muted">{email}</span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

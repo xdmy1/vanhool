@@ -95,7 +95,7 @@ export function ContactForm({
           variant="secondary"
           size="md"
           onClick={() => setSuccess(false)}
-          className="mt-5 uppercase tracking-wider"
+          className="mt-5"
         >
           {labels.submit}
         </Button>
@@ -115,7 +115,7 @@ export function ContactForm({
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       {/* Topic chips */}
       <div className="flex flex-col gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <span className="text-xs text-muted">
           {labels.topic}
         </span>
         <div className="flex flex-wrap gap-1.5">
@@ -125,7 +125,7 @@ export function ContactForm({
               type="button"
               onClick={() => setTopic(t.id)}
               className={cn(
-                "rounded-sm border px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors",
+                "rounded-sm border px-3 py-1.5 text-xs transition-colors",
                 topic === t.id
                   ? "border-primary bg-primary/15 text-primary"
                   : "border-border bg-surface text-muted-strong hover:border-border-strong",
@@ -185,7 +185,7 @@ export function ContactForm({
       <Button
         type="submit"
         size="lg"
-        className="mt-2 w-full uppercase tracking-wider sm:w-auto"
+        className="mt-2 w-full sm:w-auto"
         disabled={pending}
       >
         <Send className="size-4" />
@@ -206,7 +206,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+      <span className="text-xs text-muted">
         {label}
         {error ? <span className="ml-1 text-destructive">*</span> : null}
       </span>

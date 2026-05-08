@@ -68,7 +68,7 @@ export function CustomersTable({
     <div className="overflow-hidden rounded-md border border-border bg-surface">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-border bg-background/40 font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <tr className="border-b border-border bg-background/40 text-xs text-muted">
             <th className="px-3 py-3">{labels.name}</th>
             <th className="hidden px-3 py-3 md:table-cell">{labels.phone}</th>
             <th className="px-3 py-3 text-right">{labels.orders}</th>
@@ -93,7 +93,7 @@ export function CustomersTable({
                   <div className="flex items-center gap-3">
                     <span
                       className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-full border font-mono text-xs font-bold",
+                        "grid size-9 shrink-0 place-items-center rounded-full border text-xs font-bold",
                         c.is_admin
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border bg-accent-dark text-muted-strong",
@@ -105,26 +105,26 @@ export function CustomersTable({
                       <div className="truncate text-sm font-semibold">
                         {c.full_name ?? "—"}
                         {isSelf ? (
-                          <span className="ml-2 font-mono text-[10px] uppercase text-muted">
+                          <span className="ml-2 text-xs text-muted">
                             (you)
                           </span>
                         ) : null}
                       </div>
-                      <div className="truncate font-mono text-[11px] text-muted">
+                      <div className="truncate text-[11px] text-muted">
                         {c.email ?? "—"}
                       </div>
                       {c.created_at ? (
-                        <div className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                        <div className="text-xs text-muted">
                           {new Date(c.created_at).toLocaleDateString(dateLocale)}
                         </div>
                       ) : null}
                     </div>
                   </div>
                 </td>
-                <td className="hidden px-3 py-2.5 font-mono text-xs text-muted-strong md:table-cell">
+                <td className="hidden px-3 py-2.5 text-xs text-muted-strong md:table-cell">
                   {c.phone ?? "—"}
                 </td>
-                <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
+                <td className="px-3 py-2.5 text-right text-sm tabular-nums">
                   {c.orders_count}
                 </td>
                 <td className="px-3 py-2.5 text-right">
@@ -132,12 +132,12 @@ export function CustomersTable({
                 </td>
                 <td className="px-3 py-2.5">
                   {c.is_admin ? (
-                    <span className="inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                       <ShieldCheck className="size-3" />
                       {labels.role_admin}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-xs text-muted">
                       <UserIcon className="size-3" />
                       {labels.role_customer}
                     </span>
@@ -149,7 +149,7 @@ export function CustomersTable({
                     onClick={() => onToggle(c.id, !!c.is_admin)}
                     disabled={isSelf && !!c.is_admin}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors",
+                      "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors",
                       "border-border bg-surface text-muted-strong",
                       "hover:border-border-strong hover:text-foreground",
                       "disabled:cursor-not-allowed disabled:opacity-40",

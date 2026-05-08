@@ -25,7 +25,7 @@ export default async function CartPage({
     <div className="bg-background">
       <section className="border-b border-border bg-surface/40">
         <Container className="py-8">
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+          <div className="flex items-center gap-2 text-xs text-primary">
             <span className="h-px w-6 bg-primary" />
             {tNav("cart")}
           </div>

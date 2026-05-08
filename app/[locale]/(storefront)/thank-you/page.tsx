@@ -80,7 +80,6 @@ export default async function ThankYouPage({
     <div className="bg-background">
       <ClearCartOnMount />
       <section className="relative overflow-hidden border-b border-border bg-surface/40">
-        <div aria-hidden className="absolute inset-0 -z-10 bg-grid-dim opacity-30" />
         <div
           aria-hidden
           className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,rgba(16,185,129,0.18),transparent_60%)]"
@@ -90,7 +89,7 @@ export default async function ThankYouPage({
             <div className="mb-6 grid size-16 place-items-center rounded-full border border-success/40 bg-success/10 text-success">
               <CheckCircle2 className="size-7" />
             </div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-success">
+            <div className="text-xs text-success">
               {t("success_subtitle")}
             </div>
             <h1 className="mt-2 text-4xl font-bold tracking-tight md:text-5xl">
@@ -101,13 +100,13 @@ export default async function ThankYouPage({
             </p>
 
             <div className="mt-6 flex flex-col items-center gap-1 rounded-md border border-border bg-surface px-6 py-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted">
+              <span className="text-xs text-muted">
                 {t("success_order_number")}
               </span>
-              <span className="font-mono text-2xl font-bold tracking-wider text-foreground">
+              <span className="text-2xl font-bold text-foreground">
                 #{order.shortId}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+              <span className="text-xs text-muted">
                 {formattedDate}
               </span>
             </div>
@@ -125,7 +124,7 @@ export default async function ThankYouPage({
                   <Package className="size-4" />
                 </span>
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                  <div className="text-xs text-muted">
                     {t("section_review")}
                   </div>
                   <h2 className="text-base font-semibold tracking-tight">
@@ -140,16 +139,16 @@ export default async function ThankYouPage({
                     key={`${item.productId}-${item.partCode}`}
                     className="flex items-start gap-4 py-3 first:pt-0 last:pb-0"
                   >
-                    <div className="grid size-12 shrink-0 place-items-center rounded-sm border border-border bg-accent-dark font-mono text-[10px] uppercase tracking-wider text-muted">
+                    <div className="grid size-12 shrink-0 place-items-center rounded-sm border border-border bg-accent-dark text-xs text-muted">
                       {item.partCode.slice(0, 3) || item.brand.slice(0, 3) || "—"}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                        <span className="text-xs text-muted">
                           {item.brand}
                         </span>
                         {item.partCode ? (
-                          <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-strong">
+                          <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-[10px] text-muted-strong">
                             {item.partCode}
                           </span>
                         ) : null}
@@ -157,11 +156,11 @@ export default async function ThankYouPage({
                       <div className="mt-1 line-clamp-2 text-sm font-semibold leading-tight">
                         {item.name}
                       </div>
-                      <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted">
+                      <div className="mt-1 text-xs text-muted">
                         {item.quantity} × €{item.price.toFixed(2)}
                       </div>
                     </div>
-                    <div className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                    <div className="shrink-0 text-sm font-semibold tabular-nums">
                       €{(item.price * item.quantity).toFixed(2)}
                     </div>
                   </li>
@@ -176,7 +175,7 @@ export default async function ThankYouPage({
                   <Truck className="size-4" />
                 </span>
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                  <div className="text-xs text-muted">
                     {t("section_delivery")}
                   </div>
                   <h2 className="text-base font-semibold tracking-tight">
@@ -211,7 +210,7 @@ export default async function ThankYouPage({
                   <PaymentIcon className="size-4" />
                 </span>
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+                  <div className="text-xs text-muted">
                     {t("section_payment")}
                   </div>
                   <h2 className="text-base font-semibold tracking-tight">{paymentLabel}</h2>
@@ -226,7 +225,7 @@ export default async function ThankYouPage({
           {/* Summary */}
           <aside className="flex flex-col gap-4">
             <div className="rounded-md border border-border bg-surface p-5">
-              <h3 className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+              <h3 className="mb-4 text-[11px] font-semibold">
                 {t("summary_title")}
               </h3>
               <dl className="space-y-2 text-sm">
@@ -242,7 +241,7 @@ export default async function ThankYouPage({
                   label={tCart("shipping")}
                   value={
                     order.shipping === 0 ? (
-                      <span className="font-mono text-success">{tCart("free")}</span>
+                      <span className="text-success">{tCart("free")}</span>
                     ) : (
                       `€${order.shipping.toFixed(2)}`
                     )
@@ -250,14 +249,14 @@ export default async function ThankYouPage({
                 />
               </dl>
               <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.2em]">
+                <span className="text-[11px] font-semibold">
                   {tCart("total")}
                 </span>
                 <Price value={order.total} size="xl" />
               </div>
             </div>
 
-            <Button asChild size="lg" className="w-full uppercase tracking-wider">
+            <Button asChild size="lg" className="w-full">
               <Link href="/dashboard" locale={locale}>
                 <ShoppingBag className="size-4" />
                 {t("success_dashboard")}
@@ -267,7 +266,7 @@ export default async function ThankYouPage({
               asChild
               size="md"
               variant="secondary"
-              className="w-full uppercase tracking-wider"
+              className="w-full"
             >
               <Link href="/catalog" locale={locale}>
                 <ArrowLeft className="size-4" />
@@ -295,7 +294,7 @@ function Row({
       <dt className="text-muted">{label}</dt>
       <dd
         className={cn(
-          "font-mono tabular-nums",
+          "tabular-nums",
           tone === "success" ? "text-success" : "text-foreground",
         )}
       >
@@ -322,7 +321,7 @@ function DefRow({
         <Icon className="size-3.5" />
       </span>
       <div className="min-w-0">
-        <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+        <dt className="text-xs text-muted">
           {label}
         </dt>
         <dd className="mt-0.5 break-words text-sm text-foreground">{value}</dd>
