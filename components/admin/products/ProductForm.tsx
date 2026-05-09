@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageUploadField } from "@/components/admin/products/ImageUploadField";
 import { Link } from "@/lib/i18n/routing";
 import {
   createProduct,
@@ -451,7 +452,12 @@ export function ProductForm({
 
         {/* Specs */}
         <Card title={labels.section_specs}>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <ImageUploadField
+            name="imageUrl"
+            defaultValue={initial?.imageUrl ?? ""}
+            label={labels.field_image_url}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label={labels.field_warranty}>
               <Input
                 name="warrantyMonths"
@@ -469,9 +475,6 @@ export function ProductForm({
                 min={0}
                 defaultValue={initial?.weight ?? ""}
               />
-            </Field>
-            <Field label={labels.field_image_url}>
-              <Input name="imageUrl" defaultValue={initial?.imageUrl ?? ""} />
             </Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
