@@ -65,7 +65,7 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
       {
         heading: "4. Prețuri și disponibilitate",
         blocks: [
-          { type: "p", text: "Prețurile sunt afișate în EUR și includ TVA, cu excepția cazurilor unde este menționat altfel. Prețurile pot fi modificate fără notificare prealabilă, dar valoarea aplicabilă unei comenzi este cea afișată la momentul plasării ei. Dacă apare o eroare evidentă (de exemplu, un preț nerealist de mic), Inter Bus poate corecta valoarea și te contactează înainte de procesare." },
+          { type: "p", text: "Prețurile sunt afișate în lei (MDL) și includ TVA, cu excepția cazurilor unde este menționat altfel. Prețurile pot fi modificate fără notificare prealabilă, dar valoarea aplicabilă unei comenzi este cea afișată la momentul plasării ei. Dacă apare o eroare evidentă (de exemplu, un preț nerealist de mic), Inter Bus poate corecta valoarea și te contactează înainte de procesare." },
         ],
       },
       {
@@ -156,7 +156,7 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
       {
         heading: "4. Prices and availability",
         blocks: [
-          { type: "p", text: "Prices are displayed in EUR and include VAT, unless stated otherwise. Prices may change without prior notice, but the value applicable to an order is the one shown at the time it was placed. In the event of an obvious error (for example, an unrealistically low price), Inter Bus may correct the value and contact you before processing." },
+          { type: "p", text: "Prices are displayed in lei (MDL) and include VAT, unless stated otherwise. Prices may change without prior notice, but the value applicable to an order is the one shown at the time it was placed. In the event of an obvious error (for example, an unrealistically low price), Inter Bus may correct the value and contact you before processing." },
         ],
       },
       {
@@ -247,7 +247,7 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
       {
         heading: "4. Цены и наличие",
         blocks: [
-          { type: "p", text: "Цены указаны в EUR и включают НДС, если не указано иное. Цены могут меняться без предварительного уведомления, но к заказу применяется значение на момент его размещения. В случае очевидной ошибки (например, нереально низкой цены) Inter Bus может скорректировать значение и связаться с вами до обработки." },
+          { type: "p", text: "Цены указаны в леях (MDL) и включают НДС, если не указано иное. Цены могут меняться без предварительного уведомления, но к заказу применяется значение на момент его размещения. В случае очевидной ошибки (например, нереально низкой цены) Inter Bus может скорректировать значение и связаться с вами до обработки." },
         ],
       },
       {

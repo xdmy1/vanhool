@@ -72,17 +72,17 @@ export default async function AdminPromosPage({
                     </td>
                     <td className="px-3 py-2.5">
                       <span className="rounded-sm border border-border bg-accent-dark px-1.5 py-0.5 text-xs text-muted-strong">
-                        {p.discount_type === "percentage" ? "%" : "€"}
+                        {p.discount_type === "percentage" ? "%" : "lei"}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm tabular-nums">
                       {p.discount_type === "percentage"
                         ? `${p.discount_value}%`
-                        : `€${Number(p.discount_value ?? 0).toFixed(2)}`}
+                        : `${Number(p.discount_value ?? 0).toFixed(2)} lei`}
                     </td>
                     <td className="hidden px-3 py-2.5 text-right text-sm tabular-nums md:table-cell">
                       {p.min_order_amount
-                        ? `€${Number(p.min_order_amount).toFixed(2)}`
+                        ? `${Number(p.min_order_amount).toFixed(2)} lei`
                         : "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right text-xs tabular-nums">

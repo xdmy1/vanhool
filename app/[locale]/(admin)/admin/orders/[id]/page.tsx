@@ -133,11 +133,11 @@ export default async function AdminOrderDetailPage({
                       {item.name}
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
-                      {item.quantity} × €{item.price.toFixed(2)}
+                      {item.quantity} × {item.price.toFixed(2)} lei
                     </div>
                   </div>
                   <div className="shrink-0 text-sm font-semibold tabular-nums">
-                    €{(item.price * item.quantity).toFixed(2)}
+                    {(item.price * item.quantity).toFixed(2)} lei
                   </div>
                 </li>
               ))}
@@ -182,11 +182,11 @@ export default async function AdminOrderDetailPage({
               {t("order_detail_summary")}
             </h2>
             <dl className="space-y-2 text-sm">
-              <Row label={tCart("subtotal")} value={`€${Number(order.subtotal ?? 0).toFixed(2)}`} />
+              <Row label={tCart("subtotal")} value={`${Number(order.subtotal ?? 0).toFixed(2)} lei`} />
               {Number(order.discount_amount ?? 0) > 0 ? (
                 <Row
                   label={tCart("discount")}
-                  value={`-€${Number(order.discount_amount).toFixed(2)}`}
+                  value={`-${Number(order.discount_amount).toFixed(2)} lei`}
                   tone="success"
                 />
               ) : null}
@@ -196,7 +196,7 @@ export default async function AdminOrderDetailPage({
                   Number(order.shipping_cost ?? 0) === 0 ? (
                     <span className="text-success">{tCart("free")}</span>
                   ) : (
-                    `€${Number(order.shipping_cost).toFixed(2)}`
+                    `${Number(order.shipping_cost).toFixed(2)} lei`
                   )
                 }
               />

@@ -157,11 +157,11 @@ export default async function ThankYouPage({
                         {item.name}
                       </div>
                       <div className="mt-1 text-xs text-muted">
-                        {item.quantity} × €{item.price.toFixed(2)}
+                        {item.quantity} × {item.price.toFixed(2)} lei
                       </div>
                     </div>
                     <div className="shrink-0 text-sm font-semibold tabular-nums">
-                      €{(item.price * item.quantity).toFixed(2)}
+                      {(item.price * item.quantity).toFixed(2)} lei
                     </div>
                   </li>
                 ))}
@@ -229,11 +229,11 @@ export default async function ThankYouPage({
                 {t("summary_title")}
               </h3>
               <dl className="space-y-2 text-sm">
-                <Row label={tCart("subtotal")} value={`€${order.subtotal.toFixed(2)}`} />
+                <Row label={tCart("subtotal")} value={`${order.subtotal.toFixed(2)} lei`} />
                 {order.discount > 0 ? (
                   <Row
                     label={tCart("discount")}
-                    value={`-€${order.discount.toFixed(2)}`}
+                    value={`-${order.discount.toFixed(2)} lei`}
                     tone="success"
                   />
                 ) : null}
@@ -243,7 +243,7 @@ export default async function ThankYouPage({
                     order.shipping === 0 ? (
                       <span className="text-success">{tCart("free")}</span>
                     ) : (
-                      `€${order.shipping.toFixed(2)}`
+                      `${order.shipping.toFixed(2)} lei`
                     )
                   }
                 />

@@ -78,7 +78,7 @@ export function ProductBuyBox({
           <Price value={product.price} size="xl" className="mt-1 text-3xl md:text-4xl" />
           {product.oldPrice ? (
             <span className="text-sm text-muted line-through">
-              €{product.oldPrice.toFixed(2)}
+              {product.oldPrice.toFixed(2)} lei
             </span>
           ) : null}
         </div>

@@ -32,7 +32,6 @@ export async function Footer() {
     { href: "/contact" as const, label: tn("contact") },
     { href: "/informatii/livrare" as const, label: t("delivery") },
     { href: "/informatii/garantie-si-retur" as const, label: t("warranty") },
-    { href: "/informatii/garantie-si-retur" as const, label: t("returns") },
   ];
   const legalLinks = [
     { href: "/informatii/termeni-si-conditii" as const, label: t("terms") },

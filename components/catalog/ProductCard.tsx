@@ -83,11 +83,11 @@ export function ProductCard({
           <div className="flex flex-col">
             {product.isPromo && product.listPrice > product.price ? (
               <span className="text-xs text-muted line-through">
-                €{product.listPrice.toFixed(2)}
+                {product.listPrice.toFixed(2)} lei
               </span>
             ) : product.oldPrice ? (
               <span className="text-xs text-muted line-through">
-                €{product.oldPrice.toFixed(2)}
+                {product.oldPrice.toFixed(2)} lei
               </span>
             ) : null}
             <Price value={product.price} size="lg" />

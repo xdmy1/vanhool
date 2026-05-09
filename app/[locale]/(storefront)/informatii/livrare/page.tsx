@@ -51,8 +51,8 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
           {
             type: "ul",
             items: [
-              "**Livrare gratuită** pentru comenzile cu valoare egală sau mai mare de 200 EUR pe teritoriul Republicii Moldova.",
-              "**Tarif fix** de 25 EUR pentru comenzile sub acest prag, indiferent de locație în Republica Moldova.",
+              "**Livrare gratuită** pentru comenzile cu valoare egală sau mai mare de 4000 lei pe teritoriul Republicii Moldova.",
+              "**Tarif fix** de 500 lei pentru comenzile sub acest prag, indiferent de locație în Republica Moldova.",
               "**Livrarea internațională** se calculează individual, în funcție de greutate, dimensiuni și destinație. Costul este afișat înainte de confirmarea comenzii.",
               "Pentru piesele de gabarit mare (radiatoare, oglinzi laterale, panouri de caroserie) poate exista un tarif suplimentar, comunicat înainte de expediere.",
             ],
@@ -141,8 +141,8 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
           {
             type: "ul",
             items: [
-              "**Free delivery** for orders of 200 EUR or more within the Republic of Moldova.",
-              "**Flat fee** of 25 EUR for orders below this threshold, regardless of location within Moldova.",
+              "**Free delivery** for orders of 4000 lei or more within the Republic of Moldova.",
+              "**Flat fee** of 500 lei for orders below this threshold, regardless of location within Moldova.",
               "**International shipping** is calculated individually, based on weight, dimensions, and destination. The cost is shown before you confirm the order.",
               "For oversize parts (radiators, side mirrors, body panels), an additional fee may apply, communicated before shipping.",
             ],
@@ -231,8 +231,8 @@ const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {
           {
             type: "ul",
             items: [
-              "**Бесплатная доставка** для заказов от 200 EUR на территории Республики Молдова.",
-              "**Фиксированный тариф** 25 EUR для заказов ниже этого порога, независимо от локации в Молдове.",
+              "**Бесплатная доставка** для заказов от 4000 lei на территории Республики Молдова.",
+              "**Фиксированный тариф** 500 lei для заказов ниже этого порога, независимо от локации в Молдове.",
               "**Международная доставка** рассчитывается индивидуально по весу, размерам и направлению. Стоимость показывается до подтверждения заказа.",
               "Для крупногабаритных деталей (радиаторы, боковые зеркала, панели кузова) может применяться дополнительный тариф, согласованный до отправки.",
             ],

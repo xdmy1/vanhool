@@ -106,7 +106,7 @@ export function CartLine({
 
           <div className="text-right">
             <div className="text-xs text-muted">
-              {item.quantity} × €{item.price.toFixed(2)}
+              {item.quantity} × {item.price.toFixed(2)} lei
             </div>
             <Price value={lineTotal} size="lg" />
           </div>

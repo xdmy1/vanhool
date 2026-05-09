@@ -291,22 +291,22 @@ export function CheckoutContent({
                   </div>
                   <div className="line-clamp-2 text-xs font-semibold">{item.name}</div>
                   <div className="mt-0.5 text-[10px] text-muted">
-                    {item.quantity} × €{item.price.toFixed(2)}
+                    {item.quantity} × {item.price.toFixed(2)} lei
                   </div>
                 </div>
                 <div className="shrink-0 text-sm tabular-nums">
-                  €{(item.price * item.quantity).toFixed(2)}
+                  {(item.price * item.quantity).toFixed(2)} lei
                 </div>
               </div>
             ))}
           </div>
 
           <dl className="space-y-2 border-t border-border pt-4 text-sm">
-            <Row label={tCart("subtotal")} value={`€${totals.subtotal.toFixed(2)}`} />
+            <Row label={tCart("subtotal")} value={`${totals.subtotal.toFixed(2)} lei`} />
             {totals.discount > 0 ? (
               <Row
                 label={`${tCart("discount")}${promo ? ` · ${promo.code}` : ""}`}
-                value={`-€${totals.discount.toFixed(2)}`}
+                value={`-${totals.discount.toFixed(2)} lei`}
                 tone="success"
               />
             ) : null}
@@ -316,7 +316,7 @@ export function CheckoutContent({
                 totals.shipping === 0 ? (
                   <span className="text-success">{tCart("free")}</span>
                 ) : (
-                  `€${totals.shipping.toFixed(2)}`
+                  `${totals.shipping.toFixed(2)} lei`
                 )
               }
             />
@@ -345,7 +345,7 @@ export function CheckoutContent({
           <span>
             {totals.shipping === 0
               ? tCart("free_shipping_hint")
-              : `${tCart("almost_free_shipping", { remaining: `€${(CART_CONFIG.freeShippingThreshold - (totals.subtotal - totals.discount)).toFixed(2)}` })}`}
+              : `${tCart("almost_free_shipping", { remaining: `${(CART_CONFIG.freeShippingThreshold - (totals.subtotal - totals.discount)).toFixed(2)} lei` })}`}
           </span>
         </div>
       </aside>

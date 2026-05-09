@@ -43,11 +43,11 @@ export function CartSummary({
       </h2>
 
       <dl className="space-y-2 text-sm">
-        <Row label={labels.subtotal} value={`€${totals.subtotal.toFixed(2)}`} />
+        <Row label={labels.subtotal} value={`${totals.subtotal.toFixed(2)} lei`} />
         {totals.discount > 0 ? (
           <Row
             label={`${labels.discount}${promo ? ` · ${promo.code}` : ""}`}
-            value={`-€${totals.discount.toFixed(2)}`}
+            value={`-${totals.discount.toFixed(2)} lei`}
             tone="success"
           />
         ) : null}
@@ -59,7 +59,7 @@ export function CartSummary({
                 {labels.free}
               </span>
             ) : (
-              `€${totals.shipping.toFixed(2)}`
+              `${totals.shipping.toFixed(2)} lei`
             )
           }
         />
@@ -75,7 +75,7 @@ export function CartSummary({
           ) : (
             <>
               <div className="mb-2 flex items-center justify-between text-xs text-muted">
-                <span className="">{labels.almostFreeShipping(`€${remaining.toFixed(2)}`)}</span>
+                <span className="">{labels.almostFreeShipping(`${remaining.toFixed(2)} lei`)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-accent-dark">
                 <div

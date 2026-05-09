@@ -31,7 +31,7 @@ export type Totals = {
 };
 
 export const CART_CONFIG = {
-  shippingFee: 25,
-  freeShippingThreshold: 200,
-  currency: "EUR" as const,
+  shippingFee: 500,
+  freeShippingThreshold: 4000,
+  currency: "MDL" as const,
 };
