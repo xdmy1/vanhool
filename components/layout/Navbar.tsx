@@ -8,12 +8,14 @@ import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { CartCount } from "@/components/cart/CartCount";
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { createClient } from "@/lib/supabase/server";
 import { Link } from "@/lib/i18n/routing";
 
 export async function Navbar() {
   const t = await getTranslations("nav");
   const tAuth = await getTranslations("auth");
+  const tv = await getTranslations("vehicles");
   const locale = await getLocale();
 
   const supabase = await createClient();
@@ -31,6 +33,15 @@ export async function Navbar() {
     isAdmin = !!profile?.is_admin;
     displayName = profile?.full_name ?? user.email ?? null;
   }
+
+  const mobileLinks = [
+    { href: "/catalog" as const, label: t("catalog") },
+    { href: "/categories" as const, label: t("categories") },
+    { href: "/promotions" as const, label: t("promotions") },
+    { href: "/piese-auto" as const, label: tv("nav_link") },
+    { href: "/about" as const, label: t("about") },
+    { href: "/contact" as const, label: t("contact") },
+  ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
@@ -56,26 +67,30 @@ export async function Navbar() {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-2">
-          <LocaleSwitcher />
+          <div className="hidden md:block">
+            <LocaleSwitcher />
+          </div>
           {user ? (
-            <AccountMenu
-              email={user.email ?? ""}
-              displayName={displayName}
-              isAdmin={isAdmin}
-              locale={locale}
-              labels={{
-                account: t("account"),
-                dashboard: t("dashboard"),
-                admin: t("admin"),
-                logout: tAuth("logout"),
-              }}
-            />
+            <div className="hidden md:block">
+              <AccountMenu
+                email={user.email ?? ""}
+                displayName={displayName}
+                isAdmin={isAdmin}
+                locale={locale}
+                labels={{
+                  account: t("account"),
+                  dashboard: t("dashboard"),
+                  admin: t("admin"),
+                  logout: tAuth("logout"),
+                }}
+              />
+            </div>
           ) : (
             <Button
               variant="ghost"
               size="sm"
               asChild
-              className="hidden gap-1.5 sm:inline-flex"
+              className="hidden gap-1.5 md:inline-flex"
             >
               <Link href="/login" locale={locale}>
                 <User className="size-4" />
@@ -90,6 +105,21 @@ export async function Navbar() {
               <CartCount />
             </Link>
           </Button>
+          <MobileNav
+            locale={locale}
+            user={user ? { displayName, email: user.email ?? "" } : null}
+            isAdmin={isAdmin}
+            links={mobileLinks}
+            authedLabels={{
+              dashboard: t("dashboard"),
+              admin: t("admin"),
+              logout: tAuth("logout"),
+            }}
+            guestLabels={{
+              login: t("login"),
+              register: t("register"),
+            }}
+          />
         </div>
       </Container>
 
