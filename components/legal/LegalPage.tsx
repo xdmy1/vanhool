@@ -4,6 +4,16 @@ import type { ReactNode } from "react";
 import { Container } from "@/components/layout/Container";
 import { Link } from "@/lib/i18n/routing";
 
+export type LegalBlock =
+  | { type: "p"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] };
+
+export type LegalSection = {
+  heading: string;
+  blocks: LegalBlock[];
+};
+
 export type LegalPageProps = {
   locale: string;
   eyebrow: string;
@@ -12,12 +22,17 @@ export type LegalPageProps = {
   updatedAt?: string;
   homeLabel: string;
   infoLabel: string;
-  children: ReactNode;
+  /** Structured body content. If provided, rendered with consistent styling. */
+  sections?: LegalSection[];
+  /** Optional custom JSX appended after the structured content. */
+  children?: ReactNode;
 };
 
 /**
  * Shared layout for /informatii/* legal pages. Breadcrumbs + page header +
- * `prose`-style content area. Children render the actual policy text.
+ * styled prose. Pass `sections` (data-driven, locale-aware) and/or `children`.
+ *
+ * Inline `**bold**` markers inside text strings are rendered as `<strong>`.
  */
 export function LegalPage({
   locale,
@@ -27,11 +42,11 @@ export function LegalPage({
   updatedAt,
   homeLabel,
   infoLabel,
+  sections,
   children,
 }: LegalPageProps) {
   return (
     <div className="bg-background">
-      {/* Breadcrumbs */}
       <div className="border-b border-border bg-surface/40">
         <Container className="flex items-center gap-2 py-4 text-xs text-muted">
           <Link href="/" locale={locale} className="transition-colors hover:text-foreground">
@@ -60,23 +75,72 @@ export function LegalPage({
             </p>
           ) : null}
 
-          <div
-            className={[
-              "mt-10 flex flex-col gap-6 text-sm leading-relaxed text-foreground md:text-[15px]",
-              "[&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:tracking-tight md:[&_h2]:text-xl",
-              "[&_h3]:mt-4 [&_h3]:text-base [&_h3]:font-semibold",
-              "[&_p]:text-muted-strong [&_p]:leading-relaxed",
-              "[&_ul]:flex [&_ul]:list-none [&_ul]:flex-col [&_ul]:gap-1.5 [&_ul]:pl-1",
-              "[&_li]:relative [&_li]:pl-5 [&_li]:text-muted-strong",
-              "[&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-2 [&_li]:before:size-1.5 [&_li]:before:rounded-full [&_li]:before:bg-primary/60",
-              "[&_strong]:font-semibold [&_strong]:text-foreground",
-              "[&_a]:text-primary [&_a]:underline-offset-2 hover:[&_a]:underline",
-            ].join(" ")}
-          >
+          <div className="mt-10 flex flex-col gap-6 text-sm leading-relaxed text-foreground md:text-[15px]">
+            {sections?.map((section, idx) => (
+              <section key={idx} className="flex flex-col gap-3">
+                <h2 className="text-lg font-bold tracking-tight md:text-xl">
+                  {section.heading}
+                </h2>
+                {section.blocks.map((block, j) => (
+                  <RenderBlock key={j} block={block} />
+                ))}
+              </section>
+            ))}
             {children}
           </div>
         </div>
       </Container>
     </div>
   );
+}
+
+function RenderBlock({ block }: { block: LegalBlock }) {
+  if (block.type === "p") {
+    return <p className="text-muted-strong">{renderInline(block.text)}</p>;
+  }
+  if (block.type === "ul") {
+    return (
+      <ul className="flex list-none flex-col gap-1.5 pl-1">
+        {block.items.map((item, i) => (
+          <li
+            key={i}
+            className="relative pl-5 text-muted-strong before:absolute before:left-0 before:top-2 before:size-1.5 before:rounded-full before:bg-primary/60"
+          >
+            {renderInline(item)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <ol className="flex flex-col gap-1.5 pl-5 [counter-reset:item]">
+      {block.items.map((item, i) => (
+        <li
+          key={i}
+          className="relative pl-7 text-muted-strong before:absolute before:left-0 before:top-0 before:font-mono before:text-xs before:text-primary [counter-increment:item] [&::before]:[content:counter(item)'.']"
+        >
+          {renderInline(item)}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * Parse inline `**bold**` segments into `<strong>` nodes. Plain text
+ * passes through unchanged. Used by paragraphs and list items so each
+ * page's content stays as plain strings (translatable).
+ */
+function renderInline(text: string): ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
