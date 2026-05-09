@@ -46,6 +46,22 @@ type Labels = {
   vatNumber: string;
   euVatId: string;
   euVatIdHint: string;
+  // Country labels
+  countryMd: string;
+  countryRo: string;
+  countryOther: string;
+  // Placeholders
+  phonePlaceholder: string;
+  contactPositionPlaceholder: string;
+  companyNamePlaceholder: string;
+  idnoPlaceholder: string;
+  legalFormPlaceholder: string;
+  streetPlaceholder: string;
+  cityPlaceholder: string;
+  districtPlaceholder: string;
+  postalPlaceholder: string;
+  vatNumberPlaceholder: string;
+  euVatIdPlaceholder: string;
   // Shared
   company: string;
   submit: string;
@@ -74,11 +90,7 @@ type Labels = {
 
 type AccountType = "individual" | "business";
 
-const COUNTRIES = [
-  { code: "MD", labelRo: "Republica Moldova" },
-  { code: "RO", labelRo: "România" },
-  { code: "OTHER", labelRo: "Altă țară" },
-];
+type Country = { code: string; label: string };
 
 export function RegisterForm({ labels }: { labels: Labels }) {
   const router = useRouter();
@@ -92,6 +104,12 @@ export function RegisterForm({ labels }: { labels: Labels }) {
   const [shippingSame, setShippingSame] = useState(true);
   const [vatPayer, setVatPayer] = useState(false);
   const [billingCountry, setBillingCountry] = useState("MD");
+
+  const COUNTRIES: Country[] = [
+    { code: "MD", label: labels.countryMd },
+    { code: "RO", label: labels.countryRo },
+    { code: "OTHER", label: labels.countryOther },
+  ];
 
   if (pendingEmail) {
     return (
@@ -249,7 +267,7 @@ export function RegisterForm({ labels }: { labels: Labels }) {
 
       {accountType === "business" ? (
         <Field label={labels.contactPosition}>
-          <Input name="contactPosition" placeholder="Administrator, Manager achiziții…" />
+          <Input name="contactPosition" placeholder={labels.contactPositionPlaceholder} />
         </Field>
       ) : null}
 
@@ -262,7 +280,7 @@ export function RegisterForm({ labels }: { labels: Labels }) {
           name="phone"
           type="tel"
           autoComplete="tel"
-          placeholder="+373 ..."
+          placeholder={labels.phonePlaceholder}
           required
           inputMode="tel"
         />
@@ -273,14 +291,14 @@ export function RegisterForm({ labels }: { labels: Labels }) {
         <>
           <SectionTitle>{labels.sectionCompany}</SectionTitle>
           <Field label={labels.companyName} error={errors.companyName}>
-            <Input name="companyName" placeholder="S.R.L. DAVO GROUP" required />
+            <Input name="companyName" placeholder={labels.companyNamePlaceholder} required />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={labels.idno} error={errors.idno}>
-              <Input name="idno" placeholder="1234567890123" required />
+              <Input name="idno" placeholder={labels.idnoPlaceholder} required />
             </Field>
             <Field label={labels.legalForm} hint={labels.legalFormHint}>
-              <Input name="legalForm" placeholder="SRL, SA, II, PFA, LTD…" />
+              <Input name="legalForm" placeholder={labels.legalFormPlaceholder} />
             </Field>
           </div>
 
@@ -292,24 +310,24 @@ export function RegisterForm({ labels }: { labels: Labels }) {
             >
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>
-                  {c.labelRo}
+                  {c.label}
                 </option>
               ))}
             </select>
           </Field>
           <Field label={labels.street} error={errors.billingStreet}>
-            <Input name="billingStreet" placeholder="str. Industrială 24" required />
+            <Input name="billingStreet" placeholder={labels.streetPlaceholder} required />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={labels.city} error={errors.billingCity}>
-              <Input name="billingCity" placeholder="Chișinău" required />
+              <Input name="billingCity" placeholder={labels.cityPlaceholder} required />
             </Field>
             <Field label={labels.district}>
-              <Input name="billingDistrict" placeholder="Botanica / Cluj" />
+              <Input name="billingDistrict" placeholder={labels.districtPlaceholder} />
             </Field>
           </div>
           <Field label={labels.postal}>
-            <Input name="billingPostal" placeholder="MD-2044" />
+            <Input name="billingPostal" placeholder={labels.postalPlaceholder} />
           </Field>
 
           {/* Shipping section */}
@@ -333,7 +351,7 @@ export function RegisterForm({ labels }: { labels: Labels }) {
                 >
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>
-                      {c.labelRo}
+                      {c.label}
                     </option>
                   ))}
                 </select>
@@ -368,11 +386,11 @@ export function RegisterForm({ labels }: { labels: Labels }) {
           </label>
           {vatPayer ? (
             <Field label={labels.vatNumber} error={errors.vatNumber}>
-              <Input name="vatNumber" placeholder="MD..." required />
+              <Input name="vatNumber" placeholder={labels.vatNumberPlaceholder} required />
             </Field>
           ) : null}
           <Field label={labels.euVatId} hint={labels.euVatIdHint}>
-            <Input name="euVatId" placeholder="RO12345678 / DE..." />
+            <Input name="euVatId" placeholder={labels.euVatIdPlaceholder} />
           </Field>
         </>
       ) : null}
