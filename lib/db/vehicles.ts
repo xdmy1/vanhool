@@ -444,6 +444,7 @@ export async function listPartsForTypeAndCategory(
       categoryId: r.category_id,
       categorySlug: categorySlugLocal,
       imageUrl: r.image_url,
+      images: r.image_url ? [r.image_url] : [],
       illustration: illustrationFor(categorySlugLocal),
       weight: r.weight,
       width: r.width,

@@ -15,6 +15,7 @@ type ProductRow = {
   price: number | null;
   stock_quantity: number | null;
   image_url: string | null;
+  images: unknown;
   weight: number | null;
   width: number | null;
   height: number | null;
@@ -44,11 +45,28 @@ export type ProductAlternativeCodes = {
 type CategorySlugRow = { id: string; slug: string | null };
 
 const SELECT_COLUMNS = `
-  id, slug, part_code, brand, price, stock_quantity, image_url,
+  id, slug, part_code, brand, price, stock_quantity, image_url, images,
   weight, width, height, warranty_months, is_featured, is_active, category_id,
   name_ro, name_en, name_ru, description_ro, description_en, description_ru,
   is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
+
+function parseImages(raw: unknown, primary: string | null): string[] {
+  const out = new Set<string>();
+  if (primary) out.add(primary);
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === "string" && item.trim().length > 0) {
+        out.add(item.trim());
+      } else if (item && typeof item === "object") {
+        const o = item as { url?: unknown; src?: unknown };
+        const u = typeof o.url === "string" ? o.url : typeof o.src === "string" ? o.src : null;
+        if (u && u.length > 0) out.add(u);
+      }
+    }
+  }
+  return Array.from(out);
+}
 
 function isPromoActive(row: ProductRow): boolean {
   if (!row.is_promo || row.promo_price == null) return false;
@@ -115,6 +133,7 @@ function toProduct(
     categoryId: row.category_id,
     categorySlug,
     imageUrl: row.image_url,
+    images: parseImages(row.images, row.image_url),
     illustration: illustrationFor(categorySlug),
     weight: row.weight,
     width: row.width,

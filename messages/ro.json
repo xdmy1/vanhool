@@ -200,6 +200,7 @@
     "dimensions": "Dimensiuni",
     "warranty": "Garanție",
     "warranty_months": "{count, plural, one {# lună} few {# luni} other {# de luni}}",
+    "stock_available": "{count, plural, one {# bucată disponibilă} few {# bucăți disponibile} other {# de bucăți disponibile}}",
     "compatibility": "Compatibilitate",
     "compatibility_empty": "Verifică codul piesei cu modelul tău. Echipa noastră tehnică confirmă înainte de comandă.",
     "related": "Produse similare",

@@ -36,6 +36,8 @@ export type Product = {
   categoryId: string | null;
   categorySlug: string;
   imageUrl: string | null;
+  /** All gallery images (admin-uploaded). The primary one is `imageUrl`. */
+  images: string[];
   illustration: PartIllustration;
   weight?: number | null;
   width?: number | null;

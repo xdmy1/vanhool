@@ -26,6 +26,7 @@ export function ProductBuyBox({
     outOfStock: string;
     trustDelivery: string;
     trustWarranty: string;
+    stockAvailable: (count: number) => string;
   };
 }) {
   const router = useRouter();
@@ -82,7 +83,14 @@ export function ProductBuyBox({
             </span>
           ) : null}
         </div>
-        <StockBadge status={product.stock} label={stockLabel} />
+        <div className="flex flex-col items-end gap-1">
+          <StockBadge status={product.stock} label={stockLabel} />
+          {!unavailable ? (
+            <span className="font-mono text-[11px] tabular-nums text-muted">
+              {labels.stockAvailable(product.stockQuantity)}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {/* Quantity + CTA */}

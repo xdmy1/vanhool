@@ -200,6 +200,7 @@
     "dimensions": "Размеры",
     "warranty": "Гарантия",
     "warranty_months": "{count, plural, one {# месяц} few {# месяца} other {# месяцев}}",
+    "stock_available": "{count, plural, one {# штука в наличии} few {# штуки в наличии} other {# штук в наличии}}",
     "compatibility": "Совместимость",
     "compatibility_empty": "Сверьте код детали с вашей моделью. Техническая команда подтвердит перед заказом.",
     "related": "Похожие товары",

@@ -273,6 +273,7 @@ function localizedProduct(base: BaseProduct, locale: Locale): Product {
     categoryId: null,
     categorySlug: base.categorySlug,
     imageUrl: null,
+    images: [],
     illustration: illustrationFromCategory(base.categorySlug),
     weight: base.weight ?? null,
     width: null,
