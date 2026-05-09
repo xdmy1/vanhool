@@ -13,8 +13,12 @@ export function ProductGallery({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col gap-3 lg:flex-row-reverse lg:items-start">
-      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-accent-dark">
-        <PartImage variant={product.illustration} />
+      <div className="relative aspect-square w-full overflow-hidden rounded-md border border-border bg-surface">
+        <PartImage
+          variant={product.illustration}
+          imageUrl={product.imageUrl}
+          alt={product.name}
+        />
         <div className="absolute left-4 top-4 rounded-sm border border-border bg-background/80 px-2 py-1 text-xs text-muted-strong backdrop-blur">
           {product.partCode || product.slug}
         </div>
@@ -25,11 +29,15 @@ export function ProductGallery({ product }: { product: Product }) {
           <button
             key={i}
             type="button"
-            className="aspect-square overflow-hidden rounded-md border border-border bg-accent-dark transition-colors hover:border-primary/60"
+            className="aspect-square overflow-hidden rounded-md border border-border bg-surface transition-colors hover:border-primary/60"
             aria-label={`Thumbnail ${i + 1}`}
             tabIndex={-1}
           >
-            <PartImage variant={variant} />
+            <PartImage
+              variant={variant}
+              imageUrl={product.imageUrl}
+              alt={product.name}
+            />
           </button>
         ))}
       </div>

@@ -28,10 +28,14 @@ export function CartLine({
       <Link
         href={`/product/${item.slug}`}
         locale={locale}
-        className="relative block size-20 shrink-0 overflow-hidden rounded-md border border-border bg-accent-dark sm:size-24"
+        className="relative block size-20 shrink-0 overflow-hidden rounded-md border border-border bg-surface sm:size-24"
         aria-label={item.name}
       >
-        <PartImage variant={item.illustration} />
+        <PartImage
+          variant={item.illustration}
+          imageUrl={item.imageUrl}
+          alt={item.name}
+        />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">

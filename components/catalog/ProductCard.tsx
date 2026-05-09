@@ -57,7 +57,11 @@ export function ProductCard({
         <div className="absolute right-3 top-3 z-10">
           <StockBadge status={product.stock} label={stockLabel} />
         </div>
-        <PartImage variant={product.illustration} />
+        <PartImage
+          variant={product.illustration}
+          imageUrl={product.imageUrl}
+          alt={product.name}
+        />
       </Link>
 
       <div className="flex flex-1 flex-col p-4">

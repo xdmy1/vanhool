@@ -17,26 +17,50 @@ type Variant =
   | "sensor"
   | "pump";
 
-// Placeholder SVG illustrations for parts until real product images are wired.
-// Rendered with currentColor so they tint with the surrounding class.
+// Renders the real product photo if `imageUrl` is provided, otherwise falls
+// back to a category-themed SVG illustration.
 export function PartImage({
   variant,
+  imageUrl,
+  alt,
   className,
 }: {
   variant: Variant;
+  imageUrl?: string | null;
+  alt?: string;
   className?: string;
 }) {
+  const trimmed = imageUrl?.trim();
+  if (trimmed) {
+    return (
+      <div
+        className={cn(
+          "relative h-full w-full overflow-hidden bg-surface",
+          className,
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={trimmed}
+          alt={alt ?? ""}
+          loading="lazy"
+          className="h-full w-full object-contain"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "relative grid h-full w-full place-items-center bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.06),transparent_60%),linear-gradient(135deg,#1c1c1c,#0f0f0f)]",
+        "relative grid h-full w-full place-items-center bg-surface",
         "overflow-hidden",
         className,
       )}
     >
       <svg
         viewBox="0 0 120 120"
-        className="h-3/5 w-3/5 text-muted-strong"
+        className="h-3/5 w-3/5 text-muted"
         fill="none"
         strokeWidth="2.2"
         stroke="currentColor"
@@ -46,7 +70,6 @@ export function PartImage({
       >
         {renderPath(variant)}
       </svg>
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </div>
   );
 }

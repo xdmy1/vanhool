@@ -279,8 +279,12 @@ export function CheckoutContent({
           <div className="mb-4 max-h-72 space-y-3 overflow-y-auto pr-1">
             {items.map((item) => (
               <div key={item.productId} className="flex items-start gap-3">
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-sm border border-border bg-accent-dark">
-                  <PartImage variant={item.illustration} />
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-sm border border-border bg-surface">
+                  <PartImage
+                    variant={item.illustration}
+                    imageUrl={item.imageUrl}
+                    alt={item.name}
+                  />
                   <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-[10px] font-bold tabular-nums text-foreground">
                     {item.quantity}
                   </span>

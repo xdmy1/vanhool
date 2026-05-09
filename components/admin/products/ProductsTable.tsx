@@ -121,8 +121,12 @@ export function ProductsTable({
                 )}
               >
                 <td className="px-3 py-2.5">
-                  <div className="size-10 overflow-hidden rounded-sm border border-border bg-accent-dark">
-                    <PartImage variant={variant} />
+                  <div className="size-10 overflow-hidden rounded-sm border border-border bg-surface">
+                    <PartImage
+                      variant={variant}
+                      imageUrl={p.image_url}
+                      alt={name}
+                    />
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
