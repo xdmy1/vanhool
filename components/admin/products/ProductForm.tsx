@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageUploadField } from "@/components/admin/products/ImageUploadField";
+import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
 import { Link } from "@/lib/i18n/routing";
 import {
   createProduct,
@@ -53,6 +54,11 @@ type Labels = {
   field_subcategory: string;
   field_category_none: string;
   field_subcategory_none: string;
+  field_category_add: string;
+  field_subcategory_add: string;
+  field_category_placeholder: string;
+  field_subcategory_placeholder: string;
+  field_subcategory_disabled_hint: string;
   field_active: string;
   field_featured: string;
   // Specs
@@ -156,6 +162,8 @@ export function ProductForm({
     initialVehicleMakeIds ?? [],
   );
   const [isPromo, setIsPromo] = useState(initial?.isPromo ?? false);
+  // Local copy of categories so inline-add can append without a server round-trip.
+  const [categoryList, setCategoryList] = useState<CategoryOption[]>(categories);
 
   // Convert ISO timestamps to <input type="datetime-local"> format (YYYY-MM-DDTHH:mm)
   const toLocalDt = (iso: string | null | undefined): string => {
@@ -169,13 +177,13 @@ export function ProductForm({
   const isEdit = !!productId;
 
   const rootCategories = useMemo(
-    () => categories.filter((c) => !c.parentId),
-    [categories],
+    () => categoryList.filter((c) => !c.parentId),
+    [categoryList],
   );
   const subcategories = useMemo(() => {
     if (!categoryId) return [];
-    return categories.filter((c) => c.parentId === categoryId);
-  }, [categories, categoryId]);
+    return categoryList.filter((c) => c.parentId === categoryId);
+  }, [categoryList, categoryId]);
 
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -544,37 +552,41 @@ export function ProductForm({
 
         <Card title={labels.section_category}>
           <Field label={labels.field_category}>
-            <select
-              value={categoryId ?? ""}
-              onChange={(e) => {
-                const next = e.target.value || null;
-                setCategoryId(next);
+            <CategoryComboboxAdd
+              options={rootCategories}
+              value={categoryId}
+              onChange={(id) => {
+                setCategoryId(id);
                 setSubcategoryId(null);
               }}
-              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary"
-            >
-              <option value="">{labels.field_category_none}</option>
-              {rootCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onCreated={(c) =>
+                setCategoryList((prev) =>
+                  prev.some((p) => p.id === c.id) ? prev : [...prev, c],
+                )
+              }
+              parentId={null}
+              noneLabel={labels.field_category_none}
+              addLabel={labels.field_category_add}
+              placeholder={labels.field_category_placeholder}
+            />
           </Field>
           <Field label={labels.field_subcategory}>
-            <select
-              value={subcategoryId ?? ""}
-              onChange={(e) => setSubcategoryId(e.target.value || null)}
-              disabled={subcategories.length === 0}
-              className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm outline-none transition-colors focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <option value="">{labels.field_subcategory_none}</option>
-              {subcategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <CategoryComboboxAdd
+              options={subcategories}
+              value={subcategoryId}
+              onChange={(id) => setSubcategoryId(id)}
+              onCreated={(c) =>
+                setCategoryList((prev) =>
+                  prev.some((p) => p.id === c.id) ? prev : [...prev, c],
+                )
+              }
+              parentId={categoryId}
+              disabled={!categoryId}
+              noneLabel={labels.field_subcategory_none}
+              addLabel={labels.field_subcategory_add}
+              placeholder={labels.field_subcategory_placeholder}
+              emptyHint={labels.field_subcategory_disabled_hint}
+            />
           </Field>
           <Toggle
             label={labels.field_active}
