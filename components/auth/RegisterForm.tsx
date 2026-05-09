@@ -90,6 +90,9 @@ export function RegisterForm({ labels }: { labels: Labels }) {
     if (!data.firstName) errs.firstName = "*";
     if (!data.lastName) errs.lastName = "*";
     if (!data.email || !data.email.includes("@")) errs.email = "*";
+    const phoneDigits = data.phone.replace(/\D/g, "");
+    if (!data.phone) errs.phone = "*";
+    else if (phoneDigits.length < 7) errs.phone = "*";
     if (data.password.length < 8) errs.password = "≥ 8";
     if (data.password !== data.passwordConfirm) errs.passwordConfirm = labels.errorPasswordsMismatch;
     if (!data.terms) errs.terms = "*";
@@ -138,8 +141,15 @@ export function RegisterForm({ labels }: { labels: Labels }) {
         <Input name="email" type="email" autoComplete="email" required />
       </Field>
 
-      <Field label={labels.phone}>
-        <Input name="phone" type="tel" autoComplete="tel" placeholder="+373 ..." />
+      <Field label={labels.phone} error={errors.phone}>
+        <Input
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          placeholder="+373 ..."
+          required
+          inputMode="tel"
+        />
       </Field>
 
       <Field label={labels.company}>

@@ -51,11 +51,15 @@ export async function signUp(input: {
   password: string;
   firstName: string;
   lastName: string;
-  phone?: string;
+  phone: string;
   company?: string;
   language?: "ro" | "en" | "ru";
   marketingOptIn?: boolean;
 }): Promise<AuthResult> {
+  const phoneDigits = input.phone.replace(/\D/g, "");
+  if (!input.phone || phoneDigits.length < 7) {
+    return { ok: false, code: "unknown", message: "Phone required" };
+  }
   const supabase = await createClient();
   const fullName = `${input.firstName} ${input.lastName}`.trim();
   const { data, error } = await supabase.auth.signUp({
@@ -66,7 +70,7 @@ export async function signUp(input: {
         full_name: fullName,
         first_name: input.firstName,
         last_name: input.lastName,
-        phone: input.phone ?? "",
+        phone: input.phone,
         company: input.company ?? "",
         marketing_opt_in: !!input.marketingOptIn,
         language: input.language ?? "ro",
@@ -95,7 +99,7 @@ export async function signUp(input: {
           id: data.user!.id,
           email: data.user!.email,
           full_name: fullName,
-          phone: input.phone ?? null,
+          phone: input.phone,
           language: input.language ?? "ro",
         },
         { onConflict: "id" },
