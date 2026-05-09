@@ -184,7 +184,7 @@ export async function getFeaturedProducts(
     .limit(limit);
 
   const rows = (data ?? []) as ProductRow[];
-  if (rows.length === 0) return demo.products(locale, { featuredOnly: true, limit });
+  if (rows.length === 0) return [];
 
   const [slugMap, customerDiscount] = await Promise.all([
     getCategorySlugMap(),
@@ -312,7 +312,7 @@ export async function getProductBySlug(
     .eq("is_active", true)
     .maybeSingle();
   const row = data as ProductRow | null;
-  if (!row) return demo.productBySlug(slug, locale);
+  if (!row) return null;
   const [slugMap, customerDiscount] = await Promise.all([
     getCategorySlugMap(),
     getCurrentUserDiscount(),
@@ -332,9 +332,7 @@ export async function getRelatedProducts(
       .slice(0, limit);
   }
   if (!product.categoryId) {
-    // Demo/missing: return featured minus self
-    const list = demo.products(locale).filter((p) => p.id !== product.id);
-    return list.slice(0, limit);
+    return [];
   }
   const supabase = await createClient();
   const { data } = await supabase
@@ -346,12 +344,7 @@ export async function getRelatedProducts(
     .limit(limit);
 
   const rows = (data ?? []) as ProductRow[];
-  if (rows.length === 0) {
-    return demo
-      .products(locale)
-      .filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
-      .slice(0, limit);
-  }
+  if (rows.length === 0) return [];
   const [slugMap, customerDiscount] = await Promise.all([
     getCategorySlugMap(),
     getCurrentUserDiscount(),
@@ -488,23 +481,16 @@ export async function getCatalog(
 
   const { data, count, error } = await query;
   if (error) {
-    return fallbackCatalog(locale, filters);
+    return {
+      products: [],
+      total: 0,
+      page: page ?? 1,
+      perPage: perPage ?? 12,
+      totalPages: 1,
+    };
   }
 
   const rows = (data ?? []) as ProductRow[];
-  // Only fall back to demo data when the user has NO active filters AND the DB
-  // is genuinely empty — never mask a legitimate "no results" answer.
-  const hasFilters = !!(
-    q ||
-    (categorySlugs && categorySlugs.length > 0) ||
-    minPrice != null ||
-    maxPrice != null ||
-    inStock ||
-    featured
-  );
-  if (rows.length === 0 && (count ?? 0) === 0 && !hasFilters) {
-    return fallbackCatalog(locale, filters);
-  }
 
   const [slugMap, customerDiscount] = await Promise.all([
     getCategorySlugMap(),
