@@ -538,7 +538,7 @@
     "field_weight": "Вес (кг)",
     "field_width": "Ширина (мм)",
     "field_height": "Высота (мм)",
-    "field_image_url": "URL изображения (опционально)",
+    "field_image_url": "Изображения товара (макс 8)",
     "field_active": "Активен (виден в магазине)",
     "field_featured": "Рекомендуем (на главной)",
     "field_name_ro": "Название RO",

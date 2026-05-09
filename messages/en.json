@@ -538,7 +538,7 @@
     "field_weight": "Weight (kg)",
     "field_width": "Width (mm)",
     "field_height": "Height (mm)",
-    "field_image_url": "Image URL (optional)",
+    "field_image_url": "Product images (max 8)",
     "field_active": "Active (visible in shop)",
     "field_featured": "Featured (homepage)",
     "field_name_ro": "Name RO",

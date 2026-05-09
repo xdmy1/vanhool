@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ImageUploadField } from "@/components/admin/products/ImageUploadField";
+import { MultiImageUpload } from "@/components/admin/products/MultiImageUpload";
 import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
 import { Link } from "@/lib/i18n/routing";
 import {
@@ -162,6 +162,9 @@ export function ProductForm({
     initialVehicleMakeIds ?? [],
   );
   const [isPromo, setIsPromo] = useState(initial?.isPromo ?? false);
+  const [images, setImages] = useState<string[]>(
+    initial?.images ?? (initial?.imageUrl ? [initial.imageUrl] : []),
+  );
   // Local copy of categories so inline-add can append without a server round-trip.
   const [categoryList, setCategoryList] = useState<CategoryOption[]>(categories);
 
@@ -216,7 +219,8 @@ export function ProductForm({
       weight: num("weight"),
       width: num("width"),
       height: num("height"),
-      imageUrl: String(fd.get("imageUrl") ?? ""),
+      imageUrl: images[0] ?? "",
+      images,
       isActive,
       isFeatured,
       nameRo: String(fd.get("nameRo") ?? ""),
@@ -460,9 +464,9 @@ export function ProductForm({
 
         {/* Specs */}
         <Card title={labels.section_specs}>
-          <ImageUploadField
-            name="imageUrl"
-            defaultValue={initial?.imageUrl ?? ""}
+          <MultiImageUpload
+            values={images}
+            onChange={setImages}
             label={labels.field_image_url}
           />
           <div className="grid gap-3 sm:grid-cols-2">

@@ -538,7 +538,7 @@
     "field_weight": "Greutate (kg)",
     "field_width": "Lățime (mm)",
     "field_height": "Înălțime (mm)",
-    "field_image_url": "URL imagine (opțional)",
+    "field_image_url": "Imagini produs (max 8)",
     "field_active": "Activ (vizibil în magazin)",
     "field_featured": "Recomandat (afișat pe homepage)",
     "field_name_ro": "Nume RO",
