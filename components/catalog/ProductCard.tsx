@@ -1,8 +1,6 @@
-import { ShoppingBag } from "lucide-react";
-
 import { Link } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils/cn";
-import { Button } from "@/components/ui/button";
+import { AddToCartButton } from "@/components/catalog/AddToCartButton";
 import { PartImage } from "@/components/common/PartImage";
 import { Price } from "@/components/common/Price";
 import { StockBadge } from "@/components/common/StockBadge";
@@ -32,8 +30,6 @@ export function ProductCard({
         ? labels.lowStock
         : labels.outOfStock;
 
-  const unavailable = product.stock === "out_of_stock";
-
   return (
     <article
       className={cn(
@@ -48,7 +44,11 @@ export function ProductCard({
         aria-label={product.name}
       >
         <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
-          {product.oldPrice ? (
+          {product.isPromo && product.listPrice > 0 ? (
+            <span className="rounded-sm bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
+              -{Math.round((1 - product.price / product.listPrice) * 100)}%
+            </span>
+          ) : product.oldPrice ? (
             <span className="rounded-sm bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
               -{Math.round((1 - product.price / product.oldPrice) * 100)}%
             </span>
@@ -81,23 +81,23 @@ export function ProductCard({
 
         <div className="mt-auto flex items-end justify-between gap-3">
           <div className="flex flex-col">
-            {product.oldPrice ? (
+            {product.isPromo && product.listPrice > product.price ? (
+              <span className="text-xs text-muted line-through">
+                €{product.listPrice.toFixed(2)}
+              </span>
+            ) : product.oldPrice ? (
               <span className="text-xs text-muted line-through">
                 €{product.oldPrice.toFixed(2)}
               </span>
             ) : null}
             <Price value={product.price} size="lg" />
           </div>
-          <Button
-            size="sm"
-            variant={unavailable ? "secondary" : "primary"}
+          <AddToCartButton
+            product={product}
+            label={labels.addToCart}
             className="gap-1.5"
-            disabled={unavailable}
-            aria-label={labels.addToCart}
-          >
-            <ShoppingBag className="size-3.5" />
-            <span className="hidden sm:inline">{labels.addToCart}</span>
-          </Button>
+            size="sm"
+          />
         </div>
       </div>
     </article>

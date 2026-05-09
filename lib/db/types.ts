@@ -21,7 +21,15 @@ export type Product = {
   brand: string;
   name: string;
   description?: string;
+  /** Effective price shown to the user. Equal to promoPrice when promo is
+   * active, else listPrice. */
   price: number;
+  /** List/regular price. When promo is active, used as crossed-out reference. */
+  listPrice: number;
+  /** Active promo price (overrides listPrice for display). */
+  promoPrice?: number | null;
+  /** Whether the user is seeing a promo price (drives badges + strikethrough). */
+  isPromo: boolean;
   oldPrice?: number;
   stock: StockStatus;
   stockQuantity: number;
@@ -46,6 +54,8 @@ export type Category = {
   productCount: number;
   /** Icon key that maps to a lucide-react icon in UI */
   iconKey: PartIllustration | "brakes" | "engine" | "chassis" | "electro" | "air" | "clutch" | "steering" | "cooling" | "body" | "interior" | "hoses" | "couplings";
+  /** Optional banner image URL (set per root category from admin / seed). */
+  imageUrl?: string | null;
 };
 
 /** Name aliases per locale — used to select the right DB column */

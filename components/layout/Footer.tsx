@@ -16,6 +16,7 @@ export async function Footer() {
   const shopLinks = [
     { href: "/catalog" as const, label: tn("catalog") },
     { href: "/categories" as const, label: tn("categories") },
+    { href: "/promotions" as const, label: tn("promotions") },
     { href: "/piese-auto" as const, label: tv("nav_link") },
     { href: "/cart" as const, label: tn("cart") },
   ];
@@ -149,7 +150,7 @@ function FooterColumn({
   locale,
 }: {
   title: string;
-  links: { href: "/catalog" | "/categories" | "/cart" | "/about" | "/contact" | "/login" | "/piese-auto"; label: string }[];
+  links: { href: "/catalog" | "/categories" | "/cart" | "/about" | "/contact" | "/login" | "/piese-auto" | "/promotions"; label: string }[];
   locale: string;
 }) {
   return (

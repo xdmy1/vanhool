@@ -5,7 +5,7 @@ import { illustrationFor } from "./types";
 import { demo } from "./demo-data";
 import { USE_DEMO_DATA } from "./flags";
 
-type CategoryTreeNode = Category & { children: CategoryTreeNode[] };
+export type CategoryTreeNode = Category & { children: CategoryTreeNode[] };
 
 async function fetchCategories(): Promise<
   {
@@ -16,12 +16,13 @@ async function fetchCategories(): Promise<
     name_ru: string | null;
     parent_id: string | null;
     sort_order: number | null;
+    image_url: string | null;
   }[]
 > {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id, slug, name_ro, name_en, name_ru, parent_id, sort_order")
+    .select("id, slug, name_ro, name_en, name_ru, parent_id, sort_order, image_url")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
 
@@ -81,6 +82,7 @@ export async function getCategories(locale: Locale): Promise<Category[]> {
     sortOrder: row.sort_order ?? 0,
     productCount: counts.get(row.id) ?? 0,
     iconKey: illustrationFor(row.slug ?? ""),
+    imageUrl: row.image_url ?? null,
   }));
 }
 
@@ -112,6 +114,10 @@ export async function getCategoryTree(locale: Locale): Promise<CategoryTreeNode[
       roots.push(node);
     }
   }
+  const bySortOrder = (a: CategoryTreeNode, b: CategoryTreeNode) =>
+    a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
+  roots.sort(bySortOrder);
+  for (const r of roots) r.children.sort(bySortOrder);
   return roots;
 }
 

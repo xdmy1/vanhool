@@ -29,6 +29,7 @@ export type Database = {
           odoo_partner_id: number | null;
           company: string | null;
           vat_code: string | null;
+          discount_percent: number | null;
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & {
           id: UUID;
@@ -69,11 +70,59 @@ export type Database = {
           barcode: string | null;
           odoo_synced_at: Timestamp | null;
           odoo_qty_available: number | null;
+          manufacturer_id: UUID | null;
+          subcategory_id: UUID | null;
+          cross_references: Json | null;
+          search_codes: string[] | null;
+          condition: "new" | "refurbished" | "used" | null;
+          storage_location: string | null;
+          cost_price: number | null;
+          is_promo: boolean | null;
+          promo_price: number | null;
+          promo_starts_at: Timestamp | null;
+          promo_ends_at: Timestamp | null;
         };
         Insert: Partial<Database["public"]["Tables"]["products"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["products"]["Row"]>;
         Relationships: [
           { foreignKeyName: "products_category_id_fkey"; columns: ["category_id"]; referencedRelation: "categories"; referencedColumns: ["id"] },
+          { foreignKeyName: "products_manufacturer_id_fkey"; columns: ["manufacturer_id"]; referencedRelation: "manufacturers"; referencedColumns: ["id"] },
+          { foreignKeyName: "products_subcategory_id_fkey"; columns: ["subcategory_id"]; referencedRelation: "categories"; referencedColumns: ["id"] },
+        ];
+      };
+      manufacturers: {
+        Row: {
+          id: UUID;
+          name: string;
+          slug: string;
+          logo_url: string | null;
+          country: string | null;
+          is_active: boolean;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["manufacturers"]["Row"]> & {
+          name: string;
+          slug: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["manufacturers"]["Row"]>;
+        Relationships: [];
+      };
+      product_vehicle_makes: {
+        Row: {
+          product_id: UUID;
+          vehicle_make_id: UUID;
+          created_at: Timestamp;
+        };
+        Insert: {
+          product_id: UUID;
+          vehicle_make_id: UUID;
+          created_at?: Timestamp;
+        };
+        Update: Partial<Database["public"]["Tables"]["product_vehicle_makes"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "pvm_product_id_fkey"; columns: ["product_id"]; referencedRelation: "products"; referencedColumns: ["id"] },
+          { foreignKeyName: "pvm_vehicle_make_id_fkey"; columns: ["vehicle_make_id"]; referencedRelation: "vehicle_makes"; referencedColumns: ["id"] },
         ];
       };
       categories: {
@@ -86,6 +135,7 @@ export type Database = {
           parent_id: UUID | null;
           sort_order: number | null;
           is_active: boolean | null;
+          image_url: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["categories"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["categories"]["Row"]>;

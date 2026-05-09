@@ -3,12 +3,12 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
-import { X, Tag, Wallet, Boxes, Star } from "lucide-react";
+import { ChevronDown, X, Tag, Wallet, Boxes, Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
-import type { Category } from "@/lib/db/types";
+import type { CategoryTreeNode } from "@/lib/db/categories";
 
 type Labels = {
   filters: string;
@@ -24,10 +24,10 @@ type Labels = {
 };
 
 export function CatalogFilters({
-  categories,
+  categoryTree,
   labels,
 }: {
-  categories: Category[];
+  categoryTree: CategoryTreeNode[];
   labels: Labels;
 }) {
   const router = useRouter();
@@ -53,8 +53,35 @@ export function CatalogFilters({
   const [inStock, setInStock] = useState(initial.inStock);
   const [featured, setFeatured] = useState(initial.featured);
 
+  // Auto-expand any root that contains a currently-selected subcategory, plus
+  // the root that IS selected. Persist user's manual toggles via local state.
+  const initiallyExpanded = useMemo(() => {
+    const open = new Set<string>();
+    for (const root of categoryTree) {
+      if (initial.categories.has(root.slug)) {
+        open.add(root.slug);
+        continue;
+      }
+      if (root.children.some((c) => initial.categories.has(c.slug))) {
+        open.add(root.slug);
+      }
+    }
+    return open;
+  }, [categoryTree, initial.categories]);
+
+  const [expanded, setExpanded] = useState<Set<string>>(initiallyExpanded);
+
   const toggleCategory = (slug: string) => {
     setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+
+  const toggleExpand = (slug: string) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
@@ -120,44 +147,121 @@ export function CatalogFilters({
       </FilterGroup>
 
       <FilterGroup icon={Boxes} title={labels.category}>
-        <ul className="-mx-1 max-h-72 space-y-0.5 overflow-y-auto pr-1">
-          {categories.map((cat) => {
-            const checked = selected.has(cat.slug);
+        <ul className="-mx-1 max-h-96 space-y-0.5 overflow-y-auto pr-1">
+          {categoryTree.map((root) => {
+            const isExpanded = expanded.has(root.slug);
+            const rootChecked = selected.has(root.slug);
+            const hasChildren = root.children.length > 0;
             return (
-              <li key={cat.slug}>
-                <label
+              <li key={root.slug}>
+                {/* Root row: checkbox + name + chevron expander */}
+                <div
                   className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
-                    checked
-                      ? "bg-primary/10 text-foreground"
-                      : "text-muted-strong hover:bg-surface-elevated hover:text-foreground",
+                    "flex items-center gap-1 rounded-sm pr-1 transition-colors",
+                    rootChecked ? "bg-primary/10" : "hover:bg-surface-elevated",
                   )}
                 >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleCategory(cat.slug)}
-                    className="peer sr-only"
-                  />
-                  <span
+                  <label
                     className={cn(
-                      "grid size-4 shrink-0 place-items-center rounded-sm border transition-colors",
-                      checked
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-surface",
+                      "flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 text-sm",
+                      rootChecked ? "text-foreground" : "text-muted-strong hover:text-foreground",
                     )}
                   >
-                    {checked ? (
-                      <svg viewBox="0 0 10 8" className="size-2.5 fill-none stroke-current stroke-2">
-                        <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : null}
-                  </span>
-                  <span className="flex-1 truncate">{cat.name}</span>
-                  <span className="text-[10px] text-muted">
-                    {cat.productCount}
-                  </span>
-                </label>
+                    <input
+                      type="checkbox"
+                      checked={rootChecked}
+                      onChange={() => toggleCategory(root.slug)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "grid size-4 shrink-0 place-items-center rounded-sm border transition-colors",
+                        rootChecked
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-surface",
+                      )}
+                    >
+                      {rootChecked ? (
+                        <svg
+                          viewBox="0 0 10 8"
+                          className="size-2.5 fill-none stroke-current stroke-2"
+                        >
+                          <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : null}
+                    </span>
+                    <span className="flex-1 truncate font-semibold">{root.name}</span>
+                    <span className="text-[10px] text-muted">{root.productCount}</span>
+                  </label>
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(root.slug)}
+                      aria-label={isExpanded ? "Restrânge" : "Extinde"}
+                      className="grid size-6 shrink-0 place-items-center rounded-sm text-muted transition-all hover:bg-surface hover:text-foreground"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 transition-transform",
+                          isExpanded ? "rotate-0" : "-rotate-90",
+                        )}
+                      />
+                    </button>
+                  ) : null}
+                </div>
+
+                {/* Subcategories (indented) */}
+                {hasChildren && isExpanded ? (
+                  <ul className="ml-5 mt-0.5 space-y-0.5 border-l border-border pl-2">
+                    {root.children.map((sub) => {
+                      const subChecked = selected.has(sub.slug);
+                      return (
+                        <li key={sub.slug}>
+                          <label
+                            className={cn(
+                              "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-[13px] transition-colors",
+                              subChecked
+                                ? "bg-primary/10 text-foreground"
+                                : "text-muted-strong hover:bg-surface-elevated hover:text-foreground",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={subChecked}
+                              onChange={() => toggleCategory(sub.slug)}
+                              className="peer sr-only"
+                            />
+                            <span
+                              className={cn(
+                                "grid size-3.5 shrink-0 place-items-center rounded-sm border transition-colors",
+                                subChecked
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-surface",
+                              )}
+                            >
+                              {subChecked ? (
+                                <svg
+                                  viewBox="0 0 10 8"
+                                  className="size-2.5 fill-none stroke-current stroke-2"
+                                >
+                                  <path
+                                    d="M1 4l2.5 2.5L9 1"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ) : null}
+                            </span>
+                            <span className="flex-1 truncate">{sub.name}</span>
+                            <span className="text-[10px] text-muted">
+                              {sub.productCount}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
               </li>
             );
           })}

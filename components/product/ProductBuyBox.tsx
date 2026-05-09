@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Minus, Plus, ShieldCheck, ShoppingBag, Truck } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Price } from "@/components/common/Price";
 import { StockBadge } from "@/components/common/StockBadge";
+import { useCart } from "@/lib/cart/store";
 import { cn } from "@/lib/utils/cn";
 import type { Product } from "@/lib/db/types";
 
@@ -25,6 +28,8 @@ export function ProductBuyBox({
     trustWarranty: string;
   };
 }) {
+  const router = useRouter();
+  const add = useCart((s) => s.add);
   const [qty, setQty] = useState(1);
   const max = Math.max(1, product.stockQuantity);
   const unavailable = product.stock === "out_of_stock";
@@ -35,9 +40,32 @@ export function ProductBuyBox({
         ? labels.lowStock
         : labels.outOfStock;
 
+  const addCurrent = () => {
+    add({
+      productId: product.id,
+      slug: product.slug,
+      name: product.name,
+      brand: product.brand,
+      partCode: product.partCode,
+      price: product.price,
+      oldPrice: product.oldPrice,
+      illustration: product.illustration,
+      imageUrl: product.imageUrl,
+      maxStock: max,
+      quantity: qty,
+    });
+  };
+
   const onAddToCart = () => {
-    // Cart wiring lands in Faza 3. For now we just surface the intent in console.
-    console.log("[cart]", { product: product.slug, qty });
+    if (unavailable) return;
+    addCurrent();
+    toast.success(`${product.name} · ${labels.addToCart}`);
+  };
+
+  const onBuyNow = () => {
+    if (unavailable) return;
+    addCurrent();
+    router.push("/cart");
   };
 
   return (
@@ -111,7 +139,7 @@ export function ProductBuyBox({
             <ShoppingBag className="size-4" /> {labels.addToCart}
           </Button>
           <Button
-            onClick={onAddToCart}
+            onClick={onBuyNow}
             variant="secondary"
             size="lg"
             disabled={unavailable}

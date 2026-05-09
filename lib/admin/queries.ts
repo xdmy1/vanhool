@@ -1,12 +1,16 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCode } from "@/lib/utils/normalize-code";
+
+export type AdminProductCrossRef = { brand: string; code: string };
 
 export type AdminProductRow = {
   id: string;
   slug: string | null;
   part_code: string | null;
   brand: string | null;
+  manufacturer_id: string | null;
   name_ro: string | null;
   name_en: string | null;
   name_ru: string | null;
@@ -14,7 +18,10 @@ export type AdminProductRow = {
   description_en: string | null;
   description_ru: string | null;
   price: number | null;
+  cost_price: number | null;
   stock_quantity: number | null;
+  storage_location: string | null;
+  condition: "new" | "refurbished" | "used" | null;
   image_url: string | null;
   weight: number | null;
   width: number | null;
@@ -23,11 +30,18 @@ export type AdminProductRow = {
   is_active: boolean | null;
   is_featured: boolean | null;
   category_id: string | null;
+  subcategory_id: string | null;
+  oem_codes: string[] | null;
+  cross_references: AdminProductCrossRef[] | null;
+  is_promo: boolean | null;
+  promo_price: number | null;
+  promo_starts_at: string | null;
+  promo_ends_at: string | null;
   created_at: string | null;
 };
 
 const PRODUCT_COLUMNS =
-  "id, slug, part_code, brand, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, stock_quantity, image_url, weight, width, height, warranty_months, is_active, is_featured, category_id, created_at";
+  "id, slug, part_code, brand, manufacturer_id, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, cost_price, stock_quantity, storage_location, condition, image_url, weight, width, height, warranty_months, is_active, is_featured, category_id, subcategory_id, oem_codes, cross_references, is_promo, promo_price, promo_starts_at, promo_ends_at, created_at";
 
 export type AdminProductFilter = {
   q?: string;
@@ -58,17 +72,43 @@ export async function adminListProducts(filter: AdminProductFilter = {}) {
   }
 
   if (filter.q && filter.q.trim()) {
-    const term = `%${filter.q.trim()}%`;
-    query = query.or(
-      [
-        `part_code.ilike.${term}`,
-        `brand.ilike.${term}`,
-        `name_ro.ilike.${term}`,
-        `name_en.ilike.${term}`,
-        `name_ru.ilike.${term}`,
-        `slug.ilike.${term}`,
-      ].join(","),
-    );
+    const trimmed = filter.q.trim();
+    const term = `%${trimmed}%`;
+    const normalized = normalizeCode(trimmed);
+
+    const [codeRowsRes, textRowsRes] = await Promise.all([
+      normalized.length > 0
+        ? supabase
+            .from("products")
+            .select("id")
+            .contains("search_codes", [normalized])
+            .limit(500)
+        : Promise.resolve({ data: [] as { id: string }[] }),
+      supabase
+        .from("products")
+        .select("id")
+        .or(
+          [
+            `part_code.ilike.${term}`,
+            `brand.ilike.${term}`,
+            `name_ro.ilike.${term}`,
+            `name_en.ilike.${term}`,
+            `name_ru.ilike.${term}`,
+            `slug.ilike.${term}`,
+          ].join(","),
+        )
+        .limit(500),
+    ]);
+    const codeIds = ((codeRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
+
+    if (matchedIds.length === 0) {
+      // Force no-match so the count is 0 and pagination works.
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else {
+      query = query.in("id", matchedIds);
+    }
   }
 
   const page = filter.page ?? 1;
@@ -282,6 +322,7 @@ export type AdminCustomerRow = {
   full_name: string | null;
   phone: string | null;
   is_admin: boolean | null;
+  discount_percent: number | null;
   created_at: string | null;
   orders_count: number;
   orders_total: number;
@@ -291,7 +332,7 @@ export async function adminListCustomers(q?: string): Promise<AdminCustomerRow[]
   const supabase = await createClient();
   let pq = supabase
     .from("profiles")
-    .select("id, email, full_name, phone, is_admin, created_at");
+    .select("id, email, full_name, phone, is_admin, discount_percent, created_at");
   if (q && q.trim()) {
     const term = `%${q.trim()}%`;
     pq = pq.or(`email.ilike.${term},full_name.ilike.${term}`);
@@ -304,6 +345,7 @@ export async function adminListCustomers(q?: string): Promise<AdminCustomerRow[]
     full_name: string | null;
     phone: string | null;
     is_admin: boolean | null;
+    discount_percent: number | null;
     created_at: string | null;
   }[];
 

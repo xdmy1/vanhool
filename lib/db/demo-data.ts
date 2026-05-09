@@ -264,6 +264,9 @@ function localizedProduct(base: BaseProduct, locale: Locale): Product {
     name: copy?.name[locale] ?? base.slug,
     description: copy?.desc[locale],
     price: base.price,
+    listPrice: base.price,
+    promoPrice: null,
+    isPromo: false,
     oldPrice: base.oldPrice,
     stock,
     stockQuantity: qty,
@@ -330,6 +333,7 @@ export const demo = {
       sortOrder: i,
       productCount: CATEGORY_COUNTS[slug] ?? 0,
       iconKey: illustrationFromCategory(slug),
+      imageUrl: null,
     }));
   },
 };

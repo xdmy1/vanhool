@@ -15,8 +15,8 @@ import {
 import type { ComponentType, SVGProps } from "react";
 
 import { Container } from "@/components/layout/Container";
-import { CategoryTile } from "@/components/catalog/CategoryTile";
-import { getRootCategories } from "@/lib/db/categories";
+import { CategoryColumn } from "@/components/catalog/CategoryColumn";
+import { getCategoryTree } from "@/lib/db/categories";
 import type { Category, Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
@@ -56,13 +56,11 @@ export default async function CategoriesPage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [tNav, tHome, categories] = await Promise.all([
+  const [tNav, tHome, categoryTree] = await Promise.all([
     getTranslations("nav"),
     getTranslations("home"),
-    getRootCategories(loc),
+    getCategoryTree(loc),
   ]);
-
-  const countLabel = loc === "ru" ? "позиций" : loc === "en" ? "parts" : "piese";
 
   return (
     <div className="bg-background">
@@ -80,17 +78,14 @@ export default async function CategoriesPage({
       </section>
 
       <Container className="py-10">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {categories.map((cat, i) => (
-            <CategoryTile
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {categoryTree.map((cat) => (
+            <CategoryColumn
               key={cat.id}
+              root={cat}
+              subcategories={cat.children}
               icon={iconFor(cat)}
-              label={cat.name}
-              count={cat.productCount}
-              slug={cat.slug}
               locale={loc}
-              countLabel={countLabel}
-              accent={i < 2}
             />
           ))}
         </div>

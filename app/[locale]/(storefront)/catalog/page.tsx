@@ -7,13 +7,17 @@ import { CatalogSort } from "@/components/catalog/CatalogSort";
 import { Pagination } from "@/components/catalog/Pagination";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { getCatalog, type CatalogFilters as Filters } from "@/lib/db/products";
-import { getRootCategories } from "@/lib/db/categories";
+import { getCategoryTree } from "@/lib/db/categories";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
+
+// searchParams (q, category, sort, page, ...) drive every render — Next.js
+// must re-fetch on each request, never serve a cached static version.
+export const dynamic = "force-dynamic";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -75,8 +79,8 @@ export default async function CatalogPage({
   const loc = locale as Locale;
   const filters = parseFilters(sp);
 
-  const [cats, result, tNav, tCat, tProduct] = await Promise.all([
-    getRootCategories(loc),
+  const [categoryTree, result, tNav, tCat, tProduct] = await Promise.all([
+    getCategoryTree(loc),
     getCatalog(loc, filters),
     getTranslations("nav"),
     getTranslations("catalog"),
@@ -117,7 +121,7 @@ export default async function CatalogPage({
           {/* Sidebar filters */}
           <aside className="lg:block">
             <CatalogFilters
-              categories={cats}
+              categoryTree={categoryTree}
               labels={{
                 filters: tCat("filters"),
                 apply: tCat("apply"),

@@ -4,6 +4,8 @@ import type { Locale, Product, StockStatus } from "./types";
 import { deriveStock, illustrationFor } from "./types";
 import { demo } from "./demo-data";
 import { USE_DEMO_DATA } from "./flags";
+import { normalizeCode } from "@/lib/utils/normalize-code";
+import { applyDiscount, getCurrentUserDiscount } from "./customer-discount";
 
 type ProductRow = {
   id: string;
@@ -26,6 +28,17 @@ type ProductRow = {
   description_ro: string | null;
   description_en: string | null;
   description_ru: string | null;
+  is_promo: boolean | null;
+  promo_price: number | null;
+  promo_starts_at: string | null;
+  promo_ends_at: string | null;
+};
+
+export type ProductCrossRef = { brand: string; code: string };
+
+export type ProductAlternativeCodes = {
+  oemCodes: string[];
+  crossReferences: ProductCrossRef[];
 };
 
 type CategorySlugRow = { id: string; slug: string | null };
@@ -33,8 +46,19 @@ type CategorySlugRow = { id: string; slug: string | null };
 const SELECT_COLUMNS = `
   id, slug, part_code, brand, price, stock_quantity, image_url,
   weight, width, height, warranty_months, is_featured, is_active, category_id,
-  name_ro, name_en, name_ru, description_ro, description_en, description_ru
+  name_ro, name_en, name_ru, description_ro, description_en, description_ru,
+  is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
+
+function isPromoActive(row: ProductRow): boolean {
+  if (!row.is_promo || row.promo_price == null) return false;
+  const now = Date.now();
+  const starts = row.promo_starts_at ? Date.parse(row.promo_starts_at) : null;
+  const ends = row.promo_ends_at ? Date.parse(row.promo_ends_at) : null;
+  if (starts != null && Number.isFinite(starts) && now < starts) return false;
+  if (ends != null && Number.isFinite(ends) && now > ends) return false;
+  return Number(row.promo_price) < Number(row.price ?? 0);
+}
 
 function pickLocalized(
   row: ProductRow,
@@ -62,9 +86,19 @@ function toProduct(
   row: ProductRow,
   locale: Locale,
   categorySlugById: Map<string, string>,
+  customerDiscount = 0,
 ): Product {
   const localized = pickLocalized(row, locale);
   const categorySlug = row.category_id ? categorySlugById.get(row.category_id) ?? "" : "";
+  const rawListPrice = Number(row.price ?? 0);
+  const promoActive = isPromoActive(row);
+  const baseEffective = promoActive ? Number(row.promo_price ?? rawListPrice) : rawListPrice;
+  // Per-customer discount is applied LAST, on top of the (already-promo'd) price.
+  const finalPrice = applyDiscount(baseEffective, customerDiscount);
+  const finalListPrice = applyDiscount(rawListPrice, customerDiscount);
+  const finalPromoPrice = promoActive
+    ? applyDiscount(Number(row.promo_price ?? 0), customerDiscount)
+    : null;
   return {
     id: row.id,
     slug: row.slug ?? row.id,
@@ -72,7 +106,10 @@ function toProduct(
     brand: row.brand ?? "",
     name: localized.name,
     description: localized.description,
-    price: Number(row.price ?? 0),
+    price: finalPrice,
+    listPrice: finalListPrice,
+    promoPrice: finalPromoPrice,
+    isPromo: promoActive,
     stock: deriveStock(row.stock_quantity),
     stockQuantity: row.stock_quantity ?? 0,
     categoryId: row.category_id,
@@ -149,8 +186,117 @@ export async function getFeaturedProducts(
   const rows = (data ?? []) as ProductRow[];
   if (rows.length === 0) return demo.products(locale, { featuredOnly: true, limit });
 
-  const slugMap = await getCategorySlugMap();
-  return rows.map((r) => toProduct(r, locale, slugMap));
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  return rows.map((r) => toProduct(r, locale, slugMap, customerDiscount));
+}
+
+/**
+ * Find ACTIVE products whose `search_codes` array overlaps with the target
+ * product's — i.e. they share at least one normalized code (part_code, OEM,
+ * cross-reference). The current product is excluded.
+ *
+ * Example: product X has cross-references [y, z]. Product Y has part_code = y.
+ * X.search_codes ∩ Y.search_codes = {y} → Y appears on X's page, and X
+ * appears on Y's page (it works in both directions, by design).
+ */
+/**
+ * All products that are currently on promo (is_promo = true AND inside the
+ * scheduled window if dates are set). Used by /promotions storefront page.
+ */
+export async function getActivePromotions(
+  locale: Locale,
+  limit = 60,
+): Promise<Product[]> {
+  if (USE_DEMO_DATA) return [];
+  const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+  // We pre-filter by is_promo=true on the DB, then re-check the date window in
+  // toProduct() / isPromoActive() so any rendered card always shows a real
+  // active promo.
+  const { data } = await supabase
+    .from("products")
+    .select(SELECT_COLUMNS)
+    .eq("is_active", true)
+    .eq("is_promo", true)
+    .or(`promo_starts_at.is.null,promo_starts_at.lte.${nowIso}`)
+    .or(`promo_ends_at.is.null,promo_ends_at.gte.${nowIso}`)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const rows = (data ?? []) as ProductRow[];
+  if (rows.length === 0) return [];
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  return rows
+    .map((r) => toProduct(r, locale, slugMap, customerDiscount))
+    .filter((p) => p.isPromo);
+}
+
+export async function getCrossCompatibleProducts(
+  productId: string,
+  locale: Locale,
+  limit = 12,
+): Promise<Product[]> {
+  if (USE_DEMO_DATA) return [];
+  const supabase = await createClient();
+
+  const { data: own } = await supabase
+    .from("products")
+    .select("search_codes")
+    .eq("id", productId)
+    .maybeSingle();
+
+  const codes = Array.isArray(own?.search_codes)
+    ? (own.search_codes as string[]).filter((c) => c && c.length > 0)
+    : [];
+  if (codes.length === 0) return [];
+
+  const { data } = await supabase
+    .from("products")
+    .select(SELECT_COLUMNS)
+    .eq("is_active", true)
+    .neq("id", productId)
+    .overlaps("search_codes", codes)
+    .limit(limit);
+
+  const rows = (data ?? []) as ProductRow[];
+  if (rows.length === 0) return [];
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  return rows.map((r) => toProduct(r, locale, slugMap, customerDiscount));
+}
+
+export async function getProductAlternativeCodes(
+  productId: string,
+): Promise<ProductAlternativeCodes> {
+  if (USE_DEMO_DATA) return { oemCodes: [], crossReferences: [] };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("oem_codes, cross_references")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!data) return { oemCodes: [], crossReferences: [] };
+  const rawCross = data.cross_references;
+  const crossReferences = Array.isArray(rawCross)
+    ? (rawCross as unknown[]).flatMap((r) => {
+        if (!r || typeof r !== "object") return [];
+        const o = r as { brand?: unknown; code?: unknown };
+        if (typeof o.brand !== "string" || typeof o.code !== "string") return [];
+        if (o.brand.trim().length === 0 || o.code.trim().length === 0) return [];
+        return [{ brand: o.brand.trim(), code: o.code.trim() }];
+      })
+    : [];
+  return {
+    oemCodes: Array.isArray(data.oem_codes) ? data.oem_codes : [],
+    crossReferences,
+  };
 }
 
 export async function getProductBySlug(
@@ -167,8 +313,11 @@ export async function getProductBySlug(
     .maybeSingle();
   const row = data as ProductRow | null;
   if (!row) return demo.productBySlug(slug, locale);
-  const slugMap = await getCategorySlugMap();
-  return toProduct(row, locale, slugMap);
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  return toProduct(row, locale, slugMap, customerDiscount);
 }
 
 export async function getRelatedProducts(
@@ -203,8 +352,11 @@ export async function getRelatedProducts(
       .filter((p) => p.categorySlug === product.categorySlug && p.id !== product.id)
       .slice(0, limit);
   }
-  const slugMap = await getCategorySlugMap();
-  return rows.map((r) => toProduct(r, locale, slugMap));
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  return rows.map((r) => toProduct(r, locale, slugMap, customerDiscount));
 }
 
 export type CatalogFilters = {
@@ -256,16 +408,52 @@ export async function getCatalog(
   if (featured) query = query.eq("is_featured", true);
 
   if (q && q.trim()) {
-    const term = `%${q.trim()}%`;
-    query = query.or(
-      [
-        `part_code.ilike.${term}`,
-        `brand.ilike.${term}`,
-        `name_ro.ilike.${term}`,
-        `name_en.ilike.${term}`,
-        `name_ru.ilike.${term}`,
-      ].join(","),
-    );
+    const trimmed = q.trim();
+    const term = `%${trimmed}%`;
+    const normalized = normalizeCode(trimmed);
+
+    // Run both lookups in parallel and union the IDs in TS. We avoid mixing
+    // `.or(...)` with `id.in.(uuid)` because PostgREST chokes on nested parens
+    // inside `or` — that combination quietly returns 0 rows.
+    const [codeRowsRes, textRowsRes] = await Promise.all([
+      normalized.length > 0
+        ? supabase
+            .from("products")
+            .select("id")
+            .eq("is_active", true)
+            .contains("search_codes", [normalized])
+            .limit(500)
+        : Promise.resolve({ data: [] as { id: string }[] }),
+      supabase
+        .from("products")
+        .select("id")
+        .eq("is_active", true)
+        .or(
+          [
+            `part_code.ilike.${term}`,
+            `brand.ilike.${term}`,
+            `name_ro.ilike.${term}`,
+            `name_en.ilike.${term}`,
+            `name_ru.ilike.${term}`,
+          ].join(","),
+        )
+        .limit(500),
+    ]);
+    const codeIds = ((codeRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
+
+    if (matchedIds.length === 0) {
+      // Nothing matched — short-circuit so we don't hit the demo fallback.
+      return {
+        products: [],
+        total: 0,
+        page,
+        perPage,
+        totalPages: 1,
+      };
+    }
+    query = query.in("id", matchedIds);
   }
 
   if (categorySlugs && categorySlugs.length > 0) {
@@ -304,12 +492,25 @@ export async function getCatalog(
   }
 
   const rows = (data ?? []) as ProductRow[];
-  if (rows.length === 0 && (count ?? 0) === 0) {
+  // Only fall back to demo data when the user has NO active filters AND the DB
+  // is genuinely empty — never mask a legitimate "no results" answer.
+  const hasFilters = !!(
+    q ||
+    (categorySlugs && categorySlugs.length > 0) ||
+    minPrice != null ||
+    maxPrice != null ||
+    inStock ||
+    featured
+  );
+  if (rows.length === 0 && (count ?? 0) === 0 && !hasFilters) {
     return fallbackCatalog(locale, filters);
   }
 
-  const slugMap = await getCategorySlugMap();
-  const products = rows.map((r) => toProduct(r, locale, slugMap));
+  const [slugMap, customerDiscount] = await Promise.all([
+    getCategorySlugMap(),
+    getCurrentUserDiscount(),
+  ]);
+  const products = rows.map((r) => toProduct(r, locale, slugMap, customerDiscount));
   const total = count ?? products.length;
   return {
     products,

@@ -3,7 +3,14 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { ProductForm } from "@/components/admin/products/ProductForm";
+import { buildProductFormLabels } from "@/components/admin/products/labels";
 import { adminGetProduct, adminListCategories } from "@/lib/admin/queries";
+import {
+  adminGetProductVehicleMakeIds,
+  adminListManufacturers,
+  adminListVehicleMakes,
+} from "@/lib/admin/products/lookups";
+import { adminListBrandSuggestions } from "@/lib/admin/products/suggestions";
 import type { Locale } from "@/lib/db/types";
 
 function nameFor(
@@ -27,26 +34,38 @@ export default async function EditProductPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
 
-  const [t, product, cats] = await Promise.all([
-    getTranslations("admin"),
-    adminGetProduct(id),
-    adminListCategories(),
-  ]);
+  const [t, product, cats, manufacturers, vehicleMakes, brandSuggestions] =
+    await Promise.all([
+      getTranslations("admin"),
+      adminGetProduct(id),
+      adminListCategories(),
+      adminListManufacturers(),
+      adminListVehicleMakes(),
+      adminListBrandSuggestions(),
+    ]);
 
   if (!product) notFound();
+
+  const initialVehicleMakeIds = await adminGetProductVehicleMakeIds(product.id);
 
   const categoryOptions = cats.map((c) => ({
     id: c.id,
     name: nameFor(c, locale as Locale),
+    parentId: c.parent_id,
   }));
 
   const initial = {
     partCode: product.part_code ?? "",
     brand: product.brand ?? "",
+    manufacturerId: product.manufacturer_id,
     slug: product.slug ?? "",
     price: Number(product.price ?? 0),
+    costPrice: product.cost_price !== null ? Number(product.cost_price) : null,
     stockQuantity: Number(product.stock_quantity ?? 0),
+    storageLocation: product.storage_location ?? "",
+    condition: (product.condition ?? "new") as "new" | "refurbished" | "used",
     categoryId: product.category_id,
+    subcategoryId: product.subcategory_id,
     warrantyMonths: product.warranty_months ?? 12,
     weight: product.weight,
     width: product.width,
@@ -60,6 +79,12 @@ export default async function EditProductPage({
     descriptionRo: product.description_ro ?? "",
     descriptionEn: product.description_en ?? "",
     descriptionRu: product.description_ru ?? "",
+    oemCodes: product.oem_codes ?? [],
+    crossReferences: product.cross_references ?? [],
+    isPromo: !!product.is_promo,
+    promoPrice: product.promo_price !== null ? Number(product.promo_price) : null,
+    promoStartsAt: product.promo_starts_at ?? null,
+    promoEndsAt: product.promo_ends_at ?? null,
   };
 
   return (
@@ -79,39 +104,12 @@ export default async function EditProductPage({
           productId={product.id}
           initial={initial}
           categories={categoryOptions}
+          manufacturers={manufacturers}
+          vehicleMakes={vehicleMakes}
+          brandSuggestions={brandSuggestions}
+          initialVehicleMakeIds={initialVehicleMakeIds}
           locale={locale}
-          labels={{
-            field_part_code: t("field_part_code"),
-            field_brand: t("field_brand"),
-            field_slug: t("field_slug"),
-            field_slug_hint: t("field_slug_hint"),
-            field_price: t("field_price"),
-            field_stock: t("field_stock"),
-            field_category: t("field_category"),
-            field_category_none: t("field_category_none"),
-            field_warranty: t("field_warranty"),
-            field_weight: t("field_weight"),
-            field_width: t("field_width"),
-            field_height: t("field_height"),
-            field_image_url: t("field_image_url"),
-            field_active: t("field_active"),
-            field_featured: t("field_featured"),
-            field_name_ro: t("field_name_ro"),
-            field_name_en: t("field_name_en"),
-            field_name_ru: t("field_name_ru"),
-            field_description_ro: t("field_description_ro"),
-            field_description_en: t("field_description_en"),
-            field_description_ru: t("field_description_ru"),
-            save: t("common_save"),
-            saving: t("common_saving"),
-            create: t("common_create"),
-            creating: t("common_creating"),
-            delete: t("common_delete"),
-            confirm_delete: t("confirm_delete"),
-            cancel: t("common_cancel"),
-            required: t("common_required"),
-            error_generic: t("common_error"),
-          }}
+          labels={buildProductFormLabels(t)}
         />
       </div>
     </div>

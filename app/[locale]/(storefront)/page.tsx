@@ -17,11 +17,11 @@ import type { ComponentType, SVGProps } from "react";
 
 import { Container } from "@/components/layout/Container";
 import { SearchBar } from "@/components/layout/SearchBar";
-import { CategoryTile } from "@/components/catalog/CategoryTile";
+import { CategoryColumn } from "@/components/catalog/CategoryColumn";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
-import { getRootCategories } from "@/lib/db/categories";
+import { getCategoryTree } from "@/lib/db/categories";
 import { getFeaturedProducts } from "@/lib/db/products";
 import type { Category, Locale } from "@/lib/db/types";
 
@@ -68,14 +68,12 @@ export default async function HomePage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [t, tp, categories, featured] = await Promise.all([
+  const [t, tp, categoryTree, featured] = await Promise.all([
     getTranslations("home"),
     getTranslations("product_card"),
-    getRootCategories(loc),
+    getCategoryTree(loc),
     getFeaturedProducts(loc, 8),
   ]);
-
-  const countLabel = loc === "ru" ? "позиций" : loc === "en" ? "parts" : "piese";
 
   const productLabels = {
     partCode: tp("part_code"),
@@ -85,7 +83,11 @@ export default async function HomePage({
     addToCart: tp("add_to_cart"),
   };
 
-  const categoryList = categories.slice(0, 8);
+  // Homepage shows only 2 rows × 4 cols = 8 cards. Remaining categories live
+  // on /categories (linked by "Vezi mai multe" below the grid).
+  const HOME_LIMIT = 8;
+  const categoryList = categoryTree.slice(0, HOME_LIMIT);
+  const remainingCount = Math.max(0, categoryTree.length - HOME_LIMIT);
 
   return (
     <>
@@ -108,17 +110,27 @@ export default async function HomePage({
           />
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {categoryList.map((cat) => (
-              <CategoryTile
+              <CategoryColumn
                 key={cat.id}
+                root={cat}
+                subcategories={cat.children}
                 icon={iconFor(cat)}
-                label={cat.name}
-                count={cat.productCount}
-                slug={cat.slug}
                 locale={loc}
-                countLabel={countLabel}
               />
             ))}
           </div>
+          {remainingCount > 0 ? (
+            <div className="mt-6 flex justify-center">
+              <Link
+                href="/categories"
+                locale={loc}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-5 py-2.5 text-sm font-semibold uppercase tracking-wider text-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
+              >
+                {t("categories_see_more", { count: remainingCount })}
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          ) : null}
         </Container>
       </section>
 

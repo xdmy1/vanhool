@@ -9,8 +9,11 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 import { ProductBuyBox } from "@/components/product/ProductBuyBox";
+import { ProductAlternatives } from "@/components/product/ProductAlternatives";
 import { Link } from "@/lib/i18n/routing";
 import {
+  getCrossCompatibleProducts,
+  getProductAlternativeCodes,
   getProductBySlug,
   getRelatedProducts,
 } from "@/lib/db/products";
@@ -45,6 +48,8 @@ export default async function ProductDetailPage({
 
   const [
     related,
+    alternatives,
+    crossCompatible,
     category,
     tNav,
     tProd,
@@ -52,6 +57,8 @@ export default async function ProductDetailPage({
     tHome,
   ] = await Promise.all([
     getRelatedProducts(product, loc, 4),
+    getProductAlternativeCodes(product.id),
+    getCrossCompatibleProducts(product.id, loc, 8),
     product.categorySlug ? getCategoryBySlug(product.categorySlug, loc) : null,
     getTranslations("nav"),
     getTranslations("product"),
@@ -144,10 +151,23 @@ export default async function ProductDetailPage({
           </div>
         </div>
 
-        {/* Details: specs + compatibility */}
+        {/* Details: specs + alternative codes + compatibility */}
         <div className="mt-14 grid gap-6 md:grid-cols-2">
           <ProductSpecs product={product} labels={specsLabels} />
 
+          <ProductAlternatives
+            data={alternatives}
+            locale={loc}
+            labels={{
+              title: tProd("alternatives_title"),
+              oem: tProd("alternatives_oem"),
+              cross: tProd("alternatives_cross"),
+              empty: tProd("alternatives_empty"),
+            }}
+          />
+        </div>
+
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
           <section className="rounded-md border border-border bg-surface">
             <div className="border-b border-border px-5 py-3">
               <h3 className="text-[11px] font-semibold text-foreground">
@@ -167,6 +187,27 @@ export default async function ProductDetailPage({
             </div>
           </section>
         </div>
+
+        {/* Cross-compatible parts (products sharing ≥ 1 code) */}
+        {crossCompatible.length > 0 ? (
+          <section className="mt-16">
+            <div className="flex items-center gap-2 text-xs text-primary">
+              <span className="h-px w-6 bg-primary" />
+              {tProd("cross_compatible_title")}
+            </div>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight md:text-3xl">
+              {tProd("cross_compatible_title")}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-strong">
+              {tProd("cross_compatible_subtitle")}
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {crossCompatible.map((p) => (
+                <ProductCard key={p.id} product={p} locale={loc} labels={cardLabels} />
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {/* Related */}
         {related.length > 0 ? (

@@ -41,3 +41,19 @@ export async function setCustomerAdmin(
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+export async function setCustomerDiscount(
+  userId: string,
+  discountPercent: number,
+): Promise<CustomerActionResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, code: "forbidden" };
+  const pct = Math.max(0, Math.min(100, Number(discountPercent) || 0));
+  const { error } = await auth.supabase
+    .from("profiles")
+    .update({ discount_percent: pct })
+    .eq("id", userId);
+  if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

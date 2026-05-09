@@ -1,12 +1,15 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, ShieldOff, User as UserIcon } from "lucide-react";
+import { Percent, ShieldCheck, ShieldOff, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Price } from "@/components/common/Price";
-import { setCustomerAdmin } from "@/lib/admin/customers/actions";
+import {
+  setCustomerAdmin,
+  setCustomerDiscount,
+} from "@/lib/admin/customers/actions";
 import type { AdminCustomerRow } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -22,6 +25,9 @@ type Labels = {
   role_customer: string;
   promote: string;
   demote: string;
+  discount: string;
+  discount_save: string;
+  discount_clear: string;
 };
 
 export function CustomersTable({
@@ -37,6 +43,39 @@ export function CustomersTable({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [editingDiscount, setEditingDiscount] = useState<string | null>(null);
+  const [discountDraft, setDiscountDraft] = useState<string>("");
+
+  const onSaveDiscount = (userId: string) => {
+    const pct = Number(discountDraft);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      toast.error("0–100");
+      return;
+    }
+    startTransition(async () => {
+      const res = await setCustomerDiscount(userId, pct);
+      if (!res.ok) {
+        toast.error(res.message ?? "error");
+        return;
+      }
+      toast.success("✓");
+      setEditingDiscount(null);
+      setDiscountDraft("");
+      router.refresh();
+    });
+  };
+
+  const onClearDiscount = (userId: string) => {
+    startTransition(async () => {
+      const res = await setCustomerDiscount(userId, 0);
+      if (!res.ok) {
+        toast.error(res.message ?? "error");
+        return;
+      }
+      toast.success("✓");
+      router.refresh();
+    });
+  };
 
   const onToggle = (userId: string, currentlyAdmin: boolean) => {
     if (userId === currentUserId && currentlyAdmin) {
@@ -73,6 +112,7 @@ export function CustomersTable({
             <th className="hidden px-3 py-3 md:table-cell">{labels.phone}</th>
             <th className="px-3 py-3 text-right">{labels.orders}</th>
             <th className="px-3 py-3 text-right">{labels.spent}</th>
+            <th className="px-3 py-3">{labels.discount}</th>
             <th className="px-3 py-3">{labels.role}</th>
             <th className="px-3 py-3 text-right" />
           </tr>
@@ -129,6 +169,87 @@ export function CustomersTable({
                 </td>
                 <td className="px-3 py-2.5 text-right">
                   <Price value={c.orders_total} size="sm" accent={false} />
+                </td>
+                <td className="px-3 py-2.5">
+                  {editingDiscount === c.id ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={discountDraft}
+                        onChange={(e) => setDiscountDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            onSaveDiscount(c.id);
+                          } else if (e.key === "Escape") {
+                            setEditingDiscount(null);
+                            setDiscountDraft("");
+                          }
+                        }}
+                        autoFocus
+                        className="h-7 w-16 rounded-sm border border-border bg-surface px-1.5 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onSaveDiscount(c.id)}
+                        className="rounded-sm border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-xs text-primary hover:bg-primary/15"
+                        title={labels.discount_save}
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingDiscount(null);
+                          setDiscountDraft("");
+                        }}
+                        className="rounded-sm border border-border bg-surface p-1 text-muted hover:text-foreground"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ) : c.discount_percent && Number(c.discount_percent) > 0 ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingDiscount(c.id);
+                          setDiscountDraft(String(c.discount_percent ?? ""));
+                        }}
+                        className="inline-flex items-center gap-1 rounded-sm border border-success/40 bg-success/10 px-1.5 py-0.5 text-xs font-semibold text-success hover:bg-success/15"
+                      >
+                        <Percent className="size-3" />
+                        {Number(c.discount_percent).toFixed(
+                          Number.isInteger(Number(c.discount_percent)) ? 0 : 1,
+                        )}
+                        %
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onClearDiscount(c.id)}
+                        className="text-[10px] text-muted hover:text-destructive"
+                        title={labels.discount_clear}
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingDiscount(c.id);
+                        setDiscountDraft("0");
+                      }}
+                      className="inline-flex items-center gap-1 rounded-sm border border-border bg-surface px-1.5 py-0.5 text-xs text-muted hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                      title={labels.discount}
+                    >
+                      <Percent className="size-3" />
+                      +
+                    </button>
+                  )}
                 </td>
                 <td className="px-3 py-2.5">
                   {c.is_admin ? (
