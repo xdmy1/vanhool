@@ -3,7 +3,7 @@
 2. ✅ la adaugarea de piesa: sa putem selecta pentru ce marca merge, sa avem marcile noastre in baza de date, si cu posibilitate ca in caz ca marca nu este sa o putem adauga
 
 3. ✅ categorii + subcategorii pe whatsapp de introdus - iar cand dau upload a o piesa sa imi arate sa selectez categoria si subcategorie. CATEGORIE, SUBACTEGORIE, MARCA + ALTERNATIVA DE AUTOBUZ(DE PUTUT ADAUGA CATE ALTERNATIVE VREM), OE NUMBERS, CROSS LINKS, PRODUCATORUL PIESEI + posibilitate de adaugare producator nou.
-   ✅ Seed complet în supabase-categories-seed.sql (12 root + 72 subcategorii, RO/EN/RU). Anexat și în supabase-schema-all.sql.
+   ✅ Seed complet în sql/supabase-categories-seed.sql (12 root + 72 subcategorii, RO/EN/RU). Anexat și în sql/supabase-schema-all.sql.
 
 4. later eu - adumi aminte
 

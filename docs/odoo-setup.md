@@ -105,7 +105,7 @@ ODOO_WEBHOOK_SECRET=<random-32-char-string>
 Run the SQL migration in Supabase:
 
 ```
-nextjs/supabase-odoo-migration.sql
+sql/supabase-odoo-migration.sql
 ```
 
 That adds `odoo_id` cross-references on products / profiles / orders,
@@ -176,7 +176,7 @@ signature and applies the change to Supabase.
 - `lib/odoo/sync.ts` — pull-products / push-order helpers
 - `app/api/odoo/webhook/route.ts` — webhook receiver
 - `app/[locale]/(admin)/admin/odoo/page.tsx` — admin UI to trigger sync + see status
-- `supabase-odoo-migration.sql` — DB migration
+- `sql/supabase-odoo-migration.sql` — DB migration
 
 The integration is **off by default**: if `ODOO_URL` is empty, the checkout
 keeps working without pushing to Odoo, the admin page shows a "not configured"

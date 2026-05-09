@@ -1,5 +1,5 @@
 /**
- * Mirror of public.normalize_code(text) in supabase-product-codes-migration.sql.
+ * Mirror of public.normalize_code(text) in sql/supabase-product-codes-migration.sql.
  * Uppercase + strip non-alphanumeric. Used at search-time so the term matches
  * against products.search_codes (which the trigger rebuilds on every write).
  */
