@@ -46,7 +46,29 @@ export async function signIn(input: {
   return { ok: true, redirectTo: input.redirectTo };
 }
 
+export type SignUpBusiness = {
+  companyName: string;
+  idno: string;
+  legalForm?: string;
+  contactPosition?: string;
+  billingCountry: string;
+  billingStreet: string;
+  billingCity: string;
+  billingDistrict?: string;
+  billingPostal?: string;
+  shippingSameAsBilling: boolean;
+  shippingCountry?: string;
+  shippingStreet?: string;
+  shippingCity?: string;
+  shippingDistrict?: string;
+  shippingPostal?: string;
+  vatPayer: boolean;
+  vatNumber?: string;
+  euVatId?: string;
+};
+
 export async function signUp(input: {
+  accountType?: "individual" | "business";
   email: string;
   password: string;
   firstName: string;
@@ -55,10 +77,15 @@ export async function signUp(input: {
   company?: string;
   language?: "ro" | "en" | "ru";
   marketingOptIn?: boolean;
+  business?: SignUpBusiness;
 }): Promise<AuthResult> {
   const phoneDigits = input.phone.replace(/\D/g, "");
   if (!input.phone || phoneDigits.length < 7) {
     return { ok: false, code: "unknown", message: "Phone required" };
+  }
+  const accountType = input.accountType ?? "individual";
+  if (accountType === "business" && !input.business) {
+    return { ok: false, code: "unknown", message: "Business details required" };
   }
   const supabase = await createClient();
   const fullName = `${input.firstName} ${input.lastName}`.trim();
@@ -71,7 +98,7 @@ export async function signUp(input: {
         first_name: input.firstName,
         last_name: input.lastName,
         phone: input.phone,
-        company: input.company ?? "",
+        company: input.business?.companyName ?? input.company ?? "",
         marketing_opt_in: !!input.marketingOptIn,
         language: input.language ?? "ro",
       },
@@ -87,27 +114,55 @@ export async function signUp(input: {
     }
     return { ok: false, code: "unknown", message: error.message };
   }
-  // If a session was returned, the user is auto-signed in (email confirmation disabled).
-  if (data.session) {
-    // Best-effort upsert into profiles. The handle_new_user trigger covers this
-    // too, but upserting from the action means it works even if the trigger
-    // hasn't been deployed yet.
+
+  // Always upsert profile row with the full set of fields. The
+  // handle_new_user trigger creates a minimal row from auth metadata; we
+  // immediately enrich it with business data when applicable.
+  const userId = data.user?.id;
+  if (userId) {
+    const b = input.business;
+    const baseRow = {
+      id: userId,
+      email: data.user!.email,
+      full_name: fullName,
+      first_name: input.firstName,
+      last_name: input.lastName,
+      phone: input.phone,
+      language: input.language ?? "ro",
+      account_type: accountType,
+    } as const;
+    const businessRow = b
+      ? {
+          company: b.companyName,
+          company_name: b.companyName,
+          idno: b.idno,
+          legal_form: b.legalForm ?? null,
+          contact_position: b.contactPosition ?? null,
+          billing_country: b.billingCountry,
+          billing_street: b.billingStreet,
+          billing_city: b.billingCity,
+          billing_district: b.billingDistrict ?? null,
+          billing_postal: b.billingPostal ?? null,
+          shipping_same_as_billing: b.shippingSameAsBilling,
+          shipping_country: b.shippingSameAsBilling ? b.billingCountry : b.shippingCountry ?? null,
+          shipping_street: b.shippingSameAsBilling ? b.billingStreet : b.shippingStreet ?? null,
+          shipping_city: b.shippingSameAsBilling ? b.billingCity : b.shippingCity ?? null,
+          shipping_district: b.shippingSameAsBilling ? b.billingDistrict ?? null : b.shippingDistrict ?? null,
+          shipping_postal: b.shippingSameAsBilling ? b.billingPostal ?? null : b.shippingPostal ?? null,
+          vat_payer: b.vatPayer,
+          vat_number: b.vatPayer ? b.vatNumber ?? null : null,
+          vat_code: b.vatPayer ? b.vatNumber ?? null : null,
+          eu_vat_id: b.euVatId ?? null,
+        }
+      : { company: input.company ?? null };
     await supabase
       .from("profiles")
-      .upsert(
-        {
-          id: data.user!.id,
-          email: data.user!.email,
-          full_name: fullName,
-          phone: input.phone,
-          language: input.language ?? "ro",
-        },
-        { onConflict: "id" },
-      );
+      .upsert({ ...baseRow, ...businessRow }, { onConflict: "id" });
+  }
+
+  if (data.session) {
     return { ok: true, requiresEmailConfirmation: false };
   }
-  // No session => Supabase has email confirmation enabled; user must click the
-  // link in the verification email before they can log in.
   return { ok: true, requiresEmailConfirmation: true };
 }
 

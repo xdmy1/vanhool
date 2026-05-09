@@ -36,6 +36,7 @@ Dacă preferi pas cu pas:
 | 9 | `supabase-category-banners.sql` | `categories.image_url` + URL-urile de banner pentru cele 12 categorii |
 | 10 | `supabase-bus-makes-seed.sql` | 24 mărci/modele de autobuze (MAN, Mercedes, Van Hool, VDL etc.) |
 | 11 | `supabase-mdl-migration.sql` | One-shot: convertește valorile EUR → MDL × 20. Idempotent prin flag |
+| 12 | `supabase-business-accounts-migration.sql` | Câmpuri B2B pe profiles (account_type, company_name, idno, billing/shipping address, VAT) |
 
 ## Seed-uri de date vehicule (opționale)
 

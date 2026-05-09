@@ -30,6 +30,27 @@ export type Database = {
           company: string | null;
           vat_code: string | null;
           discount_percent: number | null;
+          account_type: "individual" | "business" | null;
+          first_name: string | null;
+          last_name: string | null;
+          company_name: string | null;
+          idno: string | null;
+          legal_form: string | null;
+          contact_position: string | null;
+          billing_country: string | null;
+          billing_street: string | null;
+          billing_city: string | null;
+          billing_district: string | null;
+          billing_postal: string | null;
+          shipping_same_as_billing: boolean | null;
+          shipping_country: string | null;
+          shipping_street: string | null;
+          shipping_city: string | null;
+          shipping_district: string | null;
+          shipping_postal: string | null;
+          vat_payer: boolean | null;
+          vat_number: string | null;
+          eu_vat_id: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & {
           id: UUID;
