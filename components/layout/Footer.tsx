@@ -30,13 +30,13 @@ export async function Footer() {
   ];
   const supportLinks = [
     { href: "/contact" as const, label: tn("contact") },
-    { href: "/about" as const, label: t("delivery") },
-    { href: "/about" as const, label: t("warranty") },
-    { href: "/about" as const, label: t("returns") },
+    { href: "/informatii/livrare" as const, label: t("delivery") },
+    { href: "/informatii/garantie-si-retur" as const, label: t("warranty") },
+    { href: "/informatii/garantie-si-retur" as const, label: t("returns") },
   ];
   const legalLinks = [
-    { href: "/about" as const, label: t("terms") },
-    { href: "/about" as const, label: t("privacy") },
+    { href: "/informatii/termeni-si-conditii" as const, label: t("terms") },
+    { href: "/informatii/confidentialitate" as const, label: t("privacy") },
   ];
 
   return (
@@ -150,7 +150,22 @@ function FooterColumn({
   locale,
 }: {
   title: string;
-  links: { href: "/catalog" | "/categories" | "/cart" | "/about" | "/contact" | "/login" | "/piese-auto" | "/promotions"; label: string }[];
+  links: {
+    href:
+      | "/catalog"
+      | "/categories"
+      | "/cart"
+      | "/about"
+      | "/contact"
+      | "/login"
+      | "/piese-auto"
+      | "/promotions"
+      | "/informatii/confidentialitate"
+      | "/informatii/termeni-si-conditii"
+      | "/informatii/garantie-si-retur"
+      | "/informatii/livrare";
+    label: string;
+  }[];
   locale: string;
 }) {
   return (

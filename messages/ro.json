@@ -124,6 +124,34 @@
     "contact_hours": "Lun-Vin 09:00 - 18:00",
     "payment_methods": "Metode de plată"
   },
+  "legal_privacy": {
+    "eyebrow": "Politică",
+    "title": "Politica de confidențialitate (GDPR)",
+    "intro": "Cum colectăm, folosim și protejăm datele tale personale când cumperi de la Inter Bus.",
+    "info_label": "Informații",
+    "updated_at": "Ultima actualizare: 9 mai 2026"
+  },
+  "legal_terms": {
+    "eyebrow": "Termeni",
+    "title": "Termeni și condiții",
+    "intro": "Regulile de utilizare a magazinului online Inter Bus și de încheiere a comenzilor.",
+    "info_label": "Informații",
+    "updated_at": "Ultima actualizare: 9 mai 2026"
+  },
+  "legal_warranty": {
+    "eyebrow": "Garanție",
+    "title": "Garanție și retur",
+    "intro": "Termenele de garanție, condițiile de retur și procedura de înlocuire pentru piesele Inter Bus.",
+    "info_label": "Informații",
+    "updated_at": "Ultima actualizare: 9 mai 2026"
+  },
+  "legal_delivery": {
+    "eyebrow": "Livrare",
+    "title": "Livrarea produselor",
+    "intro": "Termene, costuri și modalități de livrare a comenzilor Inter Bus în Moldova și internațional.",
+    "info_label": "Informații",
+    "updated_at": "Ultima actualizare: 9 mai 2026"
+  },
   "common": {
     "loading": "Se încarcă...",
     "error": "Eroare",
