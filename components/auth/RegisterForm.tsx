@@ -52,6 +52,10 @@ type Labels = {
   haveAccount: string;
   loginNow: string;
   termsAccept: string;
+  termsAcceptPrefix: string;
+  termsAcceptTermsLabel: string;
+  termsAcceptAnd: string;
+  termsAcceptPrivacyLabel: string;
   marketingAccept: string;
   errorEmailExists: string;
   errorPasswordsMismatch: string;
@@ -413,7 +417,28 @@ export function RegisterForm({ labels }: { labels: Labels }) {
           className="mt-0.5 size-4 accent-primary"
         />
         <span>
-          {labels.termsAccept}
+          {labels.termsAcceptPrefix}
+          <Link
+            href="/informatii/termeni-si-conditii"
+            locale={locale}
+            target="_blank"
+            rel="noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="font-semibold text-primary hover:underline"
+          >
+            {labels.termsAcceptTermsLabel}
+          </Link>
+          {labels.termsAcceptAnd}
+          <Link
+            href="/informatii/confidentialitate"
+            locale={locale}
+            target="_blank"
+            rel="noopener"
+            onClick={(e) => e.stopPropagation()}
+            className="font-semibold text-primary hover:underline"
+          >
+            {labels.termsAcceptPrivacyLabel}
+          </Link>
           {errors.terms ? <span className="ml-1 text-destructive">*</span> : null}
         </span>
       </label>
