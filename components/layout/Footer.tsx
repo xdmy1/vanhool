@@ -108,7 +108,7 @@ export async function Footer() {
                 {l.label}
               </Link>
             ))}
-            <span className="text-muted">interbus.md</span>
+            <span className="text-muted">inter-bus.md</span>
           </div>
         </div>
       </Container>

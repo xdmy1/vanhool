@@ -14,7 +14,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://interbus.md",
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://inter-bus.md",
   ),
   title: {
     default: "Inter Bus — Piese auto pentru autobuze",

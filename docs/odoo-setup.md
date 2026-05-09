@@ -76,7 +76,7 @@ accounts is fine — your accountant can map it.
 Settings → Users & Companies → **Users** → Create:
 
 - **Name**: `Web API`
-- **Login**: `api@interbus.md`
+- **Login**: `api@inter-bus.md`
 - **User Type**: Internal user
 - **Access Rights**:
   - Sales: User: All Documents
@@ -97,7 +97,7 @@ Edit `nextjs/.env.local`:
 ```
 ODOO_URL=https://odoo.your-domain.com
 ODOO_DB=interbus
-ODOO_USER=api@interbus.md
+ODOO_USER=api@inter-bus.md
 ODOO_API_KEY=<the-api-key-from-step-3>
 ODOO_WEBHOOK_SECRET=<random-32-char-string>
 ```

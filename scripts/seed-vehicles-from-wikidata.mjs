@@ -21,7 +21,7 @@ const OUT_PATH = resolve(__dirname, "..", "supabase-vehicles-seed-wikidata.sql")
 
 const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
 const USER_AGENT =
-  "InterBus-vehicle-seeder/1.0 (https://interbus.md/) Node/" + process.version;
+  "InterBus-vehicle-seeder/1.0 (https://inter-bus.md/) Node/" + process.version;
 
 /**
  * Maps the make slug in our DB to its Wikidata Q-id (the manufacturer entity).

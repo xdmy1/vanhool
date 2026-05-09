@@ -24,7 +24,7 @@ const CHECKPOINT = resolve(__dirname, "..", ".enrichment-checkpoint.json");
 
 const WIKIDATA = "https://query.wikidata.org/sparql";
 const WIKIPEDIA = "https://en.wikipedia.org/w/api.php";
-const UA = "InterBus-vehicle-enricher/1.0 (https://interbus.md/) Node/" + process.version;
+const UA = "InterBus-vehicle-enricher/1.0 (https://inter-bus.md/) Node/" + process.version;
 
 const CONCURRENCY = 6;
 const WIKIPEDIA_TIMEOUT_MS = 30_000;

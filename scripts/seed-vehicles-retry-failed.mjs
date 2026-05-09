@@ -21,7 +21,7 @@ const OUT_PATH = resolve(__dirname, "..", "supabase-vehicles-seed-wikidata.sql")
 
 const SPARQL = "https://query.wikidata.org/sparql";
 const SEARCH = "https://www.wikidata.org/w/api.php";
-const UA = "InterBus-vehicle-seeder/1.1 (https://interbus.md/)";
+const UA = "InterBus-vehicle-seeder/1.1 (https://inter-bus.md/)";
 
 // Brands that failed in the main run, with name to search and country hint.
 const FAILED = [

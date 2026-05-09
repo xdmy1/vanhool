@@ -1,9 +1,9 @@
-# Email-uri de la domeniul propriu (interbus.md)
+# Email-uri de la domeniul propriu (inter-bus.md)
 
 Default-ul Supabase trimite email-urile de autentificare (confirmare cont,
 resetare parolă, magic link) de la `noreply@mail.app.supabase.io` — cu
 limite mici de rată (3-4/oră) și branding Supabase. Pentru producție vrei
-ca email-urile să vină de la `noreply@interbus.md`.
+ca email-urile să vină de la `noreply@inter-bus.md`.
 
 Schimbarea se face **din UI-ul Supabase**, nu din cod. Nu există migrație
 sau redeploy — modificarea e activă imediat după ce salvezi setările.
@@ -31,7 +31,7 @@ mai mult decât suficient.
 Exemplu Resend (analog la oricare):
 
 1. Cont nou la [resend.com](https://resend.com) → **Domains** → **Add domain**
-2. Introdu `interbus.md`
+2. Introdu `inter-bus.md`
 3. Resend îți afișează 3-4 înregistrări DNS de adăugat la registrar-ul
    tău (înregistrar = compania de la care ai cumpărat domeniul):
    - **MX** (opțional, doar dacă vrei să primești și replies)
@@ -57,7 +57,7 @@ Exemplu Resend (analog la oricare):
    | **Port** | `465` (SSL/TLS) |
    | **Username** | `resend` (literal, exact așa) |
    | **Password** | API key-ul de la pasul 2.6 |
-   | **Sender email** | `noreply@interbus.md` |
+   | **Sender email** | `noreply@inter-bus.md` |
    | **Sender name** | `Inter Bus` |
    | **Minimum interval between emails** | `60` (secunde) — anti-abuz |
 
@@ -116,7 +116,7 @@ Exemplu template **Confirm signup** (HTML cu placeholder-e Supabase):
 
 1. Creează un cont test pe `/ro/register` cu un email pe care îl
    accesezi (Gmail, ProtonMail, etc.).
-2. Verifică inbox-ul: email-ul vine de la `noreply@interbus.md` cu
+2. Verifică inbox-ul: email-ul vine de la `noreply@inter-bus.md` cu
    sender name `Inter Bus`.
 3. Click pe link-ul de confirmare → cont activat.
 4. Verifică în Supabase Dashboard → **Logs** → **Auth Logs** că nu
