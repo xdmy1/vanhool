@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ORDER_STATUSES, type OrderStatus, updateOrderStatus } from "@/lib/admin/orders/actions";
+import { ORDER_STATUSES, type OrderStatus } from "@/lib/admin/orders/constants";
+import { updateOrderStatus } from "@/lib/admin/orders/actions";
 import { cn } from "@/lib/utils/cn";
 
 const STATUS_TONES: Record<string, string> = {

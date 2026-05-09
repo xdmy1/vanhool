@@ -7,7 +7,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { FilterChips } from "@/components/admin/FilterChips";
 import { OrderStatusSelect } from "@/components/admin/orders/OrderStatusSelect";
 import { adminListOrders } from "@/lib/admin/queries";
-import type { OrderStatus } from "@/lib/admin/orders/actions";
+import type { OrderStatus } from "@/lib/admin/orders/constants";
 
 const STATUS_VALUES = [
   "all",

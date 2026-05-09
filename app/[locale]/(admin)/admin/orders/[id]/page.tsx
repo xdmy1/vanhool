@@ -14,7 +14,7 @@ import { adminGetOrder } from "@/lib/admin/queries";
 import { isOdooConfigured } from "@/lib/odoo/config";
 import { createClient } from "@/lib/supabase/server";
 import type { OrderItem } from "@/lib/db/orders";
-import type { OrderStatus } from "@/lib/admin/orders/actions";
+import type { OrderStatus } from "@/lib/admin/orders/constants";
 import { cn } from "@/lib/utils/cn";
 
 function parseItems(raw: unknown): OrderItem[] {

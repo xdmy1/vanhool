@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
+import { ORDER_STATUSES, type OrderStatus } from "./constants";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -20,17 +21,6 @@ async function requireAdmin() {
   if (!profile?.is_admin) return { ok: false as const };
   return { ok: true as const, supabase };
 }
-
-export const ORDER_STATUSES = [
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
-  "delivered",
-  "cancelled",
-] as const;
-
-export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 const statusSchema = z.enum(ORDER_STATUSES);
 
