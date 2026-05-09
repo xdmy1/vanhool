@@ -73,7 +73,6 @@ type AccountType = "individual" | "business";
 const COUNTRIES = [
   { code: "MD", labelRo: "Republica Moldova" },
   { code: "RO", labelRo: "România" },
-  { code: "UA", labelRo: "Ucraina" },
   { code: "OTHER", labelRo: "Altă țară" },
 ];
 
