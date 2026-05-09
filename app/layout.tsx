@@ -43,6 +43,7 @@ export default async function RootLayout({
     <html
       lang={locale}
       className={inter.variable}
+      style={{ colorScheme: "light", backgroundColor: "#ece9e2" }}
       suppressHydrationWarning
     >
       <body className="min-h-dvh bg-background text-foreground antialiased">
