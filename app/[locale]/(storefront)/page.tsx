@@ -17,6 +17,7 @@ import type { ComponentType, SVGProps } from "react";
 
 import { Container } from "@/components/layout/Container";
 import { SearchBar } from "@/components/layout/SearchBar";
+import { BrandsMarquee } from "@/components/home/BrandsMarquee";
 import { CategoryColumn } from "@/components/catalog/CategoryColumn";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { Link } from "@/lib/i18n/routing";
@@ -191,6 +192,9 @@ function Hero({
           </div>
         </div>
       </Container>
+      <div className="border-t border-border/60">
+        <BrandsMarquee />
+      </div>
     </section>
   );
 }
