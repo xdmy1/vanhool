@@ -43,6 +43,7 @@ export function CheckoutContent({
 
   const [pending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
   const t = useTranslations("checkout");
   const tCart = useTranslations("cart");
 
@@ -68,14 +69,17 @@ export function CheckoutContent({
   const initialFirst = initialName[0] ?? "";
   const initialLast = initialName.slice(1).join(" ") ?? "";
 
-  // Redirect to cart if empty (after hydration)
+  // Redirect to cart if empty (after hydration). Skipped right after submit
+  // so the success path can navigate to /thank-you without us racing it back
+  // to /cart when clear() empties the cart synchronously.
   useEffect(() => {
+    if (submitted) return;
     if (isHydrated && items.length === 0) {
       router.replace(`/${locale}/cart`);
     }
-  }, [isHydrated, items.length, locale, router]);
+  }, [isHydrated, items.length, locale, router, submitted]);
 
-  if (!isHydrated || items.length === 0) {
+  if (!submitted && (!isHydrated || items.length === 0)) {
     return (
       <Container className="py-20">
         <div className="flex justify-center">
@@ -133,8 +137,11 @@ export function CheckoutContent({
         setErrors({ root: result.message ?? t("submit_error") });
         return;
       }
-      clear();
+      // Set submitted FIRST so the empty-cart redirect effect short-circuits
+      // when clear() drops items.length to 0 in the same tick.
+      setSubmitted(true);
       router.replace(`/${locale}/thank-you?order=${result.orderId}`);
+      clear();
     });
   };
 
