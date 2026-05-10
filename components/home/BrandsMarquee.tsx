@@ -26,58 +26,91 @@ const BRAND_LOGOS = [
   { name: "Scania", url: "https://shop.mits-automotive.be/images/thumbs/0879887_scania_345.png" },
 ];
 
+type Brand = { name: string; url: string };
+
 /**
- * Infinite supplier-logo strip. The container is a real horizontal scroller
- * (so users can swipe / drag / scroll-wheel), and a tiny rAF loop nudges
- * scrollLeft forward each frame to create the auto-marquee effect. When the
- * user touches the strip we pause the auto-scroll for a moment and let
- * native scrolling take over; releasing resumes the auto-loop.
+ * Two-row brand marquee with opposite scroll directions. Each row is a
+ * real horizontal scroller (touch-swipe friendly) with a rAF auto-loop
+ * on top. Rows pause when the user grabs them and resume after 1.5s.
  *
- * Looping is done via the "duplicate-and-wrap" trick: the list is rendered
- * twice in a row; when scrollLeft crosses half the scrollWidth, we subtract
- * half — visually identical, perfectly seamless.
+ * The lists feed the two rows in different orderings (first half / second
+ * half + reversed) so neighbouring rows never align on the same brand.
  */
 export function BrandsMarquee() {
+  const half = Math.ceil(BRAND_LOGOS.length / 2);
+  const topItems = [...BRAND_LOGOS.slice(0, half), ...BRAND_LOGOS.slice(half)];
+  // Bottom row uses the same brands but reversed + offset so the two rows
+  // visually feel different at any moment.
+  const bottomItems = [...BRAND_LOGOS.slice(half), ...BRAND_LOGOS.slice(0, half)].reverse();
+
+  return (
+    <div
+      className="relative w-full overflow-hidden py-4 md:py-6"
+      style={{
+        WebkitMaskImage:
+          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
+        maskImage:
+          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
+      }}
+    >
+      <div className="flex flex-col gap-3 md:gap-4">
+        <MarqueeRow items={topItems} direction={1} speedPxPerSec={28} />
+        <MarqueeRow items={bottomItems} direction={-1} speedPxPerSec={32} />
+      </div>
+    </div>
+  );
+}
+
+function MarqueeRow({
+  items,
+  direction,
+  speedPxPerSec,
+}: {
+  items: Brand[];
+  direction: 1 | -1;
+  speedPxPerSec: number;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pausedUntilRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
-  // Render the list twice for the wrap-around to look continuous.
-  const items = [...BRAND_LOGOS, ...BRAND_LOGOS];
+  // Render the list twice for the wrap-around to feel continuous.
+  const tiles = [...items, ...items];
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-
-    if (typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return; // skip auto-animation entirely
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      // Center the right-to-left row at the middle so the user can
+      // still scroll in either direction without hitting an edge.
+      if (direction === -1) el.scrollLeft = el.scrollWidth / 2;
+      return;
     }
 
-    // Pixels per second. ~25 → calm, readable rhythm.
-    const SPEED_PX_PER_SEC = 30;
-    let lastTs = performance.now();
+    // For the right-to-left row, start in the middle so the wrap-back math
+    // never has to deal with a negative scrollLeft on first paint.
+    if (direction === -1) el.scrollLeft = el.scrollWidth / 2;
 
+    let lastTs = performance.now();
     const tick = (now: number) => {
       const dt = now - lastTs;
       lastTs = now;
       const isPaused = now < pausedUntilRef.current;
       if (!isPaused) {
-        const half = el.scrollWidth / 2;
-        if (half > 0) {
-          let next = el.scrollLeft + (SPEED_PX_PER_SEC * dt) / 1000;
-          if (next >= half) next -= half;
-          if (next < 0) next += half;
+        const halfWidth = el.scrollWidth / 2;
+        if (halfWidth > 0) {
+          let next = el.scrollLeft + (direction * speedPxPerSec * dt) / 1000;
+          if (next >= halfWidth) next -= halfWidth;
+          if (next < 0) next += halfWidth;
           el.scrollLeft = next;
         }
       }
       rafRef.current = requestAnimationFrame(tick);
     };
-
     rafRef.current = requestAnimationFrame(tick);
 
-    // Pause auto-scroll while the user interacts; resume 1.5s after release
-    // so a tap or short swipe lets them finish reading before motion kicks
-    // back in.
     const RESUME_DELAY = 1500;
     const pause = () => {
       pausedUntilRef.current = Number.POSITIVE_INFINITY;
@@ -85,18 +118,15 @@ export function BrandsMarquee() {
     const scheduleResume = () => {
       pausedUntilRef.current = performance.now() + RESUME_DELAY;
     };
-    // Any manual scroll (wheel / arrow keys / programmatic) also defers
-    // the auto-scroll briefly so it doesn't jitter against the user's input.
     const onScroll = () => {
       pausedUntilRef.current = Math.max(
         pausedUntilRef.current,
         performance.now() + 600,
       );
-      // Wrap-around must work whether we drove the scroll or the user did.
-      const half = el.scrollWidth / 2;
-      if (half > 0) {
-        if (el.scrollLeft >= half) el.scrollLeft -= half;
-        else if (el.scrollLeft < 0) el.scrollLeft += half;
+      const halfWidth = el.scrollWidth / 2;
+      if (halfWidth > 0) {
+        if (el.scrollLeft >= halfWidth) el.scrollLeft -= halfWidth;
+        else if (el.scrollLeft < 0) el.scrollLeft += halfWidth;
       }
     };
 
@@ -120,49 +150,37 @@ export function BrandsMarquee() {
       el.removeEventListener("touchcancel", scheduleResume);
       el.removeEventListener("scroll", onScroll);
     };
-  }, []);
+  }, [direction, speedPxPerSec]);
 
   return (
     <div
-      className="relative w-full overflow-hidden py-6 md:py-8"
+      ref={scrollRef}
+      className="brands-marquee-row flex w-full items-center gap-3 overflow-x-auto sm:gap-4 md:gap-5"
       style={{
-        WebkitMaskImage:
-          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
-        maskImage:
-          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
+        touchAction: "pan-x",
+        scrollbarWidth: "none",
       }}
+      aria-label="Mărci partenere"
     >
-      <div
-        ref={scrollRef}
-        className="brands-marquee-track flex w-full items-center gap-5 overflow-x-auto md:gap-7"
-        style={{
-          // Allow horizontal swipe; vertical gestures still scroll the page.
-          touchAction: "pan-x",
-          scrollbarWidth: "none",
-          // Snap-stop turned off — feels too rigid for free-flow scrolling.
-        }}
-        aria-label="Mărci partenere"
-      >
-        {items.map((b, i) => (
-          <div
-            key={`${b.name}-${i}`}
-            className="flex h-20 w-40 shrink-0 select-none items-center justify-center rounded-lg bg-white px-5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-24 sm:w-48 md:h-28 md:w-52"
-            title={b.name}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={b.url}
-              alt={b.name}
-              loading="lazy"
-              draggable={false}
-              className="max-h-full max-w-full select-none object-contain"
-            />
-          </div>
-        ))}
-      </div>
+      {tiles.map((b, i) => (
+        <div
+          key={`${b.name}-${i}`}
+          className="flex h-12 w-24 shrink-0 select-none items-center justify-center rounded-md bg-white px-2.5 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-16 sm:w-32 sm:px-3 sm:py-2 md:h-20 md:w-40 md:rounded-lg md:px-5 md:py-3"
+          title={b.name}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={b.url}
+            alt={b.name}
+            loading="lazy"
+            draggable={false}
+            className="max-h-full max-w-full select-none object-contain"
+          />
+        </div>
+      ))}
 
       <style>{`
-        .brands-marquee-track::-webkit-scrollbar { display: none; }
+        .brands-marquee-row::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   );
