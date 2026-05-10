@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 const BRAND_LOGOS = [
   { name: "Knorr-Bremse", url: "https://shop.mits-automotive.be/images/thumbs/0001869_knorr-bremse_345.png" },
   { name: "Wabco", url: "https://shop.mits-automotive.be/images/thumbs/0001870_wabco_345.jpeg" },
@@ -25,16 +23,10 @@ const BRAND_LOGOS = [
 ];
 
 /**
- * Infinite horizontal marquee showing supplier brand logos.
- *
- * Implementation notes:
- *  - Logos are duplicated once and translated by -50% via CSS animation,
- *    creating a seamless loop without JavaScript.
- *  - Each logo sits inside a white pill so the white-background
- *    artwork from the source CDN doesn't clash with the surface color.
- *  - Edge gradients (mask-image) fade the strip in and out so it reads
- *    as one continuous flow, not a clipped band.
- *  - Pauses on hover for accessibility / read-the-name moments.
+ * Infinite horizontal marquee of supplier brand logos. Uses plain <img>
+ * (the source is already a CDN thumbnail) so we don't fight next/image's
+ * intrinsic-size handling. Each logo lives in a generously sized white
+ * tile so the white-on-white artwork doesn't bleed into the page surface.
  */
 export function BrandsMarquee() {
   // Duplicate the list once. The CSS animation translates the inner row
@@ -43,30 +35,29 @@ export function BrandsMarquee() {
 
   return (
     <div
-      className="relative w-full overflow-hidden"
+      className="relative w-full overflow-hidden py-6 md:py-8"
       style={{
         WebkitMaskImage:
-          "linear-gradient(to right, transparent 0, black 6%, black 94%, transparent 100%)",
+          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
         maskImage:
-          "linear-gradient(to right, transparent 0, black 6%, black 94%, transparent 100%)",
+          "linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%)",
       }}
       aria-hidden="true"
     >
-      <div className="brands-marquee-track flex w-max items-center gap-4 py-4 md:gap-6 md:py-6">
+      <div className="brands-marquee-track flex w-max items-center gap-5 md:gap-7">
         {items.map((b, i) => (
           <div
             key={`${b.name}-${i}`}
-            className="grid h-12 w-28 shrink-0 place-items-center rounded-md border border-white/15 bg-white/95 px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.04] sm:h-14 sm:w-32 md:h-16 md:w-36"
+            className="flex h-20 w-40 shrink-0 items-center justify-center rounded-lg bg-white px-5 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 transition-transform hover:scale-105 sm:h-24 sm:w-48 md:h-28 md:w-52"
             title={b.name}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={b.url}
               alt={b.name}
-              width={144}
-              height={64}
-              className="h-full w-full object-contain p-1.5"
               loading="lazy"
-              unoptimized
+              draggable={false}
+              className="max-h-full max-w-full select-none object-contain"
             />
           </div>
         ))}
@@ -78,7 +69,7 @@ export function BrandsMarquee() {
           100% { transform: translateX(-50%); }
         }
         .brands-marquee-track {
-          animation: brands-marquee-scroll 50s linear infinite;
+          animation: brands-marquee-scroll 60s linear infinite;
           will-change: transform;
         }
         .brands-marquee-track:hover {
