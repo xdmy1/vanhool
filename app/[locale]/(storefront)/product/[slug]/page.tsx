@@ -85,7 +85,7 @@ export default async function ProductDetailPage({
     outOfStock: tCard("out_of_stock"),
     trustDelivery: tHome("trust_fast"),
     trustWarranty: tHome("trust_warranty"),
-    stockAvailable: (count: number) => tProd("stock_available", { count }),
+    stockAvailable: tProd("stock_available", { count: product.stockQuantity }),
   };
 
   const cardLabels = {
