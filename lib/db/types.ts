@@ -42,6 +42,8 @@ export type Product = {
   weight?: number | null;
   width?: number | null;
   height?: number | null;
+  length?: number | null;
+  ribCount?: number | null;
   warrantyMonths?: number | null;
   isFeatured: boolean;
 };

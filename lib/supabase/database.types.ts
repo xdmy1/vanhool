@@ -76,6 +76,8 @@ export type Database = {
           weight: number | null;
           width: number | null;
           height: number | null;
+          length: number | null;
+          rib_count: number | null;
           warranty_months: number | null;
           category_id: UUID | null;
           is_active: boolean | null;

@@ -49,6 +49,91 @@ export type VehicleBreadcrumb = {
 // MAKES
 // =============================================================================
 
+export type VehicleMakeForFilter = {
+  slug: string;
+  name: string;
+  productCount: number;
+};
+
+/**
+ * Vehicle makes for the catalog sidebar filter: only those that have at least
+ * one active product linked via `product_vehicle_makes`. Sorted by name.
+ */
+export async function listVehicleMakesForFilter(): Promise<VehicleMakeForFilter[]> {
+  const supabase = await createClient();
+
+  const { data: makes } = await supabase
+    .from("vehicle_makes")
+    .select("id, slug, name")
+    .eq("is_active", true);
+  if (!makes || makes.length === 0) return [];
+
+  // Count distinct active products per make. We fetch the link rows and the
+  // set of active product ids, then intersect — keeps the query simple and
+  // avoids needing a SQL view.
+  const { data: links } = await supabase
+    .from("product_vehicle_makes")
+    .select("product_id, vehicle_make_id");
+  if (!links || links.length === 0) return [];
+
+  const productIds = Array.from(new Set(links.map((l) => l.product_id)));
+  const activeIds = new Set<string>();
+  for (let i = 0; i < productIds.length; i += 500) {
+    const chunk = productIds.slice(i, i + 500);
+    const { data } = await supabase
+      .from("products")
+      .select("id")
+      .eq("is_active", true)
+      .in("id", chunk);
+    for (const r of data ?? []) activeIds.add(r.id);
+  }
+
+  const counts = new Map<string, number>();
+  const seen = new Set<string>(); // dedupe (product, make) just in case
+  for (const l of links) {
+    if (!activeIds.has(l.product_id)) continue;
+    const key = `${l.product_id}|${l.vehicle_make_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    counts.set(l.vehicle_make_id, (counts.get(l.vehicle_make_id) ?? 0) + 1);
+  }
+
+  return makes
+    .map((m) => ({
+      slug: m.slug,
+      name: m.name,
+      productCount: counts.get(m.id) ?? 0,
+    }))
+    .filter((m) => m.productCount > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Resolve a list of vehicle_make slugs to the product ids linked to ANY of
+ * them. Used by the catalog filter. Returns an empty array if no slug
+ * matches an active make, or no products are linked.
+ */
+export async function getProductIdsByVehicleMakeSlugs(
+  slugs: string[],
+): Promise<string[]> {
+  if (slugs.length === 0) return [];
+  const supabase = await createClient();
+
+  const { data: makes } = await supabase
+    .from("vehicle_makes")
+    .select("id")
+    .in("slug", slugs)
+    .eq("is_active", true);
+  const makeIds = (makes ?? []).map((m) => m.id);
+  if (makeIds.length === 0) return [];
+
+  const { data: links } = await supabase
+    .from("product_vehicle_makes")
+    .select("product_id")
+    .in("vehicle_make_id", makeIds);
+  return Array.from(new Set((links ?? []).map((l) => l.product_id)));
+}
+
 export async function listMakes(): Promise<VehicleMake[]> {
   const supabase = await createClient();
   const { data: makes } = await supabase
@@ -449,6 +534,8 @@ export async function listPartsForTypeAndCategory(
       weight: r.weight,
       width: r.width,
       height: r.height,
+      length: null,
+      ribCount: null,
       warrantyMonths: r.warranty_months,
       isFeatured: !!r.is_featured,
     };

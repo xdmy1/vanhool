@@ -11,6 +11,8 @@ export function ProductSpecs({
     partCode: string;
     weight: string;
     dimensions: string;
+    length: string;
+    ribCount: string;
     warranty: string;
     warrantyMonths: (count: number) => string;
   };
@@ -30,6 +32,14 @@ export function ProductSpecs({
           : product.width
             ? `${product.width} mm`
             : null,
+    },
+    {
+      label: labels.length,
+      value: product.length ? `${product.length} mm` : null,
+    },
+    {
+      label: labels.ribCount,
+      value: product.ribCount ? String(product.ribCount) : null,
     },
     {
       label: labels.warranty,

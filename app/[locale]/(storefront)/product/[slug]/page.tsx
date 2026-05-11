@@ -72,6 +72,8 @@ export default async function ProductDetailPage({
     partCode: tProd("part_code"),
     weight: tProd("weight"),
     dimensions: tProd("dimensions"),
+    length: tProd("length"),
+    ribCount: tProd("rib_count"),
     warranty: tProd("warranty"),
     warrantyMonths: (count: number) => tProd("warranty_months", { count }),
   };

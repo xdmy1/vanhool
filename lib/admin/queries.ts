@@ -27,6 +27,8 @@ export type AdminProductRow = {
   weight: number | null;
   width: number | null;
   height: number | null;
+  length: number | null;
+  rib_count: number | null;
   warranty_months: number | null;
   is_active: boolean | null;
   is_featured: boolean | null;
@@ -42,7 +44,7 @@ export type AdminProductRow = {
 };
 
 const PRODUCT_COLUMNS =
-  "id, slug, part_code, brand, manufacturer_id, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, cost_price, stock_quantity, storage_location, condition, image_url, images, weight, width, height, warranty_months, is_active, is_featured, category_id, subcategory_id, oem_codes, cross_references, is_promo, promo_price, promo_starts_at, promo_ends_at, created_at";
+  "id, slug, part_code, brand, manufacturer_id, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, cost_price, stock_quantity, storage_location, condition, image_url, images, weight, width, height, length, rib_count, warranty_months, is_active, is_featured, category_id, subcategory_id, oem_codes, cross_references, is_promo, promo_price, promo_starts_at, promo_ends_at, created_at";
 
 export type AdminProductFilter = {
   q?: string;

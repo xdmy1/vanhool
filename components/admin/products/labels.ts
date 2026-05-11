@@ -37,6 +37,8 @@ export function buildProductFormLabels(t: T) {
     field_weight: t("field_weight"),
     field_width: t("field_width"),
     field_height: t("field_height"),
+    field_length: t("field_length"),
+    field_rib_count: t("field_rib_count"),
     field_image_url: t("field_image_url"),
     field_name_ro: t("field_name_ro"),
     field_name_en: t("field_name_en"),

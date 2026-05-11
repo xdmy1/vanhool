@@ -6,6 +6,7 @@ import { demo } from "./demo-data";
 import { USE_DEMO_DATA } from "./flags";
 import { normalizeCode } from "@/lib/utils/normalize-code";
 import { applyDiscount, getCurrentUserDiscount } from "./customer-discount";
+import { getProductIdsByVehicleMakeSlugs } from "./vehicles";
 
 type ProductRow = {
   id: string;
@@ -19,6 +20,8 @@ type ProductRow = {
   weight: number | null;
   width: number | null;
   height: number | null;
+  length: number | null;
+  rib_count: number | null;
   warranty_months: number | null;
   is_featured: boolean | null;
   is_active: boolean | null;
@@ -46,7 +49,7 @@ type CategorySlugRow = { id: string; slug: string | null };
 
 const SELECT_COLUMNS = `
   id, slug, part_code, brand, price, stock_quantity, image_url, images,
-  weight, width, height, warranty_months, is_featured, is_active, category_id,
+  weight, width, height, length, rib_count, warranty_months, is_featured, is_active, category_id,
   name_ro, name_en, name_ru, description_ro, description_en, description_ru,
   is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
@@ -138,6 +141,8 @@ function toProduct(
     weight: row.weight,
     width: row.width,
     height: row.height,
+    length: row.length,
+    ribCount: row.rib_count,
     warrantyMonths: row.warranty_months,
     isFeatured: !!row.is_featured,
   };
@@ -374,6 +379,7 @@ export async function getRelatedProducts(
 export type CatalogFilters = {
   q?: string;
   categorySlugs?: string[];
+  vehicleMakeSlugs?: string[];
   minPrice?: number;
   maxPrice?: number;
   inStock?: boolean;
@@ -399,6 +405,7 @@ export async function getCatalog(
   const {
     q,
     categorySlugs,
+    vehicleMakeSlugs,
     minPrice,
     maxPrice,
     inStock,
@@ -407,6 +414,14 @@ export async function getCatalog(
     page = 1,
     perPage = 12,
   } = filters;
+
+  const emptyResult: CatalogResult = {
+    products: [],
+    total: 0,
+    page,
+    perPage,
+    totalPages: 1,
+  };
 
   const supabase = await createClient();
   let query = supabase
@@ -418,6 +433,20 @@ export async function getCatalog(
   if (typeof maxPrice === "number") query = query.lte("price", maxPrice);
   if (inStock) query = query.gt("stock_quantity", 0);
   if (featured) query = query.eq("is_featured", true);
+
+  // Collect every "allowed product id" set produced by the id-based filters
+  // (text search + vehicle-make link). Intersect them in TS so we always
+  // issue exactly one .in("id", …) — multiple chained .in() calls on the
+  // same column are not portable across postgrest versions.
+  let allowedIds: Set<string> | null = null;
+  const intersectIds = (ids: string[]) => {
+    if (allowedIds === null) {
+      allowedIds = new Set(ids);
+    } else {
+      const incoming = new Set(ids);
+      allowedIds = new Set([...allowedIds].filter((id) => incoming.has(id)));
+    }
+  };
 
   if (q && q.trim()) {
     const trimmed = q.trim();
@@ -455,17 +484,19 @@ export async function getCatalog(
     const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
     const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
 
-    if (matchedIds.length === 0) {
-      // Nothing matched — short-circuit so we don't hit the demo fallback.
-      return {
-        products: [],
-        total: 0,
-        page,
-        perPage,
-        totalPages: 1,
-      };
-    }
-    query = query.in("id", matchedIds);
+    if (matchedIds.length === 0) return emptyResult;
+    intersectIds(matchedIds);
+  }
+
+  if (vehicleMakeSlugs && vehicleMakeSlugs.length > 0) {
+    const makeProductIds = await getProductIdsByVehicleMakeSlugs(vehicleMakeSlugs);
+    if (makeProductIds.length === 0) return emptyResult;
+    intersectIds(makeProductIds);
+  }
+
+  if (allowedIds !== null) {
+    if (allowedIds.size === 0) return emptyResult;
+    query = query.in("id", [...allowedIds]);
   }
 
   if (categorySlugs && categorySlugs.length > 0) {

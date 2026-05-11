@@ -44,6 +44,8 @@ const productSchema = z.object({
   weight: z.number().nonnegative().nullable().optional(),
   width: z.number().nonnegative().nullable().optional(),
   height: z.number().nonnegative().nullable().optional(),
+  length: z.number().nonnegative().nullable().optional(),
+  ribCount: z.number().int().nonnegative().nullable().optional(),
   imageUrl: z.string().max(500).optional().or(z.literal("")),
   images: z.array(z.string().url().max(500)).max(8).optional(),
   isActive: z.boolean().optional(),
@@ -140,6 +142,8 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
     weight: values.weight ?? null,
     width: values.width ?? null,
     height: values.height ?? null,
+    length: values.length ?? null,
+    rib_count: values.ribCount ?? null,
     image_url:
       // Primary image: first of the gallery if set, else legacy single field.
       (values.images && values.images.length > 0 ? values.images[0] : null) ??

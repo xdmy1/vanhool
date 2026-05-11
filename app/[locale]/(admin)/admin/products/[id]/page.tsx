@@ -70,6 +70,8 @@ export default async function EditProductPage({
     weight: product.weight,
     width: product.width,
     height: product.height,
+    length: product.length,
+    ribCount: product.rib_count,
     imageUrl: product.image_url ?? "",
     images: Array.isArray(product.images)
       ? (product.images as unknown[]).filter(

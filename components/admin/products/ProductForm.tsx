@@ -67,6 +67,8 @@ type Labels = {
   field_weight: string;
   field_width: string;
   field_height: string;
+  field_length: string;
+  field_rib_count: string;
   field_image_url: string;
   // Names + descriptions
   field_name_ro: string;
@@ -223,6 +225,8 @@ export function ProductForm({
       weight: num("weight"),
       width: num("width"),
       height: num("height"),
+      length: num("length"),
+      ribCount: num("ribCount"),
       imageUrl: images[0] ?? "",
       images,
       isActive,
@@ -519,6 +523,26 @@ export function ProductForm({
                 step="0.01"
                 min={0}
                 defaultValue={initial?.height ?? ""}
+              />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={labels.field_length}>
+              <Input
+                name="length"
+                type="number"
+                step="0.01"
+                min={0}
+                defaultValue={initial?.length ?? ""}
+              />
+            </Field>
+            <Field label={labels.field_rib_count}>
+              <Input
+                name="ribCount"
+                type="number"
+                step={1}
+                min={0}
+                defaultValue={initial?.ribCount ?? ""}
               />
             </Field>
           </div>
