@@ -55,20 +55,30 @@ const SELECT_COLUMNS = `
   is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
 
-function parseCustomSpecs(raw: unknown): { label: string; value: string }[] {
+function parseCustomSpecs(
+  raw: unknown,
+  locale: Locale,
+): { label: string; value: string }[] {
   if (!Array.isArray(raw)) return [];
   const out: { label: string; value: string }[] = [];
+  const pick = (
+    o: Record<string, unknown>,
+    base: "label" | "value",
+  ): string => {
+    const localized = o[`${base}_${locale}`];
+    if (typeof localized === "string" && localized.trim()) return localized.trim();
+    const ro = o[`${base}_ro`];
+    if (typeof ro === "string" && ro.trim()) return ro.trim();
+    const legacy = o[base];
+    if (typeof legacy === "string" && legacy.trim()) return legacy.trim();
+    return "";
+  };
   for (const item of raw) {
     if (!item || typeof item !== "object") continue;
-    const o = item as { label?: unknown; value?: unknown };
-    if (
-      typeof o.label === "string" &&
-      typeof o.value === "string" &&
-      o.label.trim().length > 0 &&
-      o.value.trim().length > 0
-    ) {
-      out.push({ label: o.label.trim(), value: o.value.trim() });
-    }
+    const o = item as Record<string, unknown>;
+    const label = pick(o, "label");
+    const value = pick(o, "value");
+    if (label && value) out.push({ label, value });
   }
   return out;
 }
@@ -162,7 +172,7 @@ function toProduct(
     height: row.height,
     length: row.length,
     ribCount: row.rib_count,
-    customSpecs: parseCustomSpecs(row.custom_specs),
+    customSpecs: parseCustomSpecs(row.custom_specs, locale),
     warrantyMonths: row.warranty_months,
     isFeatured: !!row.is_featured,
   };

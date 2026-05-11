@@ -238,8 +238,15 @@ export function ProductForm({
       length: num("length"),
       ribCount: num("ribCount"),
       customSpecs: customSpecs
-        .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
-        .filter((s) => s.label.length > 0 && s.value.length > 0),
+        .map((s) => ({
+          labelRo: s.labelRo.trim(),
+          labelEn: (s.labelEn ?? "").trim(),
+          labelRu: (s.labelRu ?? "").trim(),
+          valueRo: s.valueRo.trim(),
+          valueEn: (s.valueEn ?? "").trim(),
+          valueRu: (s.valueRu ?? "").trim(),
+        }))
+        .filter((s) => s.labelRo.length > 0 && s.valueRo.length > 0),
       imageUrl: images[0] ?? "",
       images,
       isActive,

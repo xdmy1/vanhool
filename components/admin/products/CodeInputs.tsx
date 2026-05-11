@@ -162,10 +162,18 @@ export function CrossRefEditor({
 }
 
 // ---------------------------------------------------------------------------
-// CustomSpecsEditor — repeatable {label, value} rows for free-form specs.
-// Admin types the spec name AND value (e.g. "Dinți" / "36").
+// CustomSpecsEditor — repeatable spec rows in RO / EN / RU.
+// Each row captures a localized label + value (RO required, EN / RU optional —
+// blanks fall back to RO at save time so display never breaks).
 // ---------------------------------------------------------------------------
-type CustomSpecRow = { label: string; value: string };
+type CustomSpecRow = {
+  labelRo: string;
+  labelEn?: string;
+  labelRu?: string;
+  valueRo: string;
+  valueEn?: string;
+  valueRu?: string;
+};
 
 export function CustomSpecsEditor({
   values,
@@ -180,41 +188,81 @@ export function CustomSpecsEditor({
     onChange(values.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
   };
   const remove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
-  const add = () => onChange([...values, { label: "", value: "" }]);
+  const add = () =>
+    onChange([
+      ...values,
+      {
+        labelRo: "",
+        labelEn: "",
+        labelRu: "",
+        valueRo: "",
+        valueEn: "",
+        valueRu: "",
+      },
+    ]);
 
   return (
-    <div className="flex flex-col gap-2">
-      {values.length === 0 ? null : (
-        <div className="flex flex-col gap-1.5">
-          {values.map((row, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2"
+    <div className="flex flex-col gap-3">
+      {values.map((row, i) => (
+        <div
+          key={i}
+          className="rounded-md border border-border bg-surface-elevated p-3"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-strong">
+              {labels.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Șterge"
             >
-              <Input
-                placeholder={labels.label}
-                value={row.label}
-                onChange={(e) => update(i, { label: e.target.value })}
-                className="text-sm"
-              />
-              <Input
-                placeholder={labels.value}
-                value={row.value}
-                onChange={(e) => update(i, { value: e.target.value })}
-                className="text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => remove(i)}
-                className="grid size-9 place-items-center rounded-md border border-border bg-surface text-muted transition-colors hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
-                aria-label="Șterge"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <LangSpecInput
+              code="RO"
+              value={row.labelRo}
+              onChange={(v) => update(i, { labelRo: v })}
+              required
+            />
+            <LangSpecInput
+              code="EN"
+              value={row.labelEn ?? ""}
+              onChange={(v) => update(i, { labelEn: v })}
+            />
+            <LangSpecInput
+              code="RU"
+              value={row.labelRu ?? ""}
+              onChange={(v) => update(i, { labelRu: v })}
+            />
+          </div>
+
+          <div className="mt-3 mb-2 text-xs font-semibold text-muted-strong">
+            {labels.value}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <LangSpecInput
+              code="RO"
+              value={row.valueRo}
+              onChange={(v) => update(i, { valueRo: v })}
+              required
+            />
+            <LangSpecInput
+              code="EN"
+              value={row.valueEn ?? ""}
+              onChange={(v) => update(i, { valueEn: v })}
+            />
+            <LangSpecInput
+              code="RU"
+              value={row.valueRu ?? ""}
+              onChange={(v) => update(i, { valueRu: v })}
+            />
+          </div>
         </div>
-      )}
+      ))}
       <Button
         type="button"
         variant="ghost"
@@ -224,6 +272,32 @@ export function CustomSpecsEditor({
       >
         <Plus className="size-3.5" /> {labels.add}
       </Button>
+    </div>
+  );
+}
+
+function LangSpecInput({
+  code,
+  value,
+  onChange,
+  required,
+}: {
+  code: "RO" | "EN" | "RU";
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-7 shrink-0 rounded-sm border border-border bg-surface px-1.5 py-1 text-center text-[10px] font-semibold text-muted-strong">
+        {code}
+      </span>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={required ? "Obligatoriu" : "Opțional"}
+        className="text-sm"
+      />
     </div>
   );
 }

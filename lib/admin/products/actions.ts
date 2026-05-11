@@ -29,8 +29,12 @@ const crossRefSchema = z.object({
 export type CrossReference = z.infer<typeof crossRefSchema>;
 
 const customSpecSchema = z.object({
-  label: z.string().min(1).max(80),
-  value: z.string().min(1).max(200),
+  labelRo: z.string().min(1).max(80),
+  labelEn: z.string().max(80).optional().or(z.literal("")),
+  labelRu: z.string().max(80).optional().or(z.literal("")),
+  valueRo: z.string().min(1).max(200),
+  valueEn: z.string().max(200).optional().or(z.literal("")),
+  valueRu: z.string().max(200).optional().or(z.literal("")),
 });
 
 export type CustomSpec = z.infer<typeof customSpecSchema>;
@@ -153,8 +157,19 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
     length: values.length ?? null,
     rib_count: values.ribCount ?? null,
     custom_specs: ((values.customSpecs ?? [])
-      .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
-      .filter((s) => s.label.length > 0 && s.value.length > 0)) as never,
+      .map((s) => {
+        const labelRo = s.labelRo.trim();
+        const valueRo = s.valueRo.trim();
+        return {
+          label_ro: labelRo,
+          label_en: s.labelEn?.trim() || labelRo,
+          label_ru: s.labelRu?.trim() || labelRo,
+          value_ro: valueRo,
+          value_en: s.valueEn?.trim() || valueRo,
+          value_ru: s.valueRu?.trim() || valueRo,
+        };
+      })
+      .filter((s) => s.label_ro.length > 0 && s.value_ro.length > 0)) as never,
     image_url:
       // Primary image: first of the gallery if set, else legacy single field.
       (values.images && values.images.length > 0 ? values.images[0] : null) ??

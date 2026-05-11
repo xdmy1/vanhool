@@ -73,10 +73,38 @@ export default async function EditProductPage({
     length: product.length,
     ribCount: product.rib_count,
     customSpecs: Array.isArray(product.custom_specs)
-      ? product.custom_specs.filter(
-          (s): s is { label: string; value: string } =>
-            !!s && typeof s.label === "string" && typeof s.value === "string",
-        )
+      ? product.custom_specs
+          .map((s) => {
+            if (!s || typeof s !== "object") return null;
+            const o = s as Record<string, unknown>;
+            const str = (k: string): string =>
+              typeof o[k] === "string" ? (o[k] as string) : "";
+            const legacyLabel = str("label");
+            const legacyValue = str("value");
+            const labelRo = str("label_ro") || legacyLabel;
+            const valueRo = str("value_ro") || legacyValue;
+            if (!labelRo || !valueRo) return null;
+            return {
+              labelRo,
+              labelEn: str("label_en") || legacyLabel || labelRo,
+              labelRu: str("label_ru") || legacyLabel || labelRo,
+              valueRo,
+              valueEn: str("value_en") || legacyValue || valueRo,
+              valueRu: str("value_ru") || legacyValue || valueRo,
+            };
+          })
+          .filter(
+            (
+              s,
+            ): s is {
+              labelRo: string;
+              labelEn: string;
+              labelRu: string;
+              valueRo: string;
+              valueEn: string;
+              valueRu: string;
+            } => s !== null,
+          )
       : [],
     imageUrl: product.image_url ?? "",
     images: Array.isArray(product.images)
