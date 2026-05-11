@@ -101,7 +101,9 @@ export async function updateCategory(
  * Returns existing id if the same slug already exists (idempotent).
  */
 const quickSchema = z.object({
-  name: z.string().min(1).max(200),
+  nameRo: z.string().min(1).max(200),
+  nameEn: z.string().max(200).optional().or(z.literal("")),
+  nameRu: z.string().max(200).optional().or(z.literal("")),
   parentId: z.string().uuid().nullable().optional(),
 });
 
@@ -136,21 +138,24 @@ export async function quickCreateCategory(
       message: parsed.error.issues.map((i) => i.message).join(", "),
     };
   }
-  const name = parsed.data.name.trim();
+  const nameRo = parsed.data.nameRo.trim();
+  const nameEn = parsed.data.nameEn?.trim() || nameRo;
+  const nameRu = parsed.data.nameRu?.trim() || nameRo;
   const parentId = parsed.data.parentId ?? null;
 
-  // If a row with this name already exists under the same parent, return it.
+  // If a row with the same Romanian name already exists under the same
+  // parent, return it instead of inserting a duplicate.
   let dupQuery = auth.supabase
     .from("categories")
     .select("id, slug, name_ro, parent_id")
-    .ilike("name_ro", name);
+    .ilike("name_ro", nameRo);
   dupQuery = parentId ? dupQuery.eq("parent_id", parentId) : dupQuery.is("parent_id", null);
   const { data: existing } = await dupQuery.maybeSingle();
   if (existing) {
     return {
       ok: true,
       id: existing.id,
-      name: existing.name_ro ?? name,
+      name: existing.name_ro ?? nameRo,
       slug: existing.slug ?? "",
       parentId: existing.parent_id,
     };
@@ -166,7 +171,7 @@ export async function quickCreateCategory(
       .maybeSingle();
     parentSlug = parent?.slug ?? null;
   }
-  let slug = (parentSlug ? `${parentSlug}-` : "") + (slugify(name) || `cat-${Date.now()}`);
+  let slug = (parentSlug ? `${parentSlug}-` : "") + (slugify(nameRo) || `cat-${Date.now()}`);
   for (let i = 0; i < 5; i++) {
     const { data: bySlug } = await auth.supabase
       .from("categories")
@@ -174,16 +179,16 @@ export async function quickCreateCategory(
       .eq("slug", slug)
       .maybeSingle();
     if (!bySlug) break;
-    slug = `${(parentSlug ? `${parentSlug}-` : "") + slugify(name)}-${i + 2}`;
+    slug = `${(parentSlug ? `${parentSlug}-` : "") + slugify(nameRo)}-${i + 2}`;
   }
 
   const { data, error } = await auth.supabase
     .from("categories")
     .insert({
       slug,
-      name_ro: name,
-      name_en: name,
-      name_ru: name,
+      name_ro: nameRo,
+      name_en: nameEn,
+      name_ru: nameRu,
       parent_id: parentId,
       is_active: true,
       sort_order: 999,
@@ -198,7 +203,7 @@ export async function quickCreateCategory(
   return {
     ok: true,
     id: data.id,
-    name: data.name_ro ?? name,
+    name: data.name_ro ?? nameRo,
     slug: data.slug ?? slug,
     parentId: data.parent_id,
   };
