@@ -18,12 +18,14 @@ import type { ComponentType, SVGProps } from "react";
 import { Container } from "@/components/layout/Container";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { BrandsMarquee } from "@/components/home/BrandsMarquee";
+import { BrandQuickPicker, type BrandOption } from "@/components/home/BrandQuickPicker";
 import { CategoryColumn } from "@/components/catalog/CategoryColumn";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
 import { getCategoryTree } from "@/lib/db/categories";
 import { getFeaturedProducts } from "@/lib/db/products";
+import { listMakes } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Category, Locale } from "@/lib/db/types";
 
@@ -70,13 +72,21 @@ export default async function HomePage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [t, tp, categoryTree, featured, eurRate] = await Promise.all([
+  const [t, tp, tv, categoryTree, featured, makes, eurRate] = await Promise.all([
     getTranslations("home"),
     getTranslations("product_card"),
+    getTranslations("vehicles"),
     getCategoryTree(loc),
     getFeaturedProducts(loc, 8),
+    listMakes(),
     getEurToMdlRate(),
   ]);
+
+  const brandOptions: BrandOption[] = makes.map((m) => ({
+    slug: m.slug,
+    name: m.name,
+    isPopular: m.isPopular,
+  }));
 
   const productLabels = {
     partCode: tp("part_code"),
@@ -102,6 +112,14 @@ export default async function HomePage({
         subtitle={t("hero_subtitle")}
         searchPlaceholder={t("search_placeholder")}
         searchButton={t("search_button")}
+        brands={brandOptions}
+        locale={loc}
+        brandLabel={tv("nav_link")}
+        brandPlaceholder={tv("brand_title")}
+        brandCta={t("search_button")}
+        brandAllCta={tv("brand_all")}
+        brandPopularGroup={tv("brand_popular")}
+        brandOtherGroup={tv("brand_all")}
       />
 
       <section className="py-14 md:py-16">
@@ -171,12 +189,28 @@ function Hero({
   subtitle,
   searchPlaceholder,
   searchButton,
+  brands,
+  locale,
+  brandLabel,
+  brandPlaceholder,
+  brandCta,
+  brandAllCta,
+  brandPopularGroup,
+  brandOtherGroup,
 }: {
   title1: string;
   title2: string;
   subtitle: string;
   searchPlaceholder: string;
   searchButton: string;
+  brands: BrandOption[];
+  locale: Locale;
+  brandLabel: string;
+  brandPlaceholder: string;
+  brandCta: string;
+  brandAllCta: string;
+  brandPopularGroup: string;
+  brandOtherGroup: string;
 }) {
   return (
     <section className="border-b border-border bg-surface">
@@ -195,6 +229,18 @@ function Hero({
               size="lg"
             />
           </div>
+          {brands.length > 0 ? (
+            <BrandQuickPicker
+              brands={brands}
+              locale={locale}
+              label={brandLabel}
+              placeholder={brandPlaceholder}
+              ctaLabel={brandCta}
+              allLabel={brandAllCta}
+              popularGroup={brandPopularGroup}
+              otherGroup={brandOtherGroup}
+            />
+          ) : null}
         </div>
       </Container>
       <div className="border-t border-border/60">
