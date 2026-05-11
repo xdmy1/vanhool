@@ -688,6 +688,7 @@ export function ProductForm({
                 )
               }
               parentId={null}
+              sourceLocale={locale === "en" || locale === "ru" ? locale : "ro"}
               noneLabel={labels.field_category_none}
               addLabel={labels.field_category_add}
               placeholder={labels.field_category_placeholder}
@@ -704,6 +705,7 @@ export function ProductForm({
                 )
               }
               parentId={categoryId}
+              sourceLocale={locale === "en" || locale === "ru" ? locale : "ro"}
               disabled={!categoryId}
               noneLabel={labels.field_subcategory_none}
               addLabel={labels.field_subcategory_add}

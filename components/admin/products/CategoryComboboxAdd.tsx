@@ -6,18 +6,19 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TranslateButton } from "@/components/admin/TranslateButton";
 import { quickCreateCategory } from "@/lib/admin/categories/actions";
 
 type Option = { id: string; name: string; parentId: string | null };
+type Lang = "ro" | "en" | "ru";
 
 /**
  * Dropdown for picking a category (root or sub) with an inline "+ adaugă"
- * row underneath. When `parentId` is provided, new entries created here
- * are inserted as children of that parent (i.e. subcategories).
+ * row underneath.
  *
- * The inline form captures all three languages (RO, EN, RU). RO is
- * required — empty EN/RU fall back to the RO name on insert.
+ * The admin types the name in the language they're currently using — the
+ * server auto-translates into the other two locales so a single row is
+ * inserted with name_ro / name_en / name_ru all filled. The storefront
+ * shows the right column based on the visitor's locale.
  */
 export function CategoryComboboxAdd({
   options,
@@ -25,6 +26,7 @@ export function CategoryComboboxAdd({
   onChange,
   onCreated,
   parentId,
+  sourceLocale,
   disabled,
   noneLabel,
   addLabel,
@@ -38,6 +40,9 @@ export function CategoryComboboxAdd({
    * append it to its in-memory list. */
   onCreated?: (created: Option) => void;
   parentId?: string | null;
+  /** Locale the admin is typing in — used by the server to translate
+   * into the other two columns. */
+  sourceLocale: Lang;
   disabled?: boolean;
   noneLabel: string;
   addLabel: string;
@@ -46,9 +51,7 @@ export function CategoryComboboxAdd({
 }) {
   const [items, setItems] = useState<Option[]>(options);
   const [adding, setAdding] = useState(false);
-  const [nameRo, setNameRo] = useState("");
-  const [nameEn, setNameEn] = useState("");
-  const [nameRu, setNameRu] = useState("");
+  const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -57,19 +60,16 @@ export function CategoryComboboxAdd({
 
   const reset = () => {
     setAdding(false);
-    setNameRo("");
-    setNameEn("");
-    setNameRu("");
+    setName("");
   };
 
   const submitNew = () => {
-    const trimmedRo = nameRo.trim();
-    if (!trimmedRo) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
     startTransition(async () => {
       const res = await quickCreateCategory({
-        nameRo: trimmedRo,
-        nameEn: nameEn.trim() || undefined,
-        nameRu: nameRu.trim() || undefined,
+        name: trimmed,
+        sourceLocale,
         parentId: parentId ?? null,
       });
       if (!res.ok) {
@@ -112,60 +112,50 @@ export function CategoryComboboxAdd({
         <span className="text-[10px] text-muted">{emptyHint}</span>
       ) : adding ? (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-elevated p-3">
-          <div className="text-xs font-medium text-muted-strong">{placeholder}</div>
-          <LangField
-            code="RO"
-            value={nameRo}
-            onChange={setNameRo}
-            required
+          <div className="text-xs font-medium text-muted-strong">
+            {placeholder}
+          </div>
+          <Input
             autoFocus
-            onEnter={submitNew}
-            onEscape={reset}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitNew();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                reset();
+              }
+            }}
+            placeholder={placeholder}
+            className="text-sm"
           />
-          <LangField
-            code="EN"
-            value={nameEn}
-            onChange={setNameEn}
-            onEnter={submitNew}
-            onEscape={reset}
-          />
-          <LangField
-            code="RU"
-            value={nameRu}
-            onChange={setNameRu}
-            onEnter={submitNew}
-            onEscape={reset}
-          />
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <TranslateButton
-              values={{ ro: nameRo, en: nameEn, ru: nameRu }}
-              onTranslated={({ ro, en, ru }) => {
-                setNameRo(ro);
-                setNameEn(en);
-                setNameRu(ru);
-              }}
-            />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-muted">
+              Se traduce automat ({sourceLocale.toUpperCase()} → restul)
+            </span>
             <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={reset}
-              disabled={pending}
-              className="gap-1"
-            >
-              <X className="size-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={submitNew}
-              disabled={pending || !nameRo.trim()}
-              className="gap-1"
-            >
-              <Check className="size-3.5" />
-              {pending ? "…" : addLabel}
-            </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={reset}
+                disabled={pending}
+                className="gap-1"
+              >
+                <X className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={submitNew}
+                disabled={pending || !name.trim()}
+                className="gap-1"
+              >
+                <Check className="size-3.5" />
+                {pending ? "…" : addLabel}
+              </Button>
             </div>
           </div>
         </div>
@@ -179,48 +169,6 @@ export function CategoryComboboxAdd({
           + {addLabel}
         </button>
       )}
-    </div>
-  );
-}
-
-function LangField({
-  code,
-  value,
-  onChange,
-  required,
-  autoFocus,
-  onEnter,
-  onEscape,
-}: {
-  code: "RO" | "EN" | "RU";
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  autoFocus?: boolean;
-  onEnter: () => void;
-  onEscape: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-7 shrink-0 rounded-sm border border-border bg-surface px-1.5 py-1 text-center text-[10px] font-semibold text-muted-strong">
-        {code}
-      </span>
-      <Input
-        autoFocus={autoFocus}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onEnter();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            onEscape();
-          }
-        }}
-        placeholder={required ? "Nume obligatoriu" : "Opțional — preia RO"}
-        className="text-sm"
-      />
     </div>
   );
 }

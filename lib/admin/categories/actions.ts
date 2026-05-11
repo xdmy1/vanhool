@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
+import { translateToAll, type TranslateLocale } from "@/lib/translation/translate";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -97,13 +98,17 @@ export async function updateCategory(
 
 /**
  * Quick-create used by the inline "+ add" button on the ProductForm. Takes
- * just a name (+ optional parent), generates a slug, returns the row.
- * Returns existing id if the same slug already exists (idempotent).
+ * the name in ONE language (whatever the admin is currently on) + optional
+ * parent. The server auto-translates into the other 2 locales so a single
+ * row holds name_ro / name_en / name_ru — there's never more than 1 row per
+ * category, the storefront just picks the locale-specific column.
+ *
+ * Idempotent: returns existing id if a row with the same source-locale name
+ * already exists under the same parent.
  */
 const quickSchema = z.object({
-  nameRo: z.string().min(1).max(200),
-  nameEn: z.string().max(200).optional().or(z.literal("")),
-  nameRu: z.string().max(200).optional().or(z.literal("")),
+  name: z.string().min(1).max(200),
+  sourceLocale: z.enum(["ro", "en", "ru"]),
   parentId: z.string().uuid().nullable().optional(),
 });
 
@@ -138,30 +143,48 @@ export async function quickCreateCategory(
       message: parsed.error.issues.map((i) => i.message).join(", "),
     };
   }
-  const nameRo = parsed.data.nameRo.trim();
-  const nameEn = parsed.data.nameEn?.trim() || nameRo;
-  const nameRu = parsed.data.nameRu?.trim() || nameRo;
+  const source = parsed.data.sourceLocale as TranslateLocale;
+  const sourceName = parsed.data.name.trim();
   const parentId = parsed.data.parentId ?? null;
 
-  // If a row with the same Romanian name already exists under the same
-  // parent, return it instead of inserting a duplicate.
+  // Auto-translate to the other 2 locales. If translation fails (network /
+  // quota), fall back to the source name in every column so the row is still
+  // usable — admin can edit later.
+  const translated = await translateToAll(sourceName, source).catch(
+    () => ({}) as Awaited<ReturnType<typeof translateToAll>>,
+  );
+  const names: Record<TranslateLocale, string> = {
+    ro: source === "ro" ? sourceName : (translated.ro?.trim() || sourceName),
+    en: source === "en" ? sourceName : (translated.en?.trim() || sourceName),
+    ru: source === "ru" ? sourceName : (translated.ru?.trim() || sourceName),
+  };
+
+  // Idempotency check: if a row with the same name in the source column
+  // already exists under the same parent, return it (no duplicate insert).
+  const sourceColumn = `name_${source}` as const;
   let dupQuery = auth.supabase
     .from("categories")
-    .select("id, slug, name_ro, parent_id")
-    .ilike("name_ro", nameRo);
-  dupQuery = parentId ? dupQuery.eq("parent_id", parentId) : dupQuery.is("parent_id", null);
+    .select("id, slug, name_ro, name_en, name_ru, parent_id")
+    .ilike(sourceColumn, sourceName);
+  dupQuery = parentId
+    ? dupQuery.eq("parent_id", parentId)
+    : dupQuery.is("parent_id", null);
   const { data: existing } = await dupQuery.maybeSingle();
   if (existing) {
     return {
       ok: true,
       id: existing.id,
-      name: existing.name_ro ?? nameRo,
+      name:
+        existing[`name_${source}` as const] ??
+        existing.name_ro ??
+        sourceName,
       slug: existing.slug ?? "",
       parentId: existing.parent_id,
     };
   }
 
-  // Build a unique slug. Prefix with parent slug to avoid collisions.
+  // Slug is always derived from the source name. Prefix with parent slug
+  // to avoid collisions between similarly-named subcategories.
   let parentSlug: string | null = null;
   if (parentId) {
     const { data: parent } = await auth.supabase
@@ -171,7 +194,9 @@ export async function quickCreateCategory(
       .maybeSingle();
     parentSlug = parent?.slug ?? null;
   }
-  let slug = (parentSlug ? `${parentSlug}-` : "") + (slugify(nameRo) || `cat-${Date.now()}`);
+  let slug =
+    (parentSlug ? `${parentSlug}-` : "") +
+    (slugify(sourceName) || `cat-${Date.now()}`);
   for (let i = 0; i < 5; i++) {
     const { data: bySlug } = await auth.supabase
       .from("categories")
@@ -179,21 +204,21 @@ export async function quickCreateCategory(
       .eq("slug", slug)
       .maybeSingle();
     if (!bySlug) break;
-    slug = `${(parentSlug ? `${parentSlug}-` : "") + slugify(nameRo)}-${i + 2}`;
+    slug = `${(parentSlug ? `${parentSlug}-` : "") + slugify(sourceName)}-${i + 2}`;
   }
 
   const { data, error } = await auth.supabase
     .from("categories")
     .insert({
       slug,
-      name_ro: nameRo,
-      name_en: nameEn,
-      name_ru: nameRu,
+      name_ro: names.ro,
+      name_en: names.en,
+      name_ru: names.ru,
       parent_id: parentId,
       is_active: true,
       sort_order: 999,
     })
-    .select("id, slug, name_ro, parent_id")
+    .select("id, slug, name_ro, name_en, name_ru, parent_id")
     .single();
 
   if (error || !data) {
@@ -203,7 +228,8 @@ export async function quickCreateCategory(
   return {
     ok: true,
     id: data.id,
-    name: data.name_ro ?? nameRo,
+    name:
+      data[`name_${source}` as const] ?? data.name_ro ?? sourceName,
     slug: data.slug ?? slug,
     parentId: data.parent_id,
   };
