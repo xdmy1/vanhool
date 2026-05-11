@@ -65,10 +65,7 @@ export function SearchBar({
         type="submit"
         variant="primary"
         size={size === "lg" ? "lg" : "md"}
-        className={cn(
-          "shrink-0 rounded-none px-5 font-semibold",
-          size === "lg" ? "text-sm" : "text-sm",
-        )}
+        className="!h-full shrink-0 rounded-none px-5 text-sm font-semibold"
       >
         <Search className="size-4 md:hidden" />
         <span className="hidden md:inline">{buttonLabel}</span>
