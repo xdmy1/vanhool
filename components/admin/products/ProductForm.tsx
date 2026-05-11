@@ -15,9 +15,9 @@ import {
   deleteProduct,
   updateProduct,
   type CrossReference,
-  type CustomSpec,
   type ProductFormValues,
 } from "@/lib/admin/products/actions";
+
 import { cn } from "@/lib/utils/cn";
 import {
   BusMakesMultiSelect,
@@ -25,6 +25,7 @@ import {
   CustomSpecsEditor,
   ManufacturerCombobox,
   TagInput,
+  type CustomSpecRow,
 } from "./CodeInputs";
 
 type LookupOption = { id: string; name: string };
@@ -168,8 +169,15 @@ export function ProductForm({
   const [crossRefs, setCrossRefs] = useState<CrossReference[]>(
     initial?.crossReferences ?? [],
   );
-  const [customSpecs, setCustomSpecs] = useState<CustomSpec[]>(
-    initial?.customSpecs ?? [],
+  const [customSpecs, setCustomSpecs] = useState<CustomSpecRow[]>(
+    (initial?.customSpecs ?? []).map((s) => ({
+      labelRo: s.labelRo ?? "",
+      labelEn: s.labelEn ?? "",
+      labelRu: s.labelRu ?? "",
+      valueRo: s.valueRo ?? "",
+      valueEn: s.valueEn ?? "",
+      valueRu: s.valueRu ?? "",
+    })),
   );
   const [busMakeIds, setBusMakeIds] = useState<string[]>(
     initialVehicleMakeIds ?? [],

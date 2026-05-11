@@ -166,7 +166,7 @@ export function CrossRefEditor({
 // Each row captures a localized label + value (RO required, EN / RU optional —
 // blanks fall back to RO at save time so display never breaks).
 // ---------------------------------------------------------------------------
-type CustomSpecRow = {
+export type CustomSpecRow = {
   labelRo: string;
   labelEn?: string;
   labelRu?: string;
