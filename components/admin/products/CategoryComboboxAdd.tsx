@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TranslateButton } from "@/components/admin/TranslateButton";
 import { quickCreateCategory } from "@/lib/admin/categories/actions";
 
 type Option = { id: string; name: string; parentId: string | null };
@@ -135,7 +136,16 @@ export function CategoryComboboxAdd({
             onEnter={submitNew}
             onEscape={reset}
           />
-          <div className="mt-1 flex items-center justify-end gap-2">
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <TranslateButton
+              values={{ ro: nameRo, en: nameEn, ru: nameRu }}
+              onTranslated={({ ro, en, ru }) => {
+                setNameRo(ro);
+                setNameEn(en);
+                setNameRu(ru);
+              }}
+            />
+            <div className="flex items-center gap-2">
             <Button
               type="button"
               size="sm"
@@ -156,6 +166,7 @@ export function CategoryComboboxAdd({
               <Check className="size-3.5" />
               {pending ? "…" : addLabel}
             </Button>
+            </div>
           </div>
         </div>
       ) : (

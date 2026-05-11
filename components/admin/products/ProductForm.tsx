@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiImageUpload } from "@/components/admin/products/MultiImageUpload";
 import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
+import { TranslateButton } from "@/components/admin/TranslateButton";
 import { Link } from "@/lib/i18n/routing";
 import {
   createProduct,
@@ -179,6 +180,12 @@ export function ProductForm({
       valueRu: s.valueRu ?? "",
     })),
   );
+  const [nameRo, setNameRo] = useState(initial?.nameRo ?? "");
+  const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
+  const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
+  const [descriptionRo, setDescriptionRo] = useState(initial?.descriptionRo ?? "");
+  const [descriptionEn, setDescriptionEn] = useState(initial?.descriptionEn ?? "");
+  const [descriptionRu, setDescriptionRu] = useState(initial?.descriptionRu ?? "");
   const [busMakeIds, setBusMakeIds] = useState<string[]>(
     initialVehicleMakeIds ?? [],
   );
@@ -259,12 +266,12 @@ export function ProductForm({
       images,
       isActive,
       isFeatured,
-      nameRo: String(fd.get("nameRo") ?? ""),
-      nameEn: String(fd.get("nameEn") ?? ""),
-      nameRu: String(fd.get("nameRu") ?? ""),
-      descriptionRo: String(fd.get("descriptionRo") ?? ""),
-      descriptionEn: String(fd.get("descriptionEn") ?? ""),
-      descriptionRu: String(fd.get("descriptionRu") ?? ""),
+      nameRo,
+      nameEn,
+      nameRu,
+      descriptionRo,
+      descriptionEn,
+      descriptionRu,
       oemCodes,
       crossReferences: cleanedCrossRefs,
       vehicleMakeIds: busMakeIds,
@@ -436,27 +443,56 @@ export function ProductForm({
         {/* Names */}
         <Card title={labels.section_names}>
           <Field label={labels.field_name_ro} error={errors.nameRo}>
-            <Input name="nameRo" defaultValue={initial?.nameRo ?? ""} />
+            <Input value={nameRo} onChange={(e) => setNameRo(e.target.value)} />
           </Field>
           <Field label={labels.field_name_en}>
-            <Input name="nameEn" defaultValue={initial?.nameEn ?? ""} />
+            <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
           </Field>
           <Field label={labels.field_name_ru}>
-            <Input name="nameRu" defaultValue={initial?.nameRu ?? ""} />
+            <Input value={nameRu} onChange={(e) => setNameRu(e.target.value)} />
           </Field>
+          <div className="flex justify-end">
+            <TranslateButton
+              values={{ ro: nameRo, en: nameEn, ru: nameRu }}
+              onTranslated={({ ro, en, ru }) => {
+                setNameRo(ro);
+                setNameEn(en);
+                setNameRu(ru);
+              }}
+            />
+          </div>
         </Card>
 
         {/* Descriptions */}
         <Card title={labels.section_descriptions}>
           <Field label={labels.field_description_ro}>
-            <Textarea name="descriptionRo" defaultValue={initial?.descriptionRo ?? ""} />
+            <Textarea
+              value={descriptionRo}
+              onChange={(e) => setDescriptionRo(e.target.value)}
+            />
           </Field>
           <Field label={labels.field_description_en}>
-            <Textarea name="descriptionEn" defaultValue={initial?.descriptionEn ?? ""} />
+            <Textarea
+              value={descriptionEn}
+              onChange={(e) => setDescriptionEn(e.target.value)}
+            />
           </Field>
           <Field label={labels.field_description_ru}>
-            <Textarea name="descriptionRu" defaultValue={initial?.descriptionRu ?? ""} />
+            <Textarea
+              value={descriptionRu}
+              onChange={(e) => setDescriptionRu(e.target.value)}
+            />
           </Field>
+          <div className="flex justify-end">
+            <TranslateButton
+              values={{ ro: descriptionRo, en: descriptionEn, ru: descriptionRu }}
+              onTranslated={({ ro, en, ru }) => {
+                setDescriptionRo(ro);
+                setDescriptionEn(en);
+                setDescriptionRu(ru);
+              }}
+            />
+          </div>
         </Card>
 
         {/* Promotion */}

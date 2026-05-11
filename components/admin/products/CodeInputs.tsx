@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { TranslateButton } from "@/components/admin/TranslateButton";
 import { cn } from "@/lib/utils/cn";
 import type { CrossReference } from "@/lib/admin/products/actions";
 import { createManufacturer } from "@/lib/admin/manufacturers/actions";
@@ -239,6 +240,18 @@ export function CustomSpecsEditor({
               onChange={(v) => update(i, { labelRu: v })}
             />
           </div>
+          <div className="mt-1 flex justify-end">
+            <TranslateButton
+              values={{
+                ro: row.labelRo,
+                en: row.labelEn ?? "",
+                ru: row.labelRu ?? "",
+              }}
+              onTranslated={({ ro, en, ru }) =>
+                update(i, { labelRo: ro, labelEn: en, labelRu: ru })
+              }
+            />
+          </div>
 
           <div className="mt-3 mb-2 text-xs font-semibold text-muted-strong">
             {labels.value}
@@ -259,6 +272,18 @@ export function CustomSpecsEditor({
               code="RU"
               value={row.valueRu ?? ""}
               onChange={(v) => update(i, { valueRu: v })}
+            />
+          </div>
+          <div className="mt-1 flex justify-end">
+            <TranslateButton
+              values={{
+                ro: row.valueRo,
+                en: row.valueEn ?? "",
+                ru: row.valueRu ?? "",
+              }}
+              onTranslated={({ ro, en, ru }) =>
+                update(i, { valueRo: ro, valueEn: en, valueRu: ru })
+              }
             />
           </div>
         </div>

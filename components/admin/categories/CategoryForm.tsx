@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TranslateButton } from "@/components/admin/TranslateButton";
 import { Link } from "@/lib/i18n/routing";
 import {
   createCategory,
@@ -55,6 +56,9 @@ export function CategoryForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [parentId, setParentId] = useState<string | null>(initial?.parentId ?? null);
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+  const [nameRo, setNameRo] = useState(initial?.nameRo ?? "");
+  const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
+  const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
 
   const isEdit = !!categoryId;
 
@@ -67,9 +71,9 @@ export function CategoryForm({
       parentId: parentId || null,
       sortOrder: Number(fd.get("sortOrder") ?? 0) || 0,
       isActive,
-      nameRo: String(fd.get("nameRo") ?? ""),
-      nameEn: String(fd.get("nameEn") ?? ""),
-      nameRu: String(fd.get("nameRu") ?? ""),
+      nameRo,
+      nameEn,
+      nameRu,
     };
     const errs: Record<string, string> = {};
     if (!payload.slug) errs.slug = labels.required;
@@ -124,16 +128,28 @@ export function CategoryForm({
         />
       </Field>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label={labels.name_ro} error={errors.nameRo}>
-          <Input name="nameRo" defaultValue={initial?.nameRo ?? ""} />
-        </Field>
-        <Field label={labels.name_en}>
-          <Input name="nameEn" defaultValue={initial?.nameEn ?? ""} />
-        </Field>
-        <Field label={labels.name_ru}>
-          <Input name="nameRu" defaultValue={initial?.nameRu ?? ""} />
-        </Field>
+      <div className="flex flex-col gap-2">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label={labels.name_ro} error={errors.nameRo}>
+            <Input value={nameRo} onChange={(e) => setNameRo(e.target.value)} />
+          </Field>
+          <Field label={labels.name_en}>
+            <Input value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
+          </Field>
+          <Field label={labels.name_ru}>
+            <Input value={nameRu} onChange={(e) => setNameRu(e.target.value)} />
+          </Field>
+        </div>
+        <div className="self-end">
+          <TranslateButton
+            values={{ ro: nameRo, en: nameEn, ru: nameRu }}
+            onTranslated={({ ro, en, ru }) => {
+              setNameRo(ro);
+              setNameEn(en);
+              setNameRu(ru);
+            }}
+          />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
