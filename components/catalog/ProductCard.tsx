@@ -12,16 +12,20 @@ export type ProductCardLabels = {
   lowStock: string;
   outOfStock: string;
   addToCart: string;
+  vatIncluded: string;
+  vatExcluded: string;
 };
 
 export function ProductCard({
   product,
   locale,
   labels,
+  eurRate,
 }: {
   product: Product;
   locale: string;
   labels: ProductCardLabels;
+  eurRate?: number | null;
 }) {
   const stockLabel =
     product.stock === "in_stock"
@@ -94,7 +98,16 @@ export function ProductCard({
                 {product.oldPrice.toFixed(2)} lei
               </span>
             ) : null}
-            <Price value={product.price} size="lg" />
+            <Price
+              value={product.price}
+              size="lg"
+              eurRate={eurRate}
+              showVat
+              vatLabels={{
+                withVat: labels.vatIncluded,
+                withoutVat: labels.vatExcluded,
+              }}
+            />
           </div>
           <AddToCartButton
             product={product}

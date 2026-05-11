@@ -62,7 +62,9 @@
     "low_stock": "Low stock",
     "out_of_stock": "Out of stock",
     "add_to_cart": "Add",
-    "details": "Details"
+    "details": "Details",
+    "vat_included": "INCL. VAT",
+    "vat_excluded": "excl. VAT"
   },
   "categories_list": {
     "brakes": "Brakes",

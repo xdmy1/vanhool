@@ -62,7 +62,9 @@
     "low_stock": "Stoc limitat",
     "out_of_stock": "Lipsă",
     "add_to_cart": "Adaugă",
-    "details": "Detalii"
+    "details": "Detalii",
+    "vat_included": "CU TVA",
+    "vat_excluded": "fără TVA"
   },
   "categories_list": {
     "brakes": "Frâne",

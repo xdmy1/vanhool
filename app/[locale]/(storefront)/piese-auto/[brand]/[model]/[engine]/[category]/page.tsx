@@ -9,6 +9,7 @@ import {
   listPartsForTypeAndCategory,
 } from "@/lib/db/vehicles";
 import { getCategoryBySlug } from "@/lib/db/categories";
+import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,12 @@ export default async function PartsPage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [tVehicles, tCard, ctx, categoryData] = await Promise.all([
+  const [tVehicles, tCard, ctx, categoryData, eurRate] = await Promise.all([
     getTranslations("vehicles"),
     getTranslations("product_card"),
     getTypeBySlug(brand, model, engine),
     getCategoryBySlug(category, loc),
+    getEurToMdlRate(),
   ]);
 
   if (!ctx) notFound();
@@ -97,7 +99,10 @@ export default async function PartsPage({
                     lowStock: tCard("low_stock"),
                     outOfStock: tCard("out_of_stock"),
                     addToCart: tCard("add_to_cart"),
+                    vatIncluded: tCard("vat_included"),
+                    vatExcluded: tCard("vat_excluded"),
                   }}
+                  eurRate={eurRate.rate}
                 />
               ))}
             </div>

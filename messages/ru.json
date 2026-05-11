@@ -62,7 +62,9 @@
     "low_stock": "Мало",
     "out_of_stock": "Нет",
     "add_to_cart": "В корзину",
-    "details": "Подробнее"
+    "details": "Подробнее",
+    "vat_included": "с НДС",
+    "vat_excluded": "без НДС"
   },
   "categories_list": {
     "brakes": "Тормоза",

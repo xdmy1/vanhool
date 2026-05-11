@@ -18,6 +18,7 @@ import {
   getRelatedProducts,
 } from "@/lib/db/products";
 import { getCategoryBySlug } from "@/lib/db/categories";
+import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 
 export async function generateMetadata({
@@ -55,6 +56,7 @@ export default async function ProductDetailPage({
     tProd,
     tCard,
     tHome,
+    eurRate,
   ] = await Promise.all([
     getRelatedProducts(product, loc, 4),
     getProductAlternativeCodes(product.id),
@@ -64,6 +66,7 @@ export default async function ProductDetailPage({
     getTranslations("product"),
     getTranslations("product_card"),
     getTranslations("home"),
+    getEurToMdlRate(),
   ]);
 
   const specsLabels = {
@@ -88,6 +91,8 @@ export default async function ProductDetailPage({
     trustDelivery: tHome("trust_fast"),
     trustWarranty: tHome("trust_warranty"),
     stockAvailable: tProd("stock_available", { count: product.stockQuantity }),
+    vatIncluded: tCard("vat_included"),
+    vatExcluded: tCard("vat_excluded"),
   };
 
   const cardLabels = {
@@ -96,6 +101,8 @@ export default async function ProductDetailPage({
     lowStock: tCard("low_stock"),
     outOfStock: tCard("out_of_stock"),
     addToCart: tCard("add_to_cart"),
+    vatIncluded: tCard("vat_included"),
+    vatExcluded: tCard("vat_excluded"),
   };
 
   return (
@@ -150,7 +157,11 @@ export default async function ProductDetailPage({
               ) : null}
             </div>
 
-            <ProductBuyBox product={product} labels={buyBoxLabels} />
+            <ProductBuyBox
+              product={product}
+              labels={buyBoxLabels}
+              eurRate={eurRate.rate}
+            />
           </div>
         </div>
 
@@ -206,7 +217,13 @@ export default async function ProductDetailPage({
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {crossCompatible.map((p) => (
-                <ProductCard key={p.id} product={p} locale={loc} labels={cardLabels} />
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  locale={loc}
+                  labels={cardLabels}
+                  eurRate={eurRate.rate}
+                />
               ))}
             </div>
           </section>
@@ -224,7 +241,13 @@ export default async function ProductDetailPage({
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {related.map((p) => (
-                <ProductCard key={p.id} product={p} locale={loc} labels={cardLabels} />
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  locale={loc}
+                  labels={cardLabels}
+                  eurRate={eurRate.rate}
+                />
               ))}
             </div>
           </section>

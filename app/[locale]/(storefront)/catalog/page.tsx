@@ -9,6 +9,7 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { getCatalog, type CatalogFilters as Filters } from "@/lib/db/products";
 import { getCategoryTree } from "@/lib/db/categories";
 import { listVehicleMakesForFilter } from "@/lib/db/vehicles";
+import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
@@ -82,14 +83,16 @@ export default async function CatalogPage({
   const loc = locale as Locale;
   const filters = parseFilters(sp);
 
-  const [categoryTree, vehicleMakes, result, tNav, tCat, tProduct] = await Promise.all([
-    getCategoryTree(loc),
-    listVehicleMakesForFilter(),
-    getCatalog(loc, filters),
-    getTranslations("nav"),
-    getTranslations("catalog"),
-    getTranslations("product_card"),
-  ]);
+  const [categoryTree, vehicleMakes, result, tNav, tCat, tProduct, eurRate] =
+    await Promise.all([
+      getCategoryTree(loc),
+      listVehicleMakesForFilter(),
+      getCatalog(loc, filters),
+      getTranslations("nav"),
+      getTranslations("catalog"),
+      getTranslations("product_card"),
+      getEurToMdlRate(),
+    ]);
 
   const productLabels = {
     partCode: tProduct("part_code"),
@@ -97,6 +100,8 @@ export default async function CatalogPage({
     lowStock: tProduct("low_stock"),
     outOfStock: tProduct("out_of_stock"),
     addToCart: tProduct("add_to_cart"),
+    vatIncluded: tProduct("vat_included"),
+    vatExcluded: tProduct("vat_excluded"),
   };
 
   return (
@@ -182,6 +187,7 @@ export default async function CatalogPage({
                     product={product}
                     locale={loc}
                     labels={productLabels}
+                    eurRate={eurRate.rate}
                   />
                 ))}
               </div>

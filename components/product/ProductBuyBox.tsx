@@ -15,6 +15,7 @@ import type { Product } from "@/lib/db/types";
 export function ProductBuyBox({
   product,
   labels,
+  eurRate,
 }: {
   product: Product;
   labels: {
@@ -27,7 +28,10 @@ export function ProductBuyBox({
     trustDelivery: string;
     trustWarranty: string;
     stockAvailable: string;
+    vatIncluded: string;
+    vatExcluded: string;
   };
+  eurRate?: number | null;
 }) {
   const router = useRouter();
   const add = useCart((s) => s.add);
@@ -76,7 +80,17 @@ export function ProductBuyBox({
           <span className="text-xs text-muted">
             {product.brand}
           </span>
-          <Price value={product.price} size="xl" className="mt-1 text-3xl md:text-4xl" />
+          <Price
+            value={product.price}
+            size="xl"
+            className="mt-1 text-3xl md:text-4xl"
+            eurRate={eurRate}
+            showVat
+            vatLabels={{
+              withVat: labels.vatIncluded,
+              withoutVat: labels.vatExcluded,
+            }}
+          />
           {product.oldPrice ? (
             <span className="text-sm text-muted line-through">
               {product.oldPrice.toFixed(2)} lei

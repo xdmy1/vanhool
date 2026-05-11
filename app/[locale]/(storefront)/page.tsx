@@ -24,6 +24,7 @@ import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
 import { getCategoryTree } from "@/lib/db/categories";
 import { getFeaturedProducts } from "@/lib/db/products";
+import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Category, Locale } from "@/lib/db/types";
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement>>;
@@ -69,11 +70,12 @@ export default async function HomePage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [t, tp, categoryTree, featured] = await Promise.all([
+  const [t, tp, categoryTree, featured, eurRate] = await Promise.all([
     getTranslations("home"),
     getTranslations("product_card"),
     getCategoryTree(loc),
     getFeaturedProducts(loc, 8),
+    getEurToMdlRate(),
   ]);
 
   const productLabels = {
@@ -82,6 +84,8 @@ export default async function HomePage({
     lowStock: tp("low_stock"),
     outOfStock: tp("out_of_stock"),
     addToCart: tp("add_to_cart"),
+    vatIncluded: tp("vat_included"),
+    vatExcluded: tp("vat_excluded"),
   };
 
   // Homepage shows only 2 rows × 4 cols = 8 cards. Remaining categories live
@@ -151,6 +155,7 @@ export default async function HomePage({
                 product={product}
                 locale={loc}
                 labels={productLabels}
+                eurRate={eurRate.rate}
               />
             ))}
           </div>

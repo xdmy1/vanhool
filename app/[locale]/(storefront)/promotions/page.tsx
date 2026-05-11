@@ -5,6 +5,7 @@ import { Tag } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { getActivePromotions } from "@/lib/db/products";
+import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
@@ -38,10 +39,11 @@ export default async function PromotionsPage({
   setRequestLocale(locale);
   const loc = locale as Locale;
 
-  const [products, t, tCard] = await Promise.all([
+  const [products, t, tCard, eurRate] = await Promise.all([
     getActivePromotions(loc, 60),
     getTranslations("promotions"),
     getTranslations("product_card"),
+    getEurToMdlRate(),
   ]);
 
   const cardLabels = {
@@ -50,6 +52,8 @@ export default async function PromotionsPage({
     lowStock: tCard("low_stock"),
     outOfStock: tCard("out_of_stock"),
     addToCart: tCard("add_to_cart"),
+    vatIncluded: tCard("vat_included"),
+    vatExcluded: tCard("vat_excluded"),
   };
 
   return (
@@ -80,7 +84,13 @@ export default async function PromotionsPage({
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((p) => (
-              <ProductCard key={p.id} product={p} locale={loc} labels={cardLabels} />
+              <ProductCard
+                key={p.id}
+                product={p}
+                locale={loc}
+                labels={cardLabels}
+                eurRate={eurRate.rate}
+              />
             ))}
           </div>
         )}
