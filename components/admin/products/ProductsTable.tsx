@@ -111,7 +111,16 @@ export function ProductsTable({
           {rows.map((p) => {
             const cat = p.category_id ? categories.get(p.category_id) : null;
             const variant = illustrationFor(cat?.slug ?? "");
-            const name = p.name_ro ?? p.name_en ?? p.slug ?? p.id;
+            const name =
+              (locale === "en"
+                ? p.name_en ?? p.name_ro
+                : locale === "ru"
+                  ? p.name_ru ?? p.name_ro
+                  : p.name_ro) ??
+              p.name_en ??
+              p.name_ru ??
+              p.slug ??
+              p.id;
             return (
               <tr
                 key={p.id}
