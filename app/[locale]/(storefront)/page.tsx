@@ -25,7 +25,7 @@ import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
 import { getCategoryTree } from "@/lib/db/categories";
 import { getFeaturedProducts } from "@/lib/db/products";
-import { listMakes } from "@/lib/db/vehicles";
+import { listVehicleMakesForFilter } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Category, Locale } from "@/lib/db/types";
 
@@ -78,14 +78,14 @@ export default async function HomePage({
     getTranslations("vehicles"),
     getCategoryTree(loc),
     getFeaturedProducts(loc, 8),
-    listMakes(),
+    listVehicleMakesForFilter(),
     getEurToMdlRate(),
   ]);
 
   const brandOptions: BrandOption[] = makes.map((m) => ({
     slug: m.slug,
     name: m.name,
-    isPopular: m.isPopular,
+    productCount: m.productCount,
   }));
 
   const productLabels = {
@@ -118,8 +118,6 @@ export default async function HomePage({
         brandPlaceholder={tv("brand_title")}
         brandCta={t("search_button")}
         brandAllCta={tv("brand_all")}
-        brandPopularGroup={tv("brand_popular")}
-        brandOtherGroup={tv("brand_all")}
       />
 
       <section className="py-14 md:py-16">
@@ -195,8 +193,6 @@ function Hero({
   brandPlaceholder,
   brandCta,
   brandAllCta,
-  brandPopularGroup,
-  brandOtherGroup,
 }: {
   title1: string;
   title2: string;
@@ -209,8 +205,6 @@ function Hero({
   brandPlaceholder: string;
   brandCta: string;
   brandAllCta: string;
-  brandPopularGroup: string;
-  brandOtherGroup: string;
 }) {
   return (
     <section className="border-b border-border bg-surface">
@@ -237,8 +231,6 @@ function Hero({
               placeholder={brandPlaceholder}
               ctaLabel={brandCta}
               allLabel={brandAllCta}
-              popularGroup={brandPopularGroup}
-              otherGroup={brandOtherGroup}
             />
           ) : null}
         </div>

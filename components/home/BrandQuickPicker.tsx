@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, Car } from "lucide-react";
+import { Car, ChevronRight } from "lucide-react";
 
 import { useRouter } from "@/lib/i18n/routing";
 import type { Locale } from "@/lib/i18n/routing";
@@ -9,9 +9,15 @@ import type { Locale } from "@/lib/i18n/routing";
 export type BrandOption = {
   slug: string;
   name: string;
-  isPopular: boolean;
+  productCount: number;
 };
 
+/**
+ * Hero brand picker: select a make, jump straight to /catalog filtered
+ * by that vehicle make. Only makes that have at least one linked active
+ * product are passed in (see listVehicleMakesForFilter), so the dropdown
+ * never leads to a dead-end empty grid.
+ */
 export function BrandQuickPicker({
   brands,
   locale,
@@ -19,8 +25,6 @@ export function BrandQuickPicker({
   placeholder,
   ctaLabel,
   allLabel,
-  popularGroup,
-  otherGroup,
 }: {
   brands: BrandOption[];
   locale: Locale;
@@ -28,14 +32,9 @@ export function BrandQuickPicker({
   placeholder: string;
   ctaLabel: string;
   allLabel: string;
-  popularGroup: string;
-  otherGroup: string;
 }) {
   const [slug, setSlug] = useState("");
   const router = useRouter();
-
-  const popular = brands.filter((b) => b.isPopular);
-  const others = brands.filter((b) => !b.isPopular);
 
   const go = (target?: string) => {
     const next = target ?? slug;
@@ -43,7 +42,9 @@ export function BrandQuickPicker({
       router.push("/piese-auto");
       return;
     }
-    router.push(`/piese-auto/${next}` as "/piese-auto");
+    router.push(
+      `/catalog?vehicleMake=${encodeURIComponent(next)}` as "/catalog",
+    );
   };
 
   return (
@@ -62,24 +63,11 @@ export function BrandQuickPicker({
         className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
       >
         <option value="">{placeholder}</option>
-        {popular.length > 0 ? (
-          <optgroup label={popularGroup}>
-            {popular.map((b) => (
-              <option key={b.slug} value={b.slug}>
-                {b.name}
-              </option>
-            ))}
-          </optgroup>
-        ) : null}
-        {others.length > 0 ? (
-          <optgroup label={otherGroup}>
-            {others.map((b) => (
-              <option key={b.slug} value={b.slug}>
-                {b.name}
-              </option>
-            ))}
-          </optgroup>
-        ) : null}
+        {brands.map((b) => (
+          <option key={b.slug} value={b.slug}>
+            {b.name} ({b.productCount})
+          </option>
+        ))}
       </select>
       <button
         type="button"
