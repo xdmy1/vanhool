@@ -78,6 +78,7 @@ export type Database = {
           height: number | null;
           length: number | null;
           rib_count: number | null;
+          custom_specs: Json | null;
           warranty_months: number | null;
           category_id: UUID | null;
           is_active: boolean | null;

@@ -44,6 +44,8 @@ export type Product = {
   height?: number | null;
   length?: number | null;
   ribCount?: number | null;
+  /** Free-form spec rows: admin chooses label + value. Empty if none. */
+  customSpecs?: { label: string; value: string }[];
   warrantyMonths?: number | null;
   isFeatured: boolean;
 };

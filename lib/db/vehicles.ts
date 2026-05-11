@@ -536,6 +536,7 @@ export async function listPartsForTypeAndCategory(
       height: r.height,
       length: null,
       ribCount: null,
+      customSpecs: [],
       warrantyMonths: r.warranty_months,
       isFeatured: !!r.is_featured,
     };

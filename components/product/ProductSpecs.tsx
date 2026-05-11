@@ -47,6 +47,11 @@ export function ProductSpecs({
         ? labels.warrantyMonths(product.warrantyMonths)
         : null,
     },
+    // Admin-defined custom rows appended at the end, in declared order.
+    ...(product.customSpecs ?? []).map((s) => ({
+      label: s.label,
+      value: s.value,
+    })),
   ].filter((r) => r.value);
 
   if (rows.length === 0) return null;

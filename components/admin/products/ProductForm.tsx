@@ -15,12 +15,14 @@ import {
   deleteProduct,
   updateProduct,
   type CrossReference,
+  type CustomSpec,
   type ProductFormValues,
 } from "@/lib/admin/products/actions";
 import { cn } from "@/lib/utils/cn";
 import {
   BusMakesMultiSelect,
   CrossRefEditor,
+  CustomSpecsEditor,
   ManufacturerCombobox,
   TagInput,
 } from "./CodeInputs";
@@ -69,6 +71,11 @@ type Labels = {
   field_height: string;
   field_length: string;
   field_rib_count: string;
+  section_custom_specs: string;
+  section_custom_specs_hint: string;
+  field_custom_spec_label: string;
+  field_custom_spec_value: string;
+  field_custom_spec_add: string;
   field_image_url: string;
   // Names + descriptions
   field_name_ro: string;
@@ -161,6 +168,9 @@ export function ProductForm({
   const [crossRefs, setCrossRefs] = useState<CrossReference[]>(
     initial?.crossReferences ?? [],
   );
+  const [customSpecs, setCustomSpecs] = useState<CustomSpec[]>(
+    initial?.customSpecs ?? [],
+  );
   const [busMakeIds, setBusMakeIds] = useState<string[]>(
     initialVehicleMakeIds ?? [],
   );
@@ -227,6 +237,9 @@ export function ProductForm({
       height: num("height"),
       length: num("length"),
       ribCount: num("ribCount"),
+      customSpecs: customSpecs
+        .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+        .filter((s) => s.label.length > 0 && s.value.length > 0),
       imageUrl: images[0] ?? "",
       images,
       isActive,
@@ -545,6 +558,24 @@ export function ProductForm({
                 defaultValue={initial?.ribCount ?? ""}
               />
             </Field>
+          </div>
+
+          <div className="mt-2 border-t border-border pt-4">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+              {labels.section_custom_specs}
+            </div>
+            <p className="mb-3 text-xs text-muted-strong">
+              {labels.section_custom_specs_hint}
+            </p>
+            <CustomSpecsEditor
+              values={customSpecs}
+              onChange={setCustomSpecs}
+              labels={{
+                label: labels.field_custom_spec_label,
+                value: labels.field_custom_spec_value,
+                add: labels.field_custom_spec_add,
+              }}
+            />
           </div>
         </Card>
       </div>

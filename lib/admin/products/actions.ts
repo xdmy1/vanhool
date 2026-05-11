@@ -28,6 +28,13 @@ const crossRefSchema = z.object({
 
 export type CrossReference = z.infer<typeof crossRefSchema>;
 
+const customSpecSchema = z.object({
+  label: z.string().min(1).max(80),
+  value: z.string().min(1).max(200),
+});
+
+export type CustomSpec = z.infer<typeof customSpecSchema>;
+
 const productSchema = z.object({
   partCode: z.string().max(120).optional().or(z.literal("")),
   brand: z.string().max(120).optional().or(z.literal("")),
@@ -46,6 +53,7 @@ const productSchema = z.object({
   height: z.number().nonnegative().nullable().optional(),
   length: z.number().nonnegative().nullable().optional(),
   ribCount: z.number().int().nonnegative().nullable().optional(),
+  customSpecs: z.array(customSpecSchema).max(30).optional(),
   imageUrl: z.string().max(500).optional().or(z.literal("")),
   images: z.array(z.string().url().max(500)).max(8).optional(),
   isActive: z.boolean().optional(),
@@ -144,6 +152,9 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
     height: values.height ?? null,
     length: values.length ?? null,
     rib_count: values.ribCount ?? null,
+    custom_specs: ((values.customSpecs ?? [])
+      .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+      .filter((s) => s.label.length > 0 && s.value.length > 0)) as never,
     image_url:
       // Primary image: first of the gallery if set, else legacy single field.
       (values.images && values.images.length > 0 ? values.images[0] : null) ??

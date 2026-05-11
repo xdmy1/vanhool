@@ -3,18 +3,20 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
-import { ChevronDown, X, Tag, Wallet, Boxes, Star } from "lucide-react";
+import { ChevronDown, X, Tag, Wallet, Boxes, Star, Truck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 import type { CategoryTreeNode } from "@/lib/db/categories";
+import type { VehicleMakeForFilter } from "@/lib/db/vehicles";
 
 type Labels = {
   filters: string;
   apply: string;
   reset: string;
   category: string;
+  vehicleMake: string;
   priceRange: string;
   from: string;
   to: string;
@@ -25,9 +27,11 @@ type Labels = {
 
 export function CatalogFilters({
   categoryTree,
+  vehicleMakes,
   labels,
 }: {
   categoryTree: CategoryTreeNode[];
+  vehicleMakes: VehicleMakeForFilter[];
   labels: Labels;
 }) {
   const router = useRouter();
@@ -36,9 +40,11 @@ export function CatalogFilters({
 
   const initial = useMemo(() => {
     const cats = searchParams.get("category")?.split(",").filter(Boolean) ?? [];
+    const makes = searchParams.get("vehicleMake")?.split(",").filter(Boolean) ?? [];
     return {
       q: searchParams.get("q") ?? "",
       categories: new Set(cats),
+      vehicleMakes: new Set(makes),
       minPrice: searchParams.get("minPrice") ?? "",
       maxPrice: searchParams.get("maxPrice") ?? "",
       inStock: searchParams.get("inStock") === "1",
@@ -48,6 +54,9 @@ export function CatalogFilters({
 
   const [q, setQ] = useState(initial.q);
   const [selected, setSelected] = useState<Set<string>>(new Set(initial.categories));
+  const [selectedMakes, setSelectedMakes] = useState<Set<string>>(
+    new Set(initial.vehicleMakes),
+  );
   const [minPrice, setMinPrice] = useState(initial.minPrice);
   const [maxPrice, setMaxPrice] = useState(initial.maxPrice);
   const [inStock, setInStock] = useState(initial.inStock);
@@ -80,6 +89,15 @@ export function CatalogFilters({
     });
   };
 
+  const toggleMake = (slug: string) => {
+    setSelectedMakes((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+
   const toggleExpand = (slug: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -96,6 +114,8 @@ export function CatalogFilters({
     if (sort) params.set("sort", sort);
     if (q.trim()) params.set("q", q.trim());
     if (selected.size > 0) params.set("category", [...selected].join(","));
+    if (selectedMakes.size > 0)
+      params.set("vehicleMake", [...selectedMakes].join(","));
     if (minPrice) params.set("minPrice", minPrice);
     if (maxPrice) params.set("maxPrice", maxPrice);
     if (inStock) params.set("inStock", "1");
@@ -107,6 +127,7 @@ export function CatalogFilters({
   const onReset = () => {
     setQ("");
     setSelected(new Set());
+    setSelectedMakes(new Set());
     setMinPrice("");
     setMaxPrice("");
     setInStock(false);
@@ -115,7 +136,13 @@ export function CatalogFilters({
   };
 
   const hasAny =
-    q || selected.size > 0 || minPrice || maxPrice || inStock || featured;
+    q ||
+    selected.size > 0 ||
+    selectedMakes.size > 0 ||
+    minPrice ||
+    maxPrice ||
+    inStock ||
+    featured;
 
   return (
     <form
@@ -267,6 +294,60 @@ export function CatalogFilters({
           })}
         </ul>
       </FilterGroup>
+
+      {vehicleMakes.length > 0 ? (
+        <FilterGroup icon={Truck} title={labels.vehicleMake}>
+          <ul className="-mx-1 max-h-72 space-y-0.5 overflow-y-auto pr-1">
+            {vehicleMakes.map((make) => {
+              const checked = selectedMakes.has(make.slug);
+              return (
+                <li key={make.slug}>
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
+                      checked
+                        ? "bg-primary/10 text-foreground"
+                        : "text-muted-strong hover:bg-surface-elevated hover:text-foreground",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleMake(make.slug)}
+                      className="peer sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "grid size-4 shrink-0 place-items-center rounded-sm border transition-colors",
+                        checked
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-surface",
+                      )}
+                    >
+                      {checked ? (
+                        <svg
+                          viewBox="0 0 10 8"
+                          className="size-2.5 fill-none stroke-current stroke-2"
+                        >
+                          <path
+                            d="M1 4l2.5 2.5L9 1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      ) : null}
+                    </span>
+                    <span className="flex-1 truncate">{make.name}</span>
+                    <span className="text-[10px] text-muted">
+                      {make.productCount}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </FilterGroup>
+      ) : null}
 
       <FilterGroup icon={Wallet} title={labels.priceRange}>
         <div className="flex items-center gap-2">

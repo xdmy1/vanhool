@@ -8,6 +8,7 @@ import { Pagination } from "@/components/catalog/Pagination";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { getCatalog, type CatalogFilters as Filters } from "@/lib/db/products";
 import { getCategoryTree } from "@/lib/db/categories";
+import { listVehicleMakesForFilter } from "@/lib/db/vehicles";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
@@ -46,6 +47,7 @@ function parseFilters(
 ): Filters {
   const q = toStr(searchParams.q);
   const cats = toStr(searchParams.category);
+  const makes = toStr(searchParams.vehicleMake);
   const minPrice = toInt(searchParams.minPrice);
   const maxPrice = toInt(searchParams.maxPrice);
   const inStock = searchParams.inStock === "1";
@@ -56,6 +58,7 @@ function parseFilters(
   return {
     q,
     categorySlugs: cats ? cats.split(",").filter(Boolean) : undefined,
+    vehicleMakeSlugs: makes ? makes.split(",").filter(Boolean) : undefined,
     minPrice,
     maxPrice,
     inStock,
@@ -79,8 +82,9 @@ export default async function CatalogPage({
   const loc = locale as Locale;
   const filters = parseFilters(sp);
 
-  const [categoryTree, result, tNav, tCat, tProduct] = await Promise.all([
+  const [categoryTree, vehicleMakes, result, tNav, tCat, tProduct] = await Promise.all([
     getCategoryTree(loc),
+    listVehicleMakesForFilter(),
     getCatalog(loc, filters),
     getTranslations("nav"),
     getTranslations("catalog"),
@@ -122,11 +126,13 @@ export default async function CatalogPage({
           <aside className="lg:block">
             <CatalogFilters
               categoryTree={categoryTree}
+              vehicleMakes={vehicleMakes}
               labels={{
                 filters: tCat("filters"),
                 apply: tCat("apply"),
                 reset: tCat("reset"),
                 category: tCat("category"),
+                vehicleMake: tCat("vehicle_make"),
                 priceRange: tCat("price_range"),
                 from: tCat("price_from"),
                 to: tCat("price_to"),

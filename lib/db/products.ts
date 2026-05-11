@@ -22,6 +22,7 @@ type ProductRow = {
   height: number | null;
   length: number | null;
   rib_count: number | null;
+  custom_specs: unknown;
   warranty_months: number | null;
   is_featured: boolean | null;
   is_active: boolean | null;
@@ -49,10 +50,28 @@ type CategorySlugRow = { id: string; slug: string | null };
 
 const SELECT_COLUMNS = `
   id, slug, part_code, brand, price, stock_quantity, image_url, images,
-  weight, width, height, length, rib_count, warranty_months, is_featured, is_active, category_id,
+  weight, width, height, length, rib_count, custom_specs, warranty_months, is_featured, is_active, category_id,
   name_ro, name_en, name_ru, description_ro, description_en, description_ru,
   is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
+
+function parseCustomSpecs(raw: unknown): { label: string; value: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { label: string; value: string }[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as { label?: unknown; value?: unknown };
+    if (
+      typeof o.label === "string" &&
+      typeof o.value === "string" &&
+      o.label.trim().length > 0 &&
+      o.value.trim().length > 0
+    ) {
+      out.push({ label: o.label.trim(), value: o.value.trim() });
+    }
+  }
+  return out;
+}
 
 function parseImages(raw: unknown, primary: string | null): string[] {
   const out = new Set<string>();
@@ -143,6 +162,7 @@ function toProduct(
     height: row.height,
     length: row.length,
     ribCount: row.rib_count,
+    customSpecs: parseCustomSpecs(row.custom_specs),
     warrantyMonths: row.warranty_months,
     isFeatured: !!row.is_featured,
   };
@@ -440,12 +460,13 @@ export async function getCatalog(
   // same column are not portable across postgrest versions.
   let allowedIds: Set<string> | null = null;
   const intersectIds = (ids: string[]) => {
-    if (allowedIds === null) {
+    const current = allowedIds;
+    if (current === null) {
       allowedIds = new Set(ids);
-    } else {
-      const incoming = new Set(ids);
-      allowedIds = new Set([...allowedIds].filter((id) => incoming.has(id)));
+      return;
     }
+    const incoming = new Set(ids);
+    allowedIds = new Set([...current].filter((id) => incoming.has(id)));
   };
 
   if (q && q.trim()) {
@@ -495,8 +516,9 @@ export async function getCatalog(
   }
 
   if (allowedIds !== null) {
-    if (allowedIds.size === 0) return emptyResult;
-    query = query.in("id", [...allowedIds]);
+    const ids = allowedIds as Set<string>;
+    if (ids.size === 0) return emptyResult;
+    query = query.in("id", [...ids]);
   }
 
   if (categorySlugs && categorySlugs.length > 0) {

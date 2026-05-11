@@ -280,6 +280,7 @@ function localizedProduct(base: BaseProduct, locale: Locale): Product {
     height: null,
     length: null,
     ribCount: null,
+    customSpecs: [],
     warrantyMonths: base.warrantyMonths ?? null,
     isFeatured: base.isFeatured,
   };

@@ -162,6 +162,73 @@ export function CrossRefEditor({
 }
 
 // ---------------------------------------------------------------------------
+// CustomSpecsEditor — repeatable {label, value} rows for free-form specs.
+// Admin types the spec name AND value (e.g. "Dinți" / "36").
+// ---------------------------------------------------------------------------
+type CustomSpecRow = { label: string; value: string };
+
+export function CustomSpecsEditor({
+  values,
+  onChange,
+  labels,
+}: {
+  values: CustomSpecRow[];
+  onChange: (next: CustomSpecRow[]) => void;
+  labels: { label: string; value: string; add: string };
+}) {
+  const update = (idx: number, patch: Partial<CustomSpecRow>) => {
+    onChange(values.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
+  };
+  const remove = (idx: number) => onChange(values.filter((_, i) => i !== idx));
+  const add = () => onChange([...values, { label: "", value: "" }]);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {values.length === 0 ? null : (
+        <div className="flex flex-col gap-1.5">
+          {values.map((row, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2"
+            >
+              <Input
+                placeholder={labels.label}
+                value={row.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                className="text-sm"
+              />
+              <Input
+                placeholder={labels.value}
+                value={row.value}
+                onChange={(e) => update(i, { value: e.target.value })}
+                className="text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                className="grid size-9 place-items-center rounded-md border border-border bg-surface text-muted transition-colors hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
+                aria-label="Șterge"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={add}
+        className="self-start"
+      >
+        <Plus className="size-3.5" /> {labels.add}
+      </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ManufacturerCombobox — select with inline "+ adaugă nou" via server action.
 // ---------------------------------------------------------------------------
 export function ManufacturerCombobox({
