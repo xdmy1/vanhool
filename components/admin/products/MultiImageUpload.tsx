@@ -131,6 +131,7 @@ export function MultiImageUpload({
               <img
                 src={url}
                 alt=""
+                referrerPolicy="no-referrer"
                 className="h-full w-full object-contain"
               />
               {i === 0 ? (

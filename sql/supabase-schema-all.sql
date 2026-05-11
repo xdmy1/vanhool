@@ -67,7 +67,7 @@ create table if not exists public.products (
     weight numeric(10,3),
     width numeric(10,2),
     height numeric(10,2),
-    warranty_months int default 12,
+    warranty_months int,
     category_id uuid references public.categories(id) on delete set null,
     is_active boolean not null default true,
     is_featured boolean not null default false,
@@ -459,7 +459,7 @@ insert into public.categories (slug, name_ro, name_en, name_ru, sort_order) valu
     ('air-pressure',  'Aer comprimat',          'Air pressure',          'Пневмосистема',        50),
     ('body',          'Caroserie',              'Bodywork',              'Кузовщина',            60),
     ('clutch',        'Ambreiaj și cutie',      'Clutch & gearbox',      'Сцепление и КПП',      70),
-    ('steering',      'Direcție și punți',      'Steering & axles',      'Рулевое и мосты',      80),
+    ('steering',      'Butucuri',               'Hubs',                  'Ступицы',              80),
     ('cooling',       'Climă și încălzire',     'Climate & heating',     'Климат и отопление',   90),
     ('interior',      'Interior',               'Interior',              'Салон',               100),
     ('hoses',         'Furtune silicon',        'Silicone hoses',        'Силиконовые шланги',  110),
@@ -1063,9 +1063,9 @@ update public.categories set
 where slug = 'clutch';
 
 update public.categories set
-    name_ro = 'Direcție și butucuri',
-    name_en = 'Steering & hubs',
-    name_ru = 'Рулевое и ступицы',
+    name_ro = 'Butucuri',
+    name_en = 'Hubs',
+    name_ru = 'Ступицы',
     sort_order = 70,
     is_active = true
 where slug = 'steering';

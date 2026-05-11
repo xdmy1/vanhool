@@ -66,7 +66,7 @@ export default async function EditProductPage({
     condition: (product.condition ?? "new") as "new" | "refurbished" | "used",
     categoryId: product.category_id,
     subcategoryId: product.subcategory_id,
-    warrantyMonths: product.warranty_months ?? 12,
+    warrantyMonths: product.warranty_months ?? null,
     weight: product.weight,
     width: product.width,
     height: product.height,

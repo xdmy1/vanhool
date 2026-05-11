@@ -44,6 +44,7 @@ export function PartImage({
           src={trimmed}
           alt={alt ?? ""}
           loading="lazy"
+          referrerPolicy="no-referrer"
           className="h-full w-full object-contain"
         />
       </div>

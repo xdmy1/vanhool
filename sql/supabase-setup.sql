@@ -58,7 +58,7 @@ create table if not exists public.products (
     weight numeric(10,3),
     width numeric(10,2),
     height numeric(10,2),
-    warranty_months int default 12,
+    warranty_months int,
     category_id uuid references public.categories(id) on delete set null,
     is_active boolean not null default true,
     is_featured boolean not null default false,

@@ -149,7 +149,7 @@ export async function importProductFromTecdoc(
       typeof payload.stockQuantity === "number" ? payload.stockQuantity : 0,
     category_id: payload.categoryId ?? null,
     warranty_months:
-      typeof payload.warrantyMonths === "number" ? payload.warrantyMonths : 12,
+      typeof payload.warrantyMonths === "number" ? payload.warrantyMonths : null,
     weight: payload.weightKg ?? null,
     width: payload.widthMm ?? null,
     height: payload.heightMm ?? null,
