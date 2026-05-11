@@ -574,6 +574,7 @@
     "field_category": "Category",
     "field_category_none": "— No category —",
     "field_warranty": "Warranty (months)",
+    "field_has_warranty": "Product comes with warranty",
     "field_weight": "Weight (kg)",
     "field_width": "Width (mm)",
     "field_height": "Height (mm)",

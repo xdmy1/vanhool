@@ -136,7 +136,7 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
     condition: values.condition ?? "new",
     category_id: values.categoryId ?? null,
     subcategory_id: values.subcategoryId ?? null,
-    warranty_months: values.warrantyMonths ?? 12,
+    warranty_months: values.warrantyMonths ?? null,
     weight: values.weight ?? null,
     width: values.width ?? null,
     height: values.height ?? null,

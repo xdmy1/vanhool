@@ -574,6 +574,7 @@
     "field_category": "Категория",
     "field_category_none": "— Без категории —",
     "field_warranty": "Гарантия (месяцев)",
+    "field_has_warranty": "Товар с гарантией",
     "field_weight": "Вес (кг)",
     "field_width": "Ширина (мм)",
     "field_height": "Высота (мм)",

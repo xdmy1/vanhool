@@ -33,6 +33,7 @@ export function buildProductFormLabels(t: T) {
     field_active: t("field_active"),
     field_featured: t("field_featured"),
     field_warranty: t("field_warranty"),
+    field_has_warranty: t("field_has_warranty"),
     field_weight: t("field_weight"),
     field_width: t("field_width"),
     field_height: t("field_height"),

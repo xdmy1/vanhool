@@ -63,6 +63,7 @@ type Labels = {
   field_featured: string;
   // Specs
   field_warranty: string;
+  field_has_warranty: string;
   field_weight: string;
   field_width: string;
   field_height: string;
@@ -162,6 +163,9 @@ export function ProductForm({
     initialVehicleMakeIds ?? [],
   );
   const [isPromo, setIsPromo] = useState(initial?.isPromo ?? false);
+  const [hasWarranty, setHasWarranty] = useState(
+    typeof initial?.warrantyMonths === "number" && initial.warrantyMonths > 0,
+  );
   const [images, setImages] = useState<string[]>(
     initial?.images ?? (initial?.imageUrl ? [initial.imageUrl] : []),
   );
@@ -215,7 +219,7 @@ export function ProductForm({
       condition,
       categoryId: categoryId || null,
       subcategoryId: subcategoryId || null,
-      warrantyMonths: num("warrantyMonths"),
+      warrantyMonths: hasWarranty ? num("warrantyMonths") : null,
       weight: num("weight"),
       width: num("width"),
       height: num("height"),
@@ -469,16 +473,25 @@ export function ProductForm({
             onChange={setImages}
             label={labels.field_image_url}
           />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <Toggle
+            label={labels.field_has_warranty}
+            checked={hasWarranty}
+            onChange={setHasWarranty}
+          />
+          {hasWarranty ? (
             <Field label={labels.field_warranty}>
               <Input
                 name="warrantyMonths"
                 type="number"
-                min={0}
+                min={1}
                 step={1}
                 defaultValue={initial?.warrantyMonths ?? 12}
+                required
               />
             </Field>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label={labels.field_weight}>
               <Input
                 name="weight"
