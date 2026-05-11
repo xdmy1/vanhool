@@ -48,8 +48,8 @@ export function BrandQuickPicker({
   };
 
   return (
-    <div className="mx-auto mt-6 flex w-full max-w-2xl flex-col gap-2 rounded-md border border-border bg-surface-elevated p-3 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:gap-3">
-      <div className="flex items-center gap-2 px-1 text-sm font-medium text-muted-strong">
+    <div className="mt-2 flex w-full flex-col gap-1.5 rounded-md border border-border bg-surface-elevated p-1.5 shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:gap-2">
+      <div className="flex items-center gap-2 px-2 text-sm font-medium text-muted-strong">
         <Car className="size-4 text-primary" />
         <span>{label}</span>
       </div>
@@ -60,7 +60,7 @@ export function BrandQuickPicker({
           setSlug(v);
           if (v) go(v);
         }}
-        className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+        className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-1.5 text-sm outline-none transition-colors focus:border-primary"
       >
         <option value="">{placeholder}</option>
         {brands.map((b) => (
@@ -72,7 +72,7 @@ export function BrandQuickPicker({
       <button
         type="button"
         onClick={() => go()}
-        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[color:var(--primary-hover)]"
+        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[color:var(--primary-hover)]"
       >
         {slug ? ctaLabel : allLabel}
         <ChevronRight className="size-4" />
