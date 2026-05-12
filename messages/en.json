@@ -460,6 +460,16 @@
     "contact_title": "Tell us which part you need",
     "contact_subtitle": "The code, the bus model, or a photo — anything helps. We reply the same business day."
   },
+  "thanks": {
+    "contact_title": "Message sent",
+    "contact_body": "Thanks! Your message reached the Inter Bus team. We'll reply within one business day.",
+    "register_title": "Account created",
+    "register_body": "Check your email for the confirmation link. After that you can sign in and place orders.",
+    "b2b_title": "B2B request received",
+    "b2b_body": "Thanks! Our team will verify your company details and reach out to activate the account.",
+    "back_home": "Back home",
+    "see_catalog": "Browse catalog"
+  },
   "contact": {
     "hero_title": "Contact the Inter Bus team",
     "hero_subtitle": "Part identification, order status, warranty, or a technical question — we're here for professional fleets.",

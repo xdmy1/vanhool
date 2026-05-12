@@ -460,6 +460,16 @@
     "contact_title": "Spune-ne ce piesă cauți",
     "contact_subtitle": "Codul, modelul autobuzului, sau o poză — orice ne ajută. Răspundem în aceeași zi lucrătoare."
   },
+  "thanks": {
+    "contact_title": "Mesaj trimis cu succes",
+    "contact_body": "Mulțumim! Mesajul tău a ajuns la echipa Inter Bus. Te contactăm în maxim 1 zi lucrătoare.",
+    "register_title": "Cont creat",
+    "register_body": "Verifică-ți emailul pentru linkul de confirmare. Apoi te poți autentifica și plasa comenzi.",
+    "b2b_title": "Cerere B2B primită",
+    "b2b_body": "Mulțumim! Echipa Inter Bus verifică datele firmei tale și te contactează pentru activare.",
+    "back_home": "Înapoi acasă",
+    "see_catalog": "Vezi catalogul"
+  },
   "contact": {
     "hero_title": "Contactează echipa Inter Bus",
     "hero_subtitle": "Identificare piesă, statusul comenzii, garanție sau o întrebare tehnică — suntem aici pentru flotele profesioniste.",

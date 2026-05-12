@@ -2,11 +2,14 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { CheckCircle2, Send } from "lucide-react";
+import { useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { submitContact } from "@/lib/contact/actions";
+import { sendWeb3FormsNotification } from "@/lib/notifications/web3forms";
 import { cn } from "@/lib/utils/cn";
 
 type Labels = {
@@ -40,6 +43,8 @@ export function ContactForm({
   labels: Labels;
   initial?: { name?: string; email?: string; phone?: string };
 }) {
+  const router = useRouter();
+  const locale = useLocale();
   const [pending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [topic, setTopic] = useState<Topic>("general");
@@ -74,9 +79,25 @@ export function ContactForm({
         setErrors({ root: res.message ?? labels.error_generic });
         return;
       }
-      setSuccess(true);
       toast.success(labels.success_title);
       (e.target as HTMLFormElement).reset();
+      // Fire-and-forget admin email — the message is already saved to
+      // contact_messages, so a notification failure must not block the
+      // redirect to the thank-you page.
+      sendWeb3FormsNotification({
+        subject: `[Inter Bus] Mesaj contact — ${payload.topic}`,
+        fromName: payload.name,
+        replyTo: payload.email,
+        message: payload.message,
+        fields: {
+          Nume: payload.name,
+          Email: payload.email,
+          Telefon: payload.phone || "—",
+          Topic: payload.topic,
+          Subiect: payload.subject || "—",
+        },
+      }).catch(() => {});
+      router.push(`/${locale}/thank-you?form=contact`);
     });
   };
 

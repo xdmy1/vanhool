@@ -38,11 +38,17 @@ export default async function ThankYouPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ order?: string }>;
+  searchParams: Promise<{ order?: string; form?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const sp = await searchParams;
+
+  // Generic mode — used by contact form / B2B registration. No order context,
+  // just a friendly "we got your message" screen with links back to the site.
+  if (!sp.order && sp.form) {
+    return <FormThankYou locale={locale} form={sp.form} />;
+  }
 
   if (!sp.order) redirect(`/${locale}/catalog`);
 
@@ -326,6 +332,66 @@ function DefRow({
         </dt>
         <dd className="mt-0.5 break-words text-sm text-foreground">{value}</dd>
       </div>
+    </div>
+  );
+}
+
+async function FormThankYou({
+  locale,
+  form,
+}: {
+  locale: string;
+  form: string;
+}) {
+  const t = await getTranslations("thanks");
+  const titleKey =
+    form === "register"
+      ? "register_title"
+      : form === "b2b"
+        ? "b2b_title"
+        : "contact_title";
+  const bodyKey =
+    form === "register"
+      ? "register_body"
+      : form === "b2b"
+        ? "b2b_body"
+        : "contact_body";
+
+  return (
+    <div className="bg-background">
+      <section className="relative overflow-hidden border-b border-border bg-surface/40">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_-20%,rgba(16,185,129,0.18),transparent_60%)]"
+        />
+        <Container className="py-16 md:py-24">
+          <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+            <div className="mb-6 grid size-16 place-items-center rounded-full border border-success/40 bg-success/10 text-success">
+              <CheckCircle2 className="size-7" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+              {t(titleKey as "contact_title")}
+            </h1>
+            <p className="mt-4 max-w-md text-sm text-muted-strong md:text-base">
+              {t(bodyKey as "contact_body")}
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild size="md">
+                <Link href="/" locale={locale}>
+                  <ArrowLeft className="size-4" />
+                  {t("back_home")}
+                </Link>
+              </Button>
+              <Button asChild size="md" variant="secondary">
+                <Link href="/catalog" locale={locale}>
+                  <ShoppingBag className="size-4" />
+                  {t("see_catalog")}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Container>
+      </section>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/lib/i18n/routing";
 import { signUp } from "@/lib/auth/actions";
+import { sendWeb3FormsNotification } from "@/lib/notifications/web3forms";
 import type { Locale } from "@/lib/i18n/routing";
 import { cn } from "@/lib/utils/cn";
 import { CheckEmailPanel } from "./CheckEmailPanel";
@@ -220,6 +221,37 @@ export function RegisterForm({ labels }: { labels: Labels }) {
         setErrors({ root: msg });
         toast.error(msg);
         return;
+      }
+      // Fire-and-forget admin notification for B2B registrations only — the
+      // shop needs to verify company details before activating these accounts.
+      // Individual signups are too noisy and don't need manual review.
+      if (accountType === "business" && business) {
+        const fullName = `${data.firstName} ${data.lastName}`.trim();
+        const billingAddr =
+          `${business.billingStreet}, ${business.billingCity} ${business.billingPostal ?? ""}, ${business.billingCountry}`.trim();
+        const shippingAddr = business.shippingSameAsBilling
+          ? "aceeași"
+          : `${business.shippingStreet ?? "—"}, ${business.shippingCity ?? "—"} ${business.shippingPostal ?? ""}, ${business.shippingCountry ?? "—"}`;
+        sendWeb3FormsNotification({
+          subject: `[Inter Bus] Cerere cont B2B — ${business.companyName}`,
+          fromName: fullName,
+          replyTo: data.email,
+          message: `Cont B2B nou: ${business.companyName}\nIDNO: ${business.idno}\nContact: ${fullName} (${data.email}, ${data.phone})\nAdresă facturare: ${billingAddr}\nAdresă livrare: ${shippingAddr}\nPlătitor TVA: ${business.vatPayer ? "DA" : "NU"}${business.vatNumber ? ` (${business.vatNumber})` : ""}`,
+          fields: {
+            Companie: business.companyName,
+            IDNO: business.idno,
+            "Forma juridică": business.legalForm || "—",
+            Contact: fullName,
+            "Poziție contact": business.contactPosition || "—",
+            Email: data.email,
+            Telefon: data.phone,
+            "Adresă facturare": billingAddr,
+            "Adresă livrare": shippingAddr,
+            "Plătitor TVA": business.vatPayer ? "DA" : "NU",
+            "Cod TVA": business.vatPayer ? business.vatNumber || "—" : "—",
+            "EU VAT ID": business.euVatId || "—",
+          },
+        }).catch(() => {});
       }
       if (result.requiresEmailConfirmation) {
         setPendingEmail(data.email);

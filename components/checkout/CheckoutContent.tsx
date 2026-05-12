@@ -16,6 +16,7 @@ import { calcTotals } from "@/lib/cart/pricing";
 import { CART_CONFIG } from "@/lib/cart/types";
 import { PHONE_PREFIXES, PAYMENT_METHODS } from "@/lib/validation/checkout";
 import { createOrder } from "@/lib/orders/actions";
+import { sendWeb3FormsNotification } from "@/lib/notifications/web3forms";
 import { cn } from "@/lib/utils/cn";
 
 const PAYMENT_ICONS = {
@@ -140,6 +141,39 @@ export function CheckoutContent({
       // Set submitted FIRST so the empty-cart redirect effect short-circuits
       // when clear() drops items.length to 0 in the same tick.
       setSubmitted(true);
+      // Fire-and-forget admin email — the order is already in the DB; a
+      // notification failure must not block the redirect.
+      const itemsList = payload.items
+        .map(
+          (i) =>
+            `• ${i.quantity}× ${i.name}${i.partCode ? ` (${i.partCode})` : ""} — ${(i.price * i.quantity).toFixed(2)} lei`,
+        )
+        .join("\n");
+      const fullName = `${payload.firstName} ${payload.lastName}`.trim();
+      const fullPhone = `${payload.phoneCountry}${payload.phoneNumber.replace(/[\s-]/g, "")}`;
+      const fullAddress = payload.postal
+        ? `${payload.address}, ${payload.city} ${payload.postal}`
+        : `${payload.address}, ${payload.city}`;
+      sendWeb3FormsNotification({
+        subject: `[Inter Bus] Comandă nouă — ${totals.total.toFixed(2)} lei`,
+        fromName: fullName,
+        replyTo: payload.email,
+        message: `Comandă nouă de la ${fullName}\n\n${itemsList}\n\nSubtotal: ${totals.subtotal.toFixed(2)} lei\nReducere: ${totals.discount.toFixed(2)} lei\nLivrare: ${totals.shipping.toFixed(2)} lei\nTOTAL: ${totals.total.toFixed(2)} lei`,
+        fields: {
+          "Order ID": result.orderId,
+          Client: fullName,
+          Email: payload.email,
+          Telefon: fullPhone,
+          Adresă: fullAddress,
+          Plată: payload.paymentMethod,
+          Note: payload.notes || "—",
+          "Cod promo": payload.promoCode || "—",
+          Subtotal: `${totals.subtotal.toFixed(2)} lei`,
+          Reducere: `${totals.discount.toFixed(2)} lei`,
+          Livrare: `${totals.shipping.toFixed(2)} lei`,
+          Total: `${totals.total.toFixed(2)} lei`,
+        },
+      }).catch(() => {});
       router.replace(`/${locale}/thank-you?order=${result.orderId}`);
       clear();
     });
