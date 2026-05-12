@@ -116,5 +116,35 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     // ignore
   }
 
+  // Same fire-and-forget pattern for Refrens (invoice + PDF email) and Brevo
+  // (HTML order confirmation). Both are independent; failure on either is
+  // logged but does not affect checkout success.
+  try {
+    const { isRefrensConfigured, createInvoiceForOrder } = await import(
+      "@/lib/refrens/invoice"
+    );
+    if (isRefrensConfigured()) {
+      await createInvoiceForOrder(insertData.id).catch((e) => {
+        console.error("[refrens] invoice creation failed:", e);
+      });
+    }
+  } catch (e) {
+    console.error("[refrens] import failed:", e);
+  }
+
+  try {
+    const { isBrevoConfigured } = await import("@/lib/email/brevo");
+    if (isBrevoConfigured()) {
+      const { sendOrderConfirmationEmail } = await import(
+        "@/lib/email/order-confirmation"
+      );
+      await sendOrderConfirmationEmail(insertData.id).catch((e) => {
+        console.error("[brevo] order confirmation failed:", e);
+      });
+    }
+  } catch (e) {
+    console.error("[brevo] import failed:", e);
+  }
+
   return { ok: true, orderId: insertData.id };
 }
