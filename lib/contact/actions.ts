@@ -3,6 +3,8 @@
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { sendResendEmail, getAdminEmail } from "@/lib/email/resend";
+import { contactAdminEmail } from "@/lib/email/templates";
 
 export const contactSchema = z.object({
   name: z.string().min(2).max(120),
@@ -45,5 +47,23 @@ export async function submitContact(values: unknown): Promise<ContactResult> {
   });
 
   if (error) return { ok: false, code: "server", message: error.message };
+
+  // Fire-and-forget admin notification.
+  const mail = contactAdminEmail({
+    name: parsed.data.name,
+    email: parsed.data.email,
+    phone: parsed.data.phone || null,
+    topic: parsed.data.topic ?? "general",
+    subject: parsed.data.subject || null,
+    message: parsed.data.message,
+  });
+  void sendResendEmail({
+    to: getAdminEmail(),
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
+    replyTo: { email: parsed.data.email, name: parsed.data.name },
+  }).catch((e) => console.error("[resend] contact email failed:", e));
+
   return { ok: true };
 }

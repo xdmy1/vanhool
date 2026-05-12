@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { sendResendEmail, getAdminEmail } from "@/lib/email/resend";
+import { registerAdminEmail, welcomeEmail } from "@/lib/email/templates";
 
 export type AuthResult =
   | { ok: true; redirectTo?: string; requiresEmailConfirmation?: boolean }
@@ -159,6 +161,39 @@ export async function signUp(input: {
       .from("profiles")
       .upsert({ ...baseRow, ...businessRow }, { onConflict: "id" });
   }
+
+  // Fire-and-forget transactional emails — never block the signup return.
+  const lang = (input.language ?? "ro") as "ro" | "en" | "ru";
+  const welcome = welcomeEmail({
+    firstName: input.firstName,
+    email: input.email.trim(),
+    accountType,
+    locale: lang,
+  });
+  void sendResendEmail({
+    to: { email: input.email.trim(), name: fullName },
+    subject: welcome.subject,
+    html: welcome.html,
+    text: welcome.text,
+    replyTo: { email: getAdminEmail(), name: "Inter Bus" },
+  }).catch((e) => console.error("[resend] welcome email failed:", e));
+
+  const adminMail = registerAdminEmail({
+    firstName: input.firstName,
+    lastName: input.lastName,
+    email: input.email.trim(),
+    phone: input.phone,
+    accountType,
+    companyName: input.business?.companyName,
+    idno: input.business?.idno,
+  });
+  void sendResendEmail({
+    to: getAdminEmail(),
+    subject: adminMail.subject,
+    html: adminMail.html,
+    text: adminMail.text,
+    replyTo: { email: input.email.trim(), name: fullName },
+  }).catch((e) => console.error("[resend] register-admin email failed:", e));
 
   if (data.session) {
     return { ok: true, requiresEmailConfirmation: false };

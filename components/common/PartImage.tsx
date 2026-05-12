@@ -24,11 +24,19 @@ export function PartImage({
   imageUrl,
   alt,
   className,
+  fit = "contain",
 }: {
   variant: Variant;
   imageUrl?: string | null;
   alt?: string;
   className?: string;
+  /**
+   * `contain` (default) preserves the photo's aspect ratio with empty bands —
+   * use it on the product detail gallery where the whole part must be visible.
+   * `cover` fills the entire square, cropping the edges — use it on catalog
+   * thumbnails so all cards line up with identical visual photo dimensions.
+   */
+  fit?: "contain" | "cover";
 }) {
   const trimmed = imageUrl?.trim();
   if (trimmed) {
@@ -45,7 +53,10 @@ export function PartImage({
           alt={alt ?? ""}
           loading="lazy"
           referrerPolicy="no-referrer"
-          className="h-full w-full object-contain"
+          className={cn(
+            "h-full w-full",
+            fit === "cover" ? "object-cover" : "object-contain",
+          )}
         />
       </div>
     );

@@ -65,6 +65,7 @@ export function ProductCard({
           variant={product.illustration}
           imageUrl={product.imageUrl}
           alt={product.name}
+          fit="cover"
         />
       </Link>
 
