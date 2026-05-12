@@ -22,8 +22,15 @@ export const metadata: Metadata = {
   },
   description:
     "Magazin online de piese auto rare pentru autobuze Inter Bus. Livrare rapidă în Moldova și internațional.",
-  icons: {
-    icon: "/logo.svg",
+  // The icon convention files (app/icon.tsx, app/apple-icon.tsx) are picked
+  // up automatically — Next injects the <link> tags. We don't need to list
+  // them here; we only set `manifest` so Android/Chrome wire up the PWA
+  // home-screen entry with the right name + icons + theme color.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Inter Bus",
+    statusBarStyle: "default",
   },
 };
 

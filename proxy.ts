@@ -99,6 +99,9 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|logo.svg|images|.*\\..*).*)",
+    // Skip the locale rewrite for static assets and the Next.js icon /
+    // manifest convention routes — those must stay outside i18n so phone
+    // launchers can resolve them at the root.
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|logo.svg|images|icon|apple-icon|manifest|.*\\..*).*)",
   ],
 };
