@@ -97,17 +97,39 @@ export function MultiImageUpload({
   };
   const removeAt = (idx: number) => onChange(values.filter((_, i) => i !== idx));
   const addManual = () => {
-    const u = manualUrl.trim();
-    if (!u) return;
-    if (!/^https?:\/\//i.test(u)) {
-      toast.error("URL invalid.");
+    const raw = manualUrl.trim();
+    if (!raw) return;
+    // Accept one or many URLs separated by whitespace, commas, semicolons or
+    // newlines — lets the admin paste a copy-pasted list from another tab.
+    const candidates = raw
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    for (const u of candidates) {
+      if (/^https?:\/\//i.test(u)) valid.push(u);
+      else invalid.push(u);
+    }
+    if (invalid.length > 0) {
+      toast.error(
+        `URL invalid: ${invalid.slice(0, 3).join(", ")}${invalid.length > 3 ? "…" : ""}`,
+      );
       return;
     }
-    if (values.length >= MAX_IMAGES) {
+    if (valid.length === 0) return;
+    const remaining = MAX_IMAGES - values.length;
+    if (remaining <= 0) {
       toast.error(`Maxim ${MAX_IMAGES} imagini.`);
       return;
     }
-    onChange([...values, u]);
+    const toAdd = valid.slice(0, remaining);
+    if (toAdd.length < valid.length) {
+      toast.warning(
+        `Doar primele ${remaining} URL-uri sunt adăugate (limită ${MAX_IMAGES}).`,
+      );
+    }
+    onChange([...values, ...toAdd]);
     setManualUrl("");
   };
 
@@ -230,7 +252,7 @@ export function MultiImageUpload({
               addManual();
             }
           }}
-          placeholder="https://… (URL extern)"
+          placeholder="https://… (poți lipi mai multe URL-uri separate prin virgulă)"
           className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted focus:border-primary"
         />
         <Button
@@ -240,7 +262,7 @@ export function MultiImageUpload({
           onClick={addManual}
           disabled={!manualUrl.trim() || values.length >= MAX_IMAGES}
         >
-          Adaugă URL
+          Adaugă URL{manualUrl.includes(",") || /\s/.test(manualUrl.trim()) ? "-uri" : ""}
         </Button>
       </div>
 
