@@ -168,23 +168,22 @@ export async function createInvoiceForOrder(
   const customerName = o.customer_name ?? o.customer_email;
 
   const payload = {
+    invoiceTitle: `Comandă #${o.id.slice(0, 8).toUpperCase()}`,
+    invoiceDate: today,
+    dueDate: due,
+    currency: "MDL",
     billedTo: {
       name: customerName,
       email: o.customer_email,
       phone: o.customer_phone ?? undefined,
-      address: o.customer_address ?? undefined,
+      street: o.customer_address ?? undefined,
       country: "MD",
     },
     items: lineItems,
-    currency: "MDL",
-    documentDate: today,
-    dueDate: due,
-    notes: o.notes ?? `Comandă #${o.id.slice(0, 8).toUpperCase()}`,
-    shippingCharges: n(o.shipping_cost) > 0 ? n(o.shipping_cost) : undefined,
-    discount: n(o.discount_amount) > 0 ? n(o.discount_amount) : undefined,
-    paidStatus: "UNPAID",
+    // Refrens emails the invoice + PDF when `email.to` is set.
+    // Per their docs the field is a SINGLE object, not an array.
     email: {
-      to: [{ name: customerName, email: o.customer_email }],
+      to: { name: customerName, email: o.customer_email },
     },
   };
 
