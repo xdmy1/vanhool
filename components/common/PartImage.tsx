@@ -43,7 +43,7 @@ export function PartImage({
     return (
       <div
         className={cn(
-          "relative h-full w-full overflow-hidden bg-surface",
+          "relative h-full w-full overflow-hidden",
           className,
         )}
       >
@@ -65,8 +65,7 @@ export function PartImage({
   return (
     <div
       className={cn(
-        "relative grid h-full w-full place-items-center bg-surface",
-        "overflow-hidden",
+        "relative grid h-full w-full place-items-center overflow-hidden",
         className,
       )}
     >

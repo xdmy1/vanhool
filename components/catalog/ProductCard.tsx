@@ -44,9 +44,16 @@ export function ProductCard({
       <Link
         href={`/product/${product.slug}`}
         locale={locale}
-        className="relative block aspect-square border-b border-border bg-surface"
+        className="relative block aspect-square overflow-hidden border-b border-border bg-white"
         aria-label={product.name}
       >
+        <PartImage
+          variant={product.illustration}
+          imageUrl={product.imageUrl}
+          alt={product.name}
+          fit="cover"
+          className="absolute inset-0"
+        />
         <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
           {product.isPromo && product.listPrice > 0 ? (
             <span className="rounded-sm bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
@@ -61,12 +68,6 @@ export function ProductCard({
         <div className="absolute right-3 top-3 z-10">
           <StockBadge status={product.stock} label={stockLabel} />
         </div>
-        <PartImage
-          variant={product.illustration}
-          imageUrl={product.imageUrl}
-          alt={product.name}
-          fit="cover"
-        />
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
