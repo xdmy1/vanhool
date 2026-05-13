@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { FilterChips } from "@/components/admin/FilterChips";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 import { ProductsTable } from "@/components/admin/products/ProductsTable";
 import { TecdocImportModal } from "@/components/admin/tecdoc/TecdocImportModal";
 import { adminListCategories, adminListProducts } from "@/lib/admin/queries";
@@ -44,12 +45,15 @@ export default async function AdminProductsPage({
     : "all";
 
   const t = await getTranslations("admin");
-  const page = Number(sp.page ?? 1);
+  const page = Math.max(1, Number(sp.page ?? 1) || 1);
+  const perPage = 50;
 
   const [{ rows, total }, categories] = await Promise.all([
-    adminListProducts({ q: sp.q, status, page, perPage: 25 }),
+    adminListProducts({ q: sp.q, status, page, perPage }),
     adminListCategories(),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   const categoriesMap = new Map<string, { name: string; slug: string | null }>();
   const categoryOptions: { id: string; name: string }[] = [];
@@ -149,6 +153,13 @@ export default async function AdminProductsPage({
             toggle_featured: t("products_status_featured"),
             toggle_active: t("products_status_active"),
           }}
+        />
+        <AdminPagination
+          page={page}
+          totalPages={totalPages}
+          basePath="/admin/products"
+          searchParams={sp}
+          locale={locale}
         />
       </div>
     </div>
