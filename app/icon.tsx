@@ -8,6 +8,15 @@ import { ImageResponse } from "next/og";
 export const size = { width: 256, height: 256 };
 export const contentType = "image/png";
 
+// The Inter Bus logo's intrinsic aspect ratio (694 × 297 in the source SVG).
+// We hard-code it so Satori — which doesn't honour `preserveAspectRatio` on
+// SVGs the way browsers do — stops stretching the mark into a square. The
+// width is sized to ~62% of the canvas so the logo survives Android's
+// adaptive-icon safe-zone crop (~80% inner circle) when added to home.
+const LOGO_W_OVER_H = 694 / 297;
+const LOGO_WIDTH = 160; // < 256 × 0.7 → fits inside Android safe zone
+const LOGO_HEIGHT = Math.round(LOGO_WIDTH / LOGO_W_OVER_H);
+
 export default function Icon() {
   return new ImageResponse(
     (
@@ -22,8 +31,8 @@ export default function Icon() {
         }}
       >
         <svg
-          width="200"
-          height="200"
+          width={LOGO_WIDTH}
+          height={LOGO_HEIGHT}
           viewBox="0 0 694 297"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"

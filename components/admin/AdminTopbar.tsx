@@ -1,4 +1,4 @@
-import { Bell, ExternalLink } from "lucide-react";
+import { Bell, ExternalLink, LayoutGrid } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
@@ -16,6 +16,7 @@ export function AdminTopbar({
   locale: string;
   labels: {
     visitSite: string;
+    openPanel: string;
     account: string;
     dashboard: string;
     admin: string;
@@ -25,6 +26,12 @@ export function AdminTopbar({
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-6">
       <div className="ml-auto flex items-center gap-2">
+        <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex">
+          <Link href={"/panel" as "/admin"} locale={locale}>
+            <LayoutGrid className="size-4" />
+            <span className="text-sm">{labels.openPanel}</span>
+          </Link>
+        </Button>
         <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex">
           <Link href="/" locale={locale}>
             <ExternalLink className="size-4" />

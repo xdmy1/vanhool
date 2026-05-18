@@ -233,6 +233,7 @@ export type Database = {
           account_scope: AccountScope;
           source: "storefront" | "panel" | "import";
           delivery_note_id: UUID | null;
+          triaged_at: Timestamp | null;
         };
         Insert: Partial<Database["public"]["Tables"]["orders"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["orders"]["Row"]>;
@@ -457,7 +458,10 @@ export type Database = {
           subtotal: number;
           vat_amount: number;
           total: number;
-          status: "draft" | "received" | "posted" | "cancelled";
+          status: "draft" | "ordered" | "received" | "posted" | "cancelled";
+          po_number: string | null;
+          po_issued_at: Timestamp | null;
+          expected_delivery_date: string | null;
           notes: string | null;
           file_url: string | null;
           created_by: UUID | null;
@@ -501,17 +505,25 @@ export type Database = {
           id: UUID;
           order_id: UUID | null;
           account_scope: AccountScope;
+          type: "invoice" | "proforma";
           series: string | null;
           number: string | null;
           issued_date: string;
+          due_date: string | null;
+          paid_at: Timestamp | null;
+          currency: string;
           customer_snapshot: Json;
+          items_snapshot: Json;
           subtotal: number;
           vat_amount: number;
           total: number;
           refrens_invoice_id: string | null;
           refrens_url: string | null;
           pdf_url: string | null;
-          status: "draft" | "issued" | "paid" | "void";
+          notes: string | null;
+          status: "draft" | "issued" | "sent" | "paid" | "void" | "converted";
+          proforma_id: UUID | null;
+          converted_to_invoice_id: UUID | null;
           created_at: Timestamp;
           updated_at: Timestamp;
         };
@@ -519,6 +531,8 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["invoices"]["Row"]>;
         Relationships: [
           { foreignKeyName: "invoices_order_id_fkey"; columns: ["order_id"]; referencedRelation: "orders"; referencedColumns: ["id"] },
+          { foreignKeyName: "invoices_proforma_fk"; columns: ["proforma_id"]; referencedRelation: "invoices"; referencedColumns: ["id"] },
+          { foreignKeyName: "invoices_converted_fk"; columns: ["converted_to_invoice_id"]; referencedRelation: "invoices"; referencedColumns: ["id"] },
         ];
       };
       expenses: {

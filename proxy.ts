@@ -8,7 +8,7 @@ import type { Database } from "@/lib/supabase/database.types";
 const intlMiddleware = createIntlMiddleware(routing);
 
 const PROTECTED_PREFIXES = ["dashboard", "checkout"] as const;
-const ADMIN_PREFIX = "admin";
+const ADMIN_PREFIXES = ["admin", "panel"] as const;
 
 function localeOf(pathname: string): string | null {
   const seg = pathname.split("/")[1];
@@ -20,7 +20,7 @@ function matchesProtected(pathname: string): "auth" | "admin" | null {
   const locale = localeOf(pathname);
   if (!locale) return null;
   const rest = pathname.slice(locale.length + 1).replace(/^\/+/, "").split("/")[0];
-  if (rest === ADMIN_PREFIX) return "admin";
+  if (ADMIN_PREFIXES.includes(rest as (typeof ADMIN_PREFIXES)[number])) return "admin";
   if (PROTECTED_PREFIXES.includes(rest as (typeof PROTECTED_PREFIXES)[number])) return "auth";
   return null;
 }

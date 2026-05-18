@@ -53,7 +53,10 @@ export default async function RootLayout({
       style={{ colorScheme: "light", backgroundColor: "#ece9e2" }}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-background text-foreground antialiased">
+      <body
+        className="min-h-dvh bg-background text-foreground antialiased"
+        suppressHydrationWarning
+      >
         {children}
         <CartBootstrap />
         <Toaster

@@ -1,0 +1,606 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Building2,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  User,
+} from "lucide-react";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils/cn";
+import { issueProforma } from "@/lib/panel/invoices/actions";
+import {
+  type ClientSearchResult,
+  searchClients,
+} from "@/lib/panel/sales/actions";
+
+type Line = {
+  part_code: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  vat_rate: number;
+};
+
+type WalkIn = {
+  name: string;
+  company_name: string;
+  email: string;
+  phone: string;
+  idno: string;
+  vat_number: string;
+  address: string;
+};
+
+const EMPTY_LINE: Line = {
+  part_code: "",
+  name: "",
+  description: "",
+  quantity: 1,
+  unit_price: 0,
+  vat_rate: 0,
+};
+
+const EMPTY_WALKIN: WalkIn = {
+  name: "",
+  company_name: "",
+  email: "",
+  phone: "",
+  idno: "",
+  vat_number: "",
+  address: "",
+};
+
+export function NewProformaForm({ locale }: { locale: string }) {
+  const t = useTranslations("panel");
+  const router = useRouter();
+
+  const [client, setClient] = useState<ClientSearchResult | null>(null);
+  const [walkinMode, setWalkinMode] = useState(true);
+  const [walkin, setWalkin] = useState<WalkIn>(EMPTY_WALKIN);
+  const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
+  const [dueDays, setDueDays] = useState(7);
+  const [notes, setNotes] = useState("");
+  const [pending, startSubmit] = useTransition();
+
+  const totals = useMemo(() => {
+    let subtotal = 0;
+    let vat = 0;
+    for (const l of lines) {
+      const net = l.quantity * l.unit_price;
+      subtotal += net;
+      vat += net * (l.vat_rate / 100);
+    }
+    return {
+      subtotal: Number(subtotal.toFixed(2)),
+      vat: Number(vat.toFixed(2)),
+      total: Number((subtotal + vat).toFixed(2)),
+    };
+  }, [lines]);
+
+  function setLine(idx: number, patch: Partial<Line>) {
+    setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  }
+  function addLine() {
+    setLines([...lines, { ...EMPTY_LINE }]);
+  }
+  function removeLine(idx: number) {
+    if (lines.length === 1) return;
+    setLines(lines.filter((_, i) => i !== idx));
+  }
+
+  function submit() {
+    const validLines = lines.filter(
+      (l) => l.name.trim().length > 0 && l.quantity > 0,
+    );
+    if (validLines.length === 0) {
+      toast.error(t("proforma_form_lines_validation"));
+      return;
+    }
+
+    // Build customer payload from client OR walk-in.
+    let customer:
+      | {
+          user_id?: string | null;
+          name: string;
+          email?: string | null;
+          phone?: string | null;
+          idno?: string | null;
+          vat_number?: string | null;
+          address?: string | null;
+        }
+      | null = null;
+    if (client) {
+      customer = {
+        user_id: client.id,
+        name:
+          client.account_type === "business"
+            ? client.company_name ?? client.full_name ?? client.email ?? "Client"
+            : client.full_name ?? client.email ?? "Client",
+        email: client.email,
+        phone: client.phone,
+        idno: client.idno,
+        address: client.billing_address,
+      };
+    } else {
+      if (!walkin.name.trim() && !walkin.company_name.trim()) {
+        toast.error(t("proforma_form_customer_validation"));
+        return;
+      }
+      customer = {
+        name: walkin.company_name.trim() || walkin.name.trim(),
+        email: walkin.email || null,
+        phone: walkin.phone || null,
+        idno: walkin.idno || null,
+        vat_number: walkin.vat_number || null,
+        address: walkin.address || null,
+      };
+    }
+
+    startSubmit(async () => {
+      const res = await issueProforma({
+        order_id: null,
+        customer,
+        items: validLines.map((l) => ({
+          product_id: null,
+          part_code: l.part_code || null,
+          name: l.name.trim(),
+          description: l.description || null,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          vat_rate: l.vat_rate,
+        })),
+        due_days: dueDays,
+        currency,
+        notes: notes || null,
+      });
+      if (res.ok) {
+        toast.success(t("proforma_created_success", { number: res.number }));
+        router.push(`/${locale}/panel/proforme/${res.id}`);
+      } else {
+        toast.error(t("sale_error", { reason: res.reason }));
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <CustomerSection
+        client={client}
+        setClient={(c) => {
+          setClient(c);
+          if (c) setWalkinMode(false);
+        }}
+        walkinMode={walkinMode}
+        setWalkinMode={(v) => {
+          setWalkinMode(v);
+          if (v) setClient(null);
+        }}
+        walkin={walkin}
+        setWalkin={setWalkin}
+      />
+
+      <section className="rounded-md border border-border bg-surface p-5">
+        <header className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {t("proforma_form_lines_section")}
+          </h3>
+          <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+            <Plus className="size-4" />
+            {t("proforma_form_line_add")}
+          </Button>
+        </header>
+
+        <p className="mb-3 text-xs text-muted-strong">
+          {t("proforma_form_lines_help")}
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-muted">
+              <tr>
+                <th className="px-2 py-2">{t("proforma_form_line_partcode")}</th>
+                <th className="px-2 py-2">{t("proforma_form_line_name")}</th>
+                <th className="px-2 py-2 text-right">{t("proforma_form_line_qty")}</th>
+                <th className="px-2 py-2 text-right">{t("proforma_form_line_price")}</th>
+                <th className="px-2 py-2 text-right">{t("proforma_form_line_vat")}</th>
+                <th className="px-2 py-2 text-right">{t("proforma_form_line_total")}</th>
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {lines.map((l, idx) => (
+                <tr key={idx}>
+                  <td className="px-2 py-2">
+                    <Input
+                      value={l.part_code}
+                      onChange={(e) => setLine(idx, { part_code: e.target.value })}
+                      placeholder="ex. 11364028"
+                      className="h-9 font-mono text-xs"
+                    />
+                  </td>
+                  <td className="px-2 py-2">
+                    <Input
+                      value={l.name}
+                      onChange={(e) => setLine(idx, { name: e.target.value })}
+                      placeholder={t("proforma_form_line_name_placeholder")}
+                      className="h-9 text-xs"
+                    />
+                    <Input
+                      value={l.description}
+                      onChange={(e) => setLine(idx, { description: e.target.value })}
+                      placeholder={t("proforma_form_line_desc_placeholder")}
+                      className="mt-1 h-8 text-[11px]"
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={l.quantity}
+                      onChange={(e) =>
+                        setLine(idx, { quantity: Math.max(0, Number(e.target.value || 0)) })
+                      }
+                      className="h-9 w-20 text-right"
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={l.unit_price}
+                      onChange={(e) =>
+                        setLine(idx, { unit_price: Math.max(0, Number(e.target.value || 0)) })
+                      }
+                      className="h-9 w-24 text-right"
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={l.vat_rate}
+                      onChange={(e) =>
+                        setLine(idx, { vat_rate: Math.max(0, Number(e.target.value || 0)) })
+                      }
+                      className="h-9 w-16 text-right"
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums font-semibold">
+                    {(l.quantity * l.unit_price * (1 + l.vat_rate / 100)).toFixed(2)}
+                  </td>
+                  <td className="px-2 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => removeLine(idx)}
+                      className="text-destructive hover:text-destructive/80"
+                      disabled={lines.length === 1}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-surface-elevated text-xs">
+                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                  {t("achizitii_subtotal")}
+                </td>
+                <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
+                  {totals.subtotal.toFixed(2)}
+                </td>
+              </tr>
+              <tr className="text-xs">
+                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                  {t("achizitii_vat_total")}
+                </td>
+                <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
+                  {totals.vat.toFixed(2)}
+                </td>
+              </tr>
+              <tr className="bg-surface-elevated text-sm font-bold">
+                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                  {t("achizitii_total")}
+                </td>
+                <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
+                  {totals.total.toFixed(2)} {currency}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-md border border-border bg-surface p-5">
+        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">
+          {t("proforma_form_settings_section")}
+        </h3>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Field label={t("proforma_form_currency")}>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
+              className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            >
+              <option value="MDL">MDL</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+          </Field>
+          <Field label={t("proforma_form_due_days")}>
+            <Input
+              type="number"
+              min={0}
+              max={90}
+              value={dueDays}
+              onChange={(e) => setDueDays(Math.max(0, Number(e.target.value || 0)))}
+            />
+          </Field>
+        </div>
+        <div className="mt-3">
+          <Field label={t("proforma_form_notes")}>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+              placeholder={t("proforma_form_notes_placeholder")}
+            />
+          </Field>
+        </div>
+      </section>
+
+      <div className="flex justify-end">
+        <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
+          <Save className="size-4" />
+          {pending ? t("sale_processing") : t("proforma_form_submit")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CustomerSection({
+  client,
+  setClient,
+  walkinMode,
+  setWalkinMode,
+  walkin,
+  setWalkin,
+}: {
+  client: ClientSearchResult | null;
+  setClient: (c: ClientSearchResult | null) => void;
+  walkinMode: boolean;
+  setWalkinMode: (v: boolean) => void;
+  walkin: WalkIn;
+  setWalkin: (w: WalkIn) => void;
+}) {
+  const t = useTranslations("panel");
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<ClientSearchResult[]>([]);
+  const [searching, startSearch] = useTransition();
+  const timer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    if (!q.trim() || client || walkinMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([]);
+      return;
+    }
+    timer.current = window.setTimeout(() => {
+      startSearch(async () => {
+        const r = await searchClients(q);
+        setResults(r);
+      });
+    }, 300);
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [q, client, walkinMode]);
+
+  if (client) {
+    return (
+      <section className="rounded-md border border-primary/30 bg-primary/5 p-5">
+        <header className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {t("sale_client_selected")}
+          </h3>
+          <button
+            type="button"
+            onClick={() => setClient(null)}
+            className="text-xs text-primary hover:underline"
+          >
+            {t("sale_client_change")}
+          </button>
+        </header>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-full bg-primary/15 text-primary">
+            {client.account_type === "business" ? (
+              <Building2 className="size-5" />
+            ) : (
+              <User className="size-5" />
+            )}
+          </span>
+          <div>
+            <div className="font-semibold">
+              {client.account_type === "business"
+                ? client.company_name ?? client.full_name ?? client.email
+                : client.full_name ?? client.email}
+            </div>
+            <div className="text-xs text-muted-strong">
+              {client.email} {client.phone ? `· ${client.phone}` : ""}
+              {client.idno ? ` · IDNO ${client.idno}` : ""}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-md border border-border bg-surface p-5">
+      <header className="mb-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setWalkinMode(false)}
+          className={cn(
+            "rounded-md px-3 py-1 text-xs font-medium",
+            !walkinMode
+              ? "bg-primary text-primary-foreground"
+              : "border border-border text-muted-strong hover:text-foreground",
+          )}
+        >
+          {t("sale_client_search_existing")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setWalkinMode(true)}
+          className={cn(
+            "rounded-md px-3 py-1 text-xs font-medium",
+            walkinMode
+              ? "bg-primary text-primary-foreground"
+              : "border border-border text-muted-strong hover:text-foreground",
+          )}
+        >
+          {t("proforma_form_customer_manual")}
+        </button>
+      </header>
+
+      {walkinMode ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label={t("sale_client_walkin_name")} required>
+            <Input
+              value={walkin.name}
+              onChange={(e) => setWalkin({ ...walkin, name: e.target.value })}
+            />
+          </Field>
+          <Field label={t("sale_client_walkin_company")}>
+            <Input
+              value={walkin.company_name}
+              onChange={(e) => setWalkin({ ...walkin, company_name: e.target.value })}
+              placeholder="ex. MITS Automotive bv"
+            />
+          </Field>
+          <Field label={t("sale_client_walkin_email")}>
+            <Input
+              type="email"
+              value={walkin.email}
+              onChange={(e) => setWalkin({ ...walkin, email: e.target.value })}
+            />
+          </Field>
+          <Field label={t("sale_client_walkin_phone")}>
+            <Input
+              value={walkin.phone}
+              onChange={(e) => setWalkin({ ...walkin, phone: e.target.value })}
+            />
+          </Field>
+          <Field label={t("sale_client_walkin_idno")}>
+            <Input
+              value={walkin.idno}
+              onChange={(e) => setWalkin({ ...walkin, idno: e.target.value })}
+              placeholder="ex. 8601124"
+            />
+          </Field>
+          <Field label={t("proforma_form_customer_vat")}>
+            <Input
+              value={walkin.vat_number}
+              onChange={(e) => setWalkin({ ...walkin, vat_number: e.target.value })}
+              placeholder="ex. BE 0776.852.808"
+            />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label={t("proforma_form_customer_address")}>
+              <textarea
+                value={walkin.address}
+                onChange={(e) => setWalkin({ ...walkin, address: e.target.value })}
+                rows={2}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                placeholder="Vaartkaai 52C Unit B2, B-2170 MERKSEM"
+              />
+            </Field>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("sale_client_search_placeholder")}
+              className="pl-9"
+            />
+            {searching ? (
+              <span className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 animate-spin rounded-full border-2 border-border border-t-primary" />
+            ) : null}
+          </div>
+          {results.length > 0 ? (
+            <ul className="mt-3 divide-y divide-border rounded-md border border-border">
+              {results.map((r) => (
+                <li key={r.id}>
+                  <button
+                    type="button"
+                    onClick={() => setClient(r)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-elevated"
+                  >
+                    <span className="grid size-8 place-items-center rounded-full bg-surface-elevated text-muted">
+                      {r.account_type === "business" ? (
+                        <Building2 className="size-4" />
+                      ) : (
+                        <User className="size-4" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="line-clamp-1 text-sm font-medium">
+                        {r.account_type === "business"
+                          ? r.company_name ?? r.full_name ?? r.email
+                          : r.full_name ?? r.email}
+                      </div>
+                      <div className="line-clamp-1 text-xs text-muted">
+                        {r.email}
+                        {r.phone ? ` · ${r.phone}` : ""}
+                        {r.idno ? ` · IDNO ${r.idno}` : ""}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted">
+        {label}
+        {required ? <span className="ml-0.5 text-destructive">*</span> : null}
+      </label>
+      {children}
+    </div>
+  );
+}

@@ -3,9 +3,18 @@ import { ImageResponse } from "next/og";
 // Apple home-screen icon: 180×180 PNG with a white background so the
 // logo is legible on any wallpaper. iOS does NOT respect SVG icons or
 // transparency for the home-screen, hence the dedicated PNG endpoint.
+//
+// The logo SVG is 694 × 297 (≈ 2.34 : 1 wide). Satori — which renders
+// next/og — does NOT honour preserveAspectRatio, so we MUST pass width
+// and height that match the logo's intrinsic ratio, otherwise it gets
+// stretched into a square and looks awful as a home-screen shortcut.
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
+
+const LOGO_W_OVER_H = 694 / 297;
+const LOGO_WIDTH = 120; // < 180 × 0.7 → leaves padding for iOS rounded mask
+const LOGO_HEIGHT = Math.round(LOGO_WIDTH / LOGO_W_OVER_H);
 
 export default function AppleIcon() {
   return new ImageResponse(
@@ -21,8 +30,8 @@ export default function AppleIcon() {
         }}
       >
         <svg
-          width="140"
-          height="140"
+          width={LOGO_WIDTH}
+          height={LOGO_HEIGHT}
           viewBox="0 0 694 297"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"

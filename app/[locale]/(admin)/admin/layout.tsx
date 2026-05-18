@@ -83,6 +83,7 @@ export default async function AdminLayout({
           locale={locale}
           labels={{
             visitSite: tAdmin("visit_site"),
+            openPanel: tAdmin("open_panel"),
             account: tNav("account"),
             dashboard: tNav("dashboard"),
             admin: tNav("admin"),

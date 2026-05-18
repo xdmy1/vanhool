@@ -37,6 +37,8 @@ Dacă preferi pas cu pas:
 | 10 | `supabase-bus-makes-seed.sql` | 24 mărci/modele de autobuze (MAN, Mercedes, Van Hool, VDL etc.) |
 | 11 | `supabase-mdl-migration.sql` | One-shot: convertește valorile EUR → MDL × 20. Idempotent prin flag |
 | 12 | `supabase-business-accounts-migration.sql` | Câmpuri B2B pe profiles (account_type, company_name, idno, billing/shipping address, VAT) |
+| 13 | `supabase-data-api-grants-migration.sql` | Grants explicite pe Data API (pre-cutoff 2026-10-30) |
+| 14 | `supabase-panel-migration.sql` | `/panel` workspace: enum `account_scope`, coloane noi pe orders+products, tabele `suppliers / purchases / purchase_items / invoices / expenses / delivery_notes / cash_register_movements / panel_settings`, RPC `next_internal_code()`. Necesită creare manuală în Studio a bucket-urilor `purchase-docs` și `expense-receipts`. |
 
 ## Seed-uri de date vehicule (opționale)
 
