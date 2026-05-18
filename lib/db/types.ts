@@ -6,7 +6,7 @@ export type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
-export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type StockStatus = "in_stock" | "low_stock" | "out_of_stock" | "on_order";
 
 export type PartIllustration =
   | "brake" | "engine" | "chassis" | "electro" | "air" | "body"
@@ -33,6 +33,9 @@ export type Product = {
   oldPrice?: number;
   stock: StockStatus;
   stockQuantity: number;
+  /** Number of days until shipment when stock is 0. `null` means the product
+   * is NOT available on order — out-of-stock means unbuyable. */
+  leadTimeDays?: number | null;
   categoryId: string | null;
   categorySlug: string;
   imageUrl: string | null;
@@ -72,10 +75,21 @@ export function descCol(locale: Locale) {
   return `description_${locale}` as const;
 }
 
-/** Derive UI stock status from the integer stock_quantity */
-export function deriveStock(qty: number | null | undefined): StockStatus {
+/**
+ * Derive UI stock status from the integer stock_quantity.
+ *
+ * When `leadTimeDays` is non-null, the product is sellable past stock=0:
+ * "out_of_stock" is upgraded to "on_order" so the storefront shows the
+ * lead-time badge and the cart accepts the add.
+ */
+export function deriveStock(
+  qty: number | null | undefined,
+  leadTimeDays?: number | null,
+): StockStatus {
   const n = qty ?? 0;
-  if (n <= 0) return "out_of_stock";
+  if (n <= 0) {
+    return leadTimeDays != null ? "on_order" : "out_of_stock";
+  }
   if (n < 5) return "low_stock";
   return "in_stock";
 }

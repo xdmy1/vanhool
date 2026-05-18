@@ -159,7 +159,13 @@ export default async function ProductDetailPage({
 
             <ProductBuyBox
               product={product}
-              labels={buyBoxLabels}
+              labels={{
+                ...buyBoxLabels,
+                onOrder:
+                  product.leadTimeDays != null
+                    ? tCard("on_order", { days: product.leadTimeDays })
+                    : undefined,
+              }}
               eurRate={eurRate.rate}
             />
           </div>
@@ -221,7 +227,13 @@ export default async function ProductDetailPage({
                   key={p.id}
                   product={p}
                   locale={loc}
-                  labels={cardLabels}
+                  labels={{
+                    ...cardLabels,
+                    onOrder:
+                      p.leadTimeDays != null
+                        ? tCard("on_order", { days: p.leadTimeDays })
+                        : undefined,
+                  }}
                   eurRate={eurRate.rate}
                 />
               ))}
@@ -245,7 +257,13 @@ export default async function ProductDetailPage({
                   key={p.id}
                   product={p}
                   locale={loc}
-                  labels={cardLabels}
+                  labels={{
+                    ...cardLabels,
+                    onOrder:
+                      p.leadTimeDays != null
+                        ? tCard("on_order", { days: p.leadTimeDays })
+                        : undefined,
+                  }}
                   eurRate={eurRate.rate}
                 />
               ))}

@@ -24,6 +24,7 @@ type ProductRow = {
   rib_count: number | null;
   custom_specs: unknown;
   warranty_months: number | null;
+  lead_time_days: number | null;
   is_featured: boolean | null;
   is_active: boolean | null;
   category_id: string | null;
@@ -50,7 +51,7 @@ type CategorySlugRow = { id: string; slug: string | null };
 
 const SELECT_COLUMNS = `
   id, slug, part_code, brand, price, stock_quantity, image_url, images,
-  weight, width, height, length, rib_count, custom_specs, warranty_months, is_featured, is_active, category_id,
+  weight, width, height, length, rib_count, custom_specs, warranty_months, lead_time_days, is_featured, is_active, category_id,
   name_ro, name_en, name_ru, description_ro, description_en, description_ru,
   is_promo, promo_price, promo_starts_at, promo_ends_at
 ` as const;
@@ -160,8 +161,9 @@ function toProduct(
     listPrice: finalListPrice,
     promoPrice: finalPromoPrice,
     isPromo: promoActive,
-    stock: deriveStock(row.stock_quantity),
+    stock: deriveStock(row.stock_quantity, row.lead_time_days),
     stockQuantity: row.stock_quantity ?? 0,
+    leadTimeDays: row.lead_time_days,
     categoryId: row.category_id,
     categorySlug,
     imageUrl: row.image_url,

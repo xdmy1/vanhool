@@ -25,6 +25,9 @@ export function ProductBuyBox({
     inStock: string;
     lowStock: string;
     outOfStock: string;
+    /** Pre-formatted "On order · N days" — populated by the parent page when
+     * the product carries a leadTimeDays. Undefined when not applicable. */
+    onOrder?: string;
     trustDelivery: string;
     trustWarranty: string;
     stockAvailable: string;
@@ -36,14 +39,21 @@ export function ProductBuyBox({
   const router = useRouter();
   const add = useCart((s) => s.add);
   const [qty, setQty] = useState(1);
-  const max = Math.max(1, product.stockQuantity);
+  // On-order products may have stock_quantity = 0 but are still sellable —
+  // cap the qty stepper at a sensible default in that case.
+  const onOrder = product.stock === "on_order";
+  const max = onOrder
+    ? Math.max(product.stockQuantity, 99)
+    : Math.max(1, product.stockQuantity);
   const unavailable = product.stock === "out_of_stock";
   const stockLabel =
     product.stock === "in_stock"
       ? labels.inStock
       : product.stock === "low_stock"
         ? labels.lowStock
-        : labels.outOfStock;
+        : product.stock === "on_order"
+          ? labels.onOrder ?? labels.outOfStock
+          : labels.outOfStock;
 
   const addCurrent = () => {
     add({

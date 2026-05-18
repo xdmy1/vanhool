@@ -11,6 +11,10 @@ export type ProductCardLabels = {
   inStock: string;
   lowStock: string;
   outOfStock: string;
+  /** Pre-formatted "On order · N days" string. Parent page resolves the
+   * {days} ICU placeholder using product.leadTimeDays before passing it
+   * (Server Components can't pass functions to Client Components). */
+  onOrder?: string;
   addToCart: string;
   vatIncluded: string;
   vatExcluded: string;
@@ -32,7 +36,9 @@ export function ProductCard({
       ? labels.inStock
       : product.stock === "low_stock"
         ? labels.lowStock
-        : labels.outOfStock;
+        : product.stock === "on_order"
+          ? labels.onOrder ?? labels.outOfStock
+          : labels.outOfStock;
 
   return (
     <article

@@ -52,6 +52,9 @@ const productSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
   subcategoryId: z.string().uuid().nullable().optional(),
   warrantyMonths: z.number().int().nonnegative().nullable().optional(),
+  /** Available-on-order lead time in days. Null = sell only from stock.
+   * Stored values in the UI are 0/2/5/7 (the four standard options). */
+  leadTimeDays: z.number().int().nonnegative().nullable().optional(),
   weight: z.number().nonnegative().nullable().optional(),
   width: z.number().nonnegative().nullable().optional(),
   height: z.number().nonnegative().nullable().optional(),
@@ -151,6 +154,7 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
     category_id: values.categoryId ?? null,
     subcategory_id: values.subcategoryId ?? null,
     warranty_months: values.warrantyMonths ?? null,
+    lead_time_days: values.leadTimeDays ?? null,
     weight: values.weight ?? null,
     width: values.width ?? null,
     height: values.height ?? null,

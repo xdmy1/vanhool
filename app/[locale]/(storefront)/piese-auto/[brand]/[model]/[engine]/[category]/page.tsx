@@ -98,6 +98,10 @@ export default async function PartsPage({
                     inStock: tCard("in_stock"),
                     lowStock: tCard("low_stock"),
                     outOfStock: tCard("out_of_stock"),
+                    onOrder:
+                      p.leadTimeDays != null
+                        ? tCard("on_order", { days: p.leadTimeDays })
+                        : undefined,
                     addToCart: tCard("add_to_cart"),
                     vatIncluded: tCard("vat_included"),
                     vatExcluded: tCard("vat_excluded"),

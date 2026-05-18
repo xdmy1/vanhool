@@ -88,7 +88,13 @@ export default async function PromotionsPage({
                 key={p.id}
                 product={p}
                 locale={loc}
-                labels={cardLabels}
+                labels={{
+                  ...cardLabels,
+                  onOrder:
+                    p.leadTimeDays != null
+                      ? tCard("on_order", { days: p.leadTimeDays })
+                      : undefined,
+                }}
                 eurRate={eurRate.rate}
               />
             ))}

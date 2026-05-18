@@ -67,6 +67,8 @@ export default async function EditProductPage({
     categoryId: product.category_id,
     subcategoryId: product.subcategory_id,
     warrantyMonths: product.warranty_months ?? null,
+    leadTimeDays:
+      (product as { lead_time_days?: number | null }).lead_time_days ?? null,
     weight: product.weight,
     width: product.width,
     height: product.height,

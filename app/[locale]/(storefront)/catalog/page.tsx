@@ -186,7 +186,13 @@ export default async function CatalogPage({
                     key={product.id}
                     product={product}
                     locale={loc}
-                    labels={productLabels}
+                    labels={{
+                      ...productLabels,
+                      onOrder:
+                        product.leadTimeDays != null
+                          ? tProduct("on_order", { days: product.leadTimeDays })
+                          : undefined,
+                    }}
                     eurRate={eurRate.rate}
                   />
                 ))}

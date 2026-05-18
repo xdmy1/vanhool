@@ -24,26 +24,24 @@ export function AddToCartButton({
   size?: "sm" | "md" | "lg";
 }) {
   const add = useCart((s) => s.add);
+  const onOrder = product.stock === "on_order";
   const unavailable = product.stock === "out_of_stock";
 
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // eslint-disable-next-line no-console
-    console.log("[AddToCartButton] click", {
-      productId: product.id,
-      slug: product.slug,
-      stock: product.stock,
-      stockQuantity: product.stockQuantity,
-    });
     if (unavailable) {
       toast.error("Produs indisponibil");
       return;
     }
-    if (product.stockQuantity <= 0) {
+    // On-order products: stock_quantity may be 0, but the admin marked them
+    // sellable with a lead time. Use a soft cap so the cart still has a
+    // reasonable maxStock.
+    if (!onOrder && product.stockQuantity <= 0) {
       toast.error("Stoc 0");
       return;
     }
+    const maxStock = onOrder ? Math.max(product.stockQuantity, 99) : product.stockQuantity;
     add({
       productId: product.id,
       slug: product.slug,
@@ -54,7 +52,7 @@ export function AddToCartButton({
       oldPrice: product.oldPrice,
       illustration: product.illustration,
       imageUrl: product.imageUrl,
-      maxStock: product.stockQuantity,
+      maxStock,
     });
     toast.success(`${product.name} · ${label}`);
   };

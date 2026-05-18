@@ -13,6 +13,8 @@ export type Json =
 type Timestamp = string;
 type UUID = string;
 
+export type AccountScope = "conta1" | "conta2";
+
 export type Database = {
   public: {
     Tables: {
@@ -80,6 +82,7 @@ export type Database = {
           rib_count: number | null;
           custom_specs: Json | null;
           warranty_months: number | null;
+          lead_time_days: number | null;
           category_id: UUID | null;
           is_active: boolean | null;
           is_featured: boolean | null;
@@ -105,6 +108,8 @@ export type Database = {
           promo_price: number | null;
           promo_starts_at: Timestamp | null;
           promo_ends_at: Timestamp | null;
+          supplier_code: string | null;
+          supplier_id: UUID | null;
         };
         Insert: Partial<Database["public"]["Tables"]["products"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["products"]["Row"]>;
@@ -112,6 +117,7 @@ export type Database = {
           { foreignKeyName: "products_category_id_fkey"; columns: ["category_id"]; referencedRelation: "categories"; referencedColumns: ["id"] },
           { foreignKeyName: "products_manufacturer_id_fkey"; columns: ["manufacturer_id"]; referencedRelation: "manufacturers"; referencedColumns: ["id"] },
           { foreignKeyName: "products_subcategory_id_fkey"; columns: ["subcategory_id"]; referencedRelation: "categories"; referencedColumns: ["id"] },
+          { foreignKeyName: "products_supplier_fk"; columns: ["supplier_id"]; referencedRelation: "suppliers"; referencedColumns: ["id"] },
         ];
       };
       manufacturers: {
@@ -224,6 +230,9 @@ export type Database = {
           odoo_invoice_id: number | null;
           odoo_synced_at: Timestamp | null;
           odoo_sync_error: string | null;
+          account_scope: AccountScope;
+          source: "storefront" | "panel" | "import";
+          delivery_note_id: UUID | null;
         };
         Insert: Partial<Database["public"]["Tables"]["orders"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["orders"]["Row"]>;
@@ -416,6 +425,196 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["vehicle_part_link"]["Row"]>;
         Relationships: [];
       };
+      // -------- Panel tables (added by supabase-panel-migration.sql) ----------
+      suppliers: {
+        Row: {
+          id: UUID;
+          name: string;
+          idno: string | null;
+          vat_code: string | null;
+          contact_email: string | null;
+          contact_phone: string | null;
+          address: string | null;
+          notes: string | null;
+          is_active: boolean;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["suppliers"]["Row"]> & { name: string };
+        Update: Partial<Database["public"]["Tables"]["suppliers"]["Row"]>;
+        Relationships: [];
+      };
+      purchases: {
+        Row: {
+          id: UUID;
+          supplier_id: UUID;
+          account_scope: AccountScope;
+          document_number: string | null;
+          document_date: string;
+          received_at: Timestamp | null;
+          currency: string;
+          fx_rate: number | null;
+          subtotal: number;
+          vat_amount: number;
+          total: number;
+          status: "draft" | "received" | "posted" | "cancelled";
+          notes: string | null;
+          file_url: string | null;
+          created_by: UUID | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["purchases"]["Row"]> & { supplier_id: UUID };
+        Update: Partial<Database["public"]["Tables"]["purchases"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "purchases_supplier_id_fkey"; columns: ["supplier_id"]; referencedRelation: "suppliers"; referencedColumns: ["id"] },
+        ];
+      };
+      purchase_items: {
+        Row: {
+          id: UUID;
+          purchase_id: UUID;
+          product_id: UUID | null;
+          supplier_code: string | null;
+          internal_code: string | null;
+          description: string;
+          quantity: number;
+          unit_cost: number;
+          vat_rate: number;
+          line_total: number;
+          created_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["purchase_items"]["Row"]> & {
+          purchase_id: UUID;
+          description: string;
+          quantity: number;
+          unit_cost: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["purchase_items"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "purchase_items_purchase_id_fkey"; columns: ["purchase_id"]; referencedRelation: "purchases"; referencedColumns: ["id"] },
+          { foreignKeyName: "purchase_items_product_id_fkey"; columns: ["product_id"]; referencedRelation: "products"; referencedColumns: ["id"] },
+        ];
+      };
+      invoices: {
+        Row: {
+          id: UUID;
+          order_id: UUID | null;
+          account_scope: AccountScope;
+          series: string | null;
+          number: string | null;
+          issued_date: string;
+          customer_snapshot: Json;
+          subtotal: number;
+          vat_amount: number;
+          total: number;
+          refrens_invoice_id: string | null;
+          refrens_url: string | null;
+          pdf_url: string | null;
+          status: "draft" | "issued" | "paid" | "void";
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["invoices"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["invoices"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "invoices_order_id_fkey"; columns: ["order_id"]; referencedRelation: "orders"; referencedColumns: ["id"] },
+        ];
+      };
+      expenses: {
+        Row: {
+          id: UUID;
+          account_scope: AccountScope;
+          category: string;
+          description: string;
+          amount: number;
+          currency: string;
+          paid_at: string;
+          payment_method: "cash" | "transfer" | "card" | null;
+          supplier_id: UUID | null;
+          attached_invoice_id: UUID | null;
+          receipt_url: string | null;
+          notes: string | null;
+          created_by: UUID | null;
+          created_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["expenses"]["Row"]> & {
+          account_scope: AccountScope;
+          category: string;
+          description: string;
+          amount: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["expenses"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "expenses_supplier_id_fkey"; columns: ["supplier_id"]; referencedRelation: "suppliers"; referencedColumns: ["id"] },
+          { foreignKeyName: "expenses_attached_invoice_id_fkey"; columns: ["attached_invoice_id"]; referencedRelation: "invoices"; referencedColumns: ["id"] },
+        ];
+      };
+      delivery_notes: {
+        Row: {
+          id: UUID;
+          order_id: UUID | null;
+          account_scope: AccountScope;
+          series: string | null;
+          number: string | null;
+          issued_at: Timestamp;
+          driver_name: string | null;
+          vehicle_plate: string | null;
+          customer_name: string;
+          customer_idno: string | null;
+          customer_phone: string | null;
+          delivery_address: string;
+          payment_method: "cash" | "transfer" | "already_paid" | null;
+          notes: string | null;
+          items_snapshot: Json;
+          status: "draft" | "dispatched" | "delivered" | "returned";
+          printed_at: Timestamp | null;
+          created_by: UUID | null;
+          created_at: Timestamp;
+          updated_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["delivery_notes"]["Row"]> & {
+          customer_name: string;
+          delivery_address: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["delivery_notes"]["Row"]>;
+        Relationships: [
+          { foreignKeyName: "delivery_notes_order_id_fkey"; columns: ["order_id"]; referencedRelation: "orders"; referencedColumns: ["id"] },
+        ];
+      };
+      cash_register_movements: {
+        Row: {
+          id: UUID;
+          occurred_at: Timestamp;
+          drawer: string;
+          direction: "in" | "out";
+          amount: number;
+          reason: "sale" | "expense" | "top_up" | "withdrawal" | "adjustment";
+          order_id: UUID | null;
+          expense_id: UUID | null;
+          notes: string | null;
+          created_by: UUID | null;
+          created_at: Timestamp;
+        };
+        Insert: Partial<Database["public"]["Tables"]["cash_register_movements"]["Row"]> & {
+          direction: "in" | "out";
+          amount: number;
+          reason: "sale" | "expense" | "top_up" | "withdrawal" | "adjustment";
+        };
+        Update: Partial<Database["public"]["Tables"]["cash_register_movements"]["Row"]>;
+        Relationships: [];
+      };
+      panel_settings: {
+        Row: {
+          key: string;
+          value: Json;
+          updated_at: Timestamp;
+          updated_by: UUID | null;
+        };
+        Insert: { key: string; value: Json; updated_at?: Timestamp; updated_by?: UUID | null };
+        Update: Partial<Database["public"]["Tables"]["panel_settings"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -443,8 +642,14 @@ export type Database = {
         Args: { p_order_id: UUID };
         Returns: boolean;
       };
+      next_internal_code: {
+        Args: Record<string, never>;
+        Returns: { next_seq: number; next_letter: string };
+      };
     };
-    Enums: Record<string, never>;
+    Enums: {
+      account_scope: AccountScope;
+    };
     CompositeTypes: Record<string, never>;
   };
 };

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils/cn";
 
-type Status = "in_stock" | "low_stock" | "out_of_stock";
+type Status = "in_stock" | "low_stock" | "out_of_stock" | "on_order";
 
 export function StockBadge({
   status,
@@ -26,6 +26,13 @@ export function StockBadge({
       dot: "bg-muted",
       text: "text-muted",
       bg: "bg-accent-dark border-border",
+    },
+    // Distinct from in-stock (won't ship today, no green) but actionable —
+    // the user can still order it, so we don't grey it out.
+    on_order: {
+      dot: "bg-primary",
+      text: "text-primary",
+      bg: "bg-primary/10 border-primary/30",
     },
   };
   const p = palette[status];

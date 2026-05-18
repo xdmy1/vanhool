@@ -52,6 +52,11 @@ type Labels = {
   field_price: string;
   field_cost_price: string;
   field_stock: string;
+  field_on_order: string;
+  field_lead_time_0: string;
+  field_lead_time_2: string;
+  field_lead_time_5: string;
+  field_lead_time_7: string;
   field_storage_location: string;
   // Category & status
   field_category: string;
@@ -193,6 +198,12 @@ export function ProductForm({
   const [hasWarranty, setHasWarranty] = useState(
     typeof initial?.warrantyMonths === "number" && initial.warrantyMonths > 0,
   );
+  const [onOrder, setOnOrder] = useState(
+    typeof initial?.leadTimeDays === "number" && initial.leadTimeDays >= 0,
+  );
+  const [leadTimeDays, setLeadTimeDays] = useState<number>(
+    typeof initial?.leadTimeDays === "number" ? initial.leadTimeDays : 2,
+  );
   const [images, setImages] = useState<string[]>(
     initial?.images ?? (initial?.imageUrl ? [initial.imageUrl] : []),
   );
@@ -247,6 +258,7 @@ export function ProductForm({
       categoryId: categoryId || null,
       subcategoryId: subcategoryId || null,
       warrantyMonths: hasWarranty ? num("warrantyMonths") : null,
+      leadTimeDays: onOrder ? leadTimeDays : null,
       weight: num("weight"),
       width: num("width"),
       height: num("height"),
@@ -654,14 +666,40 @@ export function ProductForm({
             />
           </Field>
           <Field label={labels.field_stock} error={errors.stockQuantity}>
-            <Input
-              name="stockQuantity"
-              type="number"
-              min={0}
-              step={1}
-              defaultValue={initial?.stockQuantity ?? 0}
-              required
-            />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  name="stockQuantity"
+                  type="number"
+                  min={0}
+                  step={1}
+                  defaultValue={initial?.stockQuantity ?? 0}
+                  required
+                  className="flex-1"
+                />
+                <label className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-border bg-surface px-2.5 py-2 text-xs text-muted-strong cursor-pointer transition-colors hover:border-primary/40 hover:text-primary">
+                  <input
+                    type="checkbox"
+                    checked={onOrder}
+                    onChange={(e) => setOnOrder(e.target.checked)}
+                    className="size-3.5 accent-primary"
+                  />
+                  {labels.field_on_order}
+                </label>
+              </div>
+              {onOrder ? (
+                <select
+                  value={leadTimeDays}
+                  onChange={(e) => setLeadTimeDays(Number(e.target.value))}
+                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-xs outline-none transition-colors focus:border-primary"
+                >
+                  <option value={0}>{labels.field_lead_time_0}</option>
+                  <option value={2}>{labels.field_lead_time_2}</option>
+                  <option value={5}>{labels.field_lead_time_5}</option>
+                  <option value={7}>{labels.field_lead_time_7}</option>
+                </select>
+              ) : null}
+            </div>
           </Field>
           <Field label={labels.field_storage_location}>
             <Input
