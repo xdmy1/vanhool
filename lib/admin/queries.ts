@@ -207,17 +207,7 @@ export type AdminOrderRow = {
 
 export type AdminOrderFilter = {
   q?: string;
-  /** `active` = anything not delivered/cancelled (used by the dashboard
-   * "Comenzi active" stat card to jump straight to the work queue). */
-  status?:
-    | "all"
-    | "active"
-    | "pending"
-    | "confirmed"
-    | "processing"
-    | "shipped"
-    | "delivered"
-    | "cancelled";
+  status?: "all" | "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled";
   page?: number;
   perPage?: number;
 };
@@ -229,9 +219,7 @@ export async function adminListOrders(filter: AdminOrderFilter = {}) {
   const supabase = await createClient();
   let query = supabase.from("orders").select(ORDER_COLUMNS, { count: "exact" });
 
-  if (filter.status === "active") {
-    query = query.in("status", ["pending", "confirmed", "processing", "shipped"]);
-  } else if (filter.status && filter.status !== "all") {
+  if (filter.status && filter.status !== "all") {
     query = query.eq("status", filter.status);
   }
   if (filter.q && filter.q.trim()) {
@@ -387,10 +375,6 @@ export async function adminListCustomers(q?: string): Promise<AdminCustomerRow[]
 export type OverviewStats = {
   ordersTotal: number;
   ordersPending: number;
-  /** Anything not yet delivered or cancelled (pending + confirmed + processing + shipped). */
-  ordersActive: number;
-  /** Orders with status = "delivered". */
-  ordersDelivered: number;
   revenueLast30: number;
   revenueTotal: number;
   lowStockCount: number;
@@ -406,12 +390,9 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
   const supabase = await createClient();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const ACTIVE_STATUSES = ["pending", "confirmed", "processing", "shipped"] as const;
   const [
     ordersTotalRes,
     ordersPendingRes,
-    ordersActiveRes,
-    ordersDeliveredRes,
     productsActiveRes,
     newMessagesRes,
     lowStockCountRes,
@@ -427,14 +408,6 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("status", "pending"),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...ACTIVE_STATUSES]),
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "delivered"),
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
@@ -478,8 +451,6 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
   return {
     ordersTotal: ordersTotalRes.count ?? 0,
     ordersPending: ordersPendingRes.count ?? 0,
-    ordersActive: ordersActiveRes.count ?? 0,
-    ordersDelivered: ordersDeliveredRes.count ?? 0,
     productsActive: productsActiveRes.count ?? 0,
     newMessages: newMessagesRes.count ?? 0,
     lowStockCount: lowStockCountRes.count ?? 0,

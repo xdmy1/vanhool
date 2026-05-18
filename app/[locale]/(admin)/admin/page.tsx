@@ -55,74 +55,51 @@ export default async function AdminOverviewPage({
         <p className="text-sm text-muted-strong md:text-base">{t("overview_subtitle")}</p>
       </div>
 
-      {/* Stats grid — every card links to its filtered view in the admin */}
+      {/* Stats grid */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={ShoppingBag}
           label={t("stat_orders_total")}
           value={String(stats.ordersTotal)}
           accent={false}
-          href="/admin/orders"
-          locale={locale}
         />
         <StatCard
           icon={ShoppingBag}
-          label={t("stat_orders_active")}
-          value={String(stats.ordersActive)}
-          accent={stats.ordersActive > 0}
-          href="/admin/orders?status=active"
-          locale={locale}
-        />
-        <StatCard
-          icon={ShoppingBag}
-          label={t("stat_orders_delivered")}
-          value={String(stats.ordersDelivered)}
-          href="/admin/orders?status=delivered"
-          locale={locale}
+          label={t("stat_orders_pending")}
+          value={String(stats.ordersPending)}
+          accent={stats.ordersPending > 0}
         />
         <StatCard
           icon={TrendingUp}
           label={t("stat_revenue_30d")}
           value={<Price value={stats.revenueLast30} size="lg" accent={false} />}
-          href="/admin/orders"
-          locale={locale}
         />
         <StatCard
           icon={Wallet}
           label={t("stat_revenue_total")}
           value={<Price value={stats.revenueTotal} size="lg" accent={false} />}
-          href="/admin/orders"
-          locale={locale}
         />
         <StatCard
           icon={AlertTriangle}
           label={t("stat_low_stock")}
           value={String(stats.lowStockCount)}
           accent={stats.lowStockCount > 0}
-          href="/admin/products?status=low_stock"
-          locale={locale}
         />
         <StatCard
           icon={Mail}
           label={t("stat_messages_new")}
           value={String(stats.newMessages)}
           accent={stats.newMessages > 0}
-          href="/admin/messages"
-          locale={locale}
         />
         <StatCard
           icon={Package}
           label={t("stat_products_active")}
           value={String(stats.productsActive)}
-          href="/admin/products"
-          locale={locale}
         />
         <StatCard
           icon={Users}
           label={t("stat_customers")}
           value={String(stats.customersCount)}
-          href="/admin/customers"
-          locale={locale}
         />
       </div>
 
@@ -283,20 +260,19 @@ function StatCard({
   label,
   value,
   accent = false,
-  href,
-  locale,
 }: {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   value: React.ReactNode;
   accent?: boolean;
-  /** When provided, the card becomes a clickable link to the matching
-   * filtered view. Without it, the card renders as a static div. */
-  href?: string;
-  locale?: string;
 }) {
-  const body = (
-    <>
+  return (
+    <div
+      className={cn(
+        "rounded-md border bg-surface p-5",
+        accent ? "border-primary/40" : "border-border",
+      )}
+    >
       <div
         className={cn(
           "mb-3 grid size-9 place-items-center rounded-sm border",
@@ -307,25 +283,12 @@ function StatCard({
       >
         <Icon className="size-4" />
       </div>
-      <div className="text-xs text-muted">{label}</div>
+      <div className="text-xs text-muted">
+        {label}
+      </div>
       <div className="mt-1 text-2xl font-bold tracking-tight">{value}</div>
-    </>
+    </div>
   );
-
-  const cardClasses = cn(
-    "block rounded-md border bg-surface p-5 transition-colors",
-    accent ? "border-primary/40" : "border-border",
-    href ? "cursor-pointer hover:border-primary/40 hover:bg-surface-elevated" : "",
-  );
-
-  if (href && locale) {
-    return (
-      <Link href={href as "/admin/orders"} locale={locale} className={cardClasses}>
-        {body}
-      </Link>
-    );
-  }
-  return <div className={cardClasses}>{body}</div>;
 }
 
 function Section({
