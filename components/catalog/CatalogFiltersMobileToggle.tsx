@@ -49,7 +49,7 @@ export function CatalogFiltersMobileToggle({
       <div
         id="catalog-filters-panel"
         className={cn(
-          "mt-3 lg:mt-0 lg:!block",
+          "mt-3 w-full min-w-0 lg:mt-0 lg:!block",
           open ? "block" : "hidden",
         )}
       >

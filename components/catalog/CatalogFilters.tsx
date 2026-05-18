@@ -147,7 +147,7 @@ export function CatalogFilters({
   return (
     <form
       onSubmit={onSubmit}
-      className="sticky top-32 flex flex-col gap-5 rounded-md border border-border bg-surface p-5"
+      className="flex w-full min-w-0 max-w-full flex-col gap-5 overflow-hidden rounded-md border border-border bg-surface p-4 lg:sticky lg:top-32 lg:p-5"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-semibold text-foreground">
@@ -350,23 +350,23 @@ export function CatalogFilters({
       ) : null}
 
       <FilterGroup icon={Wallet} title={labels.priceRange}>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 items-center gap-2">
           <Input
             type="number"
             inputMode="decimal"
             placeholder={labels.from}
             value={minPrice}
             onChange={(e) => setMinPrice(e.target.value)}
-            className=""
+            className="min-w-0 flex-1"
           />
-          <span className="text-muted">–</span>
+          <span className="shrink-0 text-muted">–</span>
           <Input
             type="number"
             inputMode="decimal"
             placeholder={labels.to}
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
-            className=""
+            className="min-w-0 flex-1"
           />
         </div>
       </FilterGroup>

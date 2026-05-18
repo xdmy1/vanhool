@@ -139,7 +139,7 @@ export default async function CatalogPage({
       <Container className="py-10">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
           {/* Sidebar filters — collapsed behind a toggle below lg */}
-          <aside>
+          <aside className="min-w-0">
             <CatalogFiltersMobileToggle
               label={tCat("filters")}
               activeCount={activeFilterCount}
