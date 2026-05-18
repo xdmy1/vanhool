@@ -3,6 +3,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 
 import { Container } from "@/components/layout/Container";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
+import { CatalogFiltersMobileToggle } from "@/components/catalog/CatalogFiltersMobileToggle";
 import { CatalogSort } from "@/components/catalog/CatalogSort";
 import { Pagination } from "@/components/catalog/Pagination";
 import { ProductCard } from "@/components/catalog/ProductCard";
@@ -83,6 +84,16 @@ export default async function CatalogPage({
   const loc = locale as Locale;
   const filters = parseFilters(sp);
 
+  // Number of filters currently constraining the result — drives the mobile
+  // toggle badge. Search query itself doesn't count (separate UI input).
+  const activeFilterCount =
+    (filters.categorySlugs?.length ?? 0) +
+    (filters.vehicleMakeSlugs?.length ?? 0) +
+    (filters.minPrice != null ? 1 : 0) +
+    (filters.maxPrice != null ? 1 : 0) +
+    (filters.inStock ? 1 : 0) +
+    (filters.featured ? 1 : 0);
+
   const [categoryTree, vehicleMakes, result, tNav, tCat, tProduct, eurRate] =
     await Promise.all([
       getCategoryTree(loc),
@@ -127,25 +138,30 @@ export default async function CatalogPage({
 
       <Container className="py-10">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          {/* Sidebar filters */}
-          <aside className="lg:block">
-            <CatalogFilters
-              categoryTree={categoryTree}
-              vehicleMakes={vehicleMakes}
-              labels={{
-                filters: tCat("filters"),
-                apply: tCat("apply"),
-                reset: tCat("reset"),
-                category: tCat("category"),
-                vehicleMake: tCat("vehicle_make"),
-                priceRange: tCat("price_range"),
-                from: tCat("price_from"),
-                to: tCat("price_to"),
-                inStock: tCat("in_stock_only"),
-                featured: tCat("featured_only"),
-                searchHint: tCat("search_hint"),
-              }}
-            />
+          {/* Sidebar filters — collapsed behind a toggle below lg */}
+          <aside>
+            <CatalogFiltersMobileToggle
+              label={tCat("filters")}
+              activeCount={activeFilterCount}
+            >
+              <CatalogFilters
+                categoryTree={categoryTree}
+                vehicleMakes={vehicleMakes}
+                labels={{
+                  filters: tCat("filters"),
+                  apply: tCat("apply"),
+                  reset: tCat("reset"),
+                  category: tCat("category"),
+                  vehicleMake: tCat("vehicle_make"),
+                  priceRange: tCat("price_range"),
+                  from: tCat("price_from"),
+                  to: tCat("price_to"),
+                  inStock: tCat("in_stock_only"),
+                  featured: tCat("featured_only"),
+                  searchHint: tCat("search_hint"),
+                }}
+              />
+            </CatalogFiltersMobileToggle>
           </aside>
 
           <div className="min-w-0">
