@@ -13,7 +13,10 @@ export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 const LOGO_W_OVER_H = 694 / 297;
-const LOGO_WIDTH = 120; // < 180 × 0.7 → leaves padding for iOS rounded mask
+// iOS only rounds the corners (≈18% radius), not a circular crop, so we can
+// push the logo wider than on Android — 150/180 ≈ 83% leaves enough margin
+// for the rounded-rect mask without losing strokes on the "I" leg.
+const LOGO_WIDTH = 150;
 const LOGO_HEIGHT = Math.round(LOGO_WIDTH / LOGO_W_OVER_H);
 
 export default function AppleIcon() {

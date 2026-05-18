@@ -14,7 +14,13 @@ export const contentType = "image/png";
 // width is sized to ~62% of the canvas so the logo survives Android's
 // adaptive-icon safe-zone crop (~80% inner circle) when added to home.
 const LOGO_W_OVER_H = 694 / 297;
-const LOGO_WIDTH = 160; // < 256 × 0.7 → fits inside Android safe zone
+// Pushed up against Android's adaptive-icon safe circle (~80% of canvas).
+// Math: a wide logo (W × H) centred inside a circle of diameter D survives
+// the mask if W² + H² ≤ D². With H = W / 2.337, D = 0.8 × 256 = 204:
+//   W² × 1.183 ≤ 41616  →  W ≤ 187
+// So 190 is the max practical width — still letterbox-clipped on the most
+// aggressive launchers, but visibly large on every common one.
+const LOGO_WIDTH = 190;
 const LOGO_HEIGHT = Math.round(LOGO_WIDTH / LOGO_W_OVER_H);
 
 export default function Icon() {
