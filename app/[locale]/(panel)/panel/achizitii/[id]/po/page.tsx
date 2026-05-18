@@ -25,7 +25,7 @@ export default async function POPrintPage({
   const purchase = await getPurchase(id);
   if (!purchase) notFound();
   const auto = sp.auto === "1";
-  const { company } = await getCompanyAndBank();
+  const { company, banks } = await getCompanyAndBank();
 
   // Fetch supplier full info (we only have name in the purchase detail).
   const supabase = await createClient();
@@ -51,13 +51,32 @@ export default async function POPrintPage({
       <header className="mb-6 flex items-start justify-between">
         <div className="flex items-start gap-3">
           <Logo className="h-12 w-auto text-black" />
-          <div>
+          <div className="text-[11px] leading-tight">
             <div className="text-xl font-bold">{company.name}</div>
             <div className="text-xs text-gray-700">{company.legal_name}</div>
-            <div className="mt-1 text-[11px]">{company.address}</div>
-            <div className="text-[11px]">Tel: {company.phone}</div>
-            <div className="text-[11px]">Email: {company.email}</div>
-            <div className="text-[11px]">VAT: {company.vat_number}</div>
+            <div className="mt-1">{company.address}</div>
+            <div className="mt-1">Tel: {company.phone}</div>
+            <div>Email: {company.email}</div>
+            {company.website ? <div>Web: {company.website}</div> : null}
+            <div className="mt-1">
+              IDNO: <span className="font-mono">{company.idno}</span>
+            </div>
+            {company.vat_registration_number ? (
+              <div>
+                TVA: <span className="font-mono">{company.vat_registration_number}</span>
+              </div>
+            ) : null}
+            {banks.length > 0 ? (
+              <div className="mt-2 border-t border-gray-300 pt-1">
+                {banks.map((b) => (
+                  <div key={b.currency} className="font-mono">
+                    {b.currency}: {b.iban}
+                  </div>
+                ))}
+                <div className="font-mono">SWIFT: {banks[0]?.swift ?? ""}</div>
+                <div>{banks[0]?.bank_name ?? ""}</div>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="text-right text-xs">
@@ -147,6 +166,9 @@ export default async function POPrintPage({
           {t("po_print_orderer")}
         </div>
         <div className="mt-1 font-semibold">{company.legal_name}</div>
+        {company.administrator ? (
+          <div className="text-[10px] text-gray-700">{company.administrator}</div>
+        ) : null}
       </section>
 
       <footer className="no-print mt-10 flex justify-center">

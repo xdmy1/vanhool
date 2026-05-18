@@ -24,7 +24,7 @@ export default async function InvoicePrintPage({
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
   const auto = sp.auto === "1";
-  const { company, bank } = await getCompanyAndBank();
+  const { company, banks } = await getCompanyAndBank();
 
   return (
     <>
@@ -32,7 +32,7 @@ export default async function InvoicePrintPage({
       <InvoicePrintContent
         invoice={invoice}
         company={company}
-        bank={bank}
+        banks={banks}
         locale={locale}
         labels={{
           proformaTitle: t("invoice_print_proforma_title"),
@@ -44,6 +44,10 @@ export default async function InvoicePrintPage({
           billedBy: t("invoice_print_billed_by"),
           billedTo: t("invoice_print_billed_to"),
           vat: t("invoice_print_vat"),
+          idno: t("invoice_print_idno"),
+          vatReg: t("invoice_print_vat_reg"),
+          administrator: t("invoice_print_administrator"),
+          website: t("invoice_print_website"),
           email: t("invoice_print_email"),
           phone: t("invoice_print_phone"),
           itemHeader: t("invoice_print_col_item"),
@@ -63,6 +67,7 @@ export default async function InvoicePrintPage({
           bankIban: t("invoice_print_bank_iban"),
           bankSwift: t("invoice_print_bank_swift"),
           bankName: t("invoice_print_bank_name"),
+          bankCurrency: t("invoice_print_bank_currency"),
           notesLabel: t("delivery_notes_label"),
           linkedProforma: t("invoice_print_linked_proforma"),
           linkedInvoice: t("invoice_print_linked_invoice"),

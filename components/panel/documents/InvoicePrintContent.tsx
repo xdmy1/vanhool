@@ -1,6 +1,10 @@
 import { DocumentHeader } from "@/components/panel/documents/DocumentHeader";
 
-import type { BankInfo, CompanyInfo } from "@/lib/panel/settings/company";
+import {
+  type BankAccount,
+  type CompanyInfo,
+  pickBankForCurrency,
+} from "@/lib/panel/settings/company";
 import type {
   CustomerSnapshot,
   InvoiceDetail,
@@ -17,6 +21,10 @@ type Labels = {
   billedBy: string;
   billedTo: string;
   vat: string;
+  idno: string;
+  vatReg: string;
+  administrator: string;
+  website: string;
   email: string;
   phone: string;
   itemHeader: string;
@@ -36,6 +44,7 @@ type Labels = {
   bankIban: string;
   bankSwift: string;
   bankName: string;
+  bankCurrency: string;
   notesLabel: string;
   linkedProforma: string;
   linkedInvoice: string;
@@ -63,13 +72,13 @@ function fmtMoney(v: number, currency: string): string {
 export function InvoicePrintContent({
   invoice,
   company,
-  bank,
+  banks,
   locale,
   labels,
 }: {
   invoice: InvoiceDetail;
   company: CompanyInfo;
-  bank: BankInfo;
+  banks: BankAccount[];
   locale: string;
   labels: Labels;
 }) {
@@ -80,6 +89,7 @@ export function InvoicePrintContent({
   const number = `${invoice.series ?? ""}${invoice.number ?? "—"}`;
   const totalFmt = fmtMoney(invoice.total, invoice.currency);
   const isPaid = invoice.status === "paid";
+  const bank = pickBankForCurrency(banks, invoice.currency);
 
   return (
     <main className="doc-sheet mx-auto max-w-[210mm] p-8">
@@ -107,14 +117,29 @@ export function InvoicePrintContent({
           <div className="text-xs">{company.legal_name}</div>
           <div className="mt-1 text-xs">{company.address}</div>
           <div className="mt-1 text-xs">
-            {labels.vat}: <span className="font-mono">{company.vat_number}</span>
+            {labels.idno}: <span className="font-mono">{company.idno}</span>
           </div>
-          <div className="text-xs">
+          {company.vat_registration_number ? (
+            <div className="text-xs">
+              {labels.vatReg}: <span className="font-mono">{company.vat_registration_number}</span>
+            </div>
+          ) : null}
+          {company.administrator ? (
+            <div className="mt-1 text-xs">
+              {labels.administrator}: {company.administrator}
+            </div>
+          ) : null}
+          <div className="mt-1 text-xs">
             {labels.email}: {company.email}
           </div>
           <div className="text-xs">
             {labels.phone}: {company.phone}
           </div>
+          {company.website ? (
+            <div className="text-xs">
+              {labels.website}: {company.website}
+            </div>
+          ) : null}
         </div>
         <div className="doc-box">
           <div className="mb-2 text-sm font-bold text-[#5b4fc4]">{labels.billedTo}</div>
@@ -209,18 +234,22 @@ export function InvoicePrintContent({
       <section className="grid grid-cols-2 gap-4">
         <div className="doc-box">
           <div className="mb-2 text-sm font-bold text-[#5b4fc4]">{labels.bankDetailsTitle}</div>
-          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-            <div className="text-gray-600">{labels.bankAccountName}</div>
-            <div className="font-medium">{bank.account_name}</div>
-            <div className="text-gray-600">{labels.bankAccountNumber}</div>
-            <div className="font-mono">{bank.account_number}</div>
-            <div className="text-gray-600">{labels.bankIban}</div>
-            <div className="font-mono">{bank.iban}</div>
-            <div className="text-gray-600">{labels.bankSwift}</div>
-            <div className="font-mono">{bank.swift}</div>
-            <div className="text-gray-600">{labels.bankName}</div>
-            <div>{bank.name}</div>
-          </div>
+          {bank ? (
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+              <div className="text-gray-600">{labels.bankAccountName}</div>
+              <div className="font-medium">{bank.account_holder}</div>
+              <div className="text-gray-600">{labels.bankCurrency}</div>
+              <div className="font-mono">{bank.currency}</div>
+              <div className="text-gray-600">{labels.bankIban}</div>
+              <div className="font-mono">{bank.iban}</div>
+              <div className="text-gray-600">{labels.bankSwift}</div>
+              <div className="font-mono">{bank.swift}</div>
+              <div className="text-gray-600">{labels.bankName}</div>
+              <div>{bank.bank_name}</div>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500">—</div>
+          )}
         </div>
         <div className="flex flex-col items-end justify-start gap-2 text-sm">
           <div className="w-full max-w-[260px]">

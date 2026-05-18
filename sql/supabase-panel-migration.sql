@@ -395,18 +395,39 @@ insert into public.panel_settings (key, value) values
   ('delivery_note.series',       to_jsonb('FL'::text)),
   ('delivery_note.next_number',  to_jsonb(1)),
   -- Datele firmei și banca pentru documente printabile (proformă, factură, PO).
-  -- Editabile din /panel/setari ulterior.
-  ('company.name',          to_jsonb('Inter-Bus Parts'::text)),
-  ('company.legal_name',    to_jsonb('Interbus SRL'::text)),
-  ('company.address',       to_jsonb('s. Sireți, r. Strășeni, MD-3731, Moldova'::text)),
-  ('company.vat_number',    to_jsonb('MD-8601124'::text)),
-  ('company.email',         to_jsonb('adrian@inter-bus.md'::text)),
-  ('company.phone',         to_jsonb('+373 680 59 005'::text)),
-  ('bank.account_name',     to_jsonb('Interbus SRL'::text)),
-  ('bank.account_number',   to_jsonb('22513845876'::text)),
-  ('bank.iban',             to_jsonb('MD33AG000000022513845876'::text)),
-  ('bank.swift',            to_jsonb('AGRNMD2X'::text)),
-  ('bank.name',             to_jsonb('BC MAIB S.A., suc. Alecu Russo'::text))
+  -- Sursa: documentul oficial „Date oficiale ale companiei pentru înregistrarea
+  -- partenerilor". Editabile din /panel/setari sau direct în panel_settings.
+  ('company.name',                    to_jsonb('Inter Bus Parts'::text)),
+  ('company.legal_name',              to_jsonb('Inter Bus Parts S.R.L.'::text)),
+  ('company.full_legal_name',         to_jsonb($$Societatea cu Răspundere Limitată „Inter Bus Parts"$$::text)),
+  ('company.legal_form',              to_jsonb('SRL'::text)),
+  ('company.administrator',           to_jsonb('Adrian Oborocean'::text)),
+  ('company.address',                 to_jsonb('MD-2071, str. Liviu Deleanu 10/19, ap. 28, mun. Chișinău, Republica Moldova'::text)),
+  ('company.country',                 to_jsonb('Republica Moldova'::text)),
+  ('company.idno',                    to_jsonb('1026023029685'::text)),
+  ('company.vat_number',              to_jsonb('1026023029685'::text)),
+  ('company.vat_registration_number', to_jsonb('0510688'::text)),
+  ('company.registration_date',       to_jsonb('2026-04-30'::text)),
+  ('company.email',                   to_jsonb('adrian@inter-bus.md'::text)),
+  ('company.phone',                   to_jsonb('+373 68 059 005'::text)),
+  ('company.website',                 to_jsonb('www.inter-bus.md'::text)),
+  -- Banca: două conturi maib (MDL + EUR)
+  ('bank.mdl.iban',                   to_jsonb('MD44AG000000022517532551'::text)),
+  ('bank.mdl.account_holder',         to_jsonb('Inter Bus Parts S.R.L.'::text)),
+  ('bank.mdl.account_number',         to_jsonb('22517532551'::text)),
+  ('bank.mdl.bank_name',              to_jsonb('maib (BC MAIB S.A.)'::text)),
+  ('bank.mdl.swift',                  to_jsonb('AGRNMD2X'::text)),
+  ('bank.eur.iban',                   to_jsonb('MD40AG000000022517532623'::text)),
+  ('bank.eur.account_holder',         to_jsonb('Inter Bus Parts S.R.L.'::text)),
+  ('bank.eur.account_number',         to_jsonb('22517532623'::text)),
+  ('bank.eur.bank_name',              to_jsonb('maib (BC MAIB S.A.)'::text)),
+  ('bank.eur.swift',                  to_jsonb('AGRNMD2X'::text)),
+  -- Legacy single-bank keys (default to MDL pentru compatibilitate cu cod vechi)
+  ('bank.account_name',               to_jsonb('Inter Bus Parts S.R.L.'::text)),
+  ('bank.account_number',             to_jsonb('22517532551'::text)),
+  ('bank.iban',                       to_jsonb('MD44AG000000022517532551'::text)),
+  ('bank.swift',                      to_jsonb('AGRNMD2X'::text)),
+  ('bank.name',                       to_jsonb('maib (BC MAIB S.A.)'::text))
 on conflict (key) do nothing;
 
 -- 11. RLS pe tabelele noi ----------------------------------------------------
