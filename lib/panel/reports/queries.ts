@@ -26,8 +26,11 @@ export type SalesByDayRow = {
   conta2: number;
 };
 
-export async function reportSalesByDay(range: DateRange): Promise<SalesByDayRow[]> {
-  const rows = await fetchOrdersInRange({ range });
+export async function reportSalesByDay(
+  range: DateRange,
+  scope?: AccountScope,
+): Promise<SalesByDayRow[]> {
+  const rows = await fetchOrdersInRange({ range, scope });
   const map = new Map<string, SalesByDayRow>();
   for (const o of rows) {
     const day = String(o.created_at ?? "").slice(0, 10);

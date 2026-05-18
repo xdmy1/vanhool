@@ -9,6 +9,8 @@ import {
   reportMargin,
   reportStockTurnover,
 } from "@/lib/panel/reports/queries";
+import type { AccountScope } from "@/lib/panel/scope";
+import { cn } from "@/lib/utils/cn";
 
 export default async function PanelRapoartePage({
   params,
@@ -31,24 +33,71 @@ export default async function PanelRapoartePage({
   const from = typeof sp.from === "string" ? sp.from : thirtyAgo;
   const to = typeof sp.to === "string" ? sp.to : today;
 
+  const rawScope = typeof sp.scope === "string" ? sp.scope : "all";
+  const scopeFilter: AccountScope | undefined =
+    rawScope === "conta1" ? "conta1" : rawScope === "conta2" ? "conta2" : undefined;
+  const scope = scopeFilter ?? "all";
+
   const [salesByDay, topProducts, topClients, margin, turnover] = await Promise.all([
-    reportSalesByDay({ from, to }),
-    reportTopProducts({ from, to }, undefined, 15),
-    reportTopClients({ from, to }, undefined, 15),
-    reportMargin({ from, to }, undefined, 20),
+    reportSalesByDay({ from, to }, scopeFilter),
+    reportTopProducts({ from, to }, scopeFilter, 15),
+    reportTopClients({ from, to }, scopeFilter, 15),
+    reportMargin({ from, to }, scopeFilter, 20),
     reportStockTurnover(20),
   ]);
+
+  const scopes: Array<{ id: "all" | "conta1" | "conta2"; label: string }> = [
+    { id: "all", label: t("reports_controls_book_all") },
+    { id: "conta1", label: t("conta1") },
+    { id: "conta2", label: t("conta2") },
+  ];
+
+  function tabHref(id: string) {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "scope" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (id !== "all") next.set("scope", id);
+    const qs = next.toString();
+    return qs ? `?${qs}` : "?";
+  }
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <AdminPageHeader
         title={t("reports_title")}
-        subtitle={t("reports_subtitle", { from: thirtyAgo, to: today })}
+        subtitle={t("reports_subtitle", { from, to })}
       />
+
+      <div className="mt-6 flex flex-wrap items-center gap-1.5">
+        <span className="text-xs uppercase tracking-wide text-muted">
+          {t("reports_controls_book")}:
+        </span>
+        {scopes.map((s) => (
+          <a
+            key={s.id}
+            href={tabHref(s.id)}
+            className={cn(
+              "inline-flex h-9 items-center rounded-md border px-3 text-xs transition-colors",
+              scope === s.id
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-surface hover:border-primary/40",
+            )}
+          >
+            {s.label}
+          </a>
+        ))}
+      </div>
 
       <section className="mt-6 space-y-4">
         <h2 className="text-base font-semibold">{t("reports_section_sales")}</h2>
-        <ReportControls kind="sales_by_day" defaultFrom={from} defaultTo={to} />
+        <ReportControls
+          kind="sales_by_day"
+          defaultFrom={from}
+          defaultTo={to}
+          defaultScope={scope}
+        />
         <Table
           headers={[
             t("reports_col_day"),
@@ -70,7 +119,12 @@ export default async function PanelRapoartePage({
 
       <section className="mt-10 space-y-4">
         <h2 className="text-base font-semibold">{t("reports_section_top_products")}</h2>
-        <ReportControls kind="top_products" defaultFrom={from} defaultTo={to} />
+        <ReportControls
+          kind="top_products"
+          defaultFrom={from}
+          defaultTo={to}
+          defaultScope={scope}
+        />
         <Table
           headers={[
             t("reports_col_code"),
@@ -90,7 +144,12 @@ export default async function PanelRapoartePage({
 
       <section className="mt-10 space-y-4">
         <h2 className="text-base font-semibold">{t("reports_section_top_clients")}</h2>
-        <ReportControls kind="top_clients" defaultFrom={from} defaultTo={to} />
+        <ReportControls
+          kind="top_clients"
+          defaultFrom={from}
+          defaultTo={to}
+          defaultScope={scope}
+        />
         <Table
           headers={[
             t("reports_col_client"),
@@ -111,7 +170,12 @@ export default async function PanelRapoartePage({
       <section className="mt-10 space-y-4">
         <h2 className="text-base font-semibold">{t("reports_section_margin")}</h2>
         <p className="text-xs text-muted">{t("reports_section_margin_help")}</p>
-        <ReportControls kind="margin" defaultFrom={from} defaultTo={to} />
+        <ReportControls
+          kind="margin"
+          defaultFrom={from}
+          defaultTo={to}
+          defaultScope={scope}
+        />
         <Table
           headers={[
             t("reports_col_code"),

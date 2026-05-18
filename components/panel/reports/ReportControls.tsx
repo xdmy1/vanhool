@@ -16,6 +16,7 @@ type Props = {
   kind: ReportKind;
   defaultFrom?: string;
   defaultTo?: string;
+  defaultScope?: "all" | "conta1" | "conta2";
   showScope?: boolean;
   label?: string;
 };
@@ -24,6 +25,7 @@ export function ReportControls({
   kind,
   defaultFrom,
   defaultTo,
+  defaultScope = "all",
   showScope = true,
   label,
 }: Props) {
@@ -35,7 +37,7 @@ export function ReportControls({
 
   const [from, setFrom] = useState(defaultFrom ?? thirtyAgo);
   const [to, setTo] = useState(defaultTo ?? today);
-  const [scope, setScope] = useState<"all" | "conta1" | "conta2">("all");
+  const [scope, setScope] = useState<"all" | "conta1" | "conta2">(defaultScope);
   const [pending, startTransition] = useTransition();
 
   const kindLabel = label ?? t(`reports_kind_${kind}` as "reports_kind_sales_by_day");

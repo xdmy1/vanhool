@@ -28,6 +28,7 @@ export type InvoiceRow = {
 
 export async function listInvoices(args: {
   type?: InvoiceListType;
+  scope?: "conta1" | "conta2";
   q?: string;
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
@@ -39,7 +40,7 @@ export async function listInvoices(args: {
     .order("issued_date", { ascending: false })
     .limit(300);
   if (args.type) query = query.eq("type", args.type);
-  else query = query.eq("account_scope", "conta1");
+  if (args.scope) query = query.eq("account_scope", args.scope);
   if (args.q) {
     const q = `%${args.q.replace(/[%_]/g, "")}%`;
     query = query.or(`number.ilike.${q},refrens_invoice_id.ilike.${q}`);

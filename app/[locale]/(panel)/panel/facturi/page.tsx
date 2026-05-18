@@ -29,7 +29,7 @@ export default async function PanelFacturiPage({
   setRequestLocale(locale);
 
   const q = typeof sp.q === "string" ? sp.q : undefined;
-  const rows = await listInvoices({ q, type: "invoice" });
+  const rows = await listInvoices({ q, type: "invoice", scope: "conta1" });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel = (s: string) =>
     t(`facturi_status_${s}` as "facturi_status_draft");
