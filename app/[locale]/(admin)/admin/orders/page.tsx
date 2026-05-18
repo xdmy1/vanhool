@@ -11,6 +11,7 @@ import type { OrderStatus } from "@/lib/admin/orders/constants";
 
 const STATUS_VALUES = [
   "all",
+  "active",
   "pending",
   "confirmed",
   "processing",
@@ -74,6 +75,7 @@ export default async function AdminOrdersPage({
           paramName="status"
           options={[
             { value: "all", label: t("orders_filter_all") },
+            { value: "active", label: t("orders_filter_active") },
             { value: "pending", label: tAuth("dashboard_status_pending") },
             { value: "confirmed", label: tAuth("dashboard_status_confirmed") },
             { value: "processing", label: tAuth("dashboard_status_processing") },
