@@ -145,9 +145,26 @@ export async function createInvoiceForOrder(
   const rawItems = (Array.isArray(o.items) ? o.items : []) as OrderItemRow[];
   if (rawItems.length === 0) return { ok: false, reason: "no_items" };
 
+  // VAT handling — prices stored on the cart / order are gross (TVA already
+  // included, as displayed on the site). Refrens needs the net rate + a tax
+  // entry so the printed invoice breaks out the TVA line and the total
+  // reconciles back to the gross amount the customer actually paid.
+  //
+  //   gross = net * (1 + vatRate/100)   →   net = gross / (1 + vatRate/100)
+  //
+  // Standard MD rate is 20% (TVA), override via REFRENS_VAT_RATE if needed
+  // (e.g. 8% reduced rate for select categories, or 0 for export).
+  const vatRate = Number(process.env.REFRENS_VAT_RATE ?? 20);
+  const vatDivisor = 1 + vatRate / 100;
+
   const lineItems = rawItems.map((i) => {
     const qty = Number(i.quantity ?? 1);
-    const rate = Number(i.price ?? 0);
+    const grossRate = Number(i.price ?? 0);
+    // 4 decimals keep qty × netRate × (1 + vat) reconciling to the gross
+    // total even on awkward prices like 121 / 1.2 = 100.8333…
+    const netRate = vatRate > 0
+      ? Number((grossRate / vatDivisor).toFixed(4))
+      : grossRate;
     const namePieces = [i.brand?.trim(), i.name?.trim()].filter(Boolean).join(" — ");
     const fullName = i.partCode
       ? `${namePieces || i.name} [${i.partCode}]`
@@ -155,8 +172,11 @@ export async function createInvoiceForOrder(
     return {
       name: fullName,
       quantity: qty,
-      rate,
-      amount: Number((qty * rate).toFixed(2)),
+      rate: netRate,
+      amount: Number((qty * netRate).toFixed(2)),
+      ...(vatRate > 0
+        ? { itemTaxes: [{ taxName: "TVA", taxRate: vatRate }] }
+        : {}),
     };
   });
 
