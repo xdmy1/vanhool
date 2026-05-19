@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { AutoPrint, PrintButton } from "@/components/panel/delivery/AutoPrint";
+import { DownloadPDFButton } from "@/components/panel/documents/AutoPrintGeneric";
 import { Logo } from "@/components/layout/Logo";
 import { getDeliveryNote } from "@/lib/panel/delivery_notes/queries";
 
@@ -136,11 +137,15 @@ export default async function DeliveryNotePrintPage({
         </div>
       </section>
 
-      <footer className="no-print mt-10 flex flex-col items-center gap-2">
-        <PrintButton />
-        <p className="text-xs text-gray-500">
-          {t("delivery_print_hint")}
-        </p>
+      <footer className="no-print mt-10 flex flex-col items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <PrintButton />
+          <DownloadPDFButton
+            filename={`Fisa-livrare-${note.series ?? ""}${note.number ?? id.slice(0, 8)}`}
+            label={t("action_download_pdf")}
+          />
+        </div>
+        <p className="text-xs text-gray-500">{t("delivery_print_hint")}</p>
       </footer>
     </main>
   );

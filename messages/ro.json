@@ -840,6 +840,7 @@
     "action_confirm": "Confirmă",
     "action_print": "Printează",
     "action_download_csv": "Descarcă CSV",
+    "action_download_pdf": "Descarcă PDF",
     "action_generating": "Generez...",
     "action_generate_code": "Generează cod intern",
     "loading": "Se încarcă...",

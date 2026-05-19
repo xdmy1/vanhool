@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { Logo } from "@/components/layout/Logo";
 import {
   AutoPrintGeneric,
+  DownloadPDFButton,
   PrintButton,
 } from "@/components/panel/documents/AutoPrintGeneric";
 import { getPurchase } from "@/lib/panel/purchases/queries";
@@ -45,7 +46,11 @@ export default async function POPrintPage({
 
   return (
     <main className="doc-sheet mx-auto max-w-[210mm] p-8">
-      <AutoPrintGeneric auto={auto} />
+      <AutoPrintGeneric
+        auto={auto}
+        autoDownload={sp.download === "1"}
+        filename={`PO-${purchase.po_number ?? id.slice(0, 8)}`}
+      />
       <div className="doc-watermark" aria-hidden />
 
       <header className="mb-6 flex items-start justify-between">
@@ -171,8 +176,12 @@ export default async function POPrintPage({
         ) : null}
       </section>
 
-      <footer className="no-print mt-10 flex justify-center">
+      <footer className="no-print mt-10 flex flex-wrap justify-center gap-3">
         <PrintButton label={t("po_action_print")} />
+        <DownloadPDFButton
+          filename={`PO-${purchase.po_number ?? id.slice(0, 8)}`}
+          label={t("action_download_pdf")}
+        />
       </footer>
     </main>
   );

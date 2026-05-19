@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { PanelSidebar } from "@/components/panel/PanelSidebar";
@@ -5,6 +6,18 @@ import { PanelTopbar } from "@/components/panel/PanelTopbar";
 import { requirePanelUser } from "@/lib/panel/auth";
 import { getActiveBook } from "@/lib/panel/scope";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Standalone document routes (print preview / printable PO). These bypass
+ * the panel chrome (sidebar + topbar) so the page renders edge-to-edge —
+ * matches the @page margin: 0 rule in the print stylesheet and avoids the
+ * watermarked panel layout being captured by html2canvas during PDF export.
+ */
+function isStandaloneDocRoute(pathname: string): boolean {
+  const segments = pathname.split("?")[0].split("/").filter(Boolean);
+  const last = segments[segments.length - 1];
+  return last === "print" || last === "po";
+}
 
 export default async function PanelLayout({
   children,
@@ -16,7 +29,17 @@ export default async function PanelLayout({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const headerStore = await headers();
+  const pathname = headerStore.get("x-pathname") ?? "";
+  const standalone = isStandaloneDocRoute(pathname);
+
+  // Auth gate runs in both modes; we just skip the chrome on standalone docs.
   const user = await requirePanelUser(locale);
+
+  if (standalone) {
+    return <main className="min-h-dvh bg-background">{children}</main>;
+  }
+
   const scope = await getActiveBook(undefined);
   const supabase = await createClient();
 

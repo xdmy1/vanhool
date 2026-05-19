@@ -840,6 +840,7 @@
     "action_confirm": "Confirm",
     "action_print": "Print",
     "action_download_csv": "Download CSV",
+    "action_download_pdf": "Download PDF",
     "action_generating": "Generating...",
     "action_generate_code": "Generate internal code",
     "loading": "Loading...",

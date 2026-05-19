@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import {
   AutoPrintGeneric,
+  DownloadPDFButton,
   PrintButton,
 } from "@/components/panel/documents/AutoPrintGeneric";
 import { InvoicePrintContent } from "@/components/panel/documents/InvoicePrintContent";
@@ -24,11 +25,13 @@ export default async function InvoicePrintPage({
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
   const auto = sp.auto === "1";
+  const autoDownload = sp.download === "1";
   const { company, banks } = await getCompanyAndBank();
+  const filename = `Invoice-${invoice.series ?? ""}${invoice.number ?? id.slice(0, 8)}`;
 
   return (
     <>
-      <AutoPrintGeneric auto={auto} />
+      <AutoPrintGeneric auto={auto} autoDownload={autoDownload} filename={filename} />
       <InvoicePrintContent
         invoice={invoice}
         company={company}
@@ -73,8 +76,9 @@ export default async function InvoicePrintPage({
           linkedInvoice: t("invoice_print_linked_invoice"),
         }}
       />
-      <footer className="no-print mt-6 flex justify-center pb-10">
+      <footer className="no-print mt-6 flex flex-wrap justify-center gap-3 pb-10">
         <PrintButton label={t("action_print")} />
+        <DownloadPDFButton filename={filename} label={t("action_download_pdf")} />
       </footer>
     </>
   );

@@ -840,6 +840,7 @@
     "action_confirm": "Подтвердить",
     "action_print": "Печать",
     "action_download_csv": "Скачать CSV",
+    "action_download_pdf": "Скачать PDF",
     "action_generating": "Генерирую...",
     "action_generate_code": "Сгенерировать внутренний код",
     "loading": "Загрузка...",
