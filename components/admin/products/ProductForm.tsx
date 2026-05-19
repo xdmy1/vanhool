@@ -18,6 +18,7 @@ import {
   type CrossReference,
   type ProductFormValues,
 } from "@/lib/admin/products/actions";
+import { linkPurchaseLineToProduct } from "@/lib/panel/purchases/actions";
 
 import { cn } from "@/lib/utils/cn";
 import {
@@ -141,6 +142,8 @@ export function ProductForm({
   initialVehicleMakeIds,
   locale,
   labels,
+  linkLineId,
+  redirectAfterCreate,
 }: {
   productId?: string;
   initial?: Partial<ProductFormValues>;
@@ -151,6 +154,10 @@ export function ProductForm({
   initialVehicleMakeIds?: string[];
   locale: string;
   labels: Labels;
+  /** When set, the newly-created product is linked back to this purchase line. */
+  linkLineId?: string;
+  /** When set, navigate here after a successful create instead of the product edit page. */
+  redirectAfterCreate?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -334,9 +341,15 @@ export function ProductForm({
       toast.success("✓");
       if (isEdit) {
         router.refresh();
-      } else {
-        router.replace(`/${locale}/admin/products/${res.id}`);
+        return;
       }
+      // When the user arrived via "Adaugă în catalog" on a purchase line,
+      // link the new product back to the line and bounce them to the
+      // purchase detail instead of the product edit page.
+      if (linkLineId && "id" in res) {
+        await linkPurchaseLineToProduct(linkLineId, res.id);
+      }
+      router.replace(redirectAfterCreate ?? `/${locale}/admin/products/${"id" in res ? res.id : ""}`);
     });
   };
 

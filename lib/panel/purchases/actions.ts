@@ -272,6 +272,28 @@ export async function issuePurchaseOrder(
   return { ok: true, po_number: poNumber };
 }
 
+/**
+ * Link a purchase line to a freshly-created product so the next `postPurchase`
+ * call increments the right product's stock instead of auto-creating a new
+ * one. Called from the admin product form after a successful `createProduct`
+ * when the user landed there via `?from_line=`.
+ */
+export async function linkPurchaseLineToProduct(
+  lineId: string,
+  productId: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("purchase_items")
+    .update({ product_id: productId })
+    .eq("id", lineId);
+  if (error) return { ok: false, reason: error.message };
+  revalidatePath("/[locale]/panel/achizitii", "page");
+  return { ok: true };
+}
+
 export async function cancelPurchase(
   purchaseId: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {

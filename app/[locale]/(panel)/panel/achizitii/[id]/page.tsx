@@ -130,24 +130,22 @@ export default async function PanelAchizitieDetailPage({
                   <td className="px-4 py-2">
                     {it.product_id ? (
                       <Link
-                        href={`/panel/produse/${it.product_id}` as "/panel"}
+                        href={`/admin/products/${it.product_id}` as "/admin"}
                         locale={locale}
                         className="inline-flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-success hover:bg-success/20"
                       >
                         <CheckCircle2 className="size-3" />
                         {t("achizitii_line_in_catalog")}
                       </Link>
-                    ) : purchase.status === "draft" ? (
+                    ) : (
                       <Link
-                        href={`/panel/produse/new?from_line=${it.id}` as "/panel"}
+                        href={`/admin/products/new?from_line=${it.id}` as "/admin"}
                         locale={locale}
                         className="inline-flex items-center gap-1 rounded border border-primary px-2 py-0.5 text-[10px] uppercase tracking-wide text-primary hover:bg-primary/10"
                       >
                         <Plus className="size-3" />
                         {t("achizitii_line_add_to_catalog")}
                       </Link>
-                    ) : (
-                      <span className="text-[10px] text-muted">—</span>
                     )}
                   </td>
                 </tr>
