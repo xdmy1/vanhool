@@ -113,12 +113,22 @@ export async function postPurchase(
   const supabase = await createClient();
   const { data: header } = await supabase
     .from("purchases")
-    .select("id, status, supplier_id")
+    .select("id, status, supplier_id, currency, fx_rate")
     .eq("id", purchaseId)
     .maybeSingle();
   if (!header) return { ok: false, reason: "purchase_not_found" };
   if (header.status === "posted") return { ok: true };
   if (header.status === "cancelled") return { ok: false, reason: "purchase_cancelled" };
+
+  // Products are stored in MDL. Convert line costs using the purchase's
+  // explicit fx_rate, else fall back to the fixed reference table
+  // (EUR=20, USD=17). No live FX lookups.
+  const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const currency = (header.currency ?? "MDL").toUpperCase();
+  const toMdl =
+    currency === "MDL"
+      ? 1
+      : (Number(header.fx_rate) || DEFAULT_FX_TO_MDL[currency] || 1);
 
   const { data: items } = await supabase
     .from("purchase_items")
@@ -137,6 +147,8 @@ export async function postPurchase(
   for (const it of items) {
     let productId = it.product_id;
 
+    const costMdl = Number((Number(it.unit_cost) * toMdl).toFixed(2));
+
     if (!productId) {
       // Auto-create a minimal product
       const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
@@ -147,8 +159,8 @@ export async function postPurchase(
           part_code: code,
           name_ro: it.description.slice(0, 200),
           slug,
-          price: Number((it.unit_cost * 1.3).toFixed(2)), // 30% markup default
-          cost_price: it.unit_cost,
+          price: Number((costMdl * 1.3).toFixed(2)), // 30% markup default
+          cost_price: costMdl,
           stock_quantity: 0,
           is_active: false, // owner reviews before publishing
           supplier_id: header.supplier_id,
@@ -189,7 +201,7 @@ export async function postPurchase(
       .from("products")
       .update({
         stock_quantity: newStock,
-        cost_price: Number(it.unit_cost),
+        cost_price: costMdl,
         cross_references: refs as unknown as Json,
       })
       .eq("id", productId);
