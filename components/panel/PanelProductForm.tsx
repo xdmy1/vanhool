@@ -29,7 +29,27 @@ export type ProductPrefill = {
   internal_code: string | null;
   description: string;
   unit_cost: number;
+  currency: string;
+  fx_rate: number | null;
 };
+
+/**
+ * Fixed reference rates used when a purchase doesn't carry an explicit
+ * `fx_rate`. Owner asked for a predictable 20 MDL/EUR — no live rate lookups,
+ * no surprises.
+ */
+const DEFAULT_FX_TO_MDL: Record<string, number> = {
+  MDL: 1,
+  EUR: 20,
+  USD: 17,
+};
+
+function costInMdl(prefill: ProductPrefill): number {
+  const cur = (prefill.currency || "MDL").toUpperCase();
+  if (cur === "MDL") return prefill.unit_cost;
+  const rate = prefill.fx_rate ?? DEFAULT_FX_TO_MDL[cur] ?? 1;
+  return prefill.unit_cost * rate;
+}
 
 type Props = {
   locale: string;
@@ -96,20 +116,23 @@ export function PanelProductForm({
           warranty_months: initial.warranty_months ?? 12,
         }
       : prefill
-        ? {
-            // From purchase line — internal_code wins, fall back to supplier_code.
-            part_code: prefill.internal_code ?? prefill.supplier_code ?? "",
-            supplier_code: prefill.supplier_code ?? "",
-            supplier_id: prefill.supplier_id,
-            name_ro: prefill.description.slice(0, 200),
-            cost_price: prefill.unit_cost,
-            // Suggest 30% markup as starting price — owner can edit.
-            price: Number((prefill.unit_cost * 1.3).toFixed(2)),
-            // Stock stays 0 — postPurchase increments it from the line qty.
-            stock_quantity: 0,
-            // Inactive by default so owner reviews before exposing publicly.
-            is_active: false,
-          }
+        ? (() => {
+            // Purchases can be in MDL/EUR/USD; products are stored in MDL.
+            // Convert at the purchase's fx_rate when set, otherwise fall
+            // back to the fixed 20 MDL/EUR reference rate.
+            const costMdl = Number(costInMdl(prefill).toFixed(2));
+            return {
+              part_code: prefill.internal_code ?? prefill.supplier_code ?? "",
+              supplier_code: prefill.supplier_code ?? "",
+              supplier_id: prefill.supplier_id,
+              name_ro: prefill.description.slice(0, 200),
+              cost_price: costMdl,
+              // Suggest 30% markup as starting price — owner can edit.
+              price: Number((costMdl * 1.3).toFixed(2)),
+              stock_quantity: 0,
+              is_active: false,
+            };
+          })()
         : {}),
   }));
 

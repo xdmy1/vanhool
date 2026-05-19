@@ -89,6 +89,8 @@ export type PurchaseLinePrefill = {
   unit_cost: number;
   quantity: number;
   product_id: string | null;
+  currency: string;
+  fx_rate: number | null;
 };
 
 export async function getPurchaseItemPrefill(
@@ -98,13 +100,19 @@ export async function getPurchaseItemPrefill(
   const { data } = await supabase
     .from("purchase_items")
     .select(
-      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, product_id, purchases(supplier_id, document_number, suppliers(name))",
+      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, product_id, purchases(supplier_id, document_number, currency, fx_rate, suppliers(name))",
     )
     .eq("id", lineId)
     .maybeSingle();
   if (!data) return null;
   const purchase = (data as unknown as {
-    purchases: { supplier_id: string | null; document_number: string | null; suppliers: { name: string } | null } | null;
+    purchases: {
+      supplier_id: string | null;
+      document_number: string | null;
+      currency: string | null;
+      fx_rate: number | null;
+      suppliers: { name: string } | null;
+    } | null;
   }).purchases;
   return {
     lineId: data.id,
@@ -118,6 +126,8 @@ export async function getPurchaseItemPrefill(
     unit_cost: Number(data.unit_cost),
     quantity: Number(data.quantity),
     product_id: data.product_id,
+    currency: purchase?.currency ?? "MDL",
+    fx_rate: purchase?.fx_rate ?? null,
   };
 }
 
