@@ -5,6 +5,7 @@ import { Printer } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
+import { DeleteDeliveryNoteButton } from "@/components/panel/delivery/DeleteDeliveryNoteButton";
 import { getDeliveryNote } from "@/lib/panel/delivery_notes/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -58,6 +59,7 @@ export default async function PanelDeliveryNoteDetail({
                 {t("action_print")}
               </Link>
             </Button>
+            <DeleteDeliveryNoteButton noteId={note.id} locale={locale} />
           </div>
         }
       />
