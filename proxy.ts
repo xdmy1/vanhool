@@ -32,8 +32,15 @@ export async function proxy(request: NextRequest) {
     return intlResponse;
   }
 
-  // 2) Build a response that we'll mutate cookies on
-  const response = NextResponse.next({ request });
+  // 2) Build a response that we'll mutate cookies on. Forward x-pathname on
+  // the *request* headers — RSC's `headers()` reads inbound request headers,
+  // so a `response.headers.set()` would be invisible to server components.
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set("x-pathname", request.nextUrl.pathname);
+
+  const response = NextResponse.next({
+    request: { headers: forwardedHeaders },
+  });
 
   // Forward intl headers/cookies
   intlResponse.cookies.getAll().forEach((cookie) => {
@@ -43,7 +50,7 @@ export async function proxy(request: NextRequest) {
     if (key.toLowerCase() === "set-cookie") return;
     response.headers.set(key, value);
   });
-  // Pass current pathname so server actions/pages can read it via headers().
+  // Also expose pathname on the response for client-side debugging.
   response.headers.set("x-pathname", request.nextUrl.pathname);
 
   // 3) Refresh Supabase session
