@@ -112,7 +112,7 @@ export function InvoicePrintContent({
 
       <section className="mb-6 grid grid-cols-2 gap-3">
         <div className="doc-box">
-          <div className="mb-2 text-sm font-bold text-[#5b4fc4]">{labels.billedBy}</div>
+          <div className="mb-2 text-sm font-bold text-black">{labels.billedBy}</div>
           <div className="font-semibold">{company.name}</div>
           <div className="text-xs">{company.legal_name}</div>
           <div className="mt-1 text-xs">{company.address}</div>
@@ -142,7 +142,7 @@ export function InvoicePrintContent({
           ) : null}
         </div>
         <div className="doc-box">
-          <div className="mb-2 text-sm font-bold text-[#5b4fc4]">{labels.billedTo}</div>
+          <div className="mb-2 text-sm font-bold text-black">{labels.billedTo}</div>
           <div className="font-semibold">{customer.name ?? "—"}</div>
           {customer.address ? <div className="text-xs">{customer.address}</div> : null}
           {customer.idno ? (
@@ -233,7 +233,7 @@ export function InvoicePrintContent({
 
       <section className="grid grid-cols-2 gap-4">
         <div className="doc-box">
-          <div className="mb-2 text-sm font-bold text-[#5b4fc4]">{labels.bankDetailsTitle}</div>
+          <div className="mb-2 text-sm font-bold text-black">{labels.bankDetailsTitle}</div>
           {bank ? (
             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               <div className="text-gray-600">{labels.bankAccountName}</div>

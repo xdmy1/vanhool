@@ -27,7 +27,7 @@ export function DocumentHeader({
   paidBadge,
   company,
 }: Props) {
-  const colorClass = documentType === "proforma" ? "text-[#5b4fc4]" : documentType === "invoice" ? "text-[#5b4fc4]" : "text-black";
+  const colorClass = "text-black";
   return (
     <header className="mb-6 flex items-start justify-between">
       <div className="flex items-start gap-3">

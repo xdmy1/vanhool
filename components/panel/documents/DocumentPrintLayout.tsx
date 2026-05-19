@@ -45,7 +45,7 @@ export function DocumentPrintShell({ children }: { children: React.ReactNode }) 
           vertical-align: top;
         }
         .doc-sheet table.items th {
-          background: #5b4fc4;
+          background: #000;
           color: #fff;
           font-weight: 600;
           font-size: 11px;
@@ -57,7 +57,8 @@ export function DocumentPrintShell({ children }: { children: React.ReactNode }) 
           font-variant-numeric: tabular-nums;
         }
         .doc-sheet .doc-box {
-          background: #efeafd;
+          background: #f4f4f5;
+          border: 1px solid #e4e4e7;
           border-radius: 6px;
           padding: 14px 16px;
           font-size: 12px;
