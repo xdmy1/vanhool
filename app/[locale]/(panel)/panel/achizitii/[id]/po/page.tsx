@@ -57,8 +57,7 @@ export default async function POPrintPage({
         <div className="flex items-start gap-3">
           <Logo className="h-12 w-auto text-black" />
           <div className="text-[11px] leading-tight">
-            <div className="text-xl font-bold">{company.name}</div>
-            <div className="text-xs text-gray-700">{company.legal_name}</div>
+            <div className="text-xl font-bold">{company.legal_name}</div>
             <div className="mt-1">{company.address}</div>
             <div className="mt-1">Tel: {company.phone}</div>
             <div>Email: {company.email}</div>

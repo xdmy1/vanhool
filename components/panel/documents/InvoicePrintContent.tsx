@@ -113,8 +113,7 @@ export function InvoicePrintContent({
       <section className="mb-6 grid grid-cols-2 gap-3">
         <div className="doc-box">
           <div className="mb-2 text-sm font-bold text-black">{labels.billedBy}</div>
-          <div className="font-semibold">{company.name}</div>
-          <div className="text-xs">{company.legal_name}</div>
+          <div className="font-semibold">{company.legal_name}</div>
           <div className="mt-1 text-xs">{company.address}</div>
           <div className="mt-1 text-xs">
             {labels.idno}: <span className="font-mono">{company.idno}</span>

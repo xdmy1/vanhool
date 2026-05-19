@@ -33,8 +33,7 @@ export function DocumentHeader({
       <div className="flex items-start gap-3">
         <Logo className="h-12 w-auto text-black" />
         <div>
-          <div className="text-xl font-bold">{company.name}</div>
-          <div className="text-xs text-gray-700">{company.legal_name}</div>
+          <div className="text-xl font-bold">{company.legal_name}</div>
         </div>
       </div>
       <div className="text-right">

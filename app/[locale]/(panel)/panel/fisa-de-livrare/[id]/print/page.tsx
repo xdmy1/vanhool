@@ -5,6 +5,7 @@ import { AutoPrint, PrintButton } from "@/components/panel/delivery/AutoPrint";
 import { DownloadPDFButton } from "@/components/panel/documents/AutoPrintGeneric";
 import { Logo } from "@/components/layout/Logo";
 import { getDeliveryNote } from "@/lib/panel/delivery_notes/queries";
+import { getCompanyAndBank } from "@/lib/panel/settings/company";
 
 export default async function DeliveryNotePrintPage({
   params,
@@ -14,7 +15,10 @@ export default async function DeliveryNotePrintPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [{ locale, id }, sp] = await Promise.all([params, searchParams]);
-  const note = await getDeliveryNote(id);
+  const [note, { company }] = await Promise.all([
+    getDeliveryNote(id),
+    getCompanyAndBank(),
+  ]);
   if (!note) notFound();
 
   const auto = sp.auto === "1";
@@ -36,9 +40,9 @@ export default async function DeliveryNotePrintPage({
         <div className="flex items-center gap-3">
           <Logo className="h-12 w-auto text-black" />
           <div>
-            <div className="text-xl font-bold">Inter Bus</div>
+            <div className="text-xl font-bold">{company.legal_name}</div>
             <div className="text-xs">{t("delivery_company_tagline")}</div>
-            <div className="text-xs text-gray-700">inter-bus.md</div>
+            <div className="text-xs text-gray-700">{company.website ?? "inter-bus.md"}</div>
           </div>
         </div>
         <div className="text-right">
