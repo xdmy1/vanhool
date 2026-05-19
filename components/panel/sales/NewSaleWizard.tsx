@@ -61,6 +61,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [walkinMode, setWalkinMode] = useState(false);
 
   const [lines, setLines] = useState<Line[]>([]);
+  // Per-sale markup % applied on top of cost_price. Empty = no auto-pricing,
+  // each line keeps its own unit_price (catalog price, possibly manually edited).
+  const [saleMarkupPercent, setSaleMarkupPercent] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "already_paid">("cash");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [driverName, setDriverName] = useState("");
@@ -175,6 +178,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           lines={lines}
           setLines={setLines}
           clientDiscount={client?.discount_percent ?? null}
+          saleMarkupPercent={saleMarkupPercent}
+          setSaleMarkupPercent={setSaleMarkupPercent}
         />
       ) : null}
 
@@ -534,10 +539,14 @@ function StepProducts({
   lines,
   setLines,
   clientDiscount,
+  saleMarkupPercent,
+  setSaleMarkupPercent,
 }: {
   lines: Line[];
   setLines: (l: Line[]) => void;
   clientDiscount: number | null;
+  saleMarkupPercent: string;
+  setSaleMarkupPercent: (v: string) => void;
 }) {
   const t = useTranslations("panel");
   const [q, setQ] = useState("");
@@ -563,16 +572,46 @@ function StepProducts({
     };
   }, [q]);
 
+  function priceFromMarkup(costPrice: number): number | null {
+    const trimmed = saleMarkupPercent.trim();
+    if (trimmed === "") return null;
+    const m = Number(trimmed);
+    if (!Number.isFinite(m) || m < 0) return null;
+    return Math.round(costPrice * (1 + m / 100) * 100) / 100;
+  }
+
   function add(p: ProductSearchResult) {
     if (lines.some((l) => l.product.id === p.id)) {
       toast.info(t("sale_products_already_added"));
       return;
     }
-    const discount = clientDiscount ? clientDiscount / 100 : 0;
-    const unitPrice = Math.round(p.price * (1 - discount) * 100) / 100;
+    // If the owner set a sale-level markup, price from cost_price. Otherwise
+    // fall back to catalog price minus client discount.
+    const fromMarkup = priceFromMarkup(p.cost_price);
+    let unitPrice: number;
+    if (fromMarkup !== null) {
+      unitPrice = fromMarkup;
+    } else {
+      const discount = clientDiscount ? clientDiscount / 100 : 0;
+      unitPrice = Math.round(p.price * (1 - discount) * 100) / 100;
+    }
     setLines([...lines, { product: p, qty: 1, unit_price: unitPrice }]);
     setQ("");
     setResults([]);
+  }
+
+  function applyMarkupToAll(percent: string) {
+    setSaleMarkupPercent(percent);
+    const trimmed = percent.trim();
+    if (trimmed === "") return;
+    const m = Number(trimmed);
+    if (!Number.isFinite(m) || m < 0) return;
+    setLines(
+      lines.map((l) => ({
+        ...l,
+        unit_price: Math.round(l.product.cost_price * (1 + m / 100) * 100) / 100,
+      })),
+    );
   }
 
   function update(idx: number, patch: Partial<Line>) {
@@ -585,9 +624,32 @@ function StepProducts({
   return (
     <section className="space-y-4">
       <div className="rounded-md border border-border bg-surface p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("sale_products_section")}
-        </h3>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {t("sale_products_section")}
+          </h3>
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col">
+              <span className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                {t("sale_markup_label")}
+              </span>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min={0}
+                  value={saleMarkupPercent}
+                  onChange={(e) => applyMarkupToAll(e.target.value)}
+                  placeholder="—"
+                  className="h-9 w-24 text-right"
+                />
+                <span className="text-sm text-muted">%</span>
+              </div>
+            </label>
+          </div>
+        </div>
+        <p className="mb-3 text-[11px] text-muted">{t("sale_markup_hint")}</p>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
           <Input
@@ -684,6 +746,17 @@ function StepProducts({
                       }
                       className="ml-auto h-8 w-24 text-right"
                     />
+                    {l.product.cost_price > 0 ? (
+                      <div className="text-[10px] text-muted">
+                        {t("sale_line_margin", {
+                          pct: (
+                            ((l.unit_price - l.product.cost_price) /
+                              l.product.cost_price) *
+                            100
+                          ).toFixed(0),
+                        })}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums font-semibold">
                     <Price value={l.qty * l.unit_price} size="sm" accent={false} />
