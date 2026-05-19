@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, CheckCircle2, Clock, CreditCard, FileText, X } from "lucide-react";
+import { CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -74,8 +74,23 @@ export function ConvertProformaButton({
 
   if (alreadyConverted) return null;
 
-  if (!confirming) {
-    return (
+  // Lock background scroll while the modal is open and close on Escape.
+  useEffect(() => {
+    if (!confirming) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !pending) setConfirming(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [confirming, pending]);
+
+  return (
+    <>
       <div className={cn("flex gap-2", variant === "compact" && "justify-end")}>
         <Button
           type="button"
@@ -102,162 +117,161 @@ export function ConvertProformaButton({
           </Button>
         ) : null}
       </div>
-    );
-  }
 
-  return (
-    <div className="flex max-w-xl flex-col gap-4 rounded-md border border-primary/30 bg-primary/5 p-5">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">
-          {t("proforma_convert_panel_title")}
-        </h3>
-        <p className="mt-1 text-xs text-muted-strong">
-          {t("proforma_convert_panel_hint")}
-        </p>
-      </div>
+      {confirming ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => !pending && setConfirming(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden />
+          <div
+            className="relative w-full max-w-md rounded-lg border border-border bg-surface shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+              <div>
+                <h3 className="text-sm font-semibold">
+                  {t("proforma_convert_panel_title")}
+                </h3>
+                <p className="mt-0.5 text-xs text-muted">
+                  {t("proforma_convert_panel_hint")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !pending && setConfirming(false)}
+                className="rounded p-1 text-muted hover:bg-surface-elevated hover:text-foreground"
+                aria-label={t("proforma_convert_cancel")}
+              >
+                <X className="size-4" />
+              </button>
+            </header>
 
-      <Choice
-        label={t("proforma_convert_payment_status")}
-        value={paymentStatus}
-        onChange={(v) => setPaymentStatus(v as PaymentStatus)}
-        options={[
-          {
-            value: "paid",
-            label: t("proforma_convert_payment_status_paid"),
-            icon: CheckCircle2,
-          },
-          {
-            value: "deferred",
-            label: t("proforma_convert_payment_status_deferred"),
-            icon: Clock,
-          },
-        ]}
-      />
+            <div className="flex flex-col gap-4 px-5 py-4">
+              <Row label={t("proforma_convert_payment_status")}>
+                <Segmented
+                  value={paymentStatus}
+                  onChange={(v) => setPaymentStatus(v as PaymentStatus)}
+                  options={[
+                    { value: "paid", label: t("proforma_convert_payment_status_paid") },
+                    { value: "deferred", label: t("proforma_convert_payment_status_deferred") },
+                  ]}
+                />
+              </Row>
 
-      {paymentStatus === "deferred" ? (
-        <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-            {t("proforma_convert_deferred_days_label")}
-          </span>
-          <div className="flex items-center gap-2 sm:max-w-xs">
-            <Input
-              type="number"
-              min={1}
-              max={7}
-              step={1}
-              value={dueDays}
-              onChange={(e) =>
-                setDueDays(
-                  Math.max(1, Math.min(7, Math.trunc(Number(e.target.value || 7)))),
-                )
-              }
-            />
-            <span className="text-sm text-muted">{t("proforma_convert_deferred_days_unit")}</span>
+              {paymentStatus === "deferred" ? (
+                <Row label={t("proforma_convert_deferred_days_label")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={7}
+                      step={1}
+                      value={dueDays}
+                      onChange={(e) =>
+                        setDueDays(
+                          Math.max(1, Math.min(7, Math.trunc(Number(e.target.value || 7)))),
+                        )
+                      }
+                      className="h-9 w-20 text-right"
+                    />
+                    <span className="text-xs text-muted">
+                      {t("proforma_convert_deferred_days_unit")}
+                    </span>
+                  </div>
+                </Row>
+              ) : null}
+
+              <Row label={t("proforma_convert_payment_method")}>
+                <Segmented
+                  value={paymentMethod}
+                  onChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                  options={[
+                    { value: "cash", label: t("payment_cash") },
+                    { value: "transfer", label: t("payment_transfer") },
+                    { value: "card", label: t("payment_card") },
+                  ]}
+                />
+              </Row>
+
+              <Row label={t("proforma_convert_scope")}>
+                <Segmented
+                  value={accountScope}
+                  onChange={(v) => setAccountScope(v as Scope)}
+                  options={[
+                    { value: "conta1", label: t("scope_conta1") },
+                    { value: "conta2", label: t("scope_conta2") },
+                  ]}
+                />
+              </Row>
+            </div>
+
+            <footer className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirming(false)}
+                disabled={pending}
+              >
+                {t("proforma_convert_cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={submit}
+                disabled={pending}
+              >
+                {pending ? t("sale_processing") : t("proforma_convert_confirm_action")}
+              </Button>
+            </footer>
           </div>
-          <p className="text-[11px] text-muted">{t("proforma_convert_deferred_days_hint")}</p>
-        </label>
+        </div>
       ) : null}
+    </>
+  );
+}
 
-      <Choice
-        label={t("proforma_convert_payment_method")}
-        value={paymentMethod}
-        onChange={(v) => setPaymentMethod(v as PaymentMethod)}
-        options={[
-          {
-            value: "cash",
-            label: t("payment_cash"),
-            icon: Banknote,
-          },
-          {
-            value: "card",
-            label: t("payment_card"),
-            icon: CreditCard,
-          },
-          {
-            value: "transfer",
-            label: t("payment_transfer"),
-            icon: FileText,
-          },
-        ]}
-      />
-
-      <Choice
-        label={t("proforma_convert_scope")}
-        value={accountScope}
-        onChange={(v) => setAccountScope(v as Scope)}
-        options={[
-          { value: "conta1", label: t("scope_conta1") },
-          { value: "conta2", label: t("scope_conta2") },
-        ]}
-      />
-
-      <div className="flex flex-wrap gap-2 pt-1">
-        <Button
-          type="button"
-          onClick={submit}
-          disabled={pending}
-          className="gap-1.5"
-        >
-          <CheckCircle2 className="size-4" />
-          {pending
-            ? t("sale_processing")
-            : t("proforma_convert_confirm_action")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setConfirming(false)}
-          disabled={pending}
-        >
-          {t("proforma_convert_cancel")}
-        </Button>
-      </div>
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[110px_1fr] items-center gap-3">
+      <span className="text-xs text-muted">{label}</span>
+      <div>{children}</div>
     </div>
   );
 }
 
-function Choice<T extends string>({
-  label,
+function Segmented<T extends string>({
   value,
   onChange,
   options,
 }: {
-  label: string;
   value: T;
   onChange: (v: T) => void;
-  options: {
-    value: T;
-    label: string;
-    icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  }[];
+  options: { value: T; label: string }[];
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {label}
-      </span>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {options.map((opt) => {
-          const active = opt.value === value;
-          const Icon = opt.icon;
-          return (
-            <button
-              type="button"
-              key={opt.value}
-              onClick={() => onChange(opt.value)}
-              className={cn(
-                "flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
-                active
-                  ? "border-primary bg-primary/15 text-primary"
-                  : "border-border bg-surface text-muted-strong hover:border-primary/40 hover:text-foreground",
-              )}
-            >
-              {Icon ? <Icon className="size-4" /> : null}
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="inline-flex w-full rounded-md border border-border bg-surface p-0.5">
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "flex-1 rounded px-3 py-1.5 text-xs transition-colors",
+              active
+                ? "bg-foreground text-background"
+                : "text-muted-strong hover:text-foreground",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
