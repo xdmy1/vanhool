@@ -1,8 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Plus } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminPagination } from "@/components/admin/AdminPagination";
 import { SearchInput } from "@/components/admin/SearchInput";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/lib/i18n/routing";
 import { ClientsTable } from "@/components/panel/ClientsTable";
 import { listPanelClients } from "@/lib/panel/clienti/queries";
 import { getActiveBook } from "@/lib/panel/scope";
@@ -41,6 +44,14 @@ export default async function PanelClientiPage({
         eyebrow={scope === "conta1" ? t("conta1_eyebrow") : t("conta2_eyebrow")}
         title={t("clienti_title")}
         subtitle={t("clienti_subtitle")}
+        actions={
+          <Button asChild className="gap-1.5">
+            <Link href={"/panel/clienti/new" as "/panel"} locale={locale}>
+              <Plus className="size-4" />
+              {t("client_new_button")}
+            </Link>
+          </Button>
+        }
       />
 
       <div className="mt-6 flex flex-wrap gap-3">

@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Building2, User } from "lucide-react";
+import { Building2, Edit3, User } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { Price } from "@/components/common/Price";
 import { getPanelClient } from "@/lib/panel/clienti/queries";
@@ -46,6 +47,17 @@ export default async function PanelClientDetailPage({
           isBusiness && client.idno
             ? t("clienti_detail_company", { idno: client.idno })
             : t("clienti_detail_individual")
+        }
+        actions={
+          <Button asChild variant="outline" className="gap-1.5">
+            <Link
+              href={`/panel/clienti/${id}/edit` as "/panel"}
+              locale={locale}
+            >
+              <Edit3 className="size-4" />
+              {t("action_edit")}
+            </Link>
+          </Button>
         }
       />
 
