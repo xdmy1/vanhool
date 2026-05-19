@@ -3,6 +3,7 @@ import { CheckCircle2, ExternalLink } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
+import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -10,9 +11,15 @@ import { cn } from "@/lib/utils/cn";
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
   issued: "bg-primary/10 text-primary",
+  overdue: "bg-destructive/10 text-destructive",
   paid: "bg-success/10 text-success",
   void: "bg-destructive/10 text-destructive",
 };
+
+function isOverdue(row: { status: string; due_date: string | null }): boolean {
+  if (row.status !== "issued" || !row.due_date) return false;
+  return new Date(row.due_date) < new Date(new Date().toISOString().slice(0, 10));
+}
 
 export default async function PanelFacturiPage({
   params,
@@ -84,10 +91,12 @@ export default async function PanelFacturiPage({
                       <span
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase tracking-wide",
-                          STATUS_TONE[r.status],
+                          isOverdue(r) ? STATUS_TONE.overdue : STATUS_TONE[r.status],
                         )}
                       >
-                        {statusLabel(r.status)}
+                        {isOverdue(r)
+                          ? t("facturi_status_overdue")
+                          : statusLabel(r.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
@@ -113,16 +122,26 @@ export default async function PanelFacturiPage({
                         <span className="text-xs text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {r.order_id ? (
-                        <Link
-                          href={`/admin/orders/${r.order_id}` as "/admin"}
-                          locale={locale}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          {t("facturi_col_order")}
-                        </Link>
-                      ) : null}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-3">
+                        {r.status === "issued" ? (
+                          <MarkInvoicePaidButton
+                            invoiceId={r.id}
+                            defaultAmount={r.total}
+                            defaultCurrency={r.currency}
+                            variant="compact"
+                          />
+                        ) : null}
+                        {r.order_id ? (
+                          <Link
+                            href={`/admin/orders/${r.order_id}` as "/admin"}
+                            locale={locale}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {t("facturi_col_order")}
+                          </Link>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}

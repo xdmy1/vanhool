@@ -4,6 +4,7 @@ import { ExternalLink, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
+import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -11,9 +12,18 @@ import { cn } from "@/lib/utils/cn";
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
   issued: "bg-primary/10 text-primary",
+  overdue: "bg-destructive/10 text-destructive",
   paid: "bg-success/10 text-success",
   void: "bg-destructive/10 text-destructive",
 };
+
+function isOverdue(invoice: {
+  status: string;
+  due_date: string | null;
+}): boolean {
+  if (invoice.status !== "issued" || !invoice.due_date) return false;
+  return new Date(invoice.due_date) < new Date(new Date().toISOString().slice(0, 10));
+}
 
 export default async function PanelInvoiceDetailPage({
   params,
@@ -27,7 +37,10 @@ export default async function PanelInvoiceDetailPage({
   if (!invoice || invoice.type !== "invoice") notFound();
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
-  const statusLabel = t(`facturi_status_${invoice.status}` as "facturi_status_draft");
+  const overdue = isOverdue(invoice);
+  const statusLabel = overdue
+    ? t("facturi_status_overdue")
+    : t(`facturi_status_${invoice.status}` as "facturi_status_draft");
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -40,7 +53,7 @@ export default async function PanelInvoiceDetailPage({
             <span
               className={cn(
                 "rounded px-2 py-0.5 text-xs uppercase tracking-wide",
-                STATUS_TONE[invoice.status],
+                overdue ? STATUS_TONE.overdue : STATUS_TONE[invoice.status],
               )}
             >
               {statusLabel}
@@ -96,6 +109,28 @@ export default async function PanelInvoiceDetailPage({
             ) : null}
             <dt className="text-muted">{t("proforma_currency")}</dt>
             <dd>{invoice.currency}</dd>
+            {invoice.due_date && invoice.status === "issued" ? (
+              <>
+                <dt className="text-muted">{t("invoice_due_date")}</dt>
+                <dd className={overdue ? "font-semibold text-destructive" : ""}>
+                  {new Date(invoice.due_date).toLocaleDateString(dateLocale)}
+                </dd>
+              </>
+            ) : null}
+            {invoice.paid_amount != null ? (
+              <>
+                <dt className="text-muted">{t("invoice_paid_amount")}</dt>
+                <dd className="font-semibold">
+                  {invoice.paid_amount.toFixed(2)} {invoice.paid_currency ?? invoice.currency}
+                </dd>
+              </>
+            ) : null}
+            {invoice.paid_method ? (
+              <>
+                <dt className="text-muted">{t("invoice_paid_method")}</dt>
+                <dd>{t(`payment_${invoice.paid_method}` as "payment_cash")}</dd>
+              </>
+            ) : null}
             {invoice.order_id ? (
               <>
                 <dt className="text-muted">{t("triage_col_order")}</dt>
@@ -125,6 +160,16 @@ export default async function PanelInvoiceDetailPage({
               </>
             ) : null}
           </dl>
+
+          {invoice.status === "issued" ? (
+            <div className="mt-5 border-t border-border pt-5">
+              <MarkInvoicePaidButton
+                invoiceId={invoice.id}
+                defaultAmount={invoice.total}
+                defaultCurrency={invoice.currency}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section className="overflow-x-auto rounded-md border border-border bg-surface lg:col-span-2">

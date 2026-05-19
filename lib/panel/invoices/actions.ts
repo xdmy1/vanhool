@@ -389,6 +389,89 @@ export async function updateProforma(
   return { ok: true };
 }
 
+/**
+ * Mark a previously-issued fiscal invoice as paid. Captures when the money
+ * came in, the amount and currency the customer actually settled in (may
+ * differ from the invoice's own currency), and how it was paid. Closes the
+ * originating order + delivery note and — for conta2 + cash — records the
+ * cash inflow that was skipped at conversion time.
+ */
+const markPaidSchema = z.object({
+  /** ISO date (YYYY-MM-DD) when the payment hit. Defaults to today. */
+  paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  amount: z.number().nonnegative(),
+  currency: z.enum(["MDL", "EUR", "USD"]),
+  method: z.enum(["cash", "transfer", "card", "other"]),
+});
+
+export async function markInvoicePaid(
+  invoiceId: string,
+  raw: unknown,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+
+  const parsed = markPaidSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
+  }
+  const v = parsed.data;
+  const supabase = await createClient();
+
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select("id, type, status, account_scope, order_id, total, series, number")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!inv) return { ok: false, reason: "invoice_not_found" };
+  if (inv.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
+  if (inv.status === "paid") return { ok: false, reason: "already_paid" };
+  if (inv.status === "void") return { ok: false, reason: "voided" };
+
+  const nowIso = new Date().toISOString();
+  // Treat the user-supplied date as the actual payment moment.
+  const paidAt = new Date(`${v.paid_at}T12:00:00Z`).toISOString();
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      status: "paid",
+      paid_at: paidAt,
+      updated_at: nowIso,
+      ...({ paid_amount: v.amount, paid_currency: v.currency, paid_method: v.method } as object),
+    })
+    .eq("id", invoiceId);
+  if (error) return { ok: false, reason: error.message };
+
+  if (inv.account_scope === "conta2" && v.method === "cash" && inv.order_id) {
+    await supabase.from("cash_register_movements").insert({
+      direction: "in",
+      amount: v.amount,
+      reason: "sale",
+      order_id: inv.order_id,
+      created_by: user.id,
+      notes: `Plată ulterioară factură ${inv.series}${inv.number}`,
+    });
+  }
+
+  if (inv.order_id) {
+    await supabase
+      .from("orders")
+      .update({ status: "delivered", updated_at: nowIso })
+      .eq("id", inv.order_id);
+    await supabase
+      .from("delivery_notes")
+      .update({ status: "delivered", updated_at: nowIso })
+      .eq("order_id", inv.order_id)
+      .neq("status", "returned");
+  }
+
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
+  revalidatePath("/[locale]/admin/orders", "page");
+  return { ok: true };
+}
+
 /** Void any invoice (proforma or fiscal). Non-reversible for fiscal compliance. */
 export async function voidInvoice(
   id: string,

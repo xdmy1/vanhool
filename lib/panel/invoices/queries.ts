@@ -101,6 +101,11 @@ export type InvoiceDetail = {
   /** Language used to render the printable view ('ro' | 'en' | 'ru'). */
   output_locale: "ro" | "en" | "ru";
   status: "draft" | "issued" | "sent" | "paid" | "void" | "converted";
+  /** Filled in when the invoice is marked paid — may differ from currency/total
+   * if the customer settled slightly above or below the issued amount. */
+  paid_amount: number | null;
+  paid_currency: string | null;
+  paid_method: "cash" | "transfer" | "card" | "other" | null;
   customer_snapshot: CustomerSnapshot;
   items_snapshot: InvoiceItemSnapshot[];
   subtotal: number;
@@ -124,7 +129,7 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     .select(
       // Includes `output_locale` at runtime — the generated TS types are
       // stale until the SQL migration is applied.
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale" as
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
@@ -167,6 +172,18 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     currency: data.currency ?? "MDL",
     output_locale: ((data as { output_locale?: string }).output_locale ?? "ro") as "ro" | "en" | "ru",
     status: data.status,
+    paid_amount: (() => {
+      const raw = (data as { paid_amount?: number | string | null }).paid_amount;
+      return raw == null ? null : Number(raw);
+    })(),
+    paid_currency: (data as { paid_currency?: string | null }).paid_currency ?? null,
+    paid_method:
+      ((data as { paid_method?: string | null }).paid_method as
+        | "cash"
+        | "transfer"
+        | "card"
+        | "other"
+        | null) ?? null,
     customer_snapshot: (data.customer_snapshot ?? {}) as CustomerSnapshot,
     items_snapshot: items,
     subtotal: Number(data.subtotal ?? 0),
