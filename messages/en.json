@@ -1456,7 +1456,7 @@
     "invoice_print_col_amount": "Amount",
     "invoice_print_col_vat": "VAT",
     "invoice_print_col_total": "Total",
-    "invoice_print_subtotal": "Amount",
+    "invoice_print_subtotal": "Subtotal",
     "invoice_print_vat_total": "VAT",
     "invoice_print_total_label": "Total",
     "invoice_print_amount_paid": "Amount Paid",
