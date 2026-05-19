@@ -6,13 +6,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Price } from "@/components/common/Price";
 import { OrderStatusSelect } from "@/components/admin/orders/OrderStatusSelect";
 import { OrderNotes } from "@/components/admin/orders/OrderNotes";
-import {
-  GenerateInvoiceButton,
-  RetryPushButton,
-} from "@/components/admin/odoo/SyncButtons";
 import { adminGetOrder } from "@/lib/admin/queries";
-import { isOdooConfigured } from "@/lib/odoo/config";
-import { createClient } from "@/lib/supabase/server";
 import type { OrderItem } from "@/lib/db/orders";
 import type { OrderStatus } from "@/lib/admin/orders/constants";
 import { cn } from "@/lib/utils/cn";
@@ -48,18 +42,6 @@ export default async function AdminOrderDetailPage({
   ]);
 
   if (!order) notFound();
-
-  // Pull Odoo cross-ref columns separately (they aren't in the typed select).
-  const supabase = await createClient();
-  const { data: odooMeta } = await supabase
-    .from("orders")
-    .select("odoo_order_id, odoo_invoice_id, odoo_sync_error, invoice_url")
-    .eq("id", order.id)
-    .maybeSingle();
-  const odooOrderId = odooMeta?.odoo_order_id ?? null;
-  const odooInvoiceId = odooMeta?.odoo_invoice_id ?? null;
-  const odooSyncError = odooMeta?.odoo_sync_error ?? null;
-  const odooConnected = isOdooConfigured();
 
   const items = parseItems(order.items);
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";

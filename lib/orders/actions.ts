@@ -107,21 +107,6 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     }
   }
 
-  // Best-effort push to Odoo. Failure here doesn't block checkout success —
-  // the error is recorded on the order (odoo_sync_error) and the admin can
-  // retry from /admin/odoo. Skipped silently when Odoo isn't configured.
-  try {
-    const { isOdooConfigured } = await import("@/lib/odoo/config");
-    if (isOdooConfigured()) {
-      const { pushOrderToOdoo } = await import("@/lib/odoo/sync");
-      // Fire-and-forget — but await briefly so the request finishes the work
-      // before the runtime potentially terminates the function context.
-      await pushOrderToOdoo(insertData.id).catch(() => {});
-    }
-  } catch {
-    // ignore
-  }
-
   // Refrens generates the invoice PDF and emails it directly to the customer.
   // Fire-and-forget — failure is logged but does not affect checkout success.
   try {

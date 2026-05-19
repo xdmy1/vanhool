@@ -3,7 +3,7 @@
  *
  * On checkout completion we POST an invoice to Refrens; Refrens stores it and
  * emails the customer the PDF directly. Failure here is logged but never
- * blocks the order — the admin can still see the order in Supabase / Odoo
+ * blocks the order — the admin can still see the order in Supabase
  * and (re)generate the invoice manually if needed.
  *
  * Auth: self-signed ES256 JWT (EC P-256 private key issued by Refrens),
