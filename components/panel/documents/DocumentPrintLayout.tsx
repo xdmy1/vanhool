@@ -13,6 +13,10 @@ export function DocumentPrintShell({ children }: { children: React.ReactNode }) 
            AND while printing. Uses :has() so the parent panel layout's
            standalone detection isn't load-bearing — if we render, chrome dies. */
         [data-panel-chrome] { display: none !important; }
+        /* Sonner toasts (mounted on body) bleed into the printable area and
+           leak from the previous page after redirect — kill them on doc routes. */
+        html:has(.doc-print-root) [data-sonner-toaster],
+        html:has(.doc-print-root) [data-sonner-toast] { display: none !important; }
         html:has(.doc-print-root) body { background: #f3f4f6 !important; }
         @media print {
           html, body { background: white !important; }

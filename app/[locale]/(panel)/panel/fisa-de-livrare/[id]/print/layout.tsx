@@ -18,6 +18,10 @@ export default function DeliveryNotePrintLayout({
         }
         /* Hide panel chrome whenever the delivery-note print shell renders. */
         [data-panel-chrome] { display: none !important; }
+        /* Suppress sonner toasts on the print preview — they leak from the
+           previous page after the auto-redirect and look out of place. */
+        html:has(.delivery-print-root) [data-sonner-toaster],
+        html:has(.delivery-print-root) [data-sonner-toast] { display: none !important; }
         html:has(.delivery-print-root) body { background: #f3f4f6 !important; }
         @media print {
           html, body { background: white !important; }
