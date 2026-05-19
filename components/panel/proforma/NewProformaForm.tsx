@@ -16,7 +16,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
-import { issueProforma } from "@/lib/panel/invoices/actions";
+import { issueProforma, updateProforma } from "@/lib/panel/invoices/actions";
 import {
   type ClientSearchResult,
   listAllPanelClients,
@@ -62,18 +62,37 @@ const EMPTY_WALKIN: WalkIn = {
   address: "",
 };
 
-export function NewProformaForm({ locale }: { locale: string }) {
+export type ProformaInitial = {
+  id: string;
+  walkin: WalkIn;
+  lines: Line[];
+  currency: "MDL" | "EUR" | "USD";
+  outputLocale: "ro" | "en" | "ru";
+  dueDays: number;
+  notes: string;
+};
+
+export function NewProformaForm({
+  locale,
+  initial,
+}: {
+  locale: string;
+  initial?: ProformaInitial;
+}) {
   const t = useTranslations("panel");
   const router = useRouter();
+  const isEdit = !!initial;
 
   const [client, setClient] = useState<ClientSearchResult | null>(null);
   const [walkinMode, setWalkinMode] = useState(true);
-  const [walkin, setWalkin] = useState<WalkIn>(EMPTY_WALKIN);
-  const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
-  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
-  const [outputLocale, setOutputLocale] = useState<"ro" | "en" | "ru">("ro");
-  const [dueDays, setDueDays] = useState(7);
-  const [notes, setNotes] = useState("");
+  const [walkin, setWalkin] = useState<WalkIn>(initial?.walkin ?? EMPTY_WALKIN);
+  const [lines, setLines] = useState<Line[]>(initial?.lines ?? [{ ...EMPTY_LINE }]);
+  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">(initial?.currency ?? "MDL");
+  const [outputLocale, setOutputLocale] = useState<"ro" | "en" | "ru">(
+    initial?.outputLocale ?? "ro",
+  );
+  const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
 
   const totals = useMemo(() => {
@@ -156,24 +175,36 @@ export function NewProformaForm({ locale }: { locale: string }) {
       };
     }
 
+    const payload = {
+      order_id: null,
+      customer,
+      items: validLines.map((l) => ({
+        product_id: null,
+        part_code: l.part_code || null,
+        name: l.name.trim(),
+        description: l.description || null,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        vat_rate: l.vat_rate,
+      })),
+      due_days: dueDays,
+      currency,
+      output_locale: outputLocale,
+      notes: notes || null,
+    };
+
     startSubmit(async () => {
-      const res = await issueProforma({
-        order_id: null,
-        customer,
-        items: validLines.map((l) => ({
-          product_id: null,
-          part_code: l.part_code || null,
-          name: l.name.trim(),
-          description: l.description || null,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-          vat_rate: l.vat_rate,
-        })),
-        due_days: dueDays,
-        currency,
-        output_locale: outputLocale,
-        notes: notes || null,
-      });
+      if (isEdit && initial) {
+        const res = await updateProforma(initial.id, payload);
+        if (res.ok) {
+          toast.success(t("proforma_updated_success"));
+          router.push(`/${locale}/panel/proforme/${initial.id}`);
+        } else {
+          toast.error(t("sale_error", { reason: res.reason }));
+        }
+        return;
+      }
+      const res = await issueProforma(payload);
       if (res.ok) {
         toast.success(t("proforma_created_success", { number: res.number }));
         router.push(`/${locale}/panel/proforme/${res.id}`);
@@ -391,7 +422,11 @@ export function NewProformaForm({ locale }: { locale: string }) {
       <div className="flex justify-end">
         <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
           <Save className="size-4" />
-          {pending ? t("sale_processing") : t("proforma_form_submit")}
+          {pending
+            ? t("sale_processing")
+            : isEdit
+              ? t("proforma_form_save_changes")
+              : t("proforma_form_submit")}
         </Button>
       </div>
     </div>

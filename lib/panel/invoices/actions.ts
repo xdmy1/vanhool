@@ -267,6 +267,81 @@ export async function convertProformaToInvoice(
   return { ok: true, invoiceId: inv.id, number: `${series}${number}` };
 }
 
+/**
+ * Update an existing proforma — customer details, line items, currency,
+ * output language, due days, notes. Series + number stay fixed. Once the
+ * proforma is converted into a fiscal invoice or voided it can no longer
+ * be edited.
+ */
+export async function updateProforma(
+  id: string,
+  raw: unknown,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+
+  const parsed = proformaInputSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
+  }
+  const v = parsed.data;
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("invoices")
+    .select("id, type, status, issued_date, converted_to_invoice_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) return { ok: false, reason: "proforma_not_found" };
+  if (existing.type !== "proforma") return { ok: false, reason: "not_a_proforma" };
+  if (existing.converted_to_invoice_id) return { ok: false, reason: "already_converted" };
+  if (existing.status === "void") return { ok: false, reason: "voided" };
+
+  const { subtotal, vat_amount, total } = totals(
+    v.items.map((i) => ({
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      vat_rate: i.vat_rate ?? 0,
+    })),
+  );
+  const itemsSnapshot = v.items.map((i) => ({
+    productId: i.product_id ?? null,
+    partCode: i.part_code ?? null,
+    name: i.name,
+    description: i.description ?? null,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+    vat_rate: i.vat_rate ?? 0,
+    total: Number((i.quantity * i.unit_price).toFixed(2)),
+  }));
+
+  // Recompute due_date relative to the original issued_date so editing the
+  // proforma doesn't accidentally shift the maturity window.
+  const issued = new Date(existing.issued_date);
+  const due = new Date(issued.getTime() + (v.due_days ?? 7) * 86_400_000);
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      currency: v.currency,
+      customer_snapshot: v.customer as unknown as Json,
+      items_snapshot: itemsSnapshot as unknown as Json,
+      subtotal,
+      vat_amount,
+      total,
+      due_date: due.toISOString().slice(0, 10),
+      notes: v.notes ?? null,
+      updated_at: new Date().toISOString(),
+      ...({ output_locale: v.output_locale } as object),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/proforme", "page");
+  revalidatePath(`/[locale]/panel/proforme/${id}`, "page");
+  return { ok: true };
+}
+
 /** Void any invoice (proforma or fiscal). Non-reversible for fiscal compliance. */
 export async function voidInvoice(
   id: string,

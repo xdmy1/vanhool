@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Printer } from "lucide-react";
+import { Pencil, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,14 @@ export default async function PanelProformaDetailPage({
             >
               {statusLabel}
             </span>
+            {proforma.status !== "void" && !proforma.converted_to_invoice_id ? (
+              <Button asChild variant="outline" className="gap-1.5">
+                <Link href={`/panel/proforme/${proforma.id}/edit` as "/panel"} locale={locale}>
+                  <Pencil className="size-4" />
+                  {t("action_edit")}
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline" className="gap-1.5">
               <Link href={`/panel/proforme/${proforma.id}/print` as "/panel"} locale={locale}>
                 <Printer className="size-4" />
