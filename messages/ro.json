@@ -1042,6 +1042,7 @@
     "sale_line_margin": "marjă {pct}%",
     "sale_products_search_placeholder": "Caută cod intern, nume, brand...",
     "sale_products_already_added": "Produs deja în comandă",
+    "sale_products_cost_label": "cost {value}",
     "sale_products_stock_label": "stoc {qty}",
     "sale_lines_empty": "Niciun produs adăugat încă. Caută mai sus.",
     "sale_line_col_code": "Cod",

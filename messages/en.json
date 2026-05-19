@@ -1042,6 +1042,7 @@
     "sale_line_margin": "margin {pct}%",
     "sale_products_search_placeholder": "Search internal code, name, brand...",
     "sale_products_already_added": "Product already in order",
+    "sale_products_cost_label": "cost {value}",
     "sale_products_stock_label": "stock {qty}",
     "sale_lines_empty": "No product added yet. Search above.",
     "sale_line_col_code": "Code",

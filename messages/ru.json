@@ -1042,6 +1042,7 @@
     "sale_line_margin": "маржа {pct}%",
     "sale_products_search_placeholder": "Поиск внутр. код, имя, бренд...",
     "sale_products_already_added": "Товар уже в заказе",
+    "sale_products_cost_label": "себест. {value}",
     "sale_products_stock_label": "склад {qty}",
     "sale_lines_empty": "Пока ничего не добавлено. Ищите выше.",
     "sale_line_col_code": "Код",

@@ -585,16 +585,12 @@ function StepProducts({
       toast.info(t("sale_products_already_added"));
       return;
     }
-    // If the owner set a sale-level markup, price from cost_price. Otherwise
-    // fall back to catalog price minus client discount.
+    // Default unit_price = the cost from the purchase (cost_price in MDL).
+    // Owner sets the margin per-sale via the "Markup vânzare" field above.
+    // The storefront catalog price is irrelevant in this flow.
     const fromMarkup = priceFromMarkup(p.cost_price);
-    let unitPrice: number;
-    if (fromMarkup !== null) {
-      unitPrice = fromMarkup;
-    } else {
-      const discount = clientDiscount ? clientDiscount / 100 : 0;
-      unitPrice = Math.round(p.price * (1 - discount) * 100) / 100;
-    }
+    const unitPrice =
+      fromMarkup !== null ? fromMarkup : Math.round(p.cost_price * 100) / 100;
     setLines([...lines, { product: p, qty: 1, unit_price: unitPrice }]);
     setQ("");
     setResults([]);
@@ -683,8 +679,8 @@ function StepProducts({
                   <span className="text-xs text-muted">
                     {t("sale_products_stock_label", { qty: p.stock_quantity })}
                   </span>
-                  <span className="w-20 text-right tabular-nums text-sm">
-                    <Price value={p.price} size="sm" accent={false} />
+                  <span className="w-24 text-right tabular-nums text-xs text-muted">
+                    {t("sale_products_cost_label", { value: p.cost_price.toFixed(2) })}
                   </span>
                 </button>
               </li>
