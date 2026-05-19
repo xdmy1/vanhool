@@ -61,6 +61,7 @@ export type ProductSearchResult = {
   cost_price: number;
   stock_quantity: number;
   storage_location: string | null;
+  is_active: boolean;
 };
 
 export async function searchProducts(q: string): Promise<ProductSearchResult[]> {
@@ -69,13 +70,15 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
   if (!q.trim()) return [];
   const supabase = await createClient();
   const term = `%${q.replace(/[%_]/g, "")}%`;
+  // No is_active filter: the panel needs to find products auto-created by
+  // postPurchase (which lands them as inactive until the owner reviews).
+  // The storefront has its own active-only filter on the public side.
   const { data } = await supabase
     .from("products")
     .select(
-      "id, part_code, name_ro, name_en, brand, price, cost_price, stock_quantity, storage_location",
+      "id, part_code, name_ro, name_en, brand, price, cost_price, stock_quantity, storage_location, is_active",
     )
     .or(`part_code.ilike.${term},name_ro.ilike.${term},name_en.ilike.${term},brand.ilike.${term}`)
-    .eq("is_active", true)
     .order("name_ro")
     .limit(15);
   return (data ?? []).map((p) => ({
@@ -87,6 +90,7 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
     cost_price: Number(p.cost_price ?? 0),
     stock_quantity: Number(p.stock_quantity ?? 0),
     storage_location: p.storage_location,
+    is_active: Boolean(p.is_active),
   }));
 }
 

@@ -604,7 +604,14 @@ function StepProducts({
                   className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-elevated"
                 >
                   <span className="font-mono text-xs text-muted">{p.part_code}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm">{p.name_ro ?? "—"}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {p.name_ro ?? "—"}
+                    {!p.is_active ? (
+                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-amber-800">
+                        draft
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="text-xs text-muted">
                     {t("sale_products_stock_label", { qty: p.stock_quantity })}
                   </span>
