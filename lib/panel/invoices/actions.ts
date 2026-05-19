@@ -261,9 +261,28 @@ export async function convertProformaToInvoice(
     });
   }
 
+  // Converting a proforma to a fiscal invoice means "paid + delivered + done"
+  // per business definition — so close the loop on the originating order and
+  // any delivery notes attached to it. All updates are best-effort: an error
+  // here doesn't roll back the invoice, the admin can finish up by hand.
+  if (pf.order_id) {
+    await supabase
+      .from("orders")
+      .update({ status: "delivered", updated_at: now.toISOString() })
+      .eq("id", pf.order_id);
+
+    await supabase
+      .from("delivery_notes")
+      .update({ status: "delivered", updated_at: now.toISOString() })
+      .eq("order_id", pf.order_id)
+      .neq("status", "returned");
+  }
+
   revalidatePath("/[locale]/panel/proforme", "page");
   revalidatePath(`/[locale]/panel/proforme/${pf.id}`, "page");
   revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
+  revalidatePath("/[locale]/admin/orders", "page");
   return { ok: true, invoiceId: inv.id, number: `${series}${number}` };
 }
 
