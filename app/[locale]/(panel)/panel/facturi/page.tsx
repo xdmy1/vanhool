@@ -36,10 +36,21 @@ export default async function PanelFacturiPage({
   setRequestLocale(locale);
 
   const q = typeof sp.q === "string" ? sp.q : undefined;
-  const rows = await listInvoices({ q, type: "invoice", scope: "conta1" });
+  const scopeParam =
+    typeof sp.scope === "string" && (sp.scope === "conta1" || sp.scope === "conta2")
+      ? (sp.scope as "conta1" | "conta2")
+      : undefined;
+  const rows = await listInvoices({ q, type: "invoice", scope: scopeParam });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel = (s: string) =>
     t(`facturi_status_${s}` as "facturi_status_draft");
+
+  const chips: Array<{ id: "all" | "conta1" | "conta2"; label: string }> = [
+    { id: "all", label: t("facturi_filter_all") },
+    { id: "conta1", label: t("conta1") },
+    { id: "conta2", label: t("conta2") },
+  ];
+  const activeChip: "all" | "conta1" | "conta2" = scopeParam ?? "all";
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -49,8 +60,37 @@ export default async function PanelFacturiPage({
         subtitle={t("facturi_subtitle")}
       />
 
-      <div className="mt-6 max-w-md">
-        <SearchInput placeholder={t("facturi_search_placeholder")} />
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <SearchInput
+          placeholder={t("facturi_search_placeholder")}
+          className="w-full max-w-md"
+        />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {chips.map((c) => {
+            const next = new URLSearchParams();
+            for (const [k, v] of Object.entries(sp)) {
+              if (k === "scope" || v === undefined) continue;
+              next.set(k, Array.isArray(v) ? v.join(",") : v);
+            }
+            if (c.id !== "all") next.set("scope", c.id);
+            const href = next.toString() ? `?${next.toString()}` : "?";
+            const active = activeChip === c.id;
+            return (
+              <a
+                key={c.id}
+                href={href}
+                className={cn(
+                  "inline-flex h-9 items-center rounded-md border px-3 text-xs transition-colors",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+                )}
+              >
+                {c.label}
+              </a>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-6">
@@ -66,6 +106,7 @@ export default async function PanelFacturiPage({
                   <th className="px-4 py-3">{t("facturi_col_number")}</th>
                   <th className="px-4 py-3">{t("facturi_col_date")}</th>
                   <th className="px-4 py-3">{t("facturi_col_client")}</th>
+                  <th className="px-4 py-3">{t("facturi_col_scope")}</th>
                   <th className="px-4 py-3">{t("facturi_col_status")}</th>
                   <th className="px-4 py-3 text-right">{t("facturi_col_total")}</th>
                   <th className="px-4 py-3">{t("facturi_col_refrens")}</th>
@@ -91,6 +132,18 @@ export default async function PanelFacturiPage({
                       <span
                         className={cn(
                           "rounded px-2 py-0.5 text-[10px] uppercase tracking-wide",
+                          r.account_scope === "conta1"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-warning/10 text-warning",
+                        )}
+                      >
+                        {r.account_scope === "conta1" ? t("conta1") : t("conta2")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "rounded px-2 py-0.5 text-[10px] uppercase tracking-wide",
                           isOverdue(r) ? STATUS_TONE.overdue : STATUS_TONE[r.status],
                         )}
                       >
@@ -100,7 +153,7 @@ export default async function PanelFacturiPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                      {r.total.toFixed(2)} MDL
+                      {r.total.toFixed(2)} {r.currency}
                     </td>
                     <td className="px-4 py-3">
                       {r.refrens_url ? (

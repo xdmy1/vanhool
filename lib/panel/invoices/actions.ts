@@ -228,6 +228,64 @@ export async function convertProformaToInvoice(
     1,
   );
   const now = new Date();
+
+  // If the proforma was ad-hoc (no linked order), create a synthetic order
+  // out of its snapshot so the resulting sale flows into /admin/orders and
+  // every report/stat that's keyed off `orders`. Status reflects whether
+  // payment is in or pending.
+  let orderId: string | null = pf.order_id;
+  if (!orderId) {
+    const cs = (pf.customer_snapshot ?? {}) as {
+      user_id?: string | null;
+      name?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      address?: string | null;
+    };
+    const snapshot = Array.isArray(pf.items_snapshot)
+      ? (pf.items_snapshot as Array<Record<string, unknown>>)
+      : [];
+    const items = snapshot.map((it) => ({
+      productId: (it as { productId?: string | null }).productId ?? null,
+      partCode: (it as { partCode?: string | null }).partCode ?? null,
+      name: (it as { name?: string }).name ?? "",
+      quantity: Number((it as { quantity?: number }).quantity ?? 0),
+      price: Number((it as { unit_price?: number }).unit_price ?? 0),
+      cost_price: 0,
+      total: Number((it as { total?: number }).total ?? 0),
+    }));
+    const paidNow = paymentStatus === "paid";
+    const pm =
+      paidNow && options?.paymentMethod === "cash"
+        ? "cash"
+        : paidNow
+          ? "already_paid"
+          : "transfer";
+    const { data: o, error: oErr } = await supabase
+      .from("orders")
+      .insert({
+        user_id: cs.user_id ?? null,
+        customer_name: cs.name ?? "Client",
+        customer_email: cs.email ?? null,
+        customer_phone: cs.phone ?? null,
+        customer_address: cs.address ?? null,
+        items: items as unknown as Json,
+        subtotal: Number(pf.subtotal ?? 0),
+        discount_amount: 0,
+        shipping_cost: 0,
+        total: Number(pf.total ?? 0),
+        status: paidNow ? "confirmed" : "pending",
+        payment_method: pm,
+        account_scope: scope,
+        source: "panel",
+        notes: `Generat din pro-formă ${pf.series ?? ""}${pf.number ?? ""}`,
+      })
+      .select("id")
+      .single();
+    if (!oErr && o) {
+      orderId = o.id;
+    }
+  }
   const deferredDue =
     paymentStatus === "deferred"
       ? new Date(now.getTime() + dueInDays * 86_400_000).toISOString().slice(0, 10)
@@ -236,7 +294,7 @@ export async function convertProformaToInvoice(
   const { data: inv, error: insErr } = await supabase
     .from("invoices")
     .insert({
-      order_id: pf.order_id,
+      order_id: orderId,
       account_scope: scope,
       type: "invoice",
       series,
@@ -278,13 +336,13 @@ export async function convertProformaToInvoice(
     paymentStatus === "paid" &&
     scope === "conta2" &&
     options?.paymentMethod === "cash" &&
-    pf.order_id
+    orderId
   ) {
     await supabase.from("cash_register_movements").insert({
       direction: "in",
       amount: Number(pf.total),
       reason: "sale",
-      order_id: pf.order_id,
+      order_id: orderId,
       created_by: user.id,
       notes: `Conversie proformă ${pf.series}${pf.number} → factură ${series}${number}`,
     });
@@ -293,16 +351,16 @@ export async function convertProformaToInvoice(
   // For paid conversions, also close the originating order + delivery note.
   // Deferred conversions leave them in their current state — payment is
   // pending and so is the "delivered" semantics.
-  if (paymentStatus === "paid" && pf.order_id) {
+  if (paymentStatus === "paid" && orderId) {
     await supabase
       .from("orders")
       .update({ status: "delivered", updated_at: now.toISOString() })
-      .eq("id", pf.order_id);
+      .eq("id", orderId);
 
     await supabase
       .from("delivery_notes")
       .update({ status: "delivered", updated_at: now.toISOString() })
-      .eq("order_id", pf.order_id)
+      .eq("order_id", orderId)
       .neq("status", "returned");
   }
 

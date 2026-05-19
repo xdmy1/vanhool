@@ -1142,6 +1142,8 @@
     "facturi_col_number": "№",
     "facturi_col_date": "Дата",
     "facturi_col_client": "Клиент",
+    "facturi_col_scope": "Конта",
+    "facturi_filter_all": "Все",
     "facturi_col_status": "Статус",
     "facturi_col_total": "Итого",
     "facturi_col_refrens": "Refrens",

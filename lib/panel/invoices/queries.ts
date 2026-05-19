@@ -6,6 +6,7 @@ export type InvoiceRow = {
   id: string;
   order_id: string | null;
   type: InvoiceListType;
+  account_scope: "conta1" | "conta2";
   series: string | null;
   number: string | null;
   issued_date: string;
@@ -50,6 +51,7 @@ export async function listInvoices(args: {
     id: r.id,
     order_id: r.order_id,
     type: r.type,
+    account_scope: r.account_scope,
     series: r.series,
     number: r.number,
     issued_date: r.issued_date,

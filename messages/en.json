@@ -1142,6 +1142,8 @@
     "facturi_col_number": "No.",
     "facturi_col_date": "Date",
     "facturi_col_client": "Customer",
+    "facturi_col_scope": "Book",
+    "facturi_filter_all": "All",
     "facturi_col_status": "Status",
     "facturi_col_total": "Total",
     "facturi_col_refrens": "Refrens",
