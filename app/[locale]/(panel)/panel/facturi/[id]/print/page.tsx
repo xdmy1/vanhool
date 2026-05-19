@@ -76,9 +76,12 @@ export default async function InvoicePrintPage({
           linkedInvoice: t("invoice_print_linked_invoice"),
         }}
       />
-      <footer className="no-print mt-6 flex flex-wrap justify-center gap-3 pb-10">
-        <PrintButton label={t("action_print")} />
-        <DownloadPDFButton filename={filename} label={t("action_download_pdf")} />
+      <footer className="no-print mt-6 flex flex-col items-center gap-2 pb-10">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <PrintButton label={t("action_print")} />
+          <DownloadPDFButton filename={filename} label={t("action_download_pdf")} />
+        </div>
+        <p className="max-w-md text-center text-xs text-gray-500">{t("pdf_save_hint")}</p>
       </footer>
     </>
   );

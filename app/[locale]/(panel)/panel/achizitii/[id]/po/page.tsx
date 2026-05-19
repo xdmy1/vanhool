@@ -176,12 +176,15 @@ export default async function POPrintPage({
         ) : null}
       </section>
 
-      <footer className="no-print mt-10 flex flex-wrap justify-center gap-3">
-        <PrintButton label={t("po_action_print")} />
-        <DownloadPDFButton
-          filename={`PO-${purchase.po_number ?? id.slice(0, 8)}`}
-          label={t("action_download_pdf")}
-        />
+      <footer className="no-print mt-10 flex flex-col items-center gap-2">
+        <div className="flex flex-wrap justify-center gap-3">
+          <PrintButton label={t("po_action_print")} />
+          <DownloadPDFButton
+            filename={`PO-${purchase.po_number ?? id.slice(0, 8)}`}
+            label={t("action_download_pdf")}
+          />
+        </div>
+        <p className="max-w-md text-center text-xs text-gray-500">{t("pdf_save_hint")}</p>
       </footer>
     </main>
   );

@@ -91,7 +91,10 @@ export function PanelSidebar({
   const stripped = pathname.replace(new RegExp(`^/${locale}`), "");
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface-elevated md:flex">
+    <aside
+      data-panel-chrome
+      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface-elevated md:flex"
+    >
       <div className="flex h-16 items-center gap-3 border-b border-border px-5">
         <Logo className="h-7 w-auto text-foreground" />
         <div className="flex flex-col leading-tight">

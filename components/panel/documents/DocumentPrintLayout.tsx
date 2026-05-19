@@ -6,9 +6,14 @@
  */
 export function DocumentPrintShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-white text-black">
+    <div className="doc-print-root min-h-dvh bg-white text-black">
       <style>{`
         @page { size: A4; margin: 0; }
+        /* Nuke parent panel chrome whenever a print shell renders, on-screen
+           AND while printing. Uses :has() so the parent panel layout's
+           standalone detection isn't load-bearing — if we render, chrome dies. */
+        [data-panel-chrome] { display: none !important; }
+        html:has(.doc-print-root) body { background: #f3f4f6 !important; }
         @media print {
           html, body { background: white !important; }
           .no-print { display: none !important; }

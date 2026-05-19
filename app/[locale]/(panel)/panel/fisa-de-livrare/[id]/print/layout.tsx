@@ -10,12 +10,15 @@ export default function DeliveryNotePrintLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh bg-white text-black">
+    <div className="delivery-print-root min-h-dvh bg-white text-black">
       <style>{`
         @page {
           size: A4;
           margin: 0;
         }
+        /* Hide panel chrome whenever the delivery-note print shell renders. */
+        [data-panel-chrome] { display: none !important; }
+        html:has(.delivery-print-root) body { background: #f3f4f6 !important; }
         @media print {
           html, body { background: white !important; }
           .no-print { display: none !important; }
