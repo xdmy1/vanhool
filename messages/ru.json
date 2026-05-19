@@ -1034,6 +1034,8 @@
     "sale_client_walkin_email_hint": "(нужен, если хотите счёт по email через Refrens)",
     "sale_client_walkin_idno": "IDNO (опционально, B2B)",
     "sale_client_search_placeholder": "Поиск имя, email, IDNO, телефон...",
+    "sale_client_filter_placeholder": "Фильтр списка...",
+    "sale_client_loading": "Загрузка...",
     "sale_client_discount_applied": "Скидка {percent}% применена автоматически",
     "sale_client_no_results": "Клиент не найден. Нажмите «Walk-in клиент» для разовой продажи.",
     "sale_products_section": "Добавить товары",

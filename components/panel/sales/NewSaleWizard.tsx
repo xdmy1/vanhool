@@ -24,7 +24,7 @@ import {
   type ClientSearchResult,
   type ProductSearchResult,
   createManualSale,
-  searchClients,
+  listAllPanelClients,
   searchProducts,
 } from "@/lib/panel/sales/actions";
 
@@ -339,28 +339,34 @@ function StepClient({
   setWalkin: (w: WalkIn) => void;
 }) {
   const t = useTranslations("panel");
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<ClientSearchResult[]>([]);
-  const [searching, startSearch] = useTransition();
-  const timer = useRef<number | null>(null);
+  const [allClients, setAllClients] = useState<ClientSearchResult[]>([]);
+  const [filter, setFilter] = useState("");
+  const [loadingList, startLoad] = useTransition();
 
+  // Pickable list, not autocomplete — load every client on mount and let the
+  // operator filter in-page. Total count is small by design.
   useEffect(() => {
-    if (timer.current) clearTimeout(timer.current);
-    if (!q.trim() || client || walkinMode) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setResults([]);
-      return;
-    }
-    timer.current = window.setTimeout(() => {
-      startSearch(async () => {
-        const r = await searchClients(q);
-        setResults(r);
-      });
-    }, 300);
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [q, client, walkinMode]);
+    if (client || walkinMode || allClients.length > 0) return;
+    startLoad(async () => {
+      const r = await listAllPanelClients();
+      setAllClients(r);
+    });
+  }, [client, walkinMode, allClients.length]);
+
+  const visibleClients = useMemo(() => {
+    const term = filter.trim().toLowerCase();
+    if (!term) return allClients;
+    return allClients.filter((c) => {
+      const fields = [
+        c.company_name,
+        c.full_name,
+        c.email,
+        c.phone,
+        c.idno,
+      ];
+      return fields.some((f) => f?.toLowerCase().includes(term));
+    });
+  }, [allClients, filter]);
 
   if (client) {
     return (
@@ -479,18 +485,19 @@ function StepClient({
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t("sale_client_search_placeholder")}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={t("sale_client_filter_placeholder")}
           className="pl-9"
         />
-        {searching ? (
-          <span className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 animate-spin rounded-full border-2 border-border border-t-primary" />
-        ) : null}
       </div>
-      {results.length > 0 ? (
-        <ul className="mt-3 divide-y divide-border rounded-md border border-border">
-          {results.map((r) => (
+      <ul className="mt-3 max-h-[420px] divide-y divide-border overflow-y-auto rounded-md border border-border">
+        {loadingList && allClients.length === 0 ? (
+          <li className="px-3 py-3 text-sm text-muted">{t("sale_client_loading")}</li>
+        ) : visibleClients.length === 0 ? (
+          <li className="px-3 py-3 text-sm text-muted">{t("sale_client_no_results")}</li>
+        ) : (
+          visibleClients.map((r) => (
             <li key={r.id}>
               <button
                 type="button"
@@ -523,11 +530,9 @@ function StepClient({
                 ) : null}
               </button>
             </li>
-          ))}
-        </ul>
-      ) : q.trim() && !searching ? (
-        <p className="mt-3 text-sm text-muted">{t("sale_client_no_results")}</p>
-      ) : null}
+          ))
+        )}
+      </ul>
     </section>
   );
 }

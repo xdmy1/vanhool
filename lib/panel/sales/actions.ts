@@ -24,6 +24,31 @@ export type ClientSearchResult = {
   billing_address: string | null;
 };
 
+function mapClientRow(p: {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  company_name: string | null;
+  idno: string | null;
+  account_type: "individual" | "business" | null;
+  discount_percent: number | null;
+  billing_street: string | null;
+  billing_city: string | null;
+}): ClientSearchResult {
+  return {
+    id: p.id,
+    email: p.email,
+    full_name: p.full_name,
+    phone: p.phone,
+    company_name: p.company_name,
+    idno: p.idno,
+    account_type: p.account_type,
+    discount_percent: p.discount_percent,
+    billing_address: [p.billing_street, p.billing_city].filter(Boolean).join(", ") || null,
+  };
+}
+
 export async function searchClients(q: string): Promise<ClientSearchResult[]> {
   const user = await getPanelUser();
   if (!user) return [];
@@ -39,17 +64,26 @@ export async function searchClients(q: string): Promise<ClientSearchResult[]> {
       `email.ilike.${term},full_name.ilike.${term},company_name.ilike.${term},idno.ilike.${term},phone.ilike.${term}`,
     )
     .limit(8);
-  return (data ?? []).map((p) => ({
-    id: p.id,
-    email: p.email,
-    full_name: p.full_name,
-    phone: p.phone,
-    company_name: p.company_name,
-    idno: p.idno,
-    account_type: p.account_type,
-    discount_percent: p.discount_percent,
-    billing_address: [p.billing_street, p.billing_city].filter(Boolean).join(", ") || null,
-  }));
+  return (data ?? []).map(mapClientRow);
+}
+
+/**
+ * Returns every client visible to the panel. Cheap to fetch (low row count
+ * by design) — the panel UX is a pickable list rather than autocomplete.
+ */
+export async function listAllPanelClients(): Promise<ClientSearchResult[]> {
+  const user = await getPanelUser();
+  if (!user) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select(
+      "id, email, full_name, phone, company_name, idno, account_type, discount_percent, billing_street, billing_city",
+    )
+    .order("company_name", { nullsFirst: false })
+    .order("full_name", { nullsFirst: false })
+    .limit(500);
+  return (data ?? []).map(mapClientRow);
 }
 
 export type ProductSearchResult = {

@@ -1034,6 +1034,8 @@
     "sale_client_walkin_email_hint": "(required if you want the invoice emailed via Refrens)",
     "sale_client_walkin_idno": "IDNO (optional, B2B)",
     "sale_client_search_placeholder": "Search name, email, IDNO, phone...",
+    "sale_client_filter_placeholder": "Filter list...",
+    "sale_client_loading": "Loading...",
     "sale_client_discount_applied": "{percent}% discount applied automatically",
     "sale_client_no_results": "No customer found. Click \"Walk-in customer\" for an ad-hoc sale.",
     "sale_products_section": "Add products",
