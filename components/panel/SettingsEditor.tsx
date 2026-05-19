@@ -158,6 +158,43 @@ export function SettingsEditor({ initial }: { initial: PanelSettings }) {
         </div>
       </Section>
 
+      <Section
+        title={t("settings_section_pricing")}
+        body={t("settings_section_pricing_body")}
+      >
+        <Field label={t("settings_default_markup_label")}>
+          <div className="flex items-center gap-2 md:max-w-xs">
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={state.defaultMarkupPercent}
+              onChange={(e) =>
+                setField(
+                  "defaultMarkupPercent",
+                  Math.max(0, Number(e.target.value || 0)),
+                )
+              }
+            />
+            <span className="text-sm text-muted">%</span>
+          </div>
+          <p className="mt-1 text-xs text-muted">{t("settings_default_markup_helper")}</p>
+        </Field>
+        <div className="pt-2">
+          <Button
+            type="button"
+            onClick={() =>
+              save({ defaultMarkupPercent: state.defaultMarkupPercent })
+            }
+            disabled={savePending}
+            className="gap-1.5"
+          >
+            <Save className="size-4" />
+            {savePending ? t("action_saving") : t("settings_save_button")}
+          </Button>
+        </div>
+      </Section>
+
       <Section title={t("settings_section_numbering")} body={t("settings_section_numbering_body")}>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label={t("settings_invoice_series")}>

@@ -66,6 +66,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [driverName, setDriverName] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [notes, setNotes] = useState("");
+  // Optional VAT typed in manually by the owner. Empty = no VAT applied.
+  const [vatAmount, setVatAmount] = useState<string>("");
 
   const [submitting, startSubmit] = useTransition();
 
@@ -132,6 +134,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         driver_name: driverName || null,
         vehicle_plate: vehiclePlate || null,
         notes: notes || null,
+        vat_amount: vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0),
       };
       const res = await createManualSale(payload);
       if (res.ok) {
@@ -187,6 +190,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           setVehiclePlate={setVehiclePlate}
           notes={notes}
           setNotes={setNotes}
+          vatAmount={vatAmount}
+          setVatAmount={setVatAmount}
+          subtotal={subtotal}
           fallbackAddress={client?.billing_address ?? ""}
         />
       ) : null}
@@ -716,6 +722,9 @@ function StepPayment({
   setVehiclePlate,
   notes,
   setNotes,
+  vatAmount,
+  setVatAmount,
+  subtotal,
   fallbackAddress,
 }: {
   paymentMethod: "cash" | "transfer" | "already_paid";
@@ -728,6 +737,9 @@ function StepPayment({
   setVehiclePlate: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
+  vatAmount: string;
+  setVatAmount: (v: string) => void;
+  subtotal: number;
   fallbackAddress: string;
 }) {
   const t = useTranslations("panel");
@@ -810,6 +822,45 @@ function StepPayment({
               placeholder={t("sale_notes_placeholder")}
             />
           </Field>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border bg-surface p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          {t("sale_totals_section")}
+        </h3>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <Field label={t("sale_vat_label")} hint={t("sale_vat_hint")}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min={0}
+              value={vatAmount}
+              onChange={(e) => setVatAmount(e.target.value)}
+              placeholder="0.00"
+              className="md:max-w-xs"
+            />
+          </Field>
+          <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
+            <div className="flex justify-between gap-6">
+              <dt className="text-muted">{t("sale_review_total")}</dt>
+              <dd className="tabular-nums">{subtotal.toFixed(2)}</dd>
+            </div>
+            <div className="flex justify-between gap-6">
+              <dt className="text-muted">{t("sale_vat_label")}</dt>
+              <dd className="tabular-nums">
+                {(vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
+              <dt>{t("sale_total_label")}</dt>
+              <dd className="tabular-nums">
+                {(subtotal +
+                  (vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)}
+              </dd>
+            </div>
+          </dl>
         </div>
       </div>
     </section>
@@ -979,10 +1030,12 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function Field({
   label,
   required,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -992,6 +1045,7 @@ function Field({
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </label>
       {children}
+      {hint ? <p className="mt-1 text-[11px] text-muted">{hint}</p> : null}
     </div>
   );
 }

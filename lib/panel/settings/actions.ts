@@ -14,6 +14,9 @@ export type PanelSettings = {
   invoiceNextNumber: number;
   deliveryNoteSeries: string;
   deliveryNoteNextNumber: number;
+  /** Default sale markup % applied on top of cost when prefilling a new
+   * product from a purchase line. Owner-editable from /panel/setari. */
+  defaultMarkupPercent: number;
 };
 
 const DEFAULTS: PanelSettings = {
@@ -24,6 +27,7 @@ const DEFAULTS: PanelSettings = {
   invoiceNextNumber: 1,
   deliveryNoteSeries: "FL",
   deliveryNoteNextNumber: 1,
+  defaultMarkupPercent: 30,
 };
 
 const KEY_MAP = {
@@ -34,6 +38,7 @@ const KEY_MAP = {
   invoiceNextNumber: "invoice.next_number",
   deliveryNoteSeries: "delivery_note.series",
   deliveryNoteNextNumber: "delivery_note.next_number",
+  defaultMarkupPercent: "pricing.default_markup_percent",
 } as const;
 
 type SettingKey = keyof PanelSettings;
@@ -44,9 +49,31 @@ function castValue<K extends SettingKey>(key: K, raw: unknown): PanelSettings[K]
     case "internalCodeSequence":
     case "invoiceNextNumber":
     case "deliveryNoteNextNumber":
+    case "defaultMarkupPercent":
       return (typeof raw === "number" ? raw : Number(raw)) as PanelSettings[K];
     default:
       return (typeof raw === "string" ? raw : String(raw ?? "")) as PanelSettings[K];
+  }
+}
+
+/**
+ * Lightweight reader for use in server actions and prefill paths that just
+ * need the markup. Skips the auth gate — assumes the caller is already in an
+ * admin context. Falls back to 30% if the row is missing or unreadable.
+ */
+export async function getDefaultMarkupPercent(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("panel_settings")
+      .select("value")
+      .eq("key", KEY_MAP.defaultMarkupPercent)
+      .maybeSingle();
+    const raw = data?.value;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 30;
+  } catch {
+    return 30;
   }
 }
 

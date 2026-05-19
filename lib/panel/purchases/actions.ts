@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
+import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
 
 const lineInputSchema = z.object({
   id: z.string().uuid().nullable().optional(),
@@ -129,6 +130,8 @@ export async function postPurchase(
     currency === "MDL"
       ? 1
       : (Number(header.fx_rate) || DEFAULT_FX_TO_MDL[currency] || 1);
+  // Markup is configurable from /panel/setari — falls back to 30% if unset.
+  const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
 
   const { data: items } = await supabase
     .from("purchase_items")
@@ -159,7 +162,7 @@ export async function postPurchase(
           part_code: code,
           name_ro: it.description.slice(0, 200),
           slug,
-          price: Number((costMdl * 1.3).toFixed(2)), // 30% markup default
+          price: Number((costMdl * markupFactor).toFixed(2)),
           cost_price: costMdl,
           stock_quantity: 0,
           is_active: false, // owner reviews before publishing

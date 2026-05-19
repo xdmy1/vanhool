@@ -11,6 +11,7 @@ import { adminListBrandSuggestions } from "@/lib/admin/products/suggestions";
 import type { Locale } from "@/lib/db/types";
 import { buildProductFormLabels } from "@/components/admin/products/labels";
 import { getPurchaseItemPrefill } from "@/lib/panel/purchases/queries";
+import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
 import type { ProductFormValues } from "@/lib/admin/products/actions";
 
 /** Same fixed reference table as the panel — predictable 20 MDL/EUR. */
@@ -48,13 +49,15 @@ export default async function NewProductPage({
   const fromLineId =
     typeof fromLineRaw === "string" && fromLineRaw.length > 0 ? fromLineRaw : null;
 
-  const [cats, manufacturers, vehicleMakes, brandSuggestions, prefill] = await Promise.all([
-    adminListCategories(),
-    adminListManufacturers(),
-    adminListVehicleMakes(),
-    adminListBrandSuggestions(),
-    fromLineId ? getPurchaseItemPrefill(fromLineId) : Promise.resolve(null),
-  ]);
+  const [cats, manufacturers, vehicleMakes, brandSuggestions, prefill, markup] =
+    await Promise.all([
+      adminListCategories(),
+      adminListManufacturers(),
+      adminListVehicleMakes(),
+      adminListBrandSuggestions(),
+      fromLineId ? getPurchaseItemPrefill(fromLineId) : Promise.resolve(null),
+      fromLineId ? getDefaultMarkupPercent() : Promise.resolve(30),
+    ]);
 
   const categoryOptions = cats.map((c) => ({
     id: c.id,
@@ -77,11 +80,12 @@ export default async function NewProductPage({
     const rate =
       cur === "MDL" ? 1 : (usablePrefill.fx_rate ?? DEFAULT_FX_TO_MDL[cur] ?? 1);
     const costMdl = Number((usablePrefill.unit_cost * rate).toFixed(2));
+    const markupFactor = 1 + (Number.isFinite(markup) ? markup : 30) / 100;
     initial = {
       partCode: usablePrefill.internal_code ?? usablePrefill.supplier_code ?? "",
       nameRo: usablePrefill.description.slice(0, 200),
       costPrice: costMdl,
-      price: Number((costMdl * 1.3).toFixed(2)),
+      price: Number((costMdl * markupFactor).toFixed(2)),
       // Stock stays 0 here — postPurchase increments it from the line qty
       // once the user clicks "Recepționează & postează" on the purchase.
       stockQuantity: 0,

@@ -122,6 +122,8 @@ const saleSchema = z
     driver_name: z.string().nullable().optional(),
     vehicle_plate: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
+    /** Optional VAT amount the owner types in manually. Default 0. */
+    vat_amount: z.number().nonnegative().optional(),
   })
   .refine(
     (d) => (d.client_id && !d.walkin) || (!d.client_id && d.walkin),
@@ -216,6 +218,9 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   }
   subtotal = Number(subtotal.toFixed(2));
 
+  const vatAmount = Number(((v.vat_amount ?? 0)).toFixed(2));
+  const total = Number((subtotal + vatAmount).toFixed(2));
+
   // Insert order
   const { data: order, error: oErr } = await supabase
     .from("orders")
@@ -229,7 +234,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       subtotal,
       discount_amount: 0,
       shipping_cost: 0,
-      total: subtotal,
+      total,
       status:
         v.payment_method === "already_paid" ? "confirmed" : "pending",
       payment_method: v.payment_method,
@@ -283,8 +288,8 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
           address: customer_address,
         } as unknown as Json,
         subtotal,
-        vat_amount: 0,
-        total: subtotal,
+        vat_amount: vatAmount,
+        total,
         status: "issued",
       })
       .select("id")
@@ -330,7 +335,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   if (v.account_scope === "conta2" && v.payment_method === "cash") {
     await supabase.from("cash_register_movements").insert({
       direction: "in",
-      amount: subtotal,
+      amount: total,
       reason: "sale",
       order_id: orderId,
       created_by: user.id,
@@ -378,7 +383,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       deliveryNoteId: "",
       invoiceId,
       invoiceUrl,
-      total: subtotal,
+      total,
     };
   }
   await supabase
@@ -405,6 +410,6 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     deliveryNoteId: noteRow.id,
     invoiceId,
     invoiceUrl,
-    total: subtotal,
+    total,
   };
 }

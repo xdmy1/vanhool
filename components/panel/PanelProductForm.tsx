@@ -55,6 +55,8 @@ type Props = {
   locale: string;
   initial?: PanelProductDetail | null;
   prefill?: ProductPrefill | null;
+  /** Markup % to apply to the prefilled cost. Editable from /panel/setari. */
+  markupPercent?: number;
   categories: CatOption[];
   manufacturers: Option[];
   suppliers: Option[];
@@ -85,6 +87,7 @@ export function PanelProductForm({
   locale,
   initial,
   prefill,
+  markupPercent = 30,
   categories,
   manufacturers,
   suppliers,
@@ -117,18 +120,15 @@ export function PanelProductForm({
         }
       : prefill
         ? (() => {
-            // Purchases can be in MDL/EUR/USD; products are stored in MDL.
-            // Convert at the purchase's fx_rate when set, otherwise fall
-            // back to the fixed 20 MDL/EUR reference rate.
             const costMdl = Number(costInMdl(prefill).toFixed(2));
+            const factor = 1 + (Number.isFinite(markupPercent) ? markupPercent : 30) / 100;
             return {
               part_code: prefill.internal_code ?? prefill.supplier_code ?? "",
               supplier_code: prefill.supplier_code ?? "",
               supplier_id: prefill.supplier_id,
               name_ro: prefill.description.slice(0, 200),
               cost_price: costMdl,
-              // Suggest 30% markup as starting price — owner can edit.
-              price: Number((costMdl * 1.3).toFixed(2)),
+              price: Number((costMdl * factor).toFixed(2)),
               stock_quantity: 0,
               is_active: false,
             };

@@ -8,6 +8,7 @@ import {
   listSuppliersOptions,
 } from "@/lib/panel/produse/queries";
 import { getPurchaseItemPrefill } from "@/lib/panel/purchases/queries";
+import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
 
 export default async function PanelProduseNewPage({
   params,
@@ -23,11 +24,12 @@ export default async function PanelProduseNewPage({
   const fromLineId =
     typeof fromLineRaw === "string" && fromLineRaw.length > 0 ? fromLineRaw : null;
 
-  const [categories, manufacturers, suppliers, prefill, t] = await Promise.all([
+  const [categories, manufacturers, suppliers, prefill, markup, t] = await Promise.all([
     listCategoriesOptions(),
     listManufacturersOptions(),
     listSuppliersOptions(),
     fromLineId ? getPurchaseItemPrefill(fromLineId) : Promise.resolve(null),
+    fromLineId ? getDefaultMarkupPercent() : Promise.resolve(30),
     getTranslations("panel"),
   ]);
 
@@ -52,6 +54,7 @@ export default async function PanelProduseNewPage({
         <PanelProductForm
           locale={locale}
           prefill={usablePrefill}
+          markupPercent={markup}
           categories={categories}
           manufacturers={manufacturers}
           suppliers={suppliers}
