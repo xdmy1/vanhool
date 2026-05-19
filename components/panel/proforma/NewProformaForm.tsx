@@ -69,6 +69,7 @@ export function NewProformaForm({ locale }: { locale: string }) {
   const [walkin, setWalkin] = useState<WalkIn>(EMPTY_WALKIN);
   const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
   const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
+  const [outputLocale, setOutputLocale] = useState<"ro" | "en" | "ru">("ro");
   const [dueDays, setDueDays] = useState(7);
   const [notes, setNotes] = useState("");
   const [pending, startSubmit] = useTransition();
@@ -162,6 +163,7 @@ export function NewProformaForm({ locale }: { locale: string }) {
         })),
         due_days: dueDays,
         currency,
+        output_locale: outputLocale,
         notes: notes || null,
       });
       if (res.ok) {
@@ -336,6 +338,17 @@ export function NewProformaForm({ locale }: { locale: string }) {
               <option value="MDL">MDL</option>
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
+            </select>
+          </Field>
+          <Field label={t("proforma_form_language")}>
+            <select
+              value={outputLocale}
+              onChange={(e) => setOutputLocale(e.target.value as "ro" | "en" | "ru")}
+              className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            >
+              <option value="ro">Română</option>
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
             </select>
           </Field>
           <Field label={t("proforma_form_due_days")}>

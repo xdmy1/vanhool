@@ -98,6 +98,8 @@ export type InvoiceDetail = {
   due_date: string | null;
   paid_at: string | null;
   currency: string;
+  /** Language used to render the printable view ('ro' | 'en' | 'ru'). */
+  output_locale: "ro" | "en" | "ru";
   status: "draft" | "issued" | "sent" | "paid" | "void" | "converted";
   customer_snapshot: CustomerSnapshot;
   items_snapshot: InvoiceItemSnapshot[];
@@ -120,7 +122,10 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
+      // Includes `output_locale` at runtime — the generated TS types are
+      // stale until the SQL migration is applied.
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale" as
+        "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -160,6 +165,7 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     due_date: data.due_date,
     paid_at: data.paid_at,
     currency: data.currency ?? "MDL",
+    output_locale: ((data as { output_locale?: string }).output_locale ?? "ro") as "ro" | "en" | "ru",
     status: data.status,
     customer_snapshot: (data.customer_snapshot ?? {}) as CustomerSnapshot,
     items_snapshot: items,

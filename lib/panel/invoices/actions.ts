@@ -35,6 +35,8 @@ const proformaInputSchema = z.object({
   items: z.array(lineSchema).min(1),
   due_days: z.number().int().min(0).default(7),
   currency: z.enum(["MDL", "EUR", "USD"]).default("MDL"),
+  /** Language the proforma is printed in — independent of the admin's UI. */
+  output_locale: z.enum(["ro", "en", "ru"]).default("ro"),
   notes: z.string().nullable().optional(),
 });
 
@@ -141,6 +143,8 @@ export async function issueProforma(
   const today = new Date();
   const due = new Date(today.getTime() + (v.due_days ?? 7) * 86_400_000);
 
+  // Cast: `output_locale` lives on the table at runtime (sql migration);
+  // the generated TS types are stale until they're regenerated.
   const { data: row, error } = await supabase
     .from("invoices")
     .insert({
@@ -159,6 +163,7 @@ export async function issueProforma(
       total,
       status: "sent",
       notes: v.notes ?? null,
+      ...({ output_locale: v.output_locale } as object),
     })
     .select("id")
     .single();
@@ -221,6 +226,9 @@ export async function convertProformaToInvoice(
       notes: pf.notes,
       status: "paid",
       proforma_id: pf.id,
+      // Carry the language across the conversion so the fiscal invoice
+      // matches the proforma's recipient language.
+      ...({ output_locale: (pf as { output_locale?: string }).output_locale ?? "ro" } as object),
     })
     .select("id")
     .single();

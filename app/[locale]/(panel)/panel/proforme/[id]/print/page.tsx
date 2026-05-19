@@ -17,13 +17,13 @@ export default async function ProformaPrintPage({
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ locale, id }, sp, t] = await Promise.all([
-    params,
-    searchParams,
-    getTranslations("panel"),
-  ]);
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "proforma") notFound();
+  // The output language travels on the invoice itself — chosen at create-time,
+  // doesn't matter who later opens the print page.
+  const docLocale = invoice.output_locale;
+  const t = await getTranslations({ locale: docLocale, namespace: "panel" });
   const auto = sp.auto === "1";
   const autoDownload = sp.download === "1";
   const { company, banks } = await getCompanyAndBank();
@@ -36,7 +36,7 @@ export default async function ProformaPrintPage({
         invoice={invoice}
         company={company}
         banks={banks}
-        locale={locale}
+        locale={docLocale}
         labels={{
           proformaTitle: t("invoice_print_proforma_title"),
           invoiceTitle: t("invoice_print_invoice_title"),

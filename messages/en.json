@@ -1386,6 +1386,7 @@
     "proforma_form_line_add": "Add line",
     "proforma_form_settings_section": "Document settings",
     "proforma_form_currency": "Currency",
+    "proforma_form_language": "Document language",
     "proforma_form_due_days": "Due (days)",
     "proforma_form_notes": "Notes",
     "proforma_form_notes_placeholder": "e.g. \"delivery in 7 working days after advance payment\"",

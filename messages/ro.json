@@ -1386,6 +1386,7 @@
     "proforma_form_line_add": "Adaugă linie",
     "proforma_form_settings_section": "Setări document",
     "proforma_form_currency": "Monedă",
+    "proforma_form_language": "Limbă document",
     "proforma_form_due_days": "Scadență (zile)",
     "proforma_form_notes": "Notițe",
     "proforma_form_notes_placeholder": "ex. „livrare în 7 zile lucrătoare după plata avansului\"",

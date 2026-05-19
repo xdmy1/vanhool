@@ -1386,6 +1386,7 @@
     "proforma_form_line_add": "Добавить строку",
     "proforma_form_settings_section": "Настройки документа",
     "proforma_form_currency": "Валюта",
+    "proforma_form_language": "Язык документа",
     "proforma_form_due_days": "Срок (дней)",
     "proforma_form_notes": "Заметки",
     "proforma_form_notes_placeholder": "напр. «доставка через 7 рабочих дней после аванса»",
