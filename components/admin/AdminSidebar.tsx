@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Mail,
   Package,
-  Plug,
   ShoppingBag,
   Tags,
   Users,
@@ -38,10 +37,9 @@ export function AdminSidebar({
     promocodes: string;
     messages: string;
     customers: string;
-    odoo: string;
     back: string;
   };
-  badges?: { orders?: number; messages?: number; odooFailed?: number };
+  badges?: { orders?: number; messages?: number };
 }) {
   const pathname = usePathname();
   const items: NavItem[] = [
@@ -62,12 +60,6 @@ export function AdminSidebar({
       badge: badges?.messages,
     },
     { href: "/admin/customers", icon: Users, label: labels.customers },
-    {
-      href: "/admin/odoo",
-      icon: Plug,
-      label: labels.odoo,
-      badge: badges?.odooFailed,
-    },
   ];
 
   // pathname includes locale prefix; strip it for active matching
