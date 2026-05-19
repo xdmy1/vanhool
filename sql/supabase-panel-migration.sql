@@ -402,7 +402,7 @@ insert into public.panel_settings (key, value) values
   ('company.full_legal_name',         to_jsonb($$Societatea cu Răspundere Limitată „Inter Bus Parts"$$::text)),
   ('company.legal_form',              to_jsonb('SRL'::text)),
   ('company.administrator',           to_jsonb('Adrian Oborocean'::text)),
-  ('company.address',                 to_jsonb('MD-2071, str. Liviu Deleanu 10/19, ap. 28, mun. Chișinău, Republica Moldova'::text)),
+  ('company.address',                 to_jsonb('Stradela Dimo 9, Durlești, mun. Chișinău, Republica Moldova'::text)),
   ('company.country',                 to_jsonb('Republica Moldova'::text)),
   ('company.idno',                    to_jsonb('1026023029685'::text)),
   ('company.vat_number',              to_jsonb('1026023029685'::text)),

@@ -46,7 +46,7 @@ const COMPANY_DEFAULTS: CompanyInfo = {
   full_legal_name: "Societatea cu Răspundere Limitată „Inter Bus Parts”",
   legal_form: "SRL",
   administrator: "Adrian Oborocean",
-  address: "MD-2071, str. Liviu Deleanu 10/19, ap. 28, mun. Chișinău, Republica Moldova",
+  address: "Stradela Dimo 9, Durlești, mun. Chișinău, Republica Moldova",
   country: "Republica Moldova",
   idno: "1026023029685",
   vat_registration_number: "0510688",
