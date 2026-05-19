@@ -47,7 +47,7 @@ export default async function PanelProduseListPage({
         subtitle={t("produse_subtitle")}
         actions={
           <Button asChild className="gap-1.5">
-            <Link href={"/panel/produse/new" as "/panel"} locale={locale}>
+            <Link href={"/admin/products/new" as "/admin"} locale={locale}>
               <Plus className="size-4" />
               {t("produse_new_button")}
             </Link>

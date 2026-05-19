@@ -1,52 +1,16 @@
-import { notFound } from "next/navigation";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { PanelProductForm } from "@/components/panel/PanelProductForm";
-import {
-  getPanelProduct,
-  listCategoriesOptions,
-  listManufacturersOptions,
-  listSuppliersOptions,
-} from "@/lib/panel/produse/queries";
-
-export default async function PanelProduseEditPage({
+/**
+ * The panel keeps the slimmed-down list view, but editing always happens on
+ * the full /admin/products/[id] form (images, OEM codes, cross-refs, bus
+ * compat, etc.). Anyone landing on the old panel edit URL is bounced over
+ * so there's a single source of truth for the product form.
+ */
+export default async function PanelProduseEditRedirect({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  setRequestLocale(locale);
-
-  const [product, categories, manufacturers, suppliers, t] = await Promise.all([
-    getPanelProduct(id),
-    listCategoriesOptions(),
-    listManufacturersOptions(),
-    listSuppliersOptions(),
-    getTranslations("panel"),
-  ]);
-  if (!product) notFound();
-
-  return (
-    <div className="px-4 py-8 md:px-8 md:py-10">
-      <AdminPageHeader
-        back={{ href: "/panel/produse", label: t("product_edit_back"), locale }}
-        title={product.name_ro ?? product.part_code ?? "—"}
-        subtitle={
-          product.part_code
-            ? t("product_edit_internal_code", { code: product.part_code })
-            : undefined
-        }
-      />
-      <div className="mt-8">
-        <PanelProductForm
-          locale={locale}
-          initial={product}
-          categories={categories}
-          manufacturers={manufacturers}
-          suppliers={suppliers}
-        />
-      </div>
-    </div>
-  );
+  redirect(`/${locale}/admin/products/${id}`);
 }
