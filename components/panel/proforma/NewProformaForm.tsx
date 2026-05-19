@@ -47,7 +47,9 @@ const EMPTY_LINE: Line = {
   description: "",
   quantity: 1,
   unit_price: 0,
-  vat_rate: 0,
+  // Prices are entered VAT-inclusive (Moldova: standard 20% TVA). The
+  // totals computation extracts the net + VAT components from the gross.
+  vat_rate: 20,
 };
 
 const EMPTY_WALKIN: WalkIn = {
@@ -75,17 +77,23 @@ export function NewProformaForm({ locale }: { locale: string }) {
   const [pending, startSubmit] = useTransition();
 
   const totals = useMemo(() => {
-    let subtotal = 0;
+    // unit_price is VAT-inclusive — break the gross back into net + vat so the
+    // proforma still itemizes TVA on the printed document.
+    let net = 0;
     let vat = 0;
+    let gross = 0;
     for (const l of lines) {
-      const net = l.quantity * l.unit_price;
-      subtotal += net;
-      vat += net * (l.vat_rate / 100);
+      const lineGross = l.quantity * l.unit_price;
+      const factor = 1 + l.vat_rate / 100;
+      const lineNet = factor > 0 ? lineGross / factor : lineGross;
+      gross += lineGross;
+      net += lineNet;
+      vat += lineGross - lineNet;
     }
     return {
-      subtotal: Number(subtotal.toFixed(2)),
+      subtotal: Number(net.toFixed(2)),
       vat: Number(vat.toFixed(2)),
-      total: Number((subtotal + vat).toFixed(2)),
+      total: Number(gross.toFixed(2)),
     };
   }, [lines]);
 
@@ -248,10 +256,13 @@ export function NewProformaForm({ locale }: { locale: string }) {
                   <td className="px-2 py-2 text-right">
                     <Input
                       type="number"
-                      step="0.001"
+                      step={1}
+                      min={1}
                       value={l.quantity}
                       onChange={(e) =>
-                        setLine(idx, { quantity: Math.max(0, Number(e.target.value || 0)) })
+                        setLine(idx, {
+                          quantity: Math.max(0, Math.trunc(Number(e.target.value || 0))),
+                        })
                       }
                       className="h-9 w-20 text-right"
                     />
@@ -270,16 +281,19 @@ export function NewProformaForm({ locale }: { locale: string }) {
                   <td className="px-2 py-2 text-right">
                     <Input
                       type="number"
-                      step="0.5"
+                      step={1}
+                      min={0}
                       value={l.vat_rate}
                       onChange={(e) =>
-                        setLine(idx, { vat_rate: Math.max(0, Number(e.target.value || 0)) })
+                        setLine(idx, {
+                          vat_rate: Math.max(0, Math.trunc(Number(e.target.value || 0))),
+                        })
                       }
                       className="h-9 w-16 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                    {(l.quantity * l.unit_price * (1 + l.vat_rate / 100)).toFixed(2)}
+                    {(l.quantity * l.unit_price).toFixed(2)}
                   </td>
                   <td className="px-2 py-2 text-right">
                     <button

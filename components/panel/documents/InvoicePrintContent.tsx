@@ -203,9 +203,14 @@ export function InvoicePrintContent({
           {items.map((it, i) => {
             const qty = Number(it.quantity ?? 0);
             const rate = Number(it.unit_price ?? 0);
-            const amount = qty * rate;
-            const vat = amount * (Number(it.vat_rate ?? 0) / 100);
-            const total = amount + vat;
+            // unit_price is VAT-inclusive (gross) — break it back into net
+            // + VAT so the document itemizes TVA without inflating the price.
+            const vatRate = Number(it.vat_rate ?? 0);
+            const factor = 1 + vatRate / 100;
+            const gross = qty * rate;
+            const amount = factor > 0 ? gross / factor : gross;
+            const vat = gross - amount;
+            const total = gross;
             return (
               <tr key={i}>
                 <td className="num">{i + 1}.</td>

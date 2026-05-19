@@ -45,17 +45,23 @@ export type ProformaInput = z.infer<typeof proformaInputSchema>;
 // ---- Helpers ---------------------------------------------------------------
 
 function totals(items: Array<{ quantity: number; unit_price: number; vat_rate: number }>) {
-  let subtotal = 0;
+  // `unit_price` is treated as VAT-inclusive (gross). Break it back into
+  // net + VAT so the printed document still itemizes TVA.
+  let net = 0;
   let vat = 0;
+  let gross = 0;
   for (const i of items) {
-    const net = i.quantity * i.unit_price;
-    subtotal += net;
-    vat += net * (i.vat_rate / 100);
+    const lineGross = i.quantity * i.unit_price;
+    const factor = 1 + i.vat_rate / 100;
+    const lineNet = factor > 0 ? lineGross / factor : lineGross;
+    gross += lineGross;
+    net += lineNet;
+    vat += lineGross - lineNet;
   }
   return {
-    subtotal: Number(subtotal.toFixed(2)),
+    subtotal: Number(net.toFixed(2)),
     vat_amount: Number(vat.toFixed(2)),
-    total: Number((subtotal + vat).toFixed(2)),
+    total: Number(gross.toFixed(2)),
   };
 }
 

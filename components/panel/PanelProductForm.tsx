@@ -291,8 +291,12 @@ export function PanelProductForm({
           <Field label={t("product_form_stock")}>
             <Input
               type="number"
+              step={1}
+              min={0}
               value={state.stock_quantity}
-              onChange={(e) => set("stock_quantity", Number(e.target.value || 0))}
+              onChange={(e) =>
+                set("stock_quantity", Math.max(0, Math.trunc(Number(e.target.value || 0))))
+              }
             />
           </Field>
           <Field label={t("product_form_location")}>

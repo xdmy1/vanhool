@@ -637,11 +637,14 @@ function StepProducts({
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
-                  inputMode="decimal"
-                  step="0.5"
+                  inputMode="numeric"
+                  step={1}
                   min={0}
                   value={saleMarkupPercent}
-                  onChange={(e) => applyMarkupToAll(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value.trim();
+                    applyMarkupToAll(v === "" ? "" : String(Math.max(0, Math.trunc(Number(v) || 0))));
+                  }}
                   placeholder="—"
                   className="h-9 w-24 text-right"
                 />
@@ -723,12 +726,14 @@ function StepProducts({
                   <td className="px-4 py-2 text-right">
                     <Input
                       type="number"
-                      step="0.001"
-                      min={0.001}
+                      step={1}
+                      min={1}
                       max={l.product.stock_quantity}
                       value={l.qty}
                       onChange={(e) =>
-                        update(idx, { qty: Math.max(0.001, Number(e.target.value || 0)) })
+                        update(idx, {
+                          qty: Math.max(1, Math.trunc(Number(e.target.value || 0))),
+                        })
                       }
                       className="ml-auto h-8 w-20 text-right"
                     />
