@@ -186,7 +186,18 @@ export async function issueProforma(
  */
 export async function convertProformaToInvoice(
   proformaId: string,
-  options?: { paymentMethod?: "cash" | "transfer" | "card"; account_scope?: "conta1" | "conta2" },
+  options?: {
+    paymentMethod?: "cash" | "transfer" | "card";
+    account_scope?: "conta1" | "conta2";
+    /**
+     * `paid` — money already in (default). Closes the originating order
+     * and any delivery note.
+     * `deferred` — invoice is issued but unpaid; the client pays later.
+     * `due_in_days` controls the new due date (clamped to 0..7).
+     */
+    payment_status?: "paid" | "deferred";
+    due_in_days?: number;
+  },
 ): Promise<{ ok: true; invoiceId: string; number: string } | { ok: false; reason: string }> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
@@ -204,6 +215,11 @@ export async function convertProformaToInvoice(
   }
 
   const scope = options?.account_scope ?? "conta1";
+  const paymentStatus = options?.payment_status ?? "paid";
+  const dueInDays = Math.max(
+    0,
+    Math.min(7, Math.trunc(options?.due_in_days ?? 7)),
+  );
   const { series, number } = await takeNextNumber(
     supabase,
     "invoice.series",
@@ -212,6 +228,10 @@ export async function convertProformaToInvoice(
     1,
   );
   const now = new Date();
+  const deferredDue =
+    paymentStatus === "deferred"
+      ? new Date(now.getTime() + dueInDays * 86_400_000).toISOString().slice(0, 10)
+      : null;
 
   const { data: inv, error: insErr } = await supabase
     .from("invoices")
@@ -222,7 +242,10 @@ export async function convertProformaToInvoice(
       series,
       number,
       issued_date: now.toISOString().slice(0, 10),
-      paid_at: now.toISOString(),
+      // Only mark paid_at when the client actually paid. Deferred payments
+      // get filled in later when the cash/transfer arrives.
+      paid_at: paymentStatus === "paid" ? now.toISOString() : null,
+      due_date: deferredDue,
       currency: pf.currency,
       customer_snapshot: pf.customer_snapshot,
       items_snapshot: pf.items_snapshot,
@@ -230,7 +253,7 @@ export async function convertProformaToInvoice(
       vat_amount: pf.vat_amount,
       total: pf.total,
       notes: pf.notes,
-      status: "paid",
+      status: paymentStatus === "paid" ? "paid" : "issued",
       proforma_id: pf.id,
       // Carry the language across the conversion so the fiscal invoice
       // matches the proforma's recipient language.
@@ -249,8 +272,14 @@ export async function convertProformaToInvoice(
     })
     .eq("id", pf.id);
 
-  // If conta2 + cash, record the inflow.
-  if (scope === "conta2" && options?.paymentMethod === "cash" && pf.order_id) {
+  // Cash inflow only when the money actually came in. Deferred payments
+  // get recorded when the customer pays.
+  if (
+    paymentStatus === "paid" &&
+    scope === "conta2" &&
+    options?.paymentMethod === "cash" &&
+    pf.order_id
+  ) {
     await supabase.from("cash_register_movements").insert({
       direction: "in",
       amount: Number(pf.total),
@@ -261,11 +290,10 @@ export async function convertProformaToInvoice(
     });
   }
 
-  // Converting a proforma to a fiscal invoice means "paid + delivered + done"
-  // per business definition — so close the loop on the originating order and
-  // any delivery notes attached to it. All updates are best-effort: an error
-  // here doesn't roll back the invoice, the admin can finish up by hand.
-  if (pf.order_id) {
+  // For paid conversions, also close the originating order + delivery note.
+  // Deferred conversions leave them in their current state — payment is
+  // pending and so is the "delivered" semantics.
+  if (paymentStatus === "paid" && pf.order_id) {
     await supabase
       .from("orders")
       .update({ status: "delivered", updated_at: now.toISOString() })

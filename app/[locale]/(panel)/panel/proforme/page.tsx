@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
+import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -115,14 +116,24 @@ export default async function PanelProformePage({
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
                       {r.total.toFixed(2)} {r.currency}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/panel/proforme/${r.id}` as "/panel"}
-                        locale={locale}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {t("action_open")}
-                      </Link>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-3">
+                        {r.status === "sent" || r.status === "draft" ? (
+                          <ConvertProformaButton
+                            proformaId={r.id}
+                            locale={locale}
+                            alreadyConverted={false}
+                            variant="compact"
+                          />
+                        ) : null}
+                        <Link
+                          href={`/panel/proforme/${r.id}` as "/panel"}
+                          locale={locale}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t("action_open")}
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
