@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   FolderTree,
   LayoutDashboard,
-  Mail,
   Package,
   ShoppingBag,
   Tags,
@@ -35,11 +34,10 @@ export function AdminSidebar({
     categories: string;
     orders: string;
     promocodes: string;
-    messages: string;
     customers: string;
     back: string;
   };
-  badges?: { orders?: number; messages?: number };
+  badges?: { orders?: number };
 }) {
   const pathname = usePathname();
   const items: NavItem[] = [
@@ -53,12 +51,6 @@ export function AdminSidebar({
       badge: badges?.orders,
     },
     { href: "/admin/promocodes", icon: Tags, label: labels.promocodes },
-    {
-      href: "/admin/messages",
-      icon: Mail,
-      label: labels.messages,
-      badge: badges?.messages,
-    },
     { href: "/admin/customers", icon: Users, label: labels.customers },
   ];
 

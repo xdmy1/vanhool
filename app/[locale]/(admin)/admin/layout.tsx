@@ -34,20 +34,11 @@ export default async function AdminLayout({
     getTranslations("admin"),
   ]);
 
-  // Pre-compute badges (pending orders + new messages)
-  const [
-    { count: pendingOrders },
-    { count: newMessages },
-  ] = await Promise.all([
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending"),
-    supabase
-      .from("contact_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "new"),
-  ]);
+  // Pre-compute badges (pending orders only — messages were removed).
+  const { count: pendingOrders } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -59,14 +50,10 @@ export default async function AdminLayout({
           categories: tAdmin("nav_categories"),
           orders: tAdmin("nav_orders"),
           promocodes: tAdmin("nav_promocodes"),
-          messages: tAdmin("nav_messages"),
           customers: tAdmin("nav_customers"),
           back: tAdmin("nav_back_to_site"),
         }}
-        badges={{
-          orders: pendingOrders ?? 0,
-          messages: newMessages ?? 0,
-        }}
+        badges={{ orders: pendingOrders ?? 0 }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar

@@ -293,33 +293,6 @@ export async function adminGetPromo(id: string): Promise<AdminPromoRow | null> {
   return (data as AdminPromoRow | null) ?? null;
 }
 
-export type AdminMessageRow = {
-  id: string;
-  user_id: string | null;
-  name: string;
-  email: string;
-  phone: string | null;
-  subject: string | null;
-  message: string;
-  topic: string | null;
-  status: string | null;
-  created_at: string | null;
-};
-
-export async function adminListMessages(
-  status?: "all" | "new" | "reading" | "replied" | "archived",
-): Promise<AdminMessageRow[]> {
-  const supabase = await createClient();
-  let query = supabase
-    .from("contact_messages")
-    .select(
-      "id, user_id, name, email, phone, subject, message, topic, status, created_at",
-    );
-  if (status && status !== "all") query = query.eq("status", status);
-  const { data } = await query.order("created_at", { ascending: false });
-  return (data ?? []) as AdminMessageRow[];
-}
-
 export type AdminCustomerRow = {
   id: string;
   email: string | null;
@@ -378,11 +351,9 @@ export type OverviewStats = {
   revenueLast30: number;
   revenueTotal: number;
   lowStockCount: number;
-  newMessages: number;
   productsActive: number;
   customersCount: number;
   recentOrders: AdminOrderRow[];
-  recentMessages: AdminMessageRow[];
   lowStockProducts: AdminProductRow[];
 };
 
@@ -394,13 +365,11 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     ordersTotalRes,
     ordersPendingRes,
     productsActiveRes,
-    newMessagesRes,
     lowStockCountRes,
     customersRes,
     revenueAllRes,
     revenue30Res,
     recentOrdersRes,
-    recentMessagesRes,
     lowStockListRes,
   ] = await Promise.all([
     supabase.from("orders").select("id", { count: "exact", head: true }),
@@ -413,10 +382,6 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
       .select("id", { count: "exact", head: true })
       .eq("is_active", true),
     supabase
-      .from("contact_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "new"),
-    supabase
       .from("products")
       .select("id", { count: "exact", head: true })
       .lte("stock_quantity", 5)
@@ -427,13 +392,6 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     supabase
       .from("orders")
       .select(ORDER_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from("contact_messages")
-      .select(
-        "id, user_id, name, email, phone, subject, message, topic, status, created_at",
-      )
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
@@ -452,13 +410,11 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     ordersTotal: ordersTotalRes.count ?? 0,
     ordersPending: ordersPendingRes.count ?? 0,
     productsActive: productsActiveRes.count ?? 0,
-    newMessages: newMessagesRes.count ?? 0,
     lowStockCount: lowStockCountRes.count ?? 0,
     customersCount: customersRes.count ?? 0,
     revenueTotal: sumTotals(revenueAllRes.data as { total: number | null }[] | null),
     revenueLast30: sumTotals(revenue30Res.data as { total: number | null }[] | null),
     recentOrders: (recentOrdersRes.data ?? []) as AdminOrderRow[],
-    recentMessages: (recentMessagesRes.data ?? []) as AdminMessageRow[],
     lowStockProducts: (lowStockListRes.data ?? []) as AdminProductRow[],
   };
 }

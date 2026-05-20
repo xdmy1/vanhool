@@ -2,7 +2,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import {
   AlertTriangle,
   ArrowRight,
-  Mail,
   Package,
   ShoppingBag,
   TrendingUp,
@@ -86,12 +85,6 @@ export default async function AdminOverviewPage({
           accent={stats.lowStockCount > 0}
         />
         <StatCard
-          icon={Mail}
-          label={t("stat_messages_new")}
-          value={String(stats.newMessages)}
-          accent={stats.newMessages > 0}
-        />
-        <StatCard
           icon={Package}
           label={t("stat_products_active")}
           value={String(stats.productsActive)}
@@ -103,8 +96,8 @@ export default async function AdminOverviewPage({
         />
       </div>
 
-      {/* Recent orders + messages */}
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+      {/* Recent orders */}
+      <div className="mt-8">
         <Section
           title={t("recent_orders")}
           href="/admin/orders"
@@ -149,55 +142,6 @@ export default async function AdminOverviewPage({
                           : "—"}
                       </div>
                     </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        <Section
-          title={t("recent_messages")}
-          href="/admin/messages"
-          locale={locale}
-          ctaLabel={t("view_all")}
-        >
-          {stats.recentMessages.length === 0 ? (
-            <Empty>{t("recent_messages_empty")}</Empty>
-          ) : (
-            <ul className="divide-y divide-border">
-              {stats.recentMessages.map((m) => (
-                <li key={m.id}>
-                  <Link
-                    href={`/admin/messages` as "/admin/messages"}
-                    locale={locale}
-                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-surface"
-                  >
-                    <span
-                      className={cn(
-                        "mt-1 size-2 shrink-0 rounded-full",
-                        m.status === "new" ? "bg-primary" : "bg-muted",
-                      )}
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold">
-                          {m.name}
-                        </span>
-                        <span className="text-xs text-muted">
-                          {m.topic ?? "general"}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 line-clamp-1 text-xs text-muted-strong">
-                        {m.subject ?? m.message.slice(0, 80)}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted">
-                      {m.created_at
-                        ? new Date(m.created_at).toLocaleDateString(dateLocale)
-                        : "—"}
-                    </span>
                   </Link>
                 </li>
               ))}
