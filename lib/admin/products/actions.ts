@@ -227,6 +227,32 @@ async function syncVehicleMakes(
   );
 }
 
+type AdminClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Reject part_code values that already belong to another product. Match is
+ * case-insensitive against the literal stored value. `excludeId` lets
+ * updateProduct keep its own row out of the search.
+ */
+async function findPartCodeOwner(
+  supabase: AdminClient,
+  partCode: string,
+  excludeId?: string,
+): Promise<{ id: string; part_code: string | null } | null> {
+  const code = partCode.trim();
+  if (!code) return null;
+  // Escape ilike metachars — codes shouldn't contain %/_ but defend anyway.
+  const escaped = code.replace(/[\\%_]/g, "\\$&");
+  let q = supabase
+    .from("products")
+    .select("id, part_code")
+    .ilike("part_code", escaped)
+    .limit(1);
+  if (excludeId) q = q.neq("id", excludeId);
+  const { data } = await q;
+  return data?.[0] ?? null;
+}
+
 export async function createProduct(values: unknown): Promise<ProductActionResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, code: "forbidden" };
@@ -237,6 +263,16 @@ export async function createProduct(values: unknown): Promise<ProductActionResul
       code: "validation",
       message: parsed.error.issues.map((i) => i.message).join(", "),
     };
+  }
+  if (parsed.data.partCode?.trim()) {
+    const dup = await findPartCodeOwner(auth.supabase, parsed.data.partCode);
+    if (dup) {
+      return {
+        ok: false,
+        code: "validation",
+        message: `Codul "${dup.part_code}" este deja folosit de un alt produs.`,
+      };
+    }
   }
   const manufacturerName = await fetchManufacturerName(
     auth.supabase,
@@ -269,6 +305,16 @@ export async function updateProduct(
       code: "validation",
       message: parsed.error.issues.map((i) => i.message).join(", "),
     };
+  }
+  if (parsed.data.partCode?.trim()) {
+    const dup = await findPartCodeOwner(auth.supabase, parsed.data.partCode, id);
+    if (dup) {
+      return {
+        ok: false,
+        code: "validation",
+        message: `Codul "${dup.part_code}" este deja folosit de un alt produs.`,
+      };
+    }
   }
   const manufacturerName = await fetchManufacturerName(
     auth.supabase,
