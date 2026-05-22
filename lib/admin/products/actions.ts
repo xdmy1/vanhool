@@ -131,8 +131,12 @@ function buildPayload(values: ProductFormValues, manufacturerName: string | null
   const slugFromName = slugify(
     values.nameEn || values.nameRo || values.nameRu || values.partCode || "",
   );
+  // Always pass user-supplied slugs through slugify so diacritics, spaces and
+  // case don't slip through — Next's dynamic route matching gets confused by
+  // raw UTF-8 in the URL path and falls through to 404.
+  const userSlug = slugify((values.slug ?? "").trim());
   const slug =
-    (values.slug || "").trim() ||
+    userSlug ||
     slugFromName ||
     slugify(`product-${Date.now()}`);
 
