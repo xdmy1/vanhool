@@ -207,6 +207,7 @@
     "warranty": "Warranty",
     "warranty_months": "{count, plural, one {# month} other {# months}}",
     "stock_available": "{count, plural, one {# unit available} other {# units available}}",
+    "trust_delivery_in_days": "Ships in {days, plural, =0 {the same day} one {1 day} other {# days}}",
     "compatibility": "Compatibility",
     "compatibility_empty": "Verify the part code against your model. Our technical team confirms before the order.",
     "related": "Related products",

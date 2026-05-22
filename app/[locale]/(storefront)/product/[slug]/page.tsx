@@ -88,7 +88,12 @@ export default async function ProductDetailPage({
     inStock: tCard("in_stock"),
     lowStock: tCard("low_stock"),
     outOfStock: tCard("out_of_stock"),
-    trustDelivery: tHome("trust_fast"),
+    // Match the trust line to the actual product lead time — a 7-day part
+    // shouldn't still claim "Livrare 24h".
+    trustDelivery:
+      product.leadTimeDays != null
+        ? tProd("trust_delivery_in_days", { days: product.leadTimeDays })
+        : tHome("trust_fast"),
     trustWarranty: tHome("trust_warranty"),
     stockAvailable: tProd("stock_available", { count: product.stockQuantity }),
     vatIncluded: tCard("vat_included"),
