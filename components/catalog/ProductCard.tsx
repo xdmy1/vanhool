@@ -57,8 +57,7 @@ export function ProductCard({
           variant={product.illustration}
           imageUrl={product.imageUrl}
           alt={product.name}
-          fit="cover"
-          className="absolute inset-0"
+          className="absolute inset-0 p-3"
         />
         <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
           {product.isPromo && product.listPrice > 0 ? (
