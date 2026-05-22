@@ -153,29 +153,42 @@ export async function postPurchase(
     const costMdl = Number((Number(it.unit_cost) * toMdl).toFixed(2));
 
     if (!productId) {
-      // Auto-create a minimal product
       const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
-      const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
-      const { data: newP, error: newErr } = await supabase
+
+      // Re-stocking an existing part is the common case once part_code is
+      // unique — look the product up first and link instead of creating a
+      // duplicate. Match is case-insensitive to mirror the unique index.
+      const escapedCode = code.replace(/[\\%_]/g, "\\$&");
+      const { data: existing } = await supabase
         .from("products")
-        .insert({
-          part_code: code,
-          name_ro: it.description.slice(0, 200),
-          slug,
-          price: Number((costMdl * markupFactor).toFixed(2)),
-          cost_price: costMdl,
-          stock_quantity: 0,
-          is_active: false, // owner reviews before publishing
-          supplier_id: header.supplier_id,
-          supplier_code: it.supplier_code ?? null,
-        })
         .select("id")
-        .single();
-      if (newErr || !newP) {
-        return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
+        .ilike("part_code", escapedCode)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        productId = existing[0].id;
+      } else {
+        const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
+        const { data: newP, error: newErr } = await supabase
+          .from("products")
+          .insert({
+            part_code: code,
+            name_ro: it.description.slice(0, 200),
+            slug,
+            price: Number((costMdl * markupFactor).toFixed(2)),
+            cost_price: costMdl,
+            stock_quantity: 0,
+            is_active: false, // owner reviews before publishing
+            supplier_id: header.supplier_id,
+            supplier_code: it.supplier_code ?? null,
+          })
+          .select("id")
+          .single();
+        if (newErr || !newP) {
+          return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
+        }
+        productId = newP.id;
       }
-      productId = newP.id;
-      // Link back to purchase line
+      // Link back to purchase line so future operations know the product.
       await supabase
         .from("purchase_items")
         .update({ product_id: productId })
