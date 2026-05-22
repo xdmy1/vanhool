@@ -35,6 +35,9 @@ const proformaInputSchema = z.object({
   items: z.array(lineSchema).min(1),
   due_days: z.number().int().min(0).default(7),
   currency: z.enum(["MDL", "EUR", "USD"]).default("MDL"),
+  /** Which set of books the proforma (and later invoice) lives in. Conta 2
+   * tracks non-fiscal cash flow — TVA is always 0 there, no extraction. */
+  account_scope: z.enum(["conta1", "conta2"]).default("conta1"),
   /** Language the proforma is printed in — independent of the admin's UI. */
   output_locale: z.enum(["ro", "en", "ru"]).default("ro"),
   notes: z.string().nullable().optional(),
@@ -120,21 +123,28 @@ export async function issueProforma(
   const v = parsed.data;
   const supabase = await createClient();
 
-  const itemsForTotals = v.items.map((i) => ({
+  // Conta 2 = no-fiscal book → TVA is forced to 0 regardless of what the
+  // form sent. The price the operator typed is the price.
+  const items = v.items.map((i) => ({
+    ...i,
+    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+  }));
+
+  const itemsForTotals = items.map((i) => ({
     quantity: i.quantity,
     unit_price: i.unit_price,
-    vat_rate: i.vat_rate ?? 0,
+    vat_rate: i.vat_rate,
   }));
   const { subtotal, vat_amount, total } = totals(itemsForTotals);
 
-  const itemsSnapshot = v.items.map((i) => ({
+  const itemsSnapshot = items.map((i) => ({
     productId: i.product_id ?? null,
     partCode: i.part_code ?? null,
     name: i.name,
     description: i.description ?? null,
     quantity: i.quantity,
     unit_price: i.unit_price,
-    vat_rate: i.vat_rate ?? 0,
+    vat_rate: i.vat_rate,
     total: Number((i.quantity * i.unit_price).toFixed(2)),
   }));
 
@@ -155,7 +165,7 @@ export async function issueProforma(
     .from("invoices")
     .insert({
       order_id: v.order_id ?? null,
-      account_scope: "conta1",
+      account_scope: v.account_scope,
       type: "proforma",
       series,
       number,
@@ -214,7 +224,11 @@ export async function convertProformaToInvoice(
     return { ok: false, reason: "already_converted" };
   }
 
-  const scope = options?.account_scope ?? "conta1";
+  // Default to the proforma's own scope so converting a conta2 proforma
+  // doesn't accidentally land the fiscal invoice in conta1.
+  const scope =
+    options?.account_scope ??
+    ((pf as { account_scope?: "conta1" | "conta2" }).account_scope ?? "conta1");
   const paymentStatus = options?.payment_status ?? "paid";
   const dueInDays = Math.max(
     0,
@@ -390,6 +404,11 @@ export async function updateProforma(
     return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
   }
   const v = parsed.data;
+  // Same conta2 → 0% TVA rule as the create path.
+  const itemsNormalized = v.items.map((i) => ({
+    ...i,
+    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+  }));
   const supabase = await createClient();
 
   const { data: existing } = await supabase
@@ -403,20 +422,20 @@ export async function updateProforma(
   if (existing.status === "void") return { ok: false, reason: "voided" };
 
   const { subtotal, vat_amount, total } = totals(
-    v.items.map((i) => ({
+    itemsNormalized.map((i) => ({
       quantity: i.quantity,
       unit_price: i.unit_price,
-      vat_rate: i.vat_rate ?? 0,
+      vat_rate: i.vat_rate,
     })),
   );
-  const itemsSnapshot = v.items.map((i) => ({
+  const itemsSnapshot = itemsNormalized.map((i) => ({
     productId: i.product_id ?? null,
     partCode: i.part_code ?? null,
     name: i.name,
     description: i.description ?? null,
     quantity: i.quantity,
     unit_price: i.unit_price,
-    vat_rate: i.vat_rate ?? 0,
+    vat_rate: i.vat_rate,
     total: Number((i.quantity * i.unit_price).toFixed(2)),
   }));
 
@@ -428,6 +447,7 @@ export async function updateProforma(
   const { error } = await supabase
     .from("invoices")
     .update({
+      account_scope: v.account_scope,
       currency: v.currency,
       customer_snapshot: v.customer as unknown as Json,
       items_snapshot: itemsSnapshot as unknown as Json,

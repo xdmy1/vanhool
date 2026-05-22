@@ -42,14 +42,20 @@ type WalkIn = {
   address: string;
 };
 
+// Default VAT rate per book — conta 2 is non-fiscal, so the price stays
+// the price.
+function defaultVatFor(scope: "conta1" | "conta2"): number {
+  return scope === "conta2" ? 0 : 20;
+}
+
 const EMPTY_LINE: Line = {
   part_code: "",
   name: "",
   description: "",
   quantity: 1,
   unit_price: 0,
-  // Prices are entered VAT-inclusive (Moldova: standard 20% TVA). The
-  // totals computation extracts the net + VAT components from the gross.
+  // Prices are entered VAT-inclusive (Moldova: standard 20% TVA on conta1).
+  // The totals computation extracts the net + VAT components from the gross.
   vat_rate: 20,
 };
 
@@ -67,6 +73,7 @@ export type ProformaInitial = {
   id: string;
   walkin: WalkIn;
   lines: Line[];
+  scope: "conta1" | "conta2";
   currency: "MDL" | "EUR" | "USD";
   outputLocale: "ro" | "en" | "ru";
   dueDays: number;
@@ -84,10 +91,13 @@ export function NewProformaForm({
   const router = useRouter();
   const isEdit = !!initial;
 
+  const [scope, setScopeState] = useState<"conta1" | "conta2">(initial?.scope ?? "conta1");
   const [client, setClient] = useState<ClientSearchResult | null>(null);
   const [walkinMode, setWalkinMode] = useState(true);
   const [walkin, setWalkin] = useState<WalkIn>(initial?.walkin ?? EMPTY_WALKIN);
-  const [lines, setLines] = useState<Line[]>(initial?.lines ?? [{ ...EMPTY_LINE }]);
+  const [lines, setLines] = useState<Line[]>(
+    initial?.lines ?? [{ ...EMPTY_LINE, vat_rate: defaultVatFor(initial?.scope ?? "conta1") }],
+  );
   const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">(initial?.currency ?? "MDL");
   const [outputLocale, setOutputLocale] = useState<"ro" | "en" | "ru">(
     initial?.outputLocale ?? "ro",
@@ -95,6 +105,15 @@ export function NewProformaForm({
   const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
+
+  // Switching books flips every line's VAT to the new default — conta 2 is
+  // always 0%, conta 1 defaults back to 20%. Operator can still tweak per
+  // line afterwards in the TVA column.
+  function setScope(next: "conta1" | "conta2") {
+    setScopeState(next);
+    const vat = defaultVatFor(next);
+    setLines((prev) => prev.map((l) => ({ ...l, vat_rate: vat })));
+  }
 
   const totals = useMemo(() => {
     // unit_price is VAT-inclusive — break the gross back into net + vat so the
@@ -121,7 +140,7 @@ export function NewProformaForm({
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   }
   function addLine() {
-    setLines([...lines, { ...EMPTY_LINE }]);
+    setLines([...lines, { ...EMPTY_LINE, vat_rate: defaultVatFor(scope) }]);
   }
   function removeLine(idx: number) {
     if (lines.length === 1) return;
@@ -190,6 +209,7 @@ export function NewProformaForm({
       })),
       due_days: dueDays,
       currency,
+      account_scope: scope,
       output_locale: outputLocale,
       notes: notes || null,
     };
@@ -330,7 +350,13 @@ export function NewProformaForm({
                           vat_rate: Math.max(0, Math.trunc(Number(e.target.value || 0))),
                         })
                       }
-                      className="h-9 w-16 text-right"
+                      disabled={scope === "conta2"}
+                      title={
+                        scope === "conta2"
+                          ? "Conta 2 — TVA forțată la 0%"
+                          : undefined
+                      }
+                      className="h-9 w-16 text-right disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
                     />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums font-semibold">
@@ -383,7 +409,31 @@ export function NewProformaForm({
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">
           {t("proforma_form_settings_section")}
         </h3>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label={t("proforma_form_scope")}>
+            <div className="inline-flex w-full rounded-md border border-border bg-surface p-0.5">
+              {(["conta1", "conta2"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setScope(s)}
+                  className={cn(
+                    "flex-1 rounded px-3 py-1.5 text-xs transition-colors",
+                    scope === s
+                      ? "bg-foreground text-background"
+                      : "text-muted-strong hover:text-foreground",
+                  )}
+                >
+                  {s === "conta1" ? t("conta1") : t("conta2")}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted">
+              {scope === "conta2"
+                ? t("proforma_form_scope_hint_conta2")
+                : t("proforma_form_scope_hint_conta1")}
+            </p>
+          </Field>
           <Field label={t("proforma_form_currency")}>
             <select
               value={currency}

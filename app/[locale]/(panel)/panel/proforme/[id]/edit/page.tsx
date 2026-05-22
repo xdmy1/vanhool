@@ -68,6 +68,7 @@ export default async function EditProformaPage({
               vat_rate: 20,
             },
           ],
+    scope: proforma.account_scope,
     currency: (proforma.currency as "MDL" | "EUR" | "USD") ?? "MDL",
     outputLocale: proforma.output_locale,
     dueDays: diffDays(proforma.issued_date, proforma.due_date),

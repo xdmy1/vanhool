@@ -137,7 +137,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         driver_name: driverName || null,
         vehicle_plate: vehiclePlate || null,
         notes: notes || null,
-        vat_amount: vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0),
+        vat_amount:
+          scope === "conta2" || vatAmount.trim() === ""
+            ? 0
+            : Math.max(0, Number(vatAmount) || 0),
       };
       const res = await createManualSale(payload);
       if (res.ok) {
@@ -185,6 +188,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
 
       {step === 4 ? (
         <StepPayment
+          scope={scope!}
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
           deliveryAddress={deliveryAddress}
@@ -791,6 +795,7 @@ function StepProducts({
 // Step 4: payment
 
 function StepPayment({
+  scope,
   paymentMethod,
   setPaymentMethod,
   deliveryAddress,
@@ -806,6 +811,7 @@ function StepPayment({
   subtotal,
   fallbackAddress,
 }: {
+  scope: Scope;
   paymentMethod: "cash" | "transfer" | "already_paid";
   setPaymentMethod: (v: "cash" | "transfer" | "already_paid") => void;
   deliveryAddress: string;
@@ -909,16 +915,20 @@ function StepPayment({
           {t("sale_totals_section")}
         </h3>
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field label={t("sale_vat_label")} hint={t("sale_vat_hint")}>
+          <Field
+            label={t("sale_vat_label")}
+            hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
+          >
             <Input
               type="number"
               inputMode="decimal"
               step="0.01"
               min={0}
-              value={vatAmount}
+              value={scope === "conta2" ? "0" : vatAmount}
               onChange={(e) => setVatAmount(e.target.value)}
+              disabled={scope === "conta2"}
               placeholder="0.00"
-              className="md:max-w-xs"
+              className="md:max-w-xs disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
             />
           </Field>
           <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
@@ -929,14 +939,14 @@ function StepPayment({
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_vat_label")}</dt>
               <dd className="tabular-nums">
-                {(vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)}
+                {(scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)}
               </dd>
             </div>
             <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
               <dt>{t("sale_total_label")}</dt>
               <dd className="tabular-nums">
                 {(subtotal +
-                  (vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)}
+                  (scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)}
               </dd>
             </div>
           </dl>
