@@ -1362,6 +1362,8 @@
     "proforma_form_lines_help": "Детали не обязательно должны быть в каталоге — введите код поставщика, название и цену напрямую.",
     "proforma_form_lines_validation": "Добавьте хотя бы одну строку с названием и количеством",
     "proforma_form_line_partcode": "Код детали",
+    "proforma_form_line_partcode_placeholder": "напр. 11364028",
+    "proforma_form_line_partcode_empty": "Новый код — заполните название и цену вручную",
     "proforma_form_line_name": "Название детали",
     "proforma_form_line_name_placeholder": "Радиатор MAN TGA",
     "proforma_form_line_desc_placeholder": "Доп. описание (опционально)",

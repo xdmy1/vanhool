@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 import { issueProforma, updateProforma } from "@/lib/panel/invoices/actions";
+import { PartCodeAutocomplete } from "@/components/panel/proforma/PartCodeAutocomplete";
 import {
   type ClientSearchResult,
   listAllPanelClients,
@@ -263,11 +264,20 @@ export function NewProformaForm({
               {lines.map((l, idx) => (
                 <tr key={idx}>
                   <td className="px-2 py-2">
-                    <Input
+                    <PartCodeAutocomplete
                       value={l.part_code}
-                      onChange={(e) => setLine(idx, { part_code: e.target.value })}
-                      placeholder="ex. 11364028"
-                      className="h-9 font-mono text-xs"
+                      onChange={(v) => setLine(idx, { part_code: v })}
+                      onSelect={(m) =>
+                        setLine(idx, {
+                          part_code: m.code,
+                          // Only overwrite name when the operator hasn't typed
+                          // a custom one yet — keeps manual edits intact.
+                          name: l.name.trim() ? l.name : m.name,
+                          unit_price: m.unit_price,
+                        })
+                      }
+                      placeholder={t("proforma_form_line_partcode_placeholder")}
+                      emptyHint={t("proforma_form_line_partcode_empty")}
                     />
                   </td>
                   <td className="px-2 py-2">

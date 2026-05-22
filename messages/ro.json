@@ -1362,6 +1362,8 @@
     "proforma_form_lines_help": "Piesele nu trebuie să existe în catalog — introduci direct codul, numele și prețul de la furnizor.",
     "proforma_form_lines_validation": "Adaugă cel puțin o linie cu nume și cantitate",
     "proforma_form_line_partcode": "Cod piesă",
+    "proforma_form_line_partcode_placeholder": "ex. 11364028",
+    "proforma_form_line_partcode_empty": "Cod nou — completează manual numele și prețul",
     "proforma_form_line_name": "Nume piesă",
     "proforma_form_line_name_placeholder": "Radiator MAN TGA",
     "proforma_form_line_desc_placeholder": "Descriere suplimentară (opțional)",

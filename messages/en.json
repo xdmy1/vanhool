@@ -1362,6 +1362,8 @@
     "proforma_form_lines_help": "Parts don't need to exist in the catalog — enter the supplier code, name and price directly.",
     "proforma_form_lines_validation": "Add at least one line with a name and quantity",
     "proforma_form_line_partcode": "Part code",
+    "proforma_form_line_partcode_placeholder": "e.g. 11364028",
+    "proforma_form_line_partcode_empty": "New code — fill the name and price manually",
     "proforma_form_line_name": "Part name",
     "proforma_form_line_name_placeholder": "MAN TGA Radiator",
     "proforma_form_line_desc_placeholder": "Extra description (optional)",
