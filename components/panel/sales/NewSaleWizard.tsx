@@ -112,6 +112,21 @@ export function NewSaleWizard({ locale }: { locale: string }) {
     setStep((s) => Math.max(1, s - 1));
   }
 
+  // Whenever the step changes, snap the wizard back to the top of the
+  // viewport so a long previous step (e.g. a packed products list on step 3)
+  // doesn't leave the operator scrolled past the new step's header.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const el = wrapRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
+
   function submit() {
     if (!scope || lines.length === 0 || !deliveryAddress.trim()) return;
     startSubmit(async () => {
@@ -160,7 +175,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div ref={wrapRef} className="space-y-6 scroll-mt-20">
       <Stepper current={step} steps={STEPS} />
 
       {step === 1 ? <StepScope scope={scope} onPick={setScope} /> : null}
