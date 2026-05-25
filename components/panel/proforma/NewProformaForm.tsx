@@ -59,6 +59,14 @@ const EMPTY_LINE: Line = {
   vat_rate: 20,
 };
 
+// Synthetic placeholder used when a client is created without a real email.
+// Not the customer's address, so don't propagate it onto documents.
+const PLACEHOLDER_EMAIL_RE = /^panel-[a-f0-9-]+@inter-bus\.md$/i;
+function realEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  return PLACEHOLDER_EMAIL_RE.test(email) ? null : email;
+}
+
 const EMPTY_WALKIN: WalkIn = {
   name: "",
   company_name: "",
@@ -175,7 +183,7 @@ export function NewProformaForm({
           client.account_type === "business"
             ? client.company_name ?? client.full_name ?? client.email ?? "Client"
             : client.full_name ?? client.email ?? "Client",
-        email: client.email,
+        email: realEmail(client.email),
         phone: client.phone,
         idno: client.idno,
         address: client.billing_address,

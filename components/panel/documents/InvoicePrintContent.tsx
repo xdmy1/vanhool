@@ -11,6 +11,16 @@ import type {
   InvoiceItemSnapshot,
 } from "@/lib/panel/invoices/queries";
 
+/**
+ * Clients created from /panel/clienti without a real email get a synthetic
+ * `panel-{uuid}@inter-bus.md` so auth.users insert succeeds. That address is
+ * not the customer's — don't print it on documents.
+ */
+function isPlaceholderEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return /^panel-[a-f0-9-]+@inter-bus\.md$/i.test(email);
+}
+
 type Labels = {
   proformaTitle: string;
   invoiceTitle: string;
@@ -154,7 +164,7 @@ export function InvoicePrintContent({
               {labels.vat}: <span className="font-mono">{customer.vat_number}</span>
             </div>
           ) : null}
-          {customer.email ? (
+          {customer.email && !isPlaceholderEmail(customer.email) ? (
             <div className="text-xs">
               {labels.email}: {customer.email}
             </div>

@@ -21,7 +21,13 @@ export function DocumentPrintShell({ children }: { children: React.ReactNode }) 
         @media print {
           html, body { background: white !important; }
           .no-print { display: none !important; }
-          .doc-sheet { padding: 12mm 12mm !important; }
+          /* Stretch the sheet to the full A4 page so the watermark covers
+             the whole printable area even when the content is short. */
+          .doc-sheet {
+            padding: 12mm 12mm !important;
+            min-height: 297mm !important;
+            box-sizing: border-box !important;
+          }
           .doc-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         .doc-sheet { color: #000; position: relative; }

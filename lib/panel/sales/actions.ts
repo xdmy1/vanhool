@@ -210,7 +210,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       c.account_type === "business"
         ? c.company_name ?? c.full_name ?? c.email ?? "Client"
         : c.full_name ?? c.email ?? "Client";
-    customer_email = c.email;
+    // Strip the synthetic panel-{uuid}@inter-bus.md placeholder so it doesn't
+    // surface on invoices or trigger Refrens email delivery.
+    customer_email = c.email && /^panel-[a-f0-9-]+@inter-bus\.md$/i.test(c.email)
+      ? null
+      : c.email;
     customer_phone = c.phone;
     customer_idno = c.idno;
   }
