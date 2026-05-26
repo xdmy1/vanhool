@@ -550,20 +550,113 @@ export async function markInvoicePaid(
   return { ok: true };
 }
 
-/** Void any invoice (proforma or fiscal). Non-reversible for fiscal compliance. */
+/**
+ * Void any invoice (proforma or fiscal). For fiscal invoices linked to an
+ * order whose stock has already been decremented (panel sales,
+ * proforma→invoice conversions), this also:
+ *   • restores stock for every catalog-linked item in the order's snapshot,
+ *   • flips the order to status='cancelled',
+ *   • flips any non-returned delivery note to status='returned',
+ *   • records a reverse cash_register_movement when the void cancels a
+ *     conta2/cash inflow.
+ * All restoration steps are best-effort and idempotent: voiding an already-
+ * cancelled order is a no-op for stock.
+ */
 export async function voidInvoice(
   id: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   const supabase = await createClient();
+
+  // Read the invoice first so we know what to clean up.
+  // Cast select string: paid_method lives on the table at runtime (sql
+  // migration) but the generated TS types are stale.
+  const { data: invRaw } = await supabase
+    .from("invoices")
+    .select(
+      "id, type, status, order_id, account_scope, total, series, number, paid_method" as
+        "id, type, status, order_id, account_scope, total, series, number",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  const inv = invRaw as
+    | (typeof invRaw & { paid_method?: string | null })
+    | null;
+  if (!inv) return { ok: false, reason: "invoice_not_found" };
+  if (inv.status === "void") return { ok: true };
+
+  const nowIso = new Date().toISOString();
   const { error } = await supabase
     .from("invoices")
-    .update({ status: "void", updated_at: new Date().toISOString() })
+    .update({ status: "void", updated_at: nowIso })
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };
+
+  // Stock + order cleanup only for fiscal invoices with a linked order.
+  if (inv.type === "invoice" && inv.order_id) {
+    const { data: ord } = await supabase
+      .from("orders")
+      .select("id, status, items, account_scope, total")
+      .eq("id", inv.order_id)
+      .maybeSingle();
+
+    if (ord && ord.status !== "cancelled") {
+      const items = Array.isArray(ord.items)
+        ? (ord.items as Array<Record<string, unknown>>)
+        : [];
+      // Restore stock for each catalog-linked line.
+      for (const it of items) {
+        const productId =
+          (it as { productId?: string | null }).productId ??
+          (it as { product_id?: string | null }).product_id ??
+          null;
+        const qty = Number((it as { quantity?: number }).quantity ?? 0);
+        if (!productId || qty <= 0) continue;
+        const { data: p } = await supabase
+          .from("products")
+          .select("stock_quantity")
+          .eq("id", productId)
+          .maybeSingle();
+        if (!p) continue;
+        await supabase
+          .from("products")
+          .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
+          .eq("id", productId);
+      }
+
+      await supabase
+        .from("orders")
+        .update({ status: "cancelled", updated_at: nowIso })
+        .eq("id", inv.order_id);
+
+      await supabase
+        .from("delivery_notes")
+        .update({ status: "returned", updated_at: nowIso })
+        .eq("order_id", inv.order_id)
+        .neq("status", "returned");
+
+      // If the invoice had recorded a conta2 cash inflow, log a reversal.
+      const wasCashIn =
+        inv.account_scope === "conta2" &&
+        (inv.paid_method === "cash" || inv.paid_method === null);
+      if (wasCashIn && Number(ord.total ?? 0) > 0) {
+        await supabase.from("cash_register_movements").insert({
+          direction: "out",
+          amount: Number(ord.total),
+          reason: "adjustment",
+          order_id: inv.order_id,
+          created_by: user.id,
+          notes: `Anulare factură ${inv.series ?? ""}${inv.number ?? ""}`,
+        });
+      }
+    }
+  }
+
   revalidatePath("/[locale]/panel/proforme", "page");
   revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
+  revalidatePath("/[locale]/admin/orders", "page");
   return { ok: true };
 }
 

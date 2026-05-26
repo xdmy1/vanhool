@@ -8,6 +8,7 @@ import { getPanelUser } from "@/lib/panel/auth";
 import { createInvoiceForOrder } from "@/lib/refrens/invoice";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
+import { normalizeCode } from "@/lib/utils/normalize-code";
 
 // -----------------------------------------------------------------------------
 // Search helpers (used by the wizard's autocompletes)
@@ -103,16 +104,40 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
   if (!user) return [];
   if (!q.trim()) return [];
   const supabase = await createClient();
-  const term = `%${q.replace(/[%_]/g, "")}%`;
-  // No is_active filter: the panel needs to find products auto-created by
-  // postPurchase (which lands them as inactive until the owner reviews).
-  // The storefront has its own active-only filter on the public side.
+  const trimmed = q.trim();
+  const term = `%${trimmed.replace(/[%_]/g, "")}%`;
+  // Two parallel passes:
+  //   • normalize the query (uppercase + strip non-alphanumeric) and look it
+  //     up against products.search_codes, so "0 124 655 405" and "0124655405"
+  //     find the same row.
+  //   • ilike on the typed strings so partial name/brand matches still work.
+  // Union the ids, then re-fetch the full rows in one query. No is_active
+  // filter — panel must see drafts auto-created by postPurchase.
+  const normalized = normalizeCode(trimmed);
+  const [codeRowsRes, textRowsRes] = await Promise.all([
+    normalized.length > 0
+      ? supabase
+          .from("products")
+          .select("id")
+          .contains("search_codes", [normalized])
+          .limit(50)
+      : Promise.resolve({ data: [] as { id: string }[] }),
+    supabase
+      .from("products")
+      .select("id")
+      .or(`part_code.ilike.${term},name_ro.ilike.${term},name_en.ilike.${term},brand.ilike.${term}`)
+      .limit(50),
+  ]);
+  const ids = new Set<string>();
+  for (const r of (codeRowsRes.data ?? []) as { id: string }[]) ids.add(r.id);
+  for (const r of (textRowsRes.data ?? []) as { id: string }[]) ids.add(r.id);
+  if (ids.size === 0) return [];
   const { data } = await supabase
     .from("products")
     .select(
       "id, part_code, name_ro, name_en, brand, price, cost_price, stock_quantity, storage_location, is_active",
     )
-    .or(`part_code.ilike.${term},name_ro.ilike.${term},name_en.ilike.${term},brand.ilike.${term}`)
+    .in("id", Array.from(ids))
     .order("name_ro")
     .limit(15);
   return (data ?? []).map((p) => ({
@@ -148,6 +173,9 @@ const walkinSchema = z.object({
 const saleSchema = z
   .object({
     account_scope: z.enum(["conta1", "conta2"]),
+    /** Currency the sale settles in (defaults to MDL). Conta 2 in particular
+     * may run in EUR/USD when selling to external customers. */
+    currency: z.enum(["MDL", "EUR", "USD"]).default("MDL"),
     client_id: z.string().uuid().nullable().optional(),
     walkin: walkinSchema.nullable().optional(),
     items: z.array(lineSchema).min(1, "Cel puțin un produs"),
@@ -279,6 +307,10 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       notes: v.notes ?? null,
       account_scope: v.account_scope,
       source: "panel",
+      // `currency` lives on the table at runtime (sql migration). The
+      // generated TS types are stale until they're regenerated, hence the
+      // cast.
+      ...({ currency: v.currency } as object),
     })
     .select("id")
     .single();
@@ -318,6 +350,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         series,
         number: numberStr,
         issued_date: new Date().toISOString().slice(0, 10),
+        currency: v.currency,
         customer_snapshot: {
           name: customer_name,
           email: customer_email,

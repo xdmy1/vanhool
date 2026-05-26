@@ -65,6 +65,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   // each line keeps its own unit_price (catalog price, possibly manually edited).
   const [saleMarkupPercent, setSaleMarkupPercent] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "already_paid">("cash");
+  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [driverName, setDriverName] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
@@ -148,6 +149,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           unit_price: l.unit_price,
         })),
         payment_method: paymentMethod,
+        currency,
         delivery_address: deliveryAddress.trim(),
         driver_name: driverName || null,
         vehicle_plate: vehiclePlate || null,
@@ -206,6 +208,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           scope={scope!}
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
+          currency={currency}
+          setCurrency={setCurrency}
           deliveryAddress={deliveryAddress}
           setDeliveryAddress={setDeliveryAddress}
           driverName={driverName}
@@ -609,12 +613,12 @@ function StepProducts({
       toast.info(t("sale_products_already_added"));
       return;
     }
-    // Default unit_price = the cost from the purchase (cost_price in MDL).
-    // Owner sets the margin per-sale via the "Markup vânzare" field above.
-    // The storefront catalog price is irrelevant in this flow.
+    // Default unit_price = the catalog (storefront) price. Owner edits per
+    // line if they want a discount, and the "Markup vânzare" % field above
+    // can recompute from cost when a specific margin is needed.
     const fromMarkup = priceFromMarkup(p.cost_price);
     const unitPrice =
-      fromMarkup !== null ? fromMarkup : Math.round(p.cost_price * 100) / 100;
+      fromMarkup !== null ? fromMarkup : Math.round(p.price * 100) / 100;
     setLines([...lines, { product: p, qty: 1, unit_price: unitPrice }]);
     setQ("");
     setResults([]);
@@ -706,8 +710,8 @@ function StepProducts({
                   <span className="text-xs text-muted">
                     {t("sale_products_stock_label", { qty: p.stock_quantity })}
                   </span>
-                  <span className="w-24 text-right tabular-nums text-xs text-muted">
-                    {t("sale_products_cost_label", { value: p.cost_price.toFixed(2) })}
+                  <span className="w-24 text-right tabular-nums text-sm">
+                    {p.price.toFixed(2)}
                   </span>
                 </button>
               </li>
@@ -813,6 +817,8 @@ function StepPayment({
   scope,
   paymentMethod,
   setPaymentMethod,
+  currency,
+  setCurrency,
   deliveryAddress,
   setDeliveryAddress,
   driverName,
@@ -829,6 +835,8 @@ function StepPayment({
   scope: Scope;
   paymentMethod: "cash" | "transfer" | "already_paid";
   setPaymentMethod: (v: "cash" | "transfer" | "already_paid") => void;
+  currency: "MDL" | "EUR" | "USD";
+  setCurrency: (v: "MDL" | "EUR" | "USD") => void;
   deliveryAddress: string;
   setDeliveryAddress: (v: string) => void;
   driverName: string;
@@ -930,38 +938,51 @@ function StepPayment({
           {t("sale_totals_section")}
         </h3>
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field
-            label={t("sale_vat_label")}
-            hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
-          >
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min={0}
-              value={scope === "conta2" ? "0" : vatAmount}
-              onChange={(e) => setVatAmount(e.target.value)}
-              disabled={scope === "conta2"}
-              placeholder="0.00"
-              className="md:max-w-xs disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
-            />
-          </Field>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label={t("sale_currency_label")}>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
+                className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+              >
+                <option value="MDL">MDL</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
+            </Field>
+            <Field
+              label={t("sale_vat_label")}
+              hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
+            >
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min={0}
+                value={scope === "conta2" ? "0" : vatAmount}
+                onChange={(e) => setVatAmount(e.target.value)}
+                disabled={scope === "conta2"}
+                placeholder="0.00"
+                className="disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
+              />
+            </Field>
+          </div>
           <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_review_total")}</dt>
-              <dd className="tabular-nums">{subtotal.toFixed(2)}</dd>
+              <dd className="tabular-nums">{subtotal.toFixed(2)} {currency}</dd>
             </div>
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_vat_label")}</dt>
               <dd className="tabular-nums">
-                {(scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)}
+                {(scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)} {currency}
               </dd>
             </div>
             <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
               <dt>{t("sale_total_label")}</dt>
               <dd className="tabular-nums">
                 {(subtotal +
-                  (scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)}
+                  (scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)} {currency}
               </dd>
             </div>
           </dl>
