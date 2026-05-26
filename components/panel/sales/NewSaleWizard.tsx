@@ -200,6 +200,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           clientDiscount={client?.discount_percent ?? null}
           saleMarkupPercent={saleMarkupPercent}
           setSaleMarkupPercent={setSaleMarkupPercent}
+          currency={currency}
+          setCurrency={setCurrency}
         />
       ) : null}
 
@@ -209,7 +211,6 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
           currency={currency}
-          setCurrency={setCurrency}
           deliveryAddress={deliveryAddress}
           setDeliveryAddress={setDeliveryAddress}
           driverName={driverName}
@@ -569,12 +570,16 @@ function StepProducts({
   clientDiscount,
   saleMarkupPercent,
   setSaleMarkupPercent,
+  currency,
+  setCurrency,
 }: {
   lines: Line[];
   setLines: (l: Line[]) => void;
   clientDiscount: number | null;
   saleMarkupPercent: string;
   setSaleMarkupPercent: (v: string) => void;
+  currency: "MDL" | "EUR" | "USD";
+  setCurrency: (v: "MDL" | "EUR" | "USD") => void;
 }) {
   const t = useTranslations("panel");
   const [q, setQ] = useState("");
@@ -652,7 +657,21 @@ function StepProducts({
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
             {t("sale_products_section")}
           </h3>
-          <div className="flex items-end gap-2">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col">
+              <span className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+                {t("sale_currency_label")}
+              </span>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
+                className="h-9 rounded-md border border-border bg-surface px-3 text-sm"
+              >
+                <option value="MDL">MDL</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
             <label className="flex flex-col">
               <span className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
                 {t("sale_markup_label")}
@@ -818,7 +837,6 @@ function StepPayment({
   paymentMethod,
   setPaymentMethod,
   currency,
-  setCurrency,
   deliveryAddress,
   setDeliveryAddress,
   driverName,
@@ -836,7 +854,6 @@ function StepPayment({
   paymentMethod: "cash" | "transfer" | "already_paid";
   setPaymentMethod: (v: "cash" | "transfer" | "already_paid") => void;
   currency: "MDL" | "EUR" | "USD";
-  setCurrency: (v: "MDL" | "EUR" | "USD") => void;
   deliveryAddress: string;
   setDeliveryAddress: (v: string) => void;
   driverName: string;
@@ -938,35 +955,22 @@ function StepPayment({
           {t("sale_totals_section")}
         </h3>
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <div className="grid gap-3 md:grid-cols-2">
-            <Field label={t("sale_currency_label")}>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
-                className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
-              >
-                <option value="MDL">MDL</option>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-              </select>
-            </Field>
-            <Field
-              label={t("sale_vat_label")}
-              hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
-            >
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min={0}
-                value={scope === "conta2" ? "0" : vatAmount}
-                onChange={(e) => setVatAmount(e.target.value)}
-                disabled={scope === "conta2"}
-                placeholder="0.00"
-                className="disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
-              />
-            </Field>
-          </div>
+          <Field
+            label={t("sale_vat_label")}
+            hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
+          >
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min={0}
+              value={scope === "conta2" ? "0" : vatAmount}
+              onChange={(e) => setVatAmount(e.target.value)}
+              disabled={scope === "conta2"}
+              placeholder="0.00"
+              className="md:max-w-xs disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
+            />
+          </Field>
           <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_review_total")}</dt>
