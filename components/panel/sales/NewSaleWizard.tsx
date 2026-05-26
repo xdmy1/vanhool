@@ -238,6 +238,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           vehiclePlate={vehiclePlate}
           notes={notes}
           subtotal={subtotal}
+          currency={currency}
         />
       ) : null}
 
@@ -249,7 +250,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         <div className="text-sm text-muted-strong tabular-nums">
           {t("sale_subtotal_label")}{" "}
           <span className="font-semibold text-foreground">
-            <Price value={subtotal} size="md" accent={false} />
+            <Price value={subtotal} currency={currency} size="md" accent={false} />
           </span>
         </div>
         {step < 5 ? (
@@ -564,6 +565,26 @@ function StepClient({
 // =====================================================================
 // Step 3: products
 
+// Fixed reference rates (MDL per 1 unit of foreign currency). Used to
+// convert prices when the operator flips the wizard's currency picker so
+// they don't have to re-enter every line. Owner asked for a predictable 20.
+const RATES_TO_MDL: Record<"MDL" | "EUR" | "USD", number> = {
+  MDL: 1,
+  EUR: 20,
+  USD: 17,
+};
+
+function convertPrice(
+  value: number,
+  from: "MDL" | "EUR" | "USD",
+  to: "MDL" | "EUR" | "USD",
+): number {
+  if (from === to) return value;
+  const inMdl = value * RATES_TO_MDL[from];
+  const out = inMdl / RATES_TO_MDL[to];
+  return Math.round(out * 100) / 100;
+}
+
 function StepProducts({
   lines,
   setLines,
@@ -605,6 +626,7 @@ function StepProducts({
     };
   }, [q]);
 
+  // cost_price is stored in MDL; markup-derived price is therefore MDL too.
   function priceFromMarkup(costPrice: number): number | null {
     const trimmed = saleMarkupPercent.trim();
     if (trimmed === "") return null;
@@ -618,15 +640,30 @@ function StepProducts({
       toast.info(t("sale_products_already_added"));
       return;
     }
-    // Default unit_price = the catalog (storefront) price. Owner edits per
-    // line if they want a discount, and the "Markup vânzare" % field above
-    // can recompute from cost when a specific margin is needed.
-    const fromMarkup = priceFromMarkup(p.cost_price);
-    const unitPrice =
-      fromMarkup !== null ? fromMarkup : Math.round(p.price * 100) / 100;
+    // Catalog price + cost are stored in MDL. Convert to the active wizard
+    // currency before seeding the line so the operator sees consistent
+    // numbers regardless of which book/currency they're billing in.
+    const baseMdl =
+      priceFromMarkup(p.cost_price) !== null
+        ? priceFromMarkup(p.cost_price)! * RATES_TO_MDL[currency]
+        : p.price;
+    const unitPrice = convertPrice(baseMdl, "MDL", currency);
     setLines([...lines, { product: p, qty: 1, unit_price: unitPrice }]);
     setQ("");
     setResults([]);
+  }
+
+  // Flipping the currency selector rescales every line so the value stays
+  // economically equivalent (20 MDL ≡ 1 EUR ≡ 17 USD per fixed table).
+  function changeCurrency(next: "MDL" | "EUR" | "USD") {
+    if (next === currency) return;
+    setLines(
+      lines.map((l) => ({
+        ...l,
+        unit_price: convertPrice(l.unit_price, currency, next),
+      })),
+    );
+    setCurrency(next);
   }
 
   function applyMarkupToAll(percent: string) {
@@ -636,10 +673,15 @@ function StepProducts({
     const m = Number(trimmed);
     if (!Number.isFinite(m) || m < 0) return;
     setLines(
-      lines.map((l) => ({
-        ...l,
-        unit_price: Math.round(l.product.cost_price * (1 + m / 100) * 100) / 100,
-      })),
+      lines.map((l) => {
+        // cost_price is MDL → markup result is MDL → convert to wizard
+        // currency before assigning.
+        const mdl = l.product.cost_price * (1 + m / 100);
+        return {
+          ...l,
+          unit_price: convertPrice(mdl, "MDL", currency),
+        };
+      }),
     );
   }
 
@@ -664,7 +706,7 @@ function StepProducts({
               </span>
               <select
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
+                onChange={(e) => changeCurrency(e.target.value as "MDL" | "EUR" | "USD")}
                 className="h-9 rounded-md border border-border bg-surface px-3 text-sm"
               >
                 <option value="MDL">MDL</option>
@@ -807,7 +849,7 @@ function StepProducts({
                     ) : null}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                    <Price value={l.qty * l.unit_price} size="sm" accent={false} />
+                    <Price value={l.qty * l.unit_price} currency={currency} size="sm" accent={false} />
                   </td>
                   <td className="px-4 py-2 text-right">
                     <button
@@ -1010,6 +1052,7 @@ function StepReview({
   vehiclePlate,
   notes,
   subtotal,
+  currency,
 }: {
   scope: Scope;
   client: ClientSearchResult | null;
@@ -1021,6 +1064,7 @@ function StepReview({
   vehiclePlate: string;
   notes: string;
   subtotal: number;
+  currency: "MDL" | "EUR" | "USD";
 }) {
   const t = useTranslations("panel");
   const payLabel = t(`sale_pay_${paymentMethod}` as "sale_pay_cash");
@@ -1076,9 +1120,9 @@ function StepReview({
                   <div className="text-sm">{l.product.name_ro}</div>
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums">{l.qty}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{l.unit_price.toFixed(2)}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{l.unit_price.toFixed(2)} {currency}</td>
                 <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                  <Price value={l.qty * l.unit_price} size="sm" accent={false} />
+                  <Price value={l.qty * l.unit_price} currency={currency} size="sm" accent={false} />
                 </td>
               </tr>
             ))}
@@ -1087,7 +1131,7 @@ function StepReview({
                 {t("sale_review_total")}
               </td>
               <td className="px-4 py-3 text-right text-base font-bold">
-                <Price value={subtotal} size="md" accent={false} />
+                <Price value={subtotal} currency={currency} size="md" accent={false} />
               </td>
             </tr>
           </tbody>

@@ -21,14 +21,30 @@ export function DocumentPrintShell({ children }: { children: React.ReactNode }) 
         @media print {
           html, body { background: white !important; }
           .no-print { display: none !important; }
-          /* Stretch the sheet to the full A4 page so the watermark covers
-             the whole printable area even when the content is short. */
+          /* Stretch the sheet to fill A4 so the in-sheet watermark covers
+             the visible content area. */
           .doc-sheet {
             padding: 12mm 12mm !important;
             min-height: 297mm !important;
             box-sizing: border-box !important;
           }
-          .doc-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Bullet-proof page coverage: a fixed-position pseudo-element on
+             body repeats on every printed page in Chrome/Edge/Safari, so the
+             pattern fills every sheet end-to-end even for multi-page docs. */
+          html:has(.doc-print-root) body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url('/pattern.svg');
+            background-repeat: repeat;
+            background-size: 220px 200px;
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .doc-watermark { display: none !important; }
         }
         .doc-sheet { color: #000; position: relative; }
         .doc-watermark {

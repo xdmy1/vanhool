@@ -26,15 +26,26 @@ export default function DeliveryNotePrintLayout({
         @media print {
           html, body { background: white !important; }
           .no-print { display: none !important; }
-          /* Stretch to the full A4 page so the watermark fills it even
-             when the items table is short. */
           .delivery-sheet {
             padding: 14mm 12mm !important;
             min-height: 297mm !important;
             box-sizing: border-box !important;
           }
-          /* keep the watermark visible when printing */
-          .delivery-watermark { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* Body-level pseudo watermark repeats on every printed page. */
+          html:has(.delivery-print-root) body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url('/pattern.svg');
+            background-repeat: repeat;
+            background-size: 220px 200px;
+            opacity: 0.06;
+            pointer-events: none;
+            z-index: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .delivery-watermark { display: none !important; }
         }
         .delivery-sheet { color: #000; position: relative; }
         .delivery-watermark {

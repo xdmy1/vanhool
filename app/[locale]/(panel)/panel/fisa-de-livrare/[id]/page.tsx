@@ -137,7 +137,7 @@ export default async function PanelDeliveryNoteDetail({
                   {t("delivery_detail_total")}
                 </td>
                 <td className="px-4 py-3 text-right text-base font-bold">
-                  {note.total.toFixed(2)} MDL
+                  {note.total.toFixed(2)} {note.currency}
                 </td>
               </tr>
             </tfoot>

@@ -234,10 +234,14 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       .maybeSingle();
     if (!c) return { ok: false, reason: "client_not_found" };
     user_id = c.id;
+    // Don't fall back to the synthetic panel-{uuid}@inter-bus.md email as
+    // a display name — that placeholder isn't the customer's real address.
+    const cleanEmail =
+      c.email && /^panel-[a-f0-9-]+@inter-bus\.md$/i.test(c.email) ? null : c.email;
     customer_name =
       c.account_type === "business"
-        ? c.company_name ?? c.full_name ?? c.email ?? "Client"
-        : c.full_name ?? c.email ?? "Client";
+        ? c.company_name ?? c.full_name ?? cleanEmail ?? "Client"
+        : c.full_name ?? cleanEmail ?? "Client";
     // Strip the synthetic panel-{uuid}@inter-bus.md placeholder so it doesn't
     // surface on invoices or trigger Refrens email delivery.
     customer_email = c.email && /^panel-[a-f0-9-]+@inter-bus\.md$/i.test(c.email)
@@ -443,6 +447,9 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       items_snapshot: items as unknown as Json,
       status: "draft",
       created_by: user.id,
+      // Currency lives on the table at runtime (sql migration). Generated
+      // TS types are stale until they're regenerated — hence the cast.
+      ...({ currency: v.currency } as object),
     })
     .select("id")
     .single();

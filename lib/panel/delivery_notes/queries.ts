@@ -13,6 +13,7 @@ export type DeliveryNoteListRow = {
   account_scope: AccountScope;
   printed_at: string | null;
   total: number | null;
+  currency: string;
 };
 
 export type DeliveryNoteItemSnapshot = {
@@ -45,6 +46,7 @@ export type DeliveryNoteDetail = {
   items_snapshot: DeliveryNoteItemSnapshot[];
   printed_at: string | null;
   total: number;
+  currency: string;
 };
 
 export async function listDeliveryNotes(args: {
@@ -54,8 +56,11 @@ export async function listDeliveryNotes(args: {
   const supabase = await createClient();
   let query = supabase
     .from("delivery_notes")
+    // Cast: currency column exists at runtime (sql migration) but generated
+    // TS types are stale until they're regenerated.
     .select(
-      "id, series, number, issued_at, customer_name, delivery_address, payment_method, status, account_scope, printed_at, items_snapshot",
+      "id, series, number, issued_at, customer_name, delivery_address, payment_method, status, account_scope, printed_at, items_snapshot, currency" as
+        "id, series, number, issued_at, customer_name, delivery_address, payment_method, status, account_scope, printed_at, items_snapshot",
     )
     .eq("account_scope", args.scope)
     .order("issued_at", { ascending: false })
@@ -82,6 +87,7 @@ export async function listDeliveryNotes(args: {
       account_scope: r.account_scope,
       printed_at: r.printed_at,
       total: total > 0 ? total : null,
+      currency: (r as { currency?: string }).currency ?? "MDL",
     };
   });
 }
@@ -90,8 +96,10 @@ export async function getDeliveryNote(id: string): Promise<DeliveryNoteDetail | 
   const supabase = await createClient();
   const { data: r } = await supabase
     .from("delivery_notes")
+    // Cast: currency column added via migration, generated types stale.
     .select(
-      "id, order_id, account_scope, series, number, issued_at, driver_name, vehicle_plate, customer_name, customer_idno, customer_phone, delivery_address, payment_method, notes, status, items_snapshot, printed_at",
+      "id, order_id, account_scope, series, number, issued_at, driver_name, vehicle_plate, customer_name, customer_idno, customer_phone, delivery_address, payment_method, notes, status, items_snapshot, printed_at, currency" as
+        "id, order_id, account_scope, series, number, issued_at, driver_name, vehicle_plate, customer_name, customer_idno, customer_phone, delivery_address, payment_method, notes, status, items_snapshot, printed_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -119,5 +127,6 @@ export async function getDeliveryNote(id: string): Promise<DeliveryNoteDetail | 
     items_snapshot: items,
     printed_at: r.printed_at,
     total,
+    currency: (r as { currency?: string }).currency ?? "MDL",
   };
 }

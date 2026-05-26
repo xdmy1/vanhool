@@ -95,7 +95,7 @@ export default async function PanelFiseLivrarePage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {r.total !== null ? `${r.total.toFixed(2)} MDL` : "—"}
+                      {r.total !== null ? `${r.total.toFixed(2)} ${r.currency}` : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link

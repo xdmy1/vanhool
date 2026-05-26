@@ -113,7 +113,7 @@ export default async function DeliveryNotePrintPage({
               {t("delivery_total_label")}
             </td>
             <td className="num" style={{ fontWeight: 700, fontSize: 14 }}>
-              {note.total.toFixed(2)} MDL
+              {note.total.toFixed(2)} {note.currency}
             </td>
           </tr>
         </tbody>
