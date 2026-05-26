@@ -430,29 +430,39 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     if (r.key === "delivery_note.next_number") dnNext = Number(r.value ?? 1);
   }
   const dnNumber = String(dnNext).padStart(5, "0");
-  const { data: noteRow, error: nErr } = await supabase
+  const baseNote: Record<string, unknown> = {
+    order_id: orderId,
+    account_scope: v.account_scope,
+    series: dnSeries,
+    number: dnNumber,
+    driver_name: v.driver_name,
+    vehicle_plate: v.vehicle_plate,
+    customer_name,
+    customer_idno,
+    customer_phone,
+    delivery_address: v.delivery_address,
+    payment_method: v.payment_method,
+    items_snapshot: items as unknown as Json,
+    status: "draft",
+    created_by: user.id,
+  };
+  // First attempt: include currency. If the migration hasn't been applied
+  // yet (column missing → PGRST204), retry without it so the sale still
+  // produces a delivery note in MDL.
+  let { data: noteRow, error: nErr } = await supabase
     .from("delivery_notes")
-    .insert({
-      order_id: orderId,
-      account_scope: v.account_scope,
-      series: dnSeries,
-      number: dnNumber,
-      driver_name: v.driver_name,
-      vehicle_plate: v.vehicle_plate,
-      customer_name,
-      customer_idno,
-      customer_phone,
-      delivery_address: v.delivery_address,
-      payment_method: v.payment_method,
-      items_snapshot: items as unknown as Json,
-      status: "draft",
-      created_by: user.id,
-      // Currency lives on the table at runtime (sql migration). Generated
-      // TS types are stale until they're regenerated — hence the cast.
-      ...({ currency: v.currency } as object),
-    })
+    .insert({ ...baseNote, currency: v.currency } as never)
     .select("id")
     .single();
+  if (nErr && /currency/i.test(nErr.message ?? "")) {
+    const retry = await supabase
+      .from("delivery_notes")
+      .insert(baseNote as never)
+      .select("id")
+      .single();
+    noteRow = retry.data;
+    nErr = retry.error;
+  }
   if (nErr || !noteRow) {
     console.error("[panel.sales] delivery_note insert failed:", nErr?.message);
     return {
