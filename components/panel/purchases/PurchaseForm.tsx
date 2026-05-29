@@ -9,7 +9,6 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
-import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { cn } from "@/lib/utils/cn";
 import {
   createSupplier,
@@ -255,12 +254,17 @@ export function PurchaseForm({
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <PriceWithVatHelper
-                      value={l.unit_cost}
-                      onChange={(v) => setLine(idx, { unit_cost: v })}
+                    <Input
+                      type="number"
                       step="0.01"
-                      size="sm"
-                      inputClassName="h-9 w-24 text-right"
+                      value={l.unit_cost > 0 ? l.unit_cost : ""}
+                      onChange={(e) =>
+                        setLine(idx, {
+                          unit_cost: Math.max(0, Number(e.target.value) || 0),
+                        })
+                      }
+                      placeholder="0.00"
+                      className="h-9 w-24 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
