@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { ChevronDown, X, Tag, Wallet, Boxes, Star, Truck } from "lucide-react";
@@ -79,23 +79,77 @@ export function CatalogFilters({
   }, [categoryTree, initial.categories]);
 
   const [expanded, setExpanded] = useState<Set<string>>(initiallyExpanded);
+  const [, startTransition] = useTransition();
+
+  // Push URL whenever a filter toggles — operator never has to click Apply.
+  // Debounced for the free-text search box and the price range inputs so
+  // every keystroke doesn't trigger a navigation.
+  function pushNow(
+    nextQ: string,
+    nextSelected: Set<string>,
+    nextMakes: Set<string>,
+    nextMinPrice: string,
+    nextMaxPrice: string,
+    nextInStock: boolean,
+    nextFeatured: boolean,
+  ) {
+    const params = new URLSearchParams();
+    const sort = searchParams.get("sort");
+    if (sort) params.set("sort", sort);
+    if (nextQ.trim()) params.set("q", nextQ.trim());
+    if (nextSelected.size > 0) params.set("category", [...nextSelected].join(","));
+    if (nextMakes.size > 0) params.set("vehicleMake", [...nextMakes].join(","));
+    if (nextMinPrice) params.set("minPrice", nextMinPrice);
+    if (nextMaxPrice) params.set("maxPrice", nextMaxPrice);
+    if (nextInStock) params.set("inStock", "1");
+    if (nextFeatured) params.set("featured", "1");
+    const qs = params.toString();
+    startTransition(() => {
+      router.push(`/${locale}/catalog${qs ? `?${qs}` : ""}`, { scroll: false });
+    });
+  }
+
+  // Free-text + price inputs: 350ms debounce. Skip the very first render
+  // (loaded from URL → mirrors current state).
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const id = window.setTimeout(() => {
+      pushNow(q, selected, selectedMakes, minPrice, maxPrice, inStock, featured);
+    }, 350);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, minPrice, maxPrice]);
 
   const toggleCategory = (slug: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
+    const next = new Set(selected);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    setSelected(next);
+    pushNow(q, next, selectedMakes, minPrice, maxPrice, inStock, featured);
   };
 
   const toggleMake = (slug: string) => {
-    setSelectedMakes((prev) => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
+    const next = new Set(selectedMakes);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    setSelectedMakes(next);
+    pushNow(q, selected, next, minPrice, maxPrice, inStock, featured);
+  };
+
+  const toggleInStock = () => {
+    const next = !inStock;
+    setInStock(next);
+    pushNow(q, selected, selectedMakes, minPrice, maxPrice, next, featured);
+  };
+
+  const toggleFeatured = () => {
+    const next = !featured;
+    setFeatured(next);
+    pushNow(q, selected, selectedMakes, minPrice, maxPrice, inStock, next);
   };
 
   const toggleExpand = (slug: string) => {
@@ -193,7 +247,7 @@ export function CatalogFilters({
                 >
                   <label
                     className={cn(
-                      "flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 text-sm",
+                      "relative flex flex-1 cursor-pointer items-center gap-2 px-2 py-1.5 text-sm",
                       rootChecked ? "text-foreground" : "text-muted-strong hover:text-foreground",
                     )}
                   >
@@ -201,7 +255,7 @@ export function CatalogFilters({
                       type="checkbox"
                       checked={rootChecked}
                       onChange={() => toggleCategory(root.slug)}
-                      className="peer sr-only"
+                      className="peer absolute inset-0 cursor-pointer opacity-0"
                     />
                     <span
                       className={cn(
@@ -249,7 +303,7 @@ export function CatalogFilters({
                         <li key={sub.slug}>
                           <label
                             className={cn(
-                              "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-[13px] transition-colors",
+                              "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1 text-[13px] transition-colors",
                               subChecked
                                 ? "bg-primary/10 text-foreground"
                                 : "text-muted-strong hover:bg-surface-elevated hover:text-foreground",
@@ -259,7 +313,7 @@ export function CatalogFilters({
                               type="checkbox"
                               checked={subChecked}
                               onChange={() => toggleCategory(sub.slug)}
-                              className="peer sr-only"
+                              className="peer absolute inset-0 cursor-pointer opacity-0"
                             />
                             <span
                               className={cn(
@@ -307,7 +361,7 @@ export function CatalogFilters({
                 <li key={make.slug}>
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
+                      "relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors",
                       checked
                         ? "bg-primary/10 text-foreground"
                         : "text-muted-strong hover:bg-surface-elevated hover:text-foreground",
@@ -317,7 +371,7 @@ export function CatalogFilters({
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleMake(make.slug)}
-                      className="peer sr-only"
+                      className="peer absolute inset-0 cursor-pointer opacity-0"
                     />
                     <span
                       className={cn(
@@ -379,19 +433,16 @@ export function CatalogFilters({
           <Toggle
             label={labels.inStock}
             checked={inStock}
-            onChange={setInStock}
+            onChange={() => toggleInStock()}
           />
           <Toggle
             label={labels.featured}
             checked={featured}
-            onChange={setFeatured}
+            onChange={() => toggleFeatured()}
           />
         </div>
       </FilterGroup>
 
-      <Button type="submit" variant="primary" size="md" className="">
-        {labels.apply}
-      </Button>
     </form>
   );
 }
