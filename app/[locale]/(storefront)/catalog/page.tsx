@@ -138,8 +138,10 @@ export default async function CatalogPage({
 
       <Container className="py-10">
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          {/* Sidebar filters — collapsed behind a toggle below lg */}
-          <aside className="min-w-0">
+          {/* Sidebar filters — collapsed behind a toggle below lg.
+              On desktop the aside itself is sticky so the filter panel
+              stays put as the operator scrolls the products column. */}
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
             <CatalogFiltersMobileToggle
               label={tCat("filters")}
               activeCount={activeFilterCount}

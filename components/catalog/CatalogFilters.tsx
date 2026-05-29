@@ -201,7 +201,7 @@ export function CatalogFilters({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex w-full min-w-0 max-w-full flex-col gap-5 rounded-md border border-border bg-surface p-4 lg:sticky lg:top-32 lg:overflow-hidden lg:p-5"
+      className="flex w-full min-w-0 max-w-full flex-col gap-5 rounded-md border border-border bg-surface p-4 lg:p-5"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-semibold text-foreground">
