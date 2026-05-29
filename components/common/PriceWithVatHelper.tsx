@@ -29,6 +29,8 @@ export function PriceWithVatHelper({
   placeholder = "0.00",
   disabled,
   size = "md",
+  vatRate,
+  onVatChange,
 }: {
   value: number;
   onChange: (next: number) => void;
@@ -39,21 +41,43 @@ export function PriceWithVatHelper({
   placeholder?: string;
   disabled?: boolean;
   size?: "sm" | "md";
+  /** External VAT % — when provided, selected state is driven by it and
+   * clicking a button just fires `onVatChange` (no math on `value`). Used by
+   * the purchase form where the entered cost is always treated as net and a
+   * separate vat_rate column drives the totals math. */
+  vatRate?: number | null;
+  /** Callback for the externally-controlled VAT selector. */
+  onVatChange?: (next: 0 | 20) => void;
 }) {
+  const external = typeof vatRate === "number" && onVatChange !== undefined;
   const [mode, setMode] = useState<VatMode>(null);
   // Track when an internal click triggered the value change so an external
   // onChange echo doesn't blow away the just-set mode.
   const internalChange = useRef(false);
   useEffect(() => {
+    if (external) return;
     if (internalChange.current) {
       internalChange.current = false;
       return;
     }
     setMode(null);
-  }, [value]);
+  }, [value, external]);
+
+  const externalMode: VatMode = external
+    ? vatRate === 0
+      ? 0
+      : vatRate === 20
+        ? 20
+        : null
+    : mode;
+  const activeMode = external ? externalMode : mode;
 
   const pickMode = (next: 0 | 20) => {
     if (disabled || value <= 0) return;
+    if (external) {
+      onVatChange!(next);
+      return;
+    }
     let nextValue = value;
     if (mode === 20 && next === 0) {
       nextValue = Math.round((value / 1.2) * 100) / 100;
@@ -91,12 +115,12 @@ export function PriceWithVatHelper({
           type="button"
           onClick={() => pickMode(0)}
           disabled={disabled || value <= 0}
-          aria-pressed={mode === 0}
-          title="Lasă suma fără TVA (TVA 0%)"
+          aria-pressed={activeMode === 0}
+          title="Marchează ca TVA 0%"
           className={cn(
             "font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             btnBase,
-            mode === 0
+            activeMode === 0
               ? "bg-foreground text-background"
               : "bg-surface text-muted-strong hover:bg-surface-elevated",
           )}
@@ -107,17 +131,17 @@ export function PriceWithVatHelper({
           type="button"
           onClick={() => pickMode(20)}
           disabled={disabled || value <= 0}
-          aria-pressed={mode === 20}
-          title="Adaugă 20% TVA (× 1.20)"
+          aria-pressed={activeMode === 20}
+          title={external ? "Marchează ca TVA 20%" : "Adaugă 20% TVA (× 1.20)"}
           className={cn(
             "border-l border-border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
             btnBase,
-            mode === 20
+            activeMode === 20
               ? "bg-primary text-primary-foreground"
               : "bg-surface text-primary hover:bg-primary/10",
           )}
         >
-          +TVA 20%
+          {external ? "TVA 20%" : "+TVA 20%"}
         </button>
       </div>
     </div>

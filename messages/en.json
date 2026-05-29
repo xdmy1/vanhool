@@ -1121,7 +1121,7 @@
     "achizitii_line_description_placeholder": "Description from the invoice",
     "achizitii_line_qty": "Qty",
     "achizitii_line_cost": "Cost",
-    "achizitii_line_vat": "VAT",
+    "achizitii_line_vat": "VAT (%)",
     "achizitii_line_total": "Line total",
     "achizitii_gen_short": "Gen",
     "achizitii_subtotal": "Subtotal",

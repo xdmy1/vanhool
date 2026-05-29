@@ -1121,7 +1121,7 @@
     "achizitii_line_description_placeholder": "Описание со счёта",
     "achizitii_line_qty": "Кол-во",
     "achizitii_line_cost": "Себест.",
-    "achizitii_line_vat": "НДС",
+    "achizitii_line_vat": "НДС (%)",
     "achizitii_line_total": "Итого по строке",
     "achizitii_gen_short": "Ген",
     "achizitii_subtotal": "Промежуточный итог",

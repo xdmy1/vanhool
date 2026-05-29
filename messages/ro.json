@@ -1121,7 +1121,7 @@
     "achizitii_line_description_placeholder": "Descriere de pe factură",
     "achizitii_line_qty": "Cant.",
     "achizitii_line_cost": "Cost",
-    "achizitii_line_vat": "TVA",
+    "achizitii_line_vat": "TVA (%)",
     "achizitii_line_total": "Total linie",
     "achizitii_gen_short": "Gen",
     "achizitii_subtotal": "Subtotal",

@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
+import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { cn } from "@/lib/utils/cn";
 import {
   createSupplier,
@@ -198,8 +199,7 @@ export function PurchaseForm({
                 <th className="px-2 py-2">{t("achizitii_line_internal_code")}</th>
                 <th className="px-2 py-2">{t("achizitii_line_description")}</th>
                 <th className="px-2 py-2 text-right">{t("achizitii_line_qty")}</th>
-                <th className="px-2 py-2 text-right">{t("achizitii_line_cost")}</th>
-                <th className="px-2 py-2 text-right">{t("achizitii_line_vat")}</th>
+                <th className="px-2 py-2 text-right" colSpan={2}>{t("achizitii_line_cost")}</th>
                 <th className="px-2 py-2 text-right">{t("achizitii_line_total")}</th>
                 <th className="px-2 py-2" />
               </tr>
@@ -245,41 +245,31 @@ export function PurchaseForm({
                   <td className="px-2 py-2 text-right">
                     <Input
                       type="number"
-                      step="0.001"
-                      value={l.quantity}
+                      step={1}
+                      min={1}
+                      value={l.quantity > 0 ? l.quantity : ""}
                       onChange={(e) =>
-                        setLine(idx, { quantity: Math.max(0, Number(e.target.value || 0)) })
+                        setLine(idx, {
+                          quantity: Math.max(1, Math.trunc(Number(e.target.value) || 0)),
+                        })
                       }
+                      placeholder="1"
                       className="h-9 w-20 text-right"
                     />
                   </td>
-                  <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
+                  <td className="px-2 py-2 text-right" colSpan={2}>
+                    <PriceWithVatHelper
+                      value={l.unit_cost}
+                      onChange={(v) => setLine(idx, { unit_cost: v })}
+                      vatRate={l.vat_rate ?? 0}
+                      onVatChange={(v) => setLine(idx, { vat_rate: v })}
                       step="0.01"
-                      value={l.unit_cost > 0 ? l.unit_cost : ""}
-                      onChange={(e) =>
-                        setLine(idx, {
-                          unit_cost: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
-                      placeholder="0.00"
-                      className="h-9 w-24 text-right"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
-                      step="0.5"
-                      value={l.vat_rate}
-                      onChange={(e) =>
-                        setLine(idx, { vat_rate: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className="h-9 w-16 text-right"
+                      size="sm"
+                      inputClassName="h-9 w-24 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
-                    {(l.quantity * l.unit_cost).toFixed(2)}
+                    {(l.quantity * l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
                   </td>
                   <td className="px-2 py-2 text-right">
                     <button
