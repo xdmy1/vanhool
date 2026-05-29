@@ -100,9 +100,15 @@ export default async function PanelDashboardPage({
     (i) => i.status === "issued" || i.status === "sent" || i.status === "draft",
   ).length;
 
+  // Fixed reference rates so totals across MDL/EUR/USD documents can be
+  // expressed in a single number. Matches the rest of the panel.
+  const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const toMdl = (total: number, currency: string | null | undefined) =>
+    total * (FX_TO_MDL[(currency ?? "MDL").toUpperCase()] ?? 1);
+
   const proformaTotal = proformas
     .filter((p) => p.status === "sent")
-    .reduce((s, p) => s + p.total, 0);
+    .reduce((s, p) => s + toMdl(p.total, p.currency), 0);
 
   const fmtDateTime = (d: string | null) =>
     d ? new Date(d).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" }) : "—";
