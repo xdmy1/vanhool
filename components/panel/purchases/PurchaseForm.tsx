@@ -35,7 +35,9 @@ const EMPTY_LINE: Line = {
   description: "",
   quantity: 1,
   unit_cost: 0,
-  vat_rate: 20,
+  // Start at 0 so a freshly-typed cost shows up as-is in the line total;
+  // the operator picks +TVA 20% explicitly when needed.
+  vat_rate: 0,
 };
 
 export function PurchaseForm({
