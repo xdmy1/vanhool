@@ -161,18 +161,25 @@ function KpiCard({
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-md border border-border bg-surface p-5">
-      <header className="mb-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
+    <section className="relative overflow-hidden rounded-xl border border-border bg-surface/95 p-6 shadow-[0_18px_40px_-22px_rgba(30,27,21,0.25)]">
+      {/* Subtle radial highlight in the top-left for a glass-card feel */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -left-12 -top-12 size-48 rounded-full bg-primary/10 blur-3xl"
+      />
+      <header className="relative mb-5 flex items-end justify-between">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+          {title}
+        </h3>
       </header>
-      {children}
+      <div className="relative">{children}</div>
     </section>
   );
 }
 
 function EmptyChart({ label }: { label: string }) {
   return (
-    <div className="grid h-[220px] place-items-center rounded-md border border-dashed border-border text-xs text-muted">
+    <div className="grid h-[260px] place-items-center rounded-xl border border-dashed border-border/70 text-xs text-muted">
       {label}
     </div>
   );
