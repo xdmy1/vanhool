@@ -192,6 +192,68 @@ async function getCategorySlugMap(): Promise<Map<string, string>> {
   return map;
 }
 
+/**
+ * Resolve `term` (already wrapped in % for ilike) against category names in
+ * any locale + slug, expand to descendants, then return every active
+ * product whose category_id falls in that subtree. Lets a storefront search
+ * for "frână" / "тормоз" / "brake" surface every brake-related part.
+ *
+ * Returns up to 500 product ids; intentionally caps to keep the search
+ * union cheap when a top-level category sweeps thousands of children.
+ */
+async function findProductsByCategoryName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  term: string,
+): Promise<string[]> {
+  const stripped = term.replace(/^%|%$/g, "").trim();
+  if (stripped.length < 2) return [];
+  const { data: matches } = await supabase
+    .from("categories")
+    .select("id")
+    .or(
+      [
+        `name_ro.ilike.${term}`,
+        `name_en.ilike.${term}`,
+        `name_ru.ilike.${term}`,
+        `slug.ilike.${term}`,
+      ].join(","),
+    )
+    .limit(50);
+  const matched = (matches ?? []).map((r) => r.id as string);
+  if (matched.length === 0) return [];
+
+  // Walk descendants via a single fetch of every category's (id, parent_id).
+  const { data: tree } = await supabase
+    .from("categories")
+    .select("id, parent_id");
+  const byParent = new Map<string | null, string[]>();
+  for (const r of tree ?? []) {
+    const key = r.parent_id ?? null;
+    const arr = byParent.get(key) ?? [];
+    arr.push(r.id as string);
+    byParent.set(key, arr);
+  }
+  const ids = new Set<string>(matched);
+  const stack = [...matched];
+  while (stack.length) {
+    const id = stack.pop()!;
+    for (const child of byParent.get(id) ?? []) {
+      if (!ids.has(child)) {
+        ids.add(child);
+        stack.push(child);
+      }
+    }
+  }
+
+  const { data: prods } = await supabase
+    .from("products")
+    .select("id")
+    .eq("is_active", true)
+    .in("category_id", Array.from(ids))
+    .limit(500);
+  return (prods ?? []).map((r) => r.id as string);
+}
+
 async function getCategoryIdsBySlug(slugs: string[]): Promise<string[]> {
   if (slugs.length === 0) return [];
   const supabase = await createClient();
@@ -486,10 +548,13 @@ export async function getCatalog(
     const term = `%${trimmed}%`;
     const normalized = normalizeCode(trimmed);
 
-    // Run both lookups in parallel and union the IDs in TS. We avoid mixing
-    // `.or(...)` with `id.in.(uuid)` because PostgREST chokes on nested parens
-    // inside `or` — that combination quietly returns 0 rows.
-    const [codeRowsRes, textRowsRes] = await Promise.all([
+    // Three parallel passes:
+    //   • search_codes (normalized part code / OEM)
+    //   • free-text ilike on part_code / brand / name_*
+    //   • category-name match → fan out to descendants → all products in
+    //     that subtree. Lets "frână" (or "тормоз" / "brake") bring up
+    //     every part filed under that category.
+    const [codeRowsRes, textRowsRes, categoryProductsRes] = await Promise.all([
       normalized.length > 0
         ? supabase
             .from("products")
@@ -512,10 +577,12 @@ export async function getCatalog(
           ].join(","),
         )
         .limit(500),
+      findProductsByCategoryName(supabase, term),
     ]);
     const codeIds = ((codeRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
     const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
-    const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
+    const catIds = categoryProductsRes;
+    const matchedIds = Array.from(new Set([...codeIds, ...textIds, ...catIds]));
 
     if (matchedIds.length === 0) return emptyResult;
     intersectIds(matchedIds);
