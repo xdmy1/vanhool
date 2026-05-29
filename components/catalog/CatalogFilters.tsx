@@ -147,7 +147,7 @@ export function CatalogFilters({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex w-full min-w-0 max-w-full flex-col gap-5 overflow-hidden rounded-md border border-border bg-surface p-4 lg:sticky lg:top-32 lg:p-5"
+      className="flex w-full min-w-0 max-w-full flex-col gap-5 rounded-md border border-border bg-surface p-4 lg:sticky lg:top-32 lg:overflow-hidden lg:p-5"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-[11px] font-semibold text-foreground">
@@ -174,7 +174,10 @@ export function CatalogFilters({
       </FilterGroup>
 
       <FilterGroup icon={Boxes} title={labels.category}>
-        <ul className="-mx-1 max-h-96 space-y-0.5 overflow-y-auto pr-1">
+        {/* Inner scroll only on lg+ (sidebar sticky, finite height). On
+            mobile/tablet the panel uses the page's scroll so toggling a
+            checkbox doesn't trap the user inside an inner scroll context. */}
+        <ul className="-mx-1 space-y-0.5 pr-1 lg:max-h-96 lg:overflow-y-auto">
           {categoryTree.map((root) => {
             const isExpanded = expanded.has(root.slug);
             const rootChecked = selected.has(root.slug);
@@ -297,7 +300,7 @@ export function CatalogFilters({
 
       {vehicleMakes.length > 0 ? (
         <FilterGroup icon={Truck} title={labels.vehicleMake}>
-          <ul className="-mx-1 max-h-72 space-y-0.5 overflow-y-auto pr-1">
+          <ul className="-mx-1 space-y-0.5 pr-1 lg:max-h-72 lg:overflow-y-auto">
             {vehicleMakes.map((make) => {
               const checked = selectedMakes.has(make.slug);
               return (
