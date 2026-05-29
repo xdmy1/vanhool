@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { MultiImageUpload } from "@/components/admin/products/MultiImageUpload";
 import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
 import { TranslateButton } from "@/components/admin/TranslateButton";
@@ -192,6 +193,15 @@ export function ProductForm({
       valueRu: s.valueRu ?? "",
     })),
   );
+  const [priceValue, setPriceValue] = useState<number>(
+    typeof initial?.price === "number" ? initial.price : 0,
+  );
+  const [costPriceValue, setCostPriceValue] = useState<number>(
+    typeof initial?.costPrice === "number" ? initial.costPrice : 0,
+  );
+  const [promoPriceValue, setPromoPriceValue] = useState<number>(
+    typeof initial?.promoPrice === "number" ? initial.promoPrice : 0,
+  );
   const [nameRo, setNameRo] = useState(initial?.nameRo ?? "");
   const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
   const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
@@ -257,8 +267,8 @@ export function ProductForm({
       brand: "",
       manufacturerId,
       slug: String(fd.get("slug") ?? ""),
-      price: num("price") ?? 0,
-      costPrice: num("costPrice"),
+      price: priceValue,
+      costPrice: costPriceValue > 0 ? costPriceValue : null,
       stockQuantity: num("stockQuantity") ?? 0,
       storageLocation: String(fd.get("storageLocation") ?? ""),
       condition,
@@ -295,7 +305,7 @@ export function ProductForm({
       crossReferences: cleanedCrossRefs,
       vehicleMakeIds: busMakeIds,
       isPromo,
-      promoPrice: isPromo ? num("promoPrice") : null,
+      promoPrice: isPromo ? (promoPriceValue > 0 ? promoPriceValue : null) : null,
       promoStartsAt: isPromo
         ? (() => {
             const v = String(fd.get("promoStartsAt") ?? "").trim();
@@ -530,13 +540,11 @@ export function ProductForm({
           {isPromo ? (
             <>
               <Field label={labels.field_promo_price} error={errors.promoPrice}>
-                <Input
-                  name="promoPrice"
-                  type="number"
+                <PriceWithVatHelper
+                  value={promoPriceValue}
+                  onChange={setPromoPriceValue}
                   step="0.01"
                   min={0}
-                  defaultValue={initial?.promoPrice ?? ""}
-                  required
                 />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -660,22 +668,19 @@ export function ProductForm({
       <aside className="flex flex-col gap-5">
         <Card title={labels.section_pricing}>
           <Field label={labels.field_price} error={errors.price}>
-            <Input
-              name="price"
-              type="number"
+            <PriceWithVatHelper
+              value={priceValue}
+              onChange={setPriceValue}
               step="0.01"
               min={0}
-              defaultValue={initial?.price ?? 0}
-              required
             />
           </Field>
           <Field label={labels.field_cost_price}>
-            <Input
-              name="costPrice"
-              type="number"
+            <PriceWithVatHelper
+              value={costPriceValue}
+              onChange={setCostPriceValue}
               step="0.01"
               min={0}
-              defaultValue={initial?.costPrice ?? ""}
             />
           </Field>
           <Field label={labels.field_stock} error={errors.stockQuantity}>

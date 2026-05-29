@@ -94,7 +94,7 @@ export function CartSummary({
         <span className="text-[11px] font-semibold text-foreground">
           {labels.total}
         </span>
-        <Price value={totals.total} size="xl" />
+        <Price value={totals.total} size="xl" showVat />
       </div>
 
       <Button

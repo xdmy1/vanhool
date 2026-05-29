@@ -18,6 +18,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { Price } from "@/components/common/Price";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -826,15 +827,12 @@ function StepProducts({
                     </div>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min={0}
+                    <PriceWithVatHelper
                       value={l.unit_price}
-                      onChange={(e) =>
-                        update(idx, { unit_price: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className="ml-auto h-8 w-24 text-right"
+                      onChange={(v) => update(idx, { unit_price: v })}
+                      step="0.01"
+                      size="sm"
+                      inputClassName="ml-auto h-8 w-24 text-right"
                     />
                     {l.product.cost_price > 0 ? (
                       <div className="text-[10px] text-muted">

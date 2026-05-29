@@ -112,7 +112,7 @@ export function CartLine({
             <div className="text-xs text-muted">
               {item.quantity} × {item.price.toFixed(2)} lei
             </div>
-            <Price value={lineTotal} size="lg" />
+            <Price value={lineTotal} size="lg" showVat />
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 import { issueProforma, updateProforma } from "@/lib/panel/invoices/actions";
 import { PartCodeAutocomplete } from "@/components/panel/proforma/PartCodeAutocomplete";
+import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import {
   type ClientSearchResult,
   listAllPanelClients,
@@ -337,14 +338,12 @@ export function NewProformaForm({
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
-                      step="0.01"
+                    <PriceWithVatHelper
                       value={l.unit_price}
-                      onChange={(e) =>
-                        setLine(idx, { unit_price: Math.max(0, Number(e.target.value || 0)) })
-                      }
-                      className="h-9 w-24 text-right"
+                      onChange={(v) => setLine(idx, { unit_price: v })}
+                      step="0.01"
+                      size="sm"
+                      inputClassName="h-9 w-24 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
