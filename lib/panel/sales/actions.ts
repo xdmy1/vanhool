@@ -367,6 +367,10 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         } as unknown as Json,
         subtotal,
         vat_amount: vatAmount,
+        // Mirror of an over-the-counter sale (vs. a directly-issued invoice
+        // or a proforma conversion). Lets the facturi list filter / badge
+        // these so the operator can still find them by origin.
+        ...({ source: "sale" } as object),
         total,
         status: isPaidNow ? "paid" : "issued",
       })

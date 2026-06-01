@@ -329,7 +329,12 @@ export async function convertProformaToInvoice(
       proforma_id: pf.id,
       // Carry the language across the conversion so the fiscal invoice
       // matches the proforma's recipient language.
-      ...({ output_locale: (pf as { output_locale?: string }).output_locale ?? "ro" } as object),
+      ...({
+        output_locale: (pf as { output_locale?: string }).output_locale ?? "ro",
+        // Origin marker — distinguishes converted-from-proforma invoices
+        // from over-the-counter sales and directly-issued invoices.
+        source: "proforma_conv",
+      } as object),
     })
     .select("id")
     .single();
