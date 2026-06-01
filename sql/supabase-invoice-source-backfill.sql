@@ -144,30 +144,11 @@ begin
   end if;
 end $$;
 
--- ----------------------------------------------------------------------------
--- 4) One-time correction: earlier runs of this migration hard-coded
---    invoice.currency = 'MDL', so EUR / USD sales backfilled before this
---    fix surface in /panel/facturi with the wrong denomination. Re-align
---    them with the order's actual currency. Idempotent — only touches rows
---    where the two columns diverge.
--- ----------------------------------------------------------------------------
-do $$
-declare
-  fixed_count int;
-begin
-  with mismatched as (
-    update public.invoices i
-    set currency = o.currency,
-        updated_at = now()
-    from public.orders o
-    where i.order_id = o.id
-      and i.source = 'sale'
-      and coalesce(o.currency, 'MDL') <> coalesce(i.currency, 'MDL')
-    returning i.id
-  )
-  select count(*) into fixed_count from mismatched;
-
-  if fixed_count > 0 then
-    raise notice 'Corrected currency on % backfilled invoices', fixed_count;
-  end if;
-end $$;
+-- NOTE: a previous version of this file ran an UPDATE that copied
+-- orders.currency onto already-backfilled invoices. That was wrong:
+-- orders.total is the MDL amount actually charged at the till even
+-- when orders.currency was tagged 'EUR' later, so the update simply
+-- re-labelled correct 3292 MDL rows as "3292 EUR" without converting
+-- the number. The block has been removed; existing data is left
+-- as-is. Recovering the original native-currency amount would need
+-- separate per-order rate metadata which we don't store today.
