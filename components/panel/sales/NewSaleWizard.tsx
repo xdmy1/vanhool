@@ -66,7 +66,17 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   // each line keeps its own unit_price (catalog price, possibly manually edited).
   const [saleMarkupPercent, setSaleMarkupPercent] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "already_paid">("cash");
-  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
+  // Default to whatever currency the operator used on their last sale, so we
+  // stop silently saving MDL when they meant EUR. The current shop pattern
+  // is several EUR sales in a row — forcing the picker back to MDL between
+  // them is exactly how IB-00015 + the two 12:44/12:45 sales ended up
+  // mislabelled.
+  const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">(() => {
+    if (typeof window === "undefined") return "MDL";
+    const saved = window.localStorage.getItem("panel.sale.lastCurrency");
+    if (saved === "EUR" || saved === "USD" || saved === "MDL") return saved;
+    return "MDL";
+  });
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [driverName, setDriverName] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
@@ -664,6 +674,8 @@ function StepProducts({
 
   // Flipping the currency selector rescales every line so the value stays
   // economically equivalent (20 MDL ≡ 1 EUR ≡ 17 USD per fixed table).
+  // Also persists the choice so the NEXT new-sale form opens with the
+  // same currency — see the localStorage read at the wizard root.
   function changeCurrency(next: "MDL" | "EUR" | "USD") {
     if (next === currency) return;
     setLines(
@@ -673,6 +685,9 @@ function StepProducts({
       })),
     );
     setCurrency(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("panel.sale.lastCurrency", next);
+    }
   }
 
   function applyMarkupToAll(percent: string) {
@@ -716,7 +731,12 @@ function StepProducts({
               <select
                 value={currency}
                 onChange={(e) => changeCurrency(e.target.value as "MDL" | "EUR" | "USD")}
-                className="h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                className={cn(
+                  "h-9 rounded-md border px-3 text-sm font-semibold transition-colors",
+                  currency === "MDL"
+                    ? "border-border bg-surface"
+                    : "border-primary bg-primary/10 text-primary",
+                )}
               >
                 <option value="MDL">MDL</option>
                 <option value="EUR">EUR</option>
