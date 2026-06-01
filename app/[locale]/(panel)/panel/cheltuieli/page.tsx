@@ -28,7 +28,17 @@ export default async function PanelCheltuieliPage({
   const from = typeof sp.from === "string" ? sp.from : undefined;
   const to = typeof sp.to === "string" ? sp.to : undefined;
   const rows = await listExpenses({ scope: "conta1", q, category, from, to });
-  const totalMonth = rows.reduce((s, r) => s + r.amount, 0);
+  // Group expenses by their own currency rather than summing into MDL — a
+  // EUR receipt should stay EUR on the dashboard, not be silently converted.
+  const totalByCurrency: Record<string, number> = {};
+  for (const r of rows) {
+    const c = (r.currency ?? "MDL").toUpperCase();
+    totalByCurrency[c] = (totalByCurrency[c] ?? 0) + (r.amount ?? 0);
+  }
+  const totalMonthLabel = Object.entries(totalByCurrency)
+    .filter(([, n]) => Math.abs(n) > 0.005)
+    .map(([c, n]) => `${n.toFixed(2)} ${c}`)
+    .join(", ") || "0.00 MDL";
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
 
   return (
@@ -75,7 +85,7 @@ export default async function PanelCheltuieliPage({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <Card label={t("expenses_card_total")} value={`${totalMonth.toFixed(2)} MDL`} />
+        <Card label={t("expenses_card_total")} value={totalMonthLabel} />
         <Card label={t("expenses_card_count")} value={String(rows.length)} />
       </div>
 

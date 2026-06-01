@@ -791,7 +791,7 @@
     "dashboard_kpi_triage": "Orders to triage",
     "dashboard_kpi_low_stock": "Low-stock products",
     "dashboard_kpi_open_proformas": "Open proformas",
-    "dashboard_kpi_open_proformas_sub": "Pending total: {total} MDL",
+    "dashboard_kpi_open_proformas_sub": "Pending total: {total}",
     "dashboard_kpi_unpaid_invoices": "Unpaid invoices",
     "dashboard_kpi_draft_purchases": "Draft purchases",
     "dashboard_kpi_7d_orders": "Orders (7 days)",

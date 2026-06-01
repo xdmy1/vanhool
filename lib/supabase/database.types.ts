@@ -234,6 +234,7 @@ export type Database = {
           source: "storefront" | "panel" | "import";
           delivery_note_id: UUID | null;
           triaged_at: Timestamp | null;
+          currency: string | null;
         };
         Insert: Partial<Database["public"]["Tables"]["orders"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["orders"]["Row"]>;

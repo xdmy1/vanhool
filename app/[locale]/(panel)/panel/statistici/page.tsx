@@ -55,15 +55,25 @@ export default async function PanelStatisticiPage({
       .eq("status", "draft"),
     supabase
       .from("orders")
-      .select("total")
+      .select("total, currency")
       .gte("created_at", `${today}T00:00:00`)
       .neq("status", "cancelled"),
   ]);
 
-  const todayTotal = (todaysRevenue.data ?? []).reduce(
-    (s, r) => s + Number(r.total ?? 0),
-    0,
-  );
+  // Group today's revenue by currency so EUR / USD sales stay in their own
+  // bucket instead of being forced into a single "MDL equivalent" number.
+  const todayByCurrency: Record<string, number> = {};
+  for (const r of (todaysRevenue.data ?? []) as {
+    total: number | string | null;
+    currency?: string | null;
+  }[]) {
+    const c = (r.currency ?? "MDL").toUpperCase();
+    todayByCurrency[c] = (todayByCurrency[c] ?? 0) + Number(r.total ?? 0);
+  }
+  const todayTotalLabel = Object.entries(todayByCurrency)
+    .filter(([, n]) => Math.abs(n) > 0.005)
+    .map(([c, n]) => `${n.toFixed(2)} ${c}`)
+    .join(", ") || "0.00 MDL";
 
   const productSlice = topProducts.map((p) => ({
     name: p.name?.slice(0, 24) ?? p.partCode ?? "—",
@@ -82,7 +92,7 @@ export default async function PanelStatisticiPage({
         <KpiCard
           icon={TrendingUp}
           label={t("stats_kpi_today")}
-          value={`${todayTotal.toFixed(2)} MDL`}
+          value={todayTotalLabel}
           accent
         />
         <KpiCard

@@ -38,7 +38,19 @@ export default async function PanelCheltuieliCashPage({
         <Card label={t("cash_movements_count")} value={String(balance.movements_count)} />
         <Card
           label={t("cash_expenses_total")}
-          value={`${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)} MDL`}
+          value={(() => {
+            const by: Record<string, number> = {};
+            for (const e of expenses) {
+              const c = ((e as { currency?: string | null }).currency ?? "MDL").toUpperCase();
+              by[c] = (by[c] ?? 0) + (e.amount ?? 0);
+            }
+            return (
+              Object.entries(by)
+                .filter(([, n]) => Math.abs(n) > 0.005)
+                .map(([c, n]) => `${n.toFixed(2)} ${c}`)
+                .join(", ") || "0.00 MDL"
+            );
+          })()}
         />
       </div>
 

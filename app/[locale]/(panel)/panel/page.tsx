@@ -53,7 +53,7 @@ export default async function PanelDashboardPage({
     supabase
       .from("orders")
       .select(
-        "id, total, account_scope, customer_name, customer_email, source, status, created_at",
+        "id, total, currency, account_scope, customer_name, customer_email, source, status, created_at",
       )
       .gte("created_at", `${today}T00:00:00`)
       .neq("status", "cancelled")
@@ -90,33 +90,53 @@ export default async function PanelDashboardPage({
   ]);
 
   const todayOrders = todaysOrders.data ?? [];
-  const todayTotal = todayOrders.reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const todayConta1Orders = todayOrders.filter(
-    (r) => r.account_scope === "conta1",
+
+  // Currency-aware aggregation: never collapse EUR / USD documents into MDL
+  // via a hard-coded rate — show each currency as its own bucket so the
+  // operator sees the actual amount transacted in each one.
+  type Bucket = Record<string, number>;
+  function bucketBy<T>(rows: T[], getAmount: (r: T) => number, getCurrency: (r: T) => string | null | undefined): Bucket {
+    const out: Bucket = {};
+    for (const r of rows) {
+      const c = (getCurrency(r) ?? "MDL").toUpperCase();
+      out[c] = (out[c] ?? 0) + (getAmount(r) || 0);
+    }
+    return out;
+  }
+  function formatBucket(b: Bucket): string {
+    const entries = Object.entries(b).filter(([, n]) => Math.abs(n) > 0.005);
+    if (entries.length === 0) return "0.00 MDL";
+    return entries
+      .map(([c, n]) => `${n.toFixed(2)} ${c}`)
+      .join(", ");
+  }
+
+  const todayByCurrency = bucketBy(
+    todayOrders,
+    (r) => Number(r.total ?? 0),
+    (r) => (r as { currency?: string | null }).currency,
   );
-  const todayConta2Orders = todayOrders.filter(
-    (r) => r.account_scope !== "conta1",
+  const todayConta1ByCurrency = bucketBy(
+    todayOrders.filter((r) => r.account_scope === "conta1"),
+    (r) => Number(r.total ?? 0),
+    (r) => (r as { currency?: string | null }).currency,
   );
-  const todayConta1 = todayConta1Orders.reduce(
-    (s, r) => s + Number(r.total ?? 0),
-    0,
+  const todayConta2ByCurrency = bucketBy(
+    todayOrders.filter((r) => r.account_scope !== "conta1"),
+    (r) => Number(r.total ?? 0),
+    (r) => (r as { currency?: string | null }).currency,
   );
-  const todayConta2 = todayTotal - todayConta1;
 
   const openProformas = proformas.filter((p) => p.status === "sent").length;
   const unpaidInvoices = invoices.filter(
     (i) => i.status === "issued" || i.status === "sent" || i.status === "draft",
   ).length;
 
-  // Fixed reference rates so totals across MDL/EUR/USD documents can be
-  // expressed in a single number. Matches the rest of the panel.
-  const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
-  const toMdl = (total: number, currency: string | null | undefined) =>
-    total * (FX_TO_MDL[(currency ?? "MDL").toUpperCase()] ?? 1);
-
-  const proformaTotal = proformas
-    .filter((p) => p.status === "sent")
-    .reduce((s, p) => s + toMdl(p.total, p.currency), 0);
+  const proformaTotalByCurrency = bucketBy(
+    proformas.filter((p) => p.status === "sent"),
+    (p) => Number(p.total ?? 0),
+    (p) => p.currency,
+  );
 
   const fmtDateTime = (d: string | null) =>
     d ? new Date(d).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" }) : "—";
@@ -151,10 +171,14 @@ export default async function PanelDashboardPage({
         <KpiCard
           icon={TrendingUp}
           label={t("dashboard_kpi_today")}
-          value={<Price value={todayTotal} size="lg" accent={false} />}
+          value={
+            <span className="text-2xl font-bold tabular-nums">
+              {formatBucket(todayByCurrency)}
+            </span>
+          }
           sub={t("dashboard_kpi_today_split", {
-            c1: todayConta1.toFixed(2),
-            c2: todayConta2.toFixed(2),
+            c1: formatBucket(todayConta1ByCurrency),
+            c2: formatBucket(todayConta2ByCurrency),
           })}
           accent
         />
@@ -191,7 +215,7 @@ export default async function PanelDashboardPage({
           label={t("dashboard_kpi_open_proformas")}
           value={String(openProformas)}
           sub={t("dashboard_kpi_open_proformas_sub", {
-            total: proformaTotal.toFixed(2),
+            total: formatBucket(proformaTotalByCurrency),
           })}
           href="/panel/proforme"
           locale={locale}
@@ -224,8 +248,8 @@ export default async function PanelDashboardPage({
       <section className="mt-6 grid gap-3 md:grid-cols-2">
         <TodayBreakdownColumn
           title={t("dashboard_today_breakdown_conta1")}
-          total={todayConta1}
-          orders={todayConta1Orders}
+          totalLabel={formatBucket(todayConta1ByCurrency)}
+          orders={todayOrders.filter((r) => r.account_scope === "conta1")}
           locale={locale}
           emptyLabel={t("dashboard_today_breakdown_empty")}
           dateLocale={dateLocale}
@@ -233,8 +257,8 @@ export default async function PanelDashboardPage({
         />
         <TodayBreakdownColumn
           title={t("dashboard_today_breakdown_conta2")}
-          total={todayConta2}
-          orders={todayConta2Orders}
+          totalLabel={formatBucket(todayConta2ByCurrency)}
+          orders={todayOrders.filter((r) => r.account_scope !== "conta1")}
           locale={locale}
           emptyLabel={t("dashboard_today_breakdown_empty")}
           dateLocale={dateLocale}
@@ -535,7 +559,7 @@ type TodayOrderRow = {
 
 function TodayBreakdownColumn({
   title,
-  total,
+  totalLabel,
   orders,
   locale,
   emptyLabel,
@@ -543,7 +567,10 @@ function TodayBreakdownColumn({
   accent,
 }: {
   title: string;
-  total: number;
+  /** Pre-formatted, currency-grouped total — e.g. "200.00 MDL, 50.00 EUR".
+   * Computed in the parent because the orders may span multiple currencies
+   * and we don't want to silently collapse them to MDL. */
+  totalLabel: string;
   orders: TodayOrderRow[];
   locale: string;
   emptyLabel: string;
@@ -563,7 +590,7 @@ function TodayBreakdownColumn({
       <header className="flex items-center justify-between gap-3 border-b border-border bg-surface-elevated px-4 py-2.5">
         <h3 className="text-sm font-semibold">{title}</h3>
         <span className={cn("text-sm font-bold tabular-nums", accentText)}>
-          <Price value={total} size="sm" accent={false} />
+          {totalLabel}
         </span>
       </header>
       {orders.length === 0 ? (

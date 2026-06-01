@@ -791,7 +791,7 @@
     "dashboard_kpi_triage": "Comenzi de triat",
     "dashboard_kpi_low_stock": "Produse stoc redus",
     "dashboard_kpi_open_proformas": "Pro-forme deschise",
-    "dashboard_kpi_open_proformas_sub": "Total așteptat: {total} MDL",
+    "dashboard_kpi_open_proformas_sub": "Total așteptat: {total}",
     "dashboard_kpi_unpaid_invoices": "Facturi neplătite",
     "dashboard_kpi_draft_purchases": "Achiziții draft",
     "dashboard_kpi_7d_orders": "Comenzi (7 zile)",

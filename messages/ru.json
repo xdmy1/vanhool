@@ -791,7 +791,7 @@
     "dashboard_kpi_triage": "Заказов к сортировке",
     "dashboard_kpi_low_stock": "Мало на складе",
     "dashboard_kpi_open_proformas": "Открытые проформы",
-    "dashboard_kpi_open_proformas_sub": "Ожидается: {total} MDL",
+    "dashboard_kpi_open_proformas_sub": "Ожидается: {total}",
     "dashboard_kpi_unpaid_invoices": "Неоплаченные счета",
     "dashboard_kpi_draft_purchases": "Черновики закупок",
     "dashboard_kpi_7d_orders": "Заказы (7 дней)",
