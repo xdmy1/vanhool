@@ -1,27 +1,16 @@
--- Fix IB-00015 manually.
+-- Fix IB-00015 only.
 --
--- Replace 165.00 with the actual EUR amount the customer paid. Run after
--- diagnose-ib00015.sql so you know whether the order row needs the same
--- fix or only the invoice.
+-- The sale was made in EUR (orders.currency='EUR', orders.total=3292.50
+-- which matches the sum of the item unit prices — they're realistic EUR
+-- retail prices for those bus parts). The originating order is already
+-- correct; only the mirrored invoice row was backfilled with the wrong
+-- currency label.
+--
+-- This script only flips invoices.currency MDL → EUR. The 3292.50 figure
+-- stays — that's the right EUR amount. After running, /panel/facturi
+-- will show IB-00015 as "3292.50 EUR".
 
--- 1) Set the invoice to the EUR amount you actually charged
 update public.invoices
-set
-  currency = 'EUR',
-  total    = 165.00,     -- <-- replace with the real EUR amount
-  subtotal = 165.00,     -- <-- same number unless TVA breakdown differs
-  updated_at = now()
+set currency   = 'EUR',
+    updated_at = now()
 where series = 'IB' and number = '00015';
-
--- 2) Mirror the same correction onto the originating order so totals
---    reconcile everywhere the order row is read (dashboard, reports, etc.)
-update public.orders o
-set
-  currency = 'EUR',
-  total    = 165.00,
-  subtotal = 165.00,
-  updated_at = now()
-from public.invoices i
-where i.series = 'IB'
-  and i.number = '00015'
-  and i.order_id = o.id;
