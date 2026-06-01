@@ -83,6 +83,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [notes, setNotes] = useState("");
   // Optional VAT typed in manually by the owner. Empty = no VAT applied.
   const [vatAmount, setVatAmount] = useState<string>("");
+  // Optional commercial discount, in percent. 0/empty = no discount.
+  // Applied on the gross (subtotal + vat) so 1000 EUR @ 10% → 900 EUR.
+  const [discountPercent, setDiscountPercent] = useState<string>("");
 
   const [submitting, startSubmit] = useTransition();
 
@@ -90,6 +93,16 @@ export function NewSaleWizard({ locale }: { locale: string }) {
     () => lines.reduce((s, l) => s + l.qty * l.unit_price, 0),
     [lines],
   );
+  const vatNum =
+    scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
+  const grossBeforeDiscount = subtotal + vatNum;
+  const discountPct = (() => {
+    const n = Number(discountPercent);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(100, n);
+  })();
+  const discountAmount = Number((grossBeforeDiscount * discountPct / 100).toFixed(2));
+  const grandTotal = Number((grossBeforeDiscount - discountAmount).toFixed(2));
 
   const customerSet = client !== null || (walkinMode && walkin.name.trim().length > 0);
   const STEPS = [
@@ -165,10 +178,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         driver_name: driverName || null,
         vehicle_plate: vehiclePlate || null,
         notes: notes || null,
-        vat_amount:
-          scope === "conta2" || vatAmount.trim() === ""
-            ? 0
-            : Math.max(0, Number(vatAmount) || 0),
+        vat_amount: vatNum,
+        discount_percent: discountPct,
       };
       const res = await createManualSale(payload);
       if (res.ok) {
@@ -240,6 +251,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           setNotes={setNotes}
           vatAmount={vatAmount}
           setVatAmount={setVatAmount}
+          discountPercent={discountPercent}
+          setDiscountPercent={setDiscountPercent}
           subtotal={subtotal}
           fallbackAddress={client?.billing_address ?? ""}
         />
@@ -257,6 +270,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           vehiclePlate={vehiclePlate}
           notes={notes}
           subtotal={subtotal}
+          vatAmount={vatNum}
+          discountPercent={discountPct}
+          discountAmount={discountAmount}
+          grandTotal={grandTotal}
           currency={currency}
         />
       ) : null}
@@ -266,10 +283,15 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           <ChevronLeft className="size-4" />
           {t("action_back")}
         </Button>
-        <div className="text-sm text-muted-strong tabular-nums">
+        <div className="text-right text-sm text-muted-strong tabular-nums">
+          {discountPct > 0 ? (
+            <div className="text-xs text-success">
+              {t("sale_discount_footer", { percent: discountPct })}
+            </div>
+          ) : null}
           {t("sale_subtotal_label")}{" "}
           <span className="font-semibold text-foreground">
-            <Price value={subtotal} currency={currency} size="md" accent={false} />
+            <Price value={grandTotal} currency={currency} size="md" accent={false} />
           </span>
         </div>
         {step < 5 ? (
@@ -915,6 +937,8 @@ function StepPayment({
   setNotes,
   vatAmount,
   setVatAmount,
+  discountPercent,
+  setDiscountPercent,
   subtotal,
   fallbackAddress,
 }: {
@@ -932,6 +956,8 @@ function StepPayment({
   setNotes: (v: string) => void;
   vatAmount: string;
   setVatAmount: (v: string) => void;
+  discountPercent: string;
+  setDiscountPercent: (v: string) => void;
   subtotal: number;
   fallbackAddress: string;
 }) {
@@ -942,6 +968,19 @@ function StepPayment({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mirror the parent's discount/vat math so the StepPayment totals panel
+  // updates live as the operator tweaks either input.
+  const liveVat =
+    scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
+  const liveDiscountPct = (() => {
+    const n = Number(discountPercent);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(100, n);
+  })();
+  const liveGross = subtotal + liveVat;
+  const liveDiscountAmount = Number((liveGross * liveDiscountPct / 100).toFixed(2));
+  const liveTotal = Number((liveGross - liveDiscountAmount).toFixed(2));
 
   const methods: Array<{ v: "cash" | "transfer" | "already_paid"; label: string }> = [
     { v: "cash", label: t("sale_pay_cash") },
@@ -1047,18 +1086,57 @@ function StepPayment({
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_vat_label")}</dt>
               <dd className="tabular-nums">
-                {(scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0)).toFixed(2)} {currency}
+                {liveVat.toFixed(2)} {currency}
               </dd>
             </div>
+            {liveDiscountPct > 0 ? (
+              <div className="flex justify-between gap-6 text-success">
+                <dt>{t("sale_discount_line_label", { percent: liveDiscountPct })}</dt>
+                <dd className="tabular-nums">-{liveDiscountAmount.toFixed(2)} {currency}</dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
               <dt>{t("sale_total_label")}</dt>
               <dd className="tabular-nums">
-                {(subtotal +
-                  (scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0))).toFixed(2)} {currency}
+                {liveTotal.toFixed(2)} {currency}
               </dd>
             </div>
           </dl>
         </div>
+      </div>
+
+      <div className="rounded-md border border-border bg-surface p-5">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+          {t("sale_discount_section")}
+        </h3>
+        <Field
+          label={t("sale_discount_label")}
+          hint={t("sale_discount_hint")}
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              min={0}
+              max={100}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(e.target.value)}
+              placeholder="0"
+              className="w-28"
+            />
+            <span className="text-sm text-muted">%</span>
+            {liveDiscountPct > 0 ? (
+              <button
+                type="button"
+                onClick={() => setDiscountPercent("")}
+                className="ml-1 text-xs text-muted hover:text-destructive"
+              >
+                {t("sale_discount_clear")}
+              </button>
+            ) : null}
+          </div>
+        </Field>
       </div>
     </section>
   );
@@ -1078,6 +1156,10 @@ function StepReview({
   vehiclePlate,
   notes,
   subtotal,
+  vatAmount,
+  discountPercent,
+  discountAmount,
+  grandTotal,
   currency,
 }: {
   scope: Scope;
@@ -1090,6 +1172,10 @@ function StepReview({
   vehiclePlate: string;
   notes: string;
   subtotal: number;
+  vatAmount: number;
+  discountPercent: number;
+  discountAmount: number;
+  grandTotal: number;
   currency: "MDL" | "EUR" | "USD";
 }) {
   const t = useTranslations("panel");
@@ -1152,12 +1238,40 @@ function StepReview({
                 </td>
               </tr>
             ))}
-            <tr className="bg-surface-elevated">
-              <td colSpan={3} className="px-4 py-3 text-right text-sm font-semibold uppercase tracking-wide text-muted">
+            <tr>
+              <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
                 {t("sale_review_total")}
               </td>
+              <td className="px-4 py-2 text-right text-sm tabular-nums">
+                {subtotal.toFixed(2)} {currency}
+              </td>
+            </tr>
+            {vatAmount > 0 ? (
+              <tr>
+                <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
+                  {t("sale_vat_label")}
+                </td>
+                <td className="px-4 py-2 text-right text-sm tabular-nums">
+                  {vatAmount.toFixed(2)} {currency}
+                </td>
+              </tr>
+            ) : null}
+            {discountPercent > 0 ? (
+              <tr className="text-success">
+                <td colSpan={3} className="px-4 py-2 text-right text-xs">
+                  {t("sale_discount_line_label", { percent: discountPercent })}
+                </td>
+                <td className="px-4 py-2 text-right text-sm tabular-nums">
+                  -{discountAmount.toFixed(2)} {currency}
+                </td>
+              </tr>
+            ) : null}
+            <tr className="bg-surface-elevated">
+              <td colSpan={3} className="px-4 py-3 text-right text-sm font-semibold uppercase tracking-wide text-muted">
+                {t("sale_total_label")}
+              </td>
               <td className="px-4 py-3 text-right text-base font-bold">
-                <Price value={subtotal} currency={currency} size="md" accent={false} />
+                <Price value={grandTotal} currency={currency} size="md" accent={false} />
               </td>
             </tr>
           </tbody>

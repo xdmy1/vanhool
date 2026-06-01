@@ -58,6 +58,7 @@ type Labels = {
   notesLabel: string;
   linkedProforma: string;
   linkedInvoice: string;
+  discountLabel: string;
 };
 
 const FMT_DATE: Record<string, Intl.DateTimeFormat> = {};
@@ -275,6 +276,17 @@ export function InvoicePrintContent({
               <span className="text-gray-600">{labels.vatTotal}</span>
               <span className="font-medium">{fmtMoney(invoice.vat_amount, invoice.currency)}</span>
             </div>
+            {invoice.discount_percent > 0 ? (
+              <div className="flex justify-between border-b border-gray-300 py-1 text-green-700">
+                <span>{labels.discountLabel} ({invoice.discount_percent.toFixed(invoice.discount_percent % 1 === 0 ? 0 : 1)}%)</span>
+                <span className="font-medium">
+                  -{fmtMoney(
+                    Number((((invoice.subtotal + invoice.vat_amount) * invoice.discount_percent) / 100).toFixed(2)),
+                    invoice.currency,
+                  )}
+                </span>
+              </div>
+            ) : null}
             <div className="mt-1 flex items-center justify-between border-b-2 border-black py-1 text-base font-bold">
               <span>{labels.totalLabel} ({invoice.currency})</span>
               <span>{totalFmt}</span>

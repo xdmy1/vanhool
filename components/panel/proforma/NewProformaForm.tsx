@@ -87,6 +87,7 @@ export type ProformaInitial = {
   outputLocale: "ro" | "en" | "ru";
   dueDays: number;
   notes: string;
+  discountPercent?: number;
 };
 
 export function NewProformaForm({
@@ -113,6 +114,9 @@ export function NewProformaForm({
   );
   const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [discountPercent, setDiscountPercent] = useState<string>(
+    initial?.discountPercent ? String(initial.discountPercent) : "",
+  );
   const [pending, startSubmit] = useTransition();
 
   // Switching books flips every line's VAT to the new default — conta 2 is
@@ -138,12 +142,19 @@ export function NewProformaForm({
       net += lineNet;
       vat += lineGross - lineNet;
     }
+    const pctRaw = Number(discountPercent);
+    const pct = Number.isFinite(pctRaw) && pctRaw > 0 ? Math.min(100, pctRaw) : 0;
+    const discountAmount = Number(((gross * pct) / 100).toFixed(2));
+    const finalTotal = Number((gross - discountAmount).toFixed(2));
     return {
       subtotal: Number(net.toFixed(2)),
       vat: Number(vat.toFixed(2)),
-      total: Number(gross.toFixed(2)),
+      grossBeforeDiscount: Number(gross.toFixed(2)),
+      discountPercent: pct,
+      discountAmount,
+      total: finalTotal,
     };
-  }, [lines]);
+  }, [lines, discountPercent]);
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -221,6 +232,7 @@ export function NewProformaForm({
       account_scope: scope,
       output_locale: outputLocale,
       notes: notes || null,
+      discount_percent: totals.discountPercent,
     };
 
     startSubmit(async () => {
@@ -399,6 +411,16 @@ export function NewProformaForm({
                   {totals.vat.toFixed(2)}
                 </td>
               </tr>
+              {totals.discountPercent > 0 ? (
+                <tr className="text-xs text-success">
+                  <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide">
+                    {t("sale_discount_line_label", { percent: totals.discountPercent })}
+                  </td>
+                  <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
+                    -{totals.discountAmount.toFixed(2)}
+                  </td>
+                </tr>
+              ) : null}
               <tr className="bg-surface-elevated text-sm font-bold">
                 <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_total")}
@@ -471,6 +493,36 @@ export function NewProformaForm({
               value={dueDays}
               onChange={(e) => setDueDays(Math.max(0, Number(e.target.value || 0)))}
             />
+          </Field>
+        </div>
+        <div className="mt-3">
+          <Field
+            label={t("sale_discount_label")}
+            hint={t("sale_discount_hint")}
+          >
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                min={0}
+                max={100}
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                placeholder="0"
+                className="w-28"
+              />
+              <span className="text-sm text-muted">%</span>
+              {totals.discountPercent > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setDiscountPercent("")}
+                  className="ml-1 text-xs text-muted hover:text-destructive"
+                >
+                  {t("sale_discount_clear")}
+                </button>
+              ) : null}
+            </div>
           </Field>
         </div>
         <div className="mt-3">
@@ -716,10 +768,12 @@ function CustomerSection({
 function Field({
   label,
   required,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -729,6 +783,7 @@ function Field({
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </label>
       {children}
+      {hint ? <p className="mt-1 text-[11px] text-muted">{hint}</p> : null}
     </div>
   );
 }

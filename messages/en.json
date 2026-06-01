@@ -1512,6 +1512,13 @@
     "facturi_date_week": "This week",
     "facturi_date_month": "This month",
     "facturi_date_custom_apply": "Apply",
-    "facturi_date_reset": "Reset"
+    "facturi_date_reset": "Reset",
+    "sale_discount_section": "Commercial discount",
+    "sale_discount_label": "Discount percent",
+    "sale_discount_hint": "Discount applies to the gross total (subtotal + VAT). Leave 0 to disable.",
+    "sale_discount_clear": "clear",
+    "sale_discount_footer": "Discount {percent}%",
+    "sale_discount_line_label": "Commercial discount ({percent}%)",
+    "invoice_print_discount": "Discount"
   }
 }

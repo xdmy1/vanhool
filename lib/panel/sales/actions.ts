@@ -186,6 +186,8 @@ const saleSchema = z
     notes: z.string().nullable().optional(),
     /** Optional VAT amount the owner types in manually. Default 0. */
     vat_amount: z.number().nonnegative().optional(),
+    /** Optional commercial discount in percent (0..100). Default 0. */
+    discount_percent: z.number().min(0).max(100).optional(),
   })
   .refine(
     (d) => (d.client_id && !d.walkin) || (!d.client_id && d.walkin),
@@ -289,7 +291,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   subtotal = Number(subtotal.toFixed(2));
 
   const vatAmount = Number(((v.vat_amount ?? 0)).toFixed(2));
-  const total = Number((subtotal + vatAmount).toFixed(2));
+  // Commercial discount is taken off the gross (subtotal + vat). discount=0
+  // (or undefined) leaves the total unchanged.
+  const discountPercent = Math.min(100, Math.max(0, v.discount_percent ?? 0));
+  const grossBeforeDiscount = subtotal + vatAmount;
+  const discountAmount = Number(((grossBeforeDiscount * discountPercent) / 100).toFixed(2));
+  const total = Number((grossBeforeDiscount - discountAmount).toFixed(2));
 
   // Insert order
   const { data: order, error: oErr } = await supabase
@@ -302,9 +309,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       customer_address,
       items: items as unknown as Json,
       subtotal,
-      discount_amount: 0,
+      discount_amount: discountAmount,
       shipping_cost: 0,
       total,
+      // discount_percent is a panel-only column (sql migration); cast keeps TS
+      // happy until generated types catch up.
+      ...({ discount_percent: discountPercent } as object),
       status:
         v.payment_method === "already_paid" ? "confirmed" : "pending",
       payment_method: v.payment_method,
@@ -370,7 +380,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         // Mirror of an over-the-counter sale (vs. a directly-issued invoice
         // or a proforma conversion). Lets the facturi list filter / badge
         // these so the operator can still find them by origin.
-        ...({ source: "sale" } as object),
+        ...({ source: "sale", discount_percent: discountPercent } as object),
         total,
         status: isPaidNow ? "paid" : "issued",
       })

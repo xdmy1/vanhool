@@ -73,6 +73,7 @@ export default async function EditProformaPage({
     outputLocale: proforma.output_locale,
     dueDays: diffDays(proforma.issued_date, proforma.due_date),
     notes: proforma.notes ?? "",
+    discountPercent: proforma.discount_percent || undefined,
   };
 
   const number = `${proforma.series ?? ""}${proforma.number ?? ""}`;

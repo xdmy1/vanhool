@@ -125,6 +125,8 @@ export type InvoiceDetail = {
   subtotal: number;
   vat_amount: number;
   total: number;
+  /** Commercial discount % applied on the gross. 0 = no discount. */
+  discount_percent: number;
   notes: string | null;
   refrens_invoice_id: string | null;
   refrens_url: string | null;
@@ -141,9 +143,9 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   const { data, error } = await supabase
     .from("invoices")
     .select(
-      // Includes `output_locale` at runtime — the generated TS types are
-      // stale until the SQL migration is applied.
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
+      // Includes `output_locale` + `discount_percent` at runtime — the
+      // generated TS types are stale until the SQL migration is applied.
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
@@ -203,6 +205,9 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     subtotal: Number(data.subtotal ?? 0),
     vat_amount: Number(data.vat_amount ?? 0),
     total: Number(data.total ?? 0),
+    discount_percent: Number(
+      (data as { discount_percent?: number | string | null }).discount_percent ?? 0,
+    ),
     notes: data.notes,
     refrens_invoice_id: data.refrens_invoice_id,
     refrens_url: data.refrens_url,

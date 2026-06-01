@@ -1512,6 +1512,13 @@
     "facturi_date_week": "Săptămâna aceasta",
     "facturi_date_month": "Luna aceasta",
     "facturi_date_custom_apply": "Aplică",
-    "facturi_date_reset": "Resetează"
+    "facturi_date_reset": "Resetează",
+    "sale_discount_section": "Reducere comercială",
+    "sale_discount_label": "Procent reducere",
+    "sale_discount_hint": "Reducerea se aplică pe total (subtotal + TVA). Lasă 0 pentru a nu aplica.",
+    "sale_discount_clear": "șterge",
+    "sale_discount_footer": "Reducere {percent}%",
+    "sale_discount_line_label": "Reducere comercială ({percent}%)",
+    "invoice_print_discount": "Reducere"
   }
 }

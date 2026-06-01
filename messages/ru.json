@@ -1512,6 +1512,13 @@
     "facturi_date_week": "Эта неделя",
     "facturi_date_month": "Этот месяц",
     "facturi_date_custom_apply": "Применить",
-    "facturi_date_reset": "Сбросить"
+    "facturi_date_reset": "Сбросить",
+    "sale_discount_section": "Коммерческая скидка",
+    "sale_discount_label": "Процент скидки",
+    "sale_discount_hint": "Скидка применяется к итогу (subtotal + НДС). 0 — без скидки.",
+    "sale_discount_clear": "сбросить",
+    "sale_discount_footer": "Скидка {percent}%",
+    "sale_discount_line_label": "Коммерческая скидка ({percent}%)",
+    "invoice_print_discount": "Скидка"
   }
 }

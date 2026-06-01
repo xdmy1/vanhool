@@ -41,13 +41,18 @@ const proformaInputSchema = z.object({
   /** Language the proforma is printed in — independent of the admin's UI. */
   output_locale: z.enum(["ro", "en", "ru"]).default("ro"),
   notes: z.string().nullable().optional(),
+  /** Commercial discount in percent (0..100) applied on the gross total. */
+  discount_percent: z.number().min(0).max(100).optional(),
 });
 
 export type ProformaInput = z.infer<typeof proformaInputSchema>;
 
 // ---- Helpers ---------------------------------------------------------------
 
-function totals(items: Array<{ quantity: number; unit_price: number; vat_rate: number }>) {
+function totals(
+  items: Array<{ quantity: number; unit_price: number; vat_rate: number }>,
+  discountPercent = 0,
+) {
   // `unit_price` is treated as VAT-inclusive (gross). Break it back into
   // net + VAT so the printed document still itemizes TVA.
   let net = 0;
@@ -61,10 +66,18 @@ function totals(items: Array<{ quantity: number; unit_price: number; vat_rate: n
     net += lineNet;
     vat += lineGross - lineNet;
   }
+  // Discount is the final step: comes off the gross. subtotal + vat_amount
+  // stay as the pre-discount net + tax so the line-by-line breakdown remains
+  // auditable on the printed document.
+  const pct = Math.min(100, Math.max(0, discountPercent));
+  const discountAmount = Number(((gross * pct) / 100).toFixed(2));
+  const finalTotal = Number((gross - discountAmount).toFixed(2));
   return {
     subtotal: Number(net.toFixed(2)),
     vat_amount: Number(vat.toFixed(2)),
-    total: Number(gross.toFixed(2)),
+    total: finalTotal,
+    discount_percent: pct,
+    discount_amount: discountAmount,
   };
 }
 
@@ -135,7 +148,10 @@ export async function issueProforma(
     unit_price: i.unit_price,
     vat_rate: i.vat_rate,
   }));
-  const { subtotal, vat_amount, total } = totals(itemsForTotals);
+  const { subtotal, vat_amount, total, discount_percent } = totals(
+    itemsForTotals,
+    v.discount_percent,
+  );
 
   const itemsSnapshot = items.map((i) => ({
     productId: i.product_id ?? null,
@@ -179,7 +195,7 @@ export async function issueProforma(
       total,
       status: "sent",
       notes: v.notes ?? null,
-      ...({ output_locale: v.output_locale } as object),
+      ...({ output_locale: v.output_locale, discount_percent } as object),
     })
     .select("id")
     .single();
@@ -432,12 +448,13 @@ export async function updateProforma(
   if (existing.converted_to_invoice_id) return { ok: false, reason: "already_converted" };
   if (existing.status === "void") return { ok: false, reason: "voided" };
 
-  const { subtotal, vat_amount, total } = totals(
+  const { subtotal, vat_amount, total, discount_percent } = totals(
     itemsNormalized.map((i) => ({
       quantity: i.quantity,
       unit_price: i.unit_price,
       vat_rate: i.vat_rate,
     })),
+    v.discount_percent,
   );
   const itemsSnapshot = itemsNormalized.map((i) => ({
     productId: i.product_id ?? null,
@@ -468,7 +485,7 @@ export async function updateProforma(
       due_date: due.toISOString().slice(0, 10),
       notes: v.notes ?? null,
       updated_at: new Date().toISOString(),
-      ...({ output_locale: v.output_locale } as object),
+      ...({ output_locale: v.output_locale, discount_percent } as object),
     })
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };
