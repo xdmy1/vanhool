@@ -17,13 +17,18 @@ async function fetchCategories(): Promise<
     parent_id: string | null;
     sort_order: number | null;
     image_url: string | null;
+    is_active: boolean | null;
   }[]
 > {
   const supabase = await createClient();
+  // Intentionally NOT filtering on is_active here: a root category may be
+  // marked inactive while its children (and the products under them) are
+  // active. We need the full hierarchy so the tree builder can attach those
+  // active leaves to their real parent instead of promoting them to roots.
+  // Empty branches are pruned at the tree level via productCount rollup.
   const { data, error } = await supabase
     .from("categories")
-    .select("id, slug, name_ro, name_en, name_ru, parent_id, sort_order, image_url")
-    .eq("is_active", true)
+    .select("id, slug, name_ro, name_en, name_ru, parent_id, sort_order, image_url, is_active")
     .order("sort_order", { ascending: true });
 
   if (error) return [];
@@ -32,17 +37,18 @@ async function fetchCategories(): Promise<
 
 async function fetchCategoryCounts(): Promise<Map<string, number>> {
   const supabase = await createClient();
-  // Group-by via RPC would be ideal; for now, count in SQL via rpc or fallback.
-  // Simpler: select category_id and count client-side.
+  // Count products at their LEAF category — products are tagged with both
+  // parent (`category_id`) and leaf (`subcategory_id`); using the leaf gives
+  // each product a single home so tree rollup doesn't double-count.
   const { data } = await supabase
     .from("products")
-    .select("category_id")
+    .select("category_id, subcategory_id")
     .eq("is_active", true);
   const counts = new Map<string, number>();
   for (const row of data ?? []) {
-    const id = row.category_id;
-    if (!id) continue;
-    counts.set(id, (counts.get(id) ?? 0) + 1);
+    const leafId = row.subcategory_id ?? row.category_id;
+    if (!leafId) continue;
+    counts.set(leafId, (counts.get(leafId) ?? 0) + 1);
   }
   return counts;
 }
@@ -88,18 +94,25 @@ export async function getCategories(locale: Locale): Promise<Category[]> {
 
 export async function getRootCategories(locale: Locale): Promise<Category[]> {
   const all = await getCategories(locale);
-  const roots = all.filter((c) => !c.parentId);
-  // Aggregate descendants' counts into parents
-  const childCounts = new Map<string, number>();
+  // Recursively sum each root's subtree. Counts come in keyed by LEAF, so a
+  // single pass child→parent isn't enough when the hierarchy is deeper than
+  // one level.
+  const childrenByParent = new Map<string, Category[]>();
   for (const c of all) {
-    if (c.parentId) {
-      childCounts.set(c.parentId, (childCounts.get(c.parentId) ?? 0) + c.productCount);
-    }
+    if (!c.parentId) continue;
+    const arr = childrenByParent.get(c.parentId) ?? [];
+    arr.push(c);
+    childrenByParent.set(c.parentId, arr);
   }
-  return roots.map((r) => ({
-    ...r,
-    productCount: Math.max(r.productCount, childCounts.get(r.id) ?? 0),
-  }));
+  function subtreeCount(c: Category): number {
+    let total = c.productCount;
+    for (const child of childrenByParent.get(c.id) ?? []) total += subtreeCount(child);
+    return total;
+  }
+  return all
+    .filter((c) => !c.parentId)
+    .map((r) => ({ ...r, productCount: subtreeCount(r) }))
+    .filter((r) => r.productCount > 0);
 }
 
 export async function getCategoryTree(locale: Locale): Promise<CategoryTreeNode[]> {
@@ -116,9 +129,31 @@ export async function getCategoryTree(locale: Locale): Promise<CategoryTreeNode[
   }
   const bySortOrder = (a: CategoryTreeNode, b: CategoryTreeNode) =>
     a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
-  roots.sort(bySortOrder);
-  for (const r of roots) r.children.sort(bySortOrder);
-  return roots;
+
+  // Roll descendant productCounts up so a parent reflects its subtree total.
+  // Counts come in keyed by LEAF category; this propagates them upward so the
+  // "Filtre (14)" header reflects every leaf-tagged product under it.
+  function rollUp(node: CategoryTreeNode): number {
+    for (const child of node.children) {
+      node.productCount += rollUp(child);
+    }
+    return node.productCount;
+  }
+  for (const r of roots) rollUp(r);
+
+  // Prune any branch with zero products — keeps soft-archived roots ("Lighting"
+  // with no parts yet) out of the filter sidebar while still letting an
+  // inactive root that still holds active descendants render normally.
+  function prune(nodes: CategoryTreeNode[]): CategoryTreeNode[] {
+    return nodes
+      .map((n) => ({ ...n, children: prune(n.children) }))
+      .filter((n) => n.productCount > 0);
+  }
+  const pruned = prune(roots);
+
+  pruned.sort(bySortOrder);
+  for (const r of pruned) r.children.sort(bySortOrder);
+  return pruned;
 }
 
 export async function getCategoryBySlug(

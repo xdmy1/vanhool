@@ -28,6 +28,7 @@ type ProductRow = {
   is_featured: boolean | null;
   is_active: boolean | null;
   category_id: string | null;
+  subcategory_id: string | null;
   name_ro: string | null;
   name_en: string | null;
   name_ru: string | null;
@@ -52,7 +53,7 @@ type CategorySlugRow = { id: string; slug: string | null };
 // One-line select string — PostgREST rejects newlines in the `select` query
 // param (PGRST100 "failed to parse select parameter").
 const SELECT_COLUMNS =
-  "id,slug,part_code,brand,price,stock_quantity,image_url,images,weight,width,height,length,rib_count,custom_specs,warranty_months,lead_time_days,is_featured,is_active,category_id,name_ro,name_en,name_ru,description_ro,description_en,description_ru,is_promo,promo_price,promo_starts_at,promo_ends_at" as const;
+  "id,slug,part_code,brand,price,stock_quantity,image_url,images,weight,width,height,length,rib_count,custom_specs,warranty_months,lead_time_days,is_featured,is_active,category_id,subcategory_id,name_ro,name_en,name_ru,description_ro,description_en,description_ru,is_promo,promo_price,promo_starts_at,promo_ends_at" as const;
 
 function parseCustomSpecs(
   raw: unknown,
@@ -138,7 +139,11 @@ function toProduct(
   customerDiscount = 0,
 ): Product {
   const localized = pickLocalized(row, locale);
-  const categorySlug = row.category_id ? categorySlugById.get(row.category_id) ?? "" : "";
+  // Products carry BOTH a parent category_id and a leaf subcategory_id (the
+  // admin form stores both). Prefer the leaf so chips, breadcrumbs, and the
+  // catalog filter all line up with what the operator actually picked.
+  const leafCategoryId = row.subcategory_id ?? row.category_id;
+  const categorySlug = leafCategoryId ? categorySlugById.get(leafCategoryId) ?? "" : "";
   const rawListPrice = Number(row.price ?? 0);
   const promoActive = isPromoActive(row);
   const baseEffective = promoActive ? Number(row.promo_price ?? rawListPrice) : rawListPrice;
@@ -162,7 +167,7 @@ function toProduct(
     stock: deriveStock(row.stock_quantity, row.lead_time_days),
     stockQuantity: row.stock_quantity ?? 0,
     leadTimeDays: row.lead_time_days,
-    categoryId: row.category_id,
+    categoryId: leafCategoryId,
     categorySlug,
     imageUrl: row.image_url,
     images: parseImages(row.images, row.image_url),
@@ -243,11 +248,17 @@ async function findProductsByCategoryName(
     }
   }
 
+  const idList = Array.from(ids);
+  if (idList.length === 0) return [];
+  // Match BOTH category_id and subcategory_id — products are tagged with the
+  // parent slot AND a leaf, and the leaf is what the operator usually filters
+  // by. Without the OR we'd miss every leaf-tagged product in this subtree.
+  const idArg = `(${idList.join(",")})`;
   const { data: prods } = await supabase
     .from("products")
     .select("id")
     .eq("is_active", true)
-    .in("category_id", Array.from(ids))
+    .or(`category_id.in.${idArg},subcategory_id.in.${idArg}`)
     .limit(500);
   return (prods ?? []).map((r) => r.id as string);
 }
@@ -451,11 +462,14 @@ export async function getRelatedProducts(
     return [];
   }
   const supabase = await createClient();
+  // Match either column — `product.categoryId` is the leaf, but sibling
+  // products may carry the same id in either category_id (when their leaf
+  // happens to live one level up) or subcategory_id.
   const { data } = await supabase
     .from("products")
     .select(SELECT_COLUMNS)
     .eq("is_active", true)
-    .eq("category_id", product.categoryId)
+    .or(`category_id.eq.${product.categoryId},subcategory_id.eq.${product.categoryId}`)
     .neq("id", product.id)
     .limit(limit);
 
@@ -600,8 +614,14 @@ export async function getCatalog(
 
   if (categorySlugs && categorySlugs.length > 0) {
     const ids = await getCategoryIdsBySlug(categorySlugs);
-    if (ids.length > 0) query = query.in("category_id", ids);
-    else query = query.eq("category_id", "00000000-0000-0000-0000-000000000000"); // no-match
+    if (ids.length > 0) {
+      // Products carry parent in category_id AND leaf in subcategory_id —
+      // accept either so a click on "Filtre" surfaces every leaf-tagged part.
+      const idArg = `(${ids.join(",")})`;
+      query = query.or(`category_id.in.${idArg},subcategory_id.in.${idArg}`);
+    } else {
+      query = query.eq("category_id", "00000000-0000-0000-0000-000000000000"); // no-match
+    }
   }
 
   switch (sort) {
