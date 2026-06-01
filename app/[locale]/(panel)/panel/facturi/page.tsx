@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, X } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
@@ -7,6 +7,37 @@ import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoiceP
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
+
+// Day boundaries in Europe/Chisinau (where the user operates).
+// `Intl` with `en-CA` gives YYYY-MM-DD; comparing as strings is enough since
+// `issued_date` is a DATE column.
+function chisinauToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Chisinau",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function shiftDays(yyyymmdd: string, days: number): string {
+  const d = new Date(`${yyyymmdd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Monday-based week (RO convention).
+function startOfWeekMonday(yyyymmdd: string): string {
+  const d = new Date(`${yyyymmdd}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const delta = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+function startOfMonth(yyyymmdd: string): string {
+  return `${yyyymmdd.slice(0, 7)}-01`;
+}
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -40,7 +71,18 @@ export default async function PanelFacturiPage({
     typeof sp.scope === "string" && (sp.scope === "conta1" || sp.scope === "conta2")
       ? (sp.scope as "conta1" | "conta2")
       : undefined;
-  const rows = await listInvoices({ q, type: "invoice", scope: scopeParam });
+  const fromParam = typeof sp.from === "string" && sp.from ? sp.from : undefined;
+  const toParam = typeof sp.to === "string" && sp.to ? sp.to : undefined;
+  const overdueOnly = sp.overdue === "1";
+
+  const rows = await listInvoices({
+    q,
+    type: "invoice",
+    scope: scopeParam,
+    from: fromParam,
+    to: toParam,
+    overdueOnly,
+  });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel = (s: string) =>
     t(`facturi_status_${s}` as "facturi_status_draft");
@@ -52,6 +94,65 @@ export default async function PanelFacturiPage({
   ];
   const activeChip: "all" | "conta1" | "conta2" = scopeParam ?? "all";
 
+  // Date-range presets — anchored in Europe/Chisinau so "azi" matches the
+  // operator's local calendar day, not UTC.
+  const today = chisinauToday();
+  const presets: Array<{ id: string; label: string; from?: string; to?: string }> = [
+    { id: "today", label: t("facturi_date_today"), from: today, to: today },
+    {
+      id: "yesterday",
+      label: t("facturi_date_yesterday"),
+      from: shiftDays(today, -1),
+      to: shiftDays(today, -1),
+    },
+    {
+      id: "week",
+      label: t("facturi_date_week"),
+      from: startOfWeekMonday(today),
+      to: today,
+    },
+    {
+      id: "month",
+      label: t("facturi_date_month"),
+      from: startOfMonth(today),
+      to: today,
+    },
+  ];
+  const activePresetId = (() => {
+    if (!fromParam && !toParam) return null;
+    for (const p of presets) {
+      if (p.from === fromParam && p.to === toParam) return p.id;
+    }
+    return "custom";
+  })();
+
+  // Build a base href that preserves every param except date filters — used by
+  // both the preset chips (which then re-add from/to) and the reset link.
+  const baseParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (k === "from" || k === "to" || v === undefined) continue;
+    baseParams.set(k, Array.isArray(v) ? v.join(",") : v);
+  }
+  const baseDateHref = baseParams.toString() ? `?${baseParams}` : "?";
+
+  // Hidden inputs for the custom-range form — preserves scope, q, overdue etc.
+  // so the form GET doesn't drop them when the operator picks an interval.
+  const hiddenParams: Array<[string, string]> = [];
+  for (const [k, v] of Object.entries(sp)) {
+    if (k === "from" || k === "to" || v === undefined) continue;
+    hiddenParams.push([k, Array.isArray(v) ? v.join(",") : v]);
+  }
+
+  const overdueHref = (() => {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "overdue" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (!overdueOnly) next.set("overdue", "1");
+    return next.toString() ? `?${next}` : "?";
+  })();
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <AdminPageHeader
@@ -60,24 +161,62 @@ export default async function PanelFacturiPage({
         subtitle={t("facturi_subtitle")}
       />
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <SearchInput
-          placeholder={t("facturi_search_placeholder")}
-          className="w-full max-w-md"
-        />
+      <div className="mt-6 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchInput
+            placeholder={t("facturi_search_placeholder")}
+            className="w-full max-w-md"
+          />
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chips.map((c) => {
+              const next = new URLSearchParams();
+              for (const [k, v] of Object.entries(sp)) {
+                if (k === "scope" || v === undefined) continue;
+                next.set(k, Array.isArray(v) ? v.join(",") : v);
+              }
+              if (c.id !== "all") next.set("scope", c.id);
+              const href = next.toString() ? `?${next.toString()}` : "?";
+              const active = activeChip === c.id;
+              return (
+                <a
+                  key={c.id}
+                  href={href}
+                  className={cn(
+                    "inline-flex h-9 items-center rounded-md border px-3 text-xs transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+                  )}
+                >
+                  {c.label}
+                </a>
+              );
+            })}
+            <a
+              href={overdueHref}
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs transition-colors",
+                overdueOnly
+                  ? "border-destructive bg-destructive/10 text-destructive"
+                  : "border-border bg-surface hover:border-destructive/40 hover:text-destructive",
+              )}
+            >
+              <AlertTriangle className="size-3.5" />
+              {t("facturi_status_overdue")}
+            </a>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-1.5">
-          {chips.map((c) => {
-            const next = new URLSearchParams();
-            for (const [k, v] of Object.entries(sp)) {
-              if (k === "scope" || v === undefined) continue;
-              next.set(k, Array.isArray(v) ? v.join(",") : v);
-            }
-            if (c.id !== "all") next.set("scope", c.id);
-            const href = next.toString() ? `?${next.toString()}` : "?";
-            const active = activeChip === c.id;
+          {presets.map((p) => {
+            const next = new URLSearchParams(baseParams);
+            if (p.from) next.set("from", p.from);
+            if (p.to) next.set("to", p.to);
+            const href = next.toString() ? `?${next}` : "?";
+            const active = activePresetId === p.id;
             return (
               <a
-                key={c.id}
+                key={p.id}
                 href={href}
                 className={cn(
                   "inline-flex h-9 items-center rounded-md border px-3 text-xs transition-colors",
@@ -86,10 +225,53 @@ export default async function PanelFacturiPage({
                     : "border-border bg-surface hover:border-primary/40 hover:text-primary",
                 )}
               >
-                {c.label}
+                {p.label}
               </a>
             );
           })}
+
+          <form
+            method="GET"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-md border px-2 text-xs",
+              activePresetId === "custom"
+                ? "border-primary bg-primary/10"
+                : "border-border bg-surface",
+            )}
+          >
+            {hiddenParams.map(([k, v]) => (
+              <input key={k} type="hidden" name={k} value={v} />
+            ))}
+            <input
+              type="date"
+              name="from"
+              defaultValue={fromParam ?? ""}
+              className="h-7 rounded-sm border border-border bg-surface px-1 text-xs text-foreground"
+            />
+            <span className="text-muted">—</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={toParam ?? ""}
+              className="h-7 rounded-sm border border-border bg-surface px-1 text-xs text-foreground"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-7 items-center rounded-sm border border-primary/40 bg-primary/10 px-2 text-xs text-primary transition-colors hover:bg-primary/15"
+            >
+              {t("facturi_date_custom_apply")}
+            </button>
+          </form>
+
+          {(fromParam || toParam) ? (
+            <a
+              href={baseDateHref}
+              className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-surface px-2.5 text-xs text-muted-strong transition-colors hover:border-destructive/40 hover:text-destructive"
+            >
+              <X className="size-3" />
+              {t("facturi_date_reset")}
+            </a>
+          ) : null}
         </div>
       </div>
 

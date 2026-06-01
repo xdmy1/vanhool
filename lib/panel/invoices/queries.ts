@@ -31,6 +31,12 @@ export async function listInvoices(args: {
   type?: InvoiceListType;
   scope?: "conta1" | "conta2";
   q?: string;
+  /** Inclusive lower bound on issued_date (YYYY-MM-DD). */
+  from?: string;
+  /** Inclusive upper bound on issued_date (YYYY-MM-DD). */
+  to?: string;
+  /** When true, restrict to invoices past their due_date and still 'issued'. */
+  overdueOnly?: boolean;
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
   let query = supabase
@@ -42,6 +48,12 @@ export async function listInvoices(args: {
     .limit(300);
   if (args.type) query = query.eq("type", args.type);
   if (args.scope) query = query.eq("account_scope", args.scope);
+  if (args.from) query = query.gte("issued_date", args.from);
+  if (args.to) query = query.lte("issued_date", args.to);
+  if (args.overdueOnly) {
+    const today = new Date().toISOString().slice(0, 10);
+    query = query.eq("status", "issued").lt("due_date", today);
+  }
   if (args.q) {
     const q = `%${args.q.replace(/[%_]/g, "")}%`;
     query = query.or(`number.ilike.${q},refrens_invoice_id.ilike.${q}`);

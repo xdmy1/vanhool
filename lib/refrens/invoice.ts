@@ -165,10 +165,12 @@ export async function createInvoiceForOrder(
     const netRate = vatRate > 0
       ? Number((grossRate / vatDivisor).toFixed(4))
       : grossRate;
-    const namePieces = [i.brand?.trim(), i.name?.trim()].filter(Boolean).join(" — ");
-    const fullName = i.partCode
-      ? `${namePieces || i.name} [${i.partCode}]`
-      : namePieces || i.name;
+    // We deliberately omit the product brand/manufacturer from the issued
+    // invoice line — customers shouldn't see who the part is sourced from on
+    // any official document. Keep `i.brand` in the snapshot for internal
+    // audit, just don't render it.
+    const baseName = i.name?.trim() || i.name || "";
+    const fullName = i.partCode ? `${baseName} [${i.partCode}]` : baseName;
     return {
       name: fullName,
       quantity: qty,

@@ -1506,6 +1506,12 @@
     "po_print_total_value": "Total Value",
     "po_print_supplier_block": "Поставщику",
     "po_issue_success": "PO выпущен: {number}",
-    "po_no_lines": "Добавьте хотя бы одну строку перед выпуском PO."
+    "po_no_lines": "Добавьте хотя бы одну строку перед выпуском PO.",
+    "facturi_date_today": "Сегодня",
+    "facturi_date_yesterday": "Вчера",
+    "facturi_date_week": "Эта неделя",
+    "facturi_date_month": "Этот месяц",
+    "facturi_date_custom_apply": "Применить",
+    "facturi_date_reset": "Сбросить"
   }
 }

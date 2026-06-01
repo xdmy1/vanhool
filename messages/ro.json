@@ -1506,6 +1506,12 @@
     "po_print_total_value": "Total Value",
     "po_print_supplier_block": "Către furnizor",
     "po_issue_success": "PO emis: {number}",
-    "po_no_lines": "Adaugă cel puțin o linie înainte de a emite PO."
+    "po_no_lines": "Adaugă cel puțin o linie înainte de a emite PO.",
+    "facturi_date_today": "Azi",
+    "facturi_date_yesterday": "Ieri",
+    "facturi_date_week": "Săptămâna aceasta",
+    "facturi_date_month": "Luna aceasta",
+    "facturi_date_custom_apply": "Aplică",
+    "facturi_date_reset": "Resetează"
   }
 }

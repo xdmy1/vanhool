@@ -98,10 +98,7 @@ export default async function DeliveryNotePrintPage({
             <tr key={i}>
               <td className="num">{i + 1}</td>
               <td className="font-mono">{it.partCode ?? "—"}</td>
-              <td>
-                {it.name ?? "—"}
-                {it.brand ? <span className="text-xs"> · {it.brand}</span> : null}
-              </td>
+              <td>{it.name ?? "—"}</td>
               <td className="font-mono">{it.storage_location ?? "—"}</td>
               <td className="num">{it.quantity ?? 0}</td>
               <td className="num">{(it.price ?? 0).toFixed(2)}</td>

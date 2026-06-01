@@ -1506,6 +1506,12 @@
     "po_print_total_value": "Total Value",
     "po_print_supplier_block": "To supplier",
     "po_issue_success": "PO issued: {number}",
-    "po_no_lines": "Add at least one line before issuing a PO."
+    "po_no_lines": "Add at least one line before issuing a PO.",
+    "facturi_date_today": "Today",
+    "facturi_date_yesterday": "Yesterday",
+    "facturi_date_week": "This week",
+    "facturi_date_month": "This month",
+    "facturi_date_custom_apply": "Apply",
+    "facturi_date_reset": "Reset"
   }
 }
