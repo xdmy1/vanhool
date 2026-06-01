@@ -69,6 +69,11 @@ begin
       o.items,
       coalesce(o.subtotal, 0)                 as subtotal,
       coalesce(o.total, 0)                    as total,
+      -- Preserve the original transaction currency (EUR / USD / MDL).
+      -- Earlier versions of this migration hard-coded MDL here, which
+      -- silently re-denominated every EUR sale — see the correction
+      -- block at the end that fixes already-backfilled rows.
+      coalesce(o.currency, 'MDL')             as currency,
       o.status                                as order_status,
       o.payment_method,
       o.created_at,
@@ -98,7 +103,7 @@ begin
         then l.created_at
       else null
     end,
-    'MDL',
+    l.currency,
     jsonb_build_object(
       'name',    l.customer_name,
       'email',   l.customer_email,
@@ -136,5 +141,33 @@ begin
       inserted_count, lpad(start_num::text, 5, '0');
   else
     raise notice 'No panel sales to backfill.';
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- 4) One-time correction: earlier runs of this migration hard-coded
+--    invoice.currency = 'MDL', so EUR / USD sales backfilled before this
+--    fix surface in /panel/facturi with the wrong denomination. Re-align
+--    them with the order's actual currency. Idempotent — only touches rows
+--    where the two columns diverge.
+-- ----------------------------------------------------------------------------
+do $$
+declare
+  fixed_count int;
+begin
+  with mismatched as (
+    update public.invoices i
+    set currency = o.currency,
+        updated_at = now()
+    from public.orders o
+    where i.order_id = o.id
+      and i.source = 'sale'
+      and coalesce(o.currency, 'MDL') <> coalesce(i.currency, 'MDL')
+    returning i.id
+  )
+  select count(*) into fixed_count from mismatched;
+
+  if fixed_count > 0 then
+    raise notice 'Corrected currency on % backfilled invoices', fixed_count;
   end if;
 end $$;
