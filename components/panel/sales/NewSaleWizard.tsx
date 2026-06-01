@@ -165,8 +165,16 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         const suffix = res.invoiceId ? t("sale_success_invoice") : "";
         toast.success(t("sale_success", { total: res.total.toFixed(2) }) + suffix);
         if (res.deliveryNoteId) {
-          router.push(
+          // Open the print sheet in a new tab so the operator can keep
+          // navigating in the panel — landing them on the delivery note
+          // detail page where they can re-print, view status, etc.
+          window.open(
             `/${locale}/panel/fisa-de-livrare/${res.deliveryNoteId}/print?auto=1`,
+            "_blank",
+            "noopener",
+          );
+          router.push(
+            `/${locale}/panel/fisa-de-livrare/${res.deliveryNoteId}` as "/panel",
           );
         } else {
           router.push(`/${locale}/panel`);
