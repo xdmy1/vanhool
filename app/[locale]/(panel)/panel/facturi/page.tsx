@@ -106,6 +106,7 @@ export default async function PanelFacturiPage({
                   <th className="px-4 py-3">{t("facturi_col_number")}</th>
                   <th className="px-4 py-3">{t("facturi_col_date")}</th>
                   <th className="px-4 py-3">{t("facturi_col_client")}</th>
+                  <th className="px-4 py-3">{t("facturi_col_source")}</th>
                   <th className="px-4 py-3">{t("facturi_col_scope")}</th>
                   <th className="px-4 py-3">{t("facturi_col_status")}</th>
                   <th className="px-4 py-3 text-right">{t("facturi_col_total")}</th>
@@ -127,6 +128,21 @@ export default async function PanelFacturiPage({
                       {r.customer_snapshot?.idno ? (
                         <div className="text-xs text-muted">IDNO {r.customer_snapshot.idno}</div>
                       ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.proforma_id ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-info/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-info">
+                          {t("facturi_source_proforma")}
+                        </span>
+                      ) : r.order_id ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-success">
+                          {t("facturi_source_sale")}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded bg-muted/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-strong">
+                          {t("facturi_source_manual")}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span
