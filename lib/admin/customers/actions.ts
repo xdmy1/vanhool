@@ -17,30 +17,16 @@ async function requireAdmin() {
     .eq("id", user.id)
     .maybeSingle();
   if (!profile?.is_admin) return { ok: false as const };
-  return { ok: true as const, supabase, currentUserId: user.id };
+  return { ok: true as const, supabase };
 }
 
 export type CustomerActionResult =
   | { ok: true }
-  | { ok: false; code: "forbidden" | "self" | "server"; message?: string };
+  | { ok: false; code: "forbidden" | "server"; message?: string };
 
-export async function setCustomerAdmin(
-  userId: string,
-  isAdmin: boolean,
-): Promise<CustomerActionResult> {
-  const auth = await requireAdmin();
-  if (!auth.ok) return { ok: false, code: "forbidden" };
-  if (userId === auth.currentUserId && !isAdmin) {
-    return { ok: false, code: "self", message: "Cannot revoke your own admin role." };
-  }
-  const { error } = await auth.supabase
-    .from("profiles")
-    .update({ is_admin: isAdmin })
-    .eq("id", userId);
-  if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
+// Admin role granting/revoking is intentionally NOT exposed in the UI.
+// Toggle `profiles.is_admin` directly in Supabase Studio when you need to add
+// or remove an administrator.
 
 export async function setCustomerDiscount(
   userId: string,

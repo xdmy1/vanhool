@@ -2,14 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Percent, ShieldCheck, ShieldOff, User as UserIcon, X } from "lucide-react";
+import { Percent, ShieldCheck, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Price } from "@/components/common/Price";
-import {
-  setCustomerAdmin,
-  setCustomerDiscount,
-} from "@/lib/admin/customers/actions";
+import { setCustomerDiscount } from "@/lib/admin/customers/actions";
 import type { AdminCustomerRow } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -23,8 +20,6 @@ type Labels = {
   role: string;
   role_admin: string;
   role_customer: string;
-  promote: string;
-  demote: string;
   discount: string;
   discount_save: string;
   discount_clear: string;
@@ -77,22 +72,6 @@ export function CustomersTable({
     });
   };
 
-  const onToggle = (userId: string, currentlyAdmin: boolean) => {
-    if (userId === currentUserId && currentlyAdmin) {
-      toast.error("Cannot revoke your own admin role");
-      return;
-    }
-    startTransition(async () => {
-      const res = await setCustomerAdmin(userId, !currentlyAdmin);
-      if (!res.ok) {
-        toast.error(res.message ?? "error");
-        return;
-      }
-      toast.success("✓");
-      router.refresh();
-    });
-  };
-
   if (rows.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-md border border-border bg-surface px-6 py-16 text-sm text-muted">
@@ -114,7 +93,6 @@ export function CustomersTable({
             <th className="px-3 py-3 text-right">{labels.spent}</th>
             <th className="px-3 py-3">{labels.discount}</th>
             <th className="px-3 py-3">{labels.role}</th>
-            <th className="px-3 py-3 text-right" />
           </tr>
         </thead>
         <tbody>
@@ -263,31 +241,6 @@ export function CustomersTable({
                       {labels.role_customer}
                     </span>
                   )}
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onToggle(c.id, !!c.is_admin)}
-                    disabled={isSelf && !!c.is_admin}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors",
-                      "border-border bg-surface text-muted-strong",
-                      "hover:border-border-strong hover:text-foreground",
-                      "disabled:cursor-not-allowed disabled:opacity-40",
-                    )}
-                  >
-                    {c.is_admin ? (
-                      <>
-                        <ShieldOff className="size-3" />
-                        {labels.demote}
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck className="size-3" />
-                        {labels.promote}
-                      </>
-                    )}
-                  </button>
                 </td>
               </tr>
             );

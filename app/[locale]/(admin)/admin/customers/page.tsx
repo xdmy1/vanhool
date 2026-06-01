@@ -59,8 +59,6 @@ export default async function AdminCustomersPage({
             role: t("customers_col_role"),
             role_admin: t("customers_role_admin"),
             role_customer: t("customers_role_customer"),
-            promote: t("customers_action_promote"),
-            demote: t("customers_action_demote"),
             discount: t("customers_col_discount"),
             discount_save: t("customers_action_discount_save"),
             discount_clear: t("customers_action_discount_clear"),
