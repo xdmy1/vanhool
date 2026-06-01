@@ -52,9 +52,12 @@ export default async function PanelDashboardPage({
   ] = await Promise.all([
     supabase
       .from("orders")
-      .select("total, account_scope")
+      .select(
+        "id, total, account_scope, customer_name, customer_email, source, status, created_at",
+      )
       .gte("created_at", `${today}T00:00:00`)
-      .neq("status", "cancelled"),
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false }),
     getCashBalance("main"),
     reportSalesByDay({ from: sevenAgo, to: today }),
     listInvoices({ type: "proforma" }),
@@ -86,13 +89,18 @@ export default async function PanelDashboardPage({
     listInvoices({ type: "invoice" }).then((all) => all.slice(0, 5)),
   ]);
 
-  const todayTotal = (todaysOrders.data ?? []).reduce(
+  const todayOrders = todaysOrders.data ?? [];
+  const todayTotal = todayOrders.reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const todayConta1Orders = todayOrders.filter(
+    (r) => r.account_scope === "conta1",
+  );
+  const todayConta2Orders = todayOrders.filter(
+    (r) => r.account_scope !== "conta1",
+  );
+  const todayConta1 = todayConta1Orders.reduce(
     (s, r) => s + Number(r.total ?? 0),
     0,
   );
-  const todayConta1 = (todaysOrders.data ?? [])
-    .filter((r) => r.account_scope === "conta1")
-    .reduce((s, r) => s + Number(r.total ?? 0), 0);
   const todayConta2 = todayTotal - todayConta1;
 
   const openProformas = proformas.filter((p) => p.status === "sent").length;
@@ -209,6 +217,28 @@ export default async function PanelDashboardPage({
           sub={t("dashboard_kpi_7d_orders_sub", {
             total: salesByDay.reduce((s, r) => s + r.gross, 0).toFixed(2),
           })}
+        />
+      </section>
+
+      {/* Today's sales breakdown — which orders made up "Vânzări azi" */}
+      <section className="mt-6 grid gap-3 md:grid-cols-2">
+        <TodayBreakdownColumn
+          title={t("dashboard_today_breakdown_conta1")}
+          total={todayConta1}
+          orders={todayConta1Orders}
+          locale={locale}
+          emptyLabel={t("dashboard_today_breakdown_empty")}
+          dateLocale={dateLocale}
+          accent="primary"
+        />
+        <TodayBreakdownColumn
+          title={t("dashboard_today_breakdown_conta2")}
+          total={todayConta2}
+          orders={todayConta2Orders}
+          locale={locale}
+          emptyLabel={t("dashboard_today_breakdown_empty")}
+          dateLocale={dateLocale}
+          accent="success"
         />
       </section>
 
@@ -489,5 +519,97 @@ function QuickAction({
         {label}
       </Link>
     </Button>
+  );
+}
+
+type TodayOrderRow = {
+  id: string;
+  total: number | null;
+  account_scope: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  source: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+
+function TodayBreakdownColumn({
+  title,
+  total,
+  orders,
+  locale,
+  emptyLabel,
+  dateLocale,
+  accent,
+}: {
+  title: string;
+  total: number;
+  orders: TodayOrderRow[];
+  locale: string;
+  emptyLabel: string;
+  dateLocale: string;
+  accent: "primary" | "success";
+}) {
+  const accentBorder =
+    accent === "primary" ? "border-primary/40" : "border-success/40";
+  const accentText = accent === "primary" ? "text-primary" : "text-success";
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border bg-surface",
+        accentBorder,
+      )}
+    >
+      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface-elevated px-4 py-2.5">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className={cn("text-sm font-bold tabular-nums", accentText)}>
+          <Price value={total} size="sm" accent={false} />
+        </span>
+      </header>
+      {orders.length === 0 ? (
+        <Empty label={emptyLabel} />
+      ) : (
+        <ul className="divide-y divide-border">
+          {orders.map((o) => {
+            const time = o.created_at
+              ? new Date(o.created_at).toLocaleTimeString(dateLocale, {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—";
+            return (
+              <li key={o.id}>
+                <Link
+                  href={`/panel/comenzi-site/${o.id}` as "/panel"}
+                  locale={locale}
+                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-surface-elevated"
+                >
+                  <span className="font-mono text-[10px] text-muted">{time}</span>
+                  <span className="font-mono text-xs">
+                    #{o.id.slice(0, 8).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {o.customer_name ?? o.customer_email ?? "—"}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded px-1.5 text-[9px] uppercase tracking-wide",
+                      o.source === "storefront"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-warning/15 text-warning",
+                    )}
+                  >
+                    {o.source ?? "—"}
+                  </span>
+                  <span className="w-24 text-right tabular-nums">
+                    <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
