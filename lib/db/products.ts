@@ -49,12 +49,10 @@ export type ProductAlternativeCodes = {
 
 type CategorySlugRow = { id: string; slug: string | null };
 
-const SELECT_COLUMNS = `
-  id, slug, part_code, brand, price, stock_quantity, image_url, images,
-  weight, width, height, length, rib_count, custom_specs, warranty_months, lead_time_days, is_featured, is_active, category_id,
-  name_ro, name_en, name_ru, description_ro, description_en, description_ru,
-  is_promo, promo_price, promo_starts_at, promo_ends_at
-` as const;
+// One-line select string — PostgREST rejects newlines in the `select` query
+// param (PGRST100 "failed to parse select parameter").
+const SELECT_COLUMNS =
+  "id,slug,part_code,brand,price,stock_quantity,image_url,images,weight,width,height,length,rib_count,custom_specs,warranty_months,lead_time_days,is_featured,is_active,category_id,name_ro,name_en,name_ru,description_ro,description_en,description_ru,is_promo,promo_price,promo_starts_at,promo_ends_at" as const;
 
 function parseCustomSpecs(
   raw: unknown,

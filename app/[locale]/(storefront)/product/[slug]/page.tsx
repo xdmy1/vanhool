@@ -17,7 +17,7 @@ import {
   getProductBySlug,
   getRelatedProducts,
 } from "@/lib/db/products";
-import { getCategoryBySlug } from "@/lib/db/categories";
+import { getCategories, getCategoryBySlug } from "@/lib/db/categories";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 
@@ -52,6 +52,7 @@ export default async function ProductDetailPage({
     alternatives,
     crossCompatible,
     category,
+    allCats,
     tNav,
     tProd,
     tCard,
@@ -62,12 +63,20 @@ export default async function ProductDetailPage({
     getProductAlternativeCodes(product.id),
     getCrossCompatibleProducts(product.id, loc, 8),
     product.categorySlug ? getCategoryBySlug(product.categorySlug, loc) : null,
+    getCategories(loc),
     getTranslations("nav"),
     getTranslations("product"),
     getTranslations("product_card"),
     getTranslations("home"),
     getEurToMdlRate(),
   ]);
+
+  // Walk up to the root so the breadcrumb + meta line read
+  // "Catalog > <Root category> > <Subcategory>" instead of just one slot.
+  const parentCategory =
+    category?.parentId
+      ? allCats.find((c) => c.id === category.parentId) ?? null
+      : null;
 
   const specsLabels = {
     specifications: tProd("specifications"),
@@ -122,6 +131,18 @@ export default async function ProductDetailPage({
           <Link href="/catalog" locale={loc} className="transition-colors hover:text-foreground">
             {tNav("catalog")}
           </Link>
+          {parentCategory ? (
+            <>
+              <ChevronRight className="size-3" />
+              <Link
+                href={`/catalog?category=${parentCategory.slug}`}
+                locale={loc}
+                className="transition-colors hover:text-foreground"
+              >
+                {parentCategory.name}
+              </Link>
+            </>
+          ) : null}
           {category ? (
             <>
               <ChevronRight className="size-3" />
@@ -152,6 +173,27 @@ export default async function ProductDetailPage({
                 <span className="h-px w-6 bg-primary" />
                 {category?.name ?? tNav("catalog")}
               </div>
+              {category ? (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                  {parentCategory ? (
+                    <Link
+                      href={`/catalog?category=${parentCategory.slug}`}
+                      locale={loc}
+                      className="inline-flex items-center rounded-full border border-border bg-surface px-2.5 py-0.5 font-medium text-muted-strong transition-colors hover:border-primary/40 hover:text-primary"
+                    >
+                      {parentCategory.name}
+                    </Link>
+                  ) : null}
+                  {parentCategory ? <ChevronRight className="size-3 text-muted" /> : null}
+                  <Link
+                    href={`/catalog?category=${category.slug}`}
+                    locale={loc}
+                    className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 font-medium text-primary transition-colors hover:bg-primary/15"
+                  >
+                    {category.name}
+                  </Link>
+                </div>
+              ) : null}
               <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight md:text-4xl">
                 {product.name}
               </h1>
