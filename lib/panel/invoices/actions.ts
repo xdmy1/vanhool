@@ -357,6 +357,7 @@ export async function convertProformaToInvoice(
     options?.paymentMethod === "cash" &&
     orderId
   ) {
+    const fxRate = pf.currency === "EUR" ? 20 : pf.currency === "USD" ? 17 : 1;
     await supabase.from("cash_register_movements").insert({
       direction: "in",
       amount: Number(pf.total),
@@ -364,6 +365,11 @@ export async function convertProformaToInvoice(
       order_id: orderId,
       created_by: user.id,
       notes: `Conversie proformă ${pf.series}${pf.number} → factură ${series}${number}`,
+      ...({
+        currency: pf.currency,
+        fx_rate: fxRate,
+        amount_mdl: Number((Number(pf.total) * fxRate).toFixed(2)),
+      } as object),
     });
   }
 
@@ -527,6 +533,7 @@ export async function markInvoicePaid(
   if (error) return { ok: false, reason: error.message };
 
   if (inv.account_scope === "conta2" && v.method === "cash" && inv.order_id) {
+    const fxRate = v.currency === "EUR" ? 20 : v.currency === "USD" ? 17 : 1;
     await supabase.from("cash_register_movements").insert({
       direction: "in",
       amount: v.amount,
@@ -534,6 +541,11 @@ export async function markInvoicePaid(
       order_id: inv.order_id,
       created_by: user.id,
       notes: `Plată ulterioară factură ${inv.series}${inv.number}`,
+      ...({
+        currency: v.currency,
+        fx_rate: fxRate,
+        amount_mdl: Number((v.amount * fxRate).toFixed(2)),
+      } as object),
     });
   }
 
@@ -602,7 +614,7 @@ export async function voidInvoice(
   if (inv.type === "invoice" && inv.order_id) {
     const { data: ord } = await supabase
       .from("orders")
-      .select("id, status, items, account_scope, total")
+      .select("id, status, items, account_scope, total, currency")
       .eq("id", inv.order_id)
       .maybeSingle();
 
@@ -646,13 +658,21 @@ export async function voidInvoice(
         inv.account_scope === "conta2" &&
         (inv.paid_method === "cash" || inv.paid_method === null);
       if (wasCashIn && Number(ord.total ?? 0) > 0) {
+        const ordCurrency = (ord as { currency?: string | null }).currency ?? "MDL";
+        const fxRate = ordCurrency === "EUR" ? 20 : ordCurrency === "USD" ? 17 : 1;
+        const amt = Number(ord.total);
         await supabase.from("cash_register_movements").insert({
           direction: "out",
-          amount: Number(ord.total),
+          amount: amt,
           reason: "adjustment",
           order_id: inv.order_id,
           created_by: user.id,
           notes: `Anulare factură ${inv.series ?? ""}${inv.number ?? ""}`,
+          ...({
+            currency: ordCurrency,
+            fx_rate: fxRate,
+            amount_mdl: Number((amt * fxRate).toFixed(2)),
+          } as object),
         });
       }
     }

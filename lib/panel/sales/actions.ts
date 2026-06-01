@@ -413,8 +413,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     }
   }
 
-  // Cash movement (conta2 + cash)
+  // Cash movement (conta2 + cash) — currency-aware. Store both the native
+  // amount (so the audit log shows what the customer actually paid) AND
+  // the MDL-equivalent (so the till balance still reconciles in lei).
   if (v.account_scope === "conta2" && v.payment_method === "cash") {
+    const fxRate = v.currency === "EUR" ? 20 : v.currency === "USD" ? 17 : 1;
     await supabase.from("cash_register_movements").insert({
       direction: "in",
       amount: total,
@@ -422,6 +425,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       order_id: orderId,
       created_by: user.id,
       notes: `Vânzare panel #${orderId.slice(0, 8)}`,
+      ...({
+        currency: v.currency,
+        fx_rate: fxRate,
+        amount_mdl: Number((total * fxRate).toFixed(2)),
+      } as object),
     });
   }
 

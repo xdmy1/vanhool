@@ -610,6 +610,9 @@ export type Database = {
           notes: string | null;
           created_by: UUID | null;
           created_at: Timestamp;
+          currency: "MDL" | "EUR" | "USD";
+          amount_mdl: number | null;
+          fx_rate: number | null;
         };
         Insert: Partial<Database["public"]["Tables"]["cash_register_movements"]["Row"]> & {
           direction: "in" | "out";

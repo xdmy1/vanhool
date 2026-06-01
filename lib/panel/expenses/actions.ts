@@ -36,8 +36,12 @@ export async function createExpense(
     .single();
   if (error) return { ok: false, reason: error.message };
 
-  // Conta 2 cash expense → mirror into cash_register_movements
+  // Conta 2 cash expense → mirror into cash_register_movements with the
+  // expense's native currency and an MDL equivalent so the till balance
+  // stays accurate across mixed-currency outflows.
   if (v.account_scope === "conta2" && v.payment_method === "cash" && v.amount > 0) {
+    const expenseCurrency = (v as { currency?: string }).currency ?? "MDL";
+    const fxRate = expenseCurrency === "EUR" ? 20 : expenseCurrency === "USD" ? 17 : 1;
     await supabase.from("cash_register_movements").insert({
       direction: "out",
       amount: v.amount,
@@ -45,6 +49,11 @@ export async function createExpense(
       expense_id: data.id,
       created_by: user.id,
       notes: v.description.slice(0, 200),
+      ...({
+        currency: expenseCurrency,
+        fx_rate: fxRate,
+        amount_mdl: Number((v.amount * fxRate).toFixed(2)),
+      } as object),
     });
   }
 

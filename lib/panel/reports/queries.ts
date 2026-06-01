@@ -8,13 +8,26 @@ async function fetchOrdersInRange(args: { scope?: AccountScope; range: DateRange
   const supabase = await createClient();
   let q = supabase
     .from("orders")
-    .select("id, total, subtotal, status, items, created_at, account_scope, source, customer_email, customer_name, user_id")
+    .select(
+      "id, total, subtotal, currency, status, items, created_at, account_scope, source, customer_email, customer_name, user_id",
+    )
     .gte("created_at", `${args.range.from}T00:00:00`)
     .lt("created_at", `${args.range.to}T23:59:59.999`)
     .neq("status", "cancelled");
   if (args.scope) q = q.eq("account_scope", args.scope);
   const { data } = await q.limit(5000);
   return data ?? [];
+}
+
+/**
+ * Reports aggregate sales across MDL / EUR / USD documents. We normalise to
+ * MDL with the same fixed reference rates the wizard + cash-drawer use, so
+ * a chart that shows "total revenue" can still display a single number per
+ * day without silently treating 100 EUR as 100 MDL.
+ */
+const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+function toMdl(amount: number, currency: string | null | undefined): number {
+  return amount * (FX_TO_MDL[(currency ?? "MDL").toUpperCase()] ?? 1);
 }
 
 // ---------- Sales by period (day) ----------
@@ -37,7 +50,13 @@ export async function reportSalesByDay(
     if (!day) continue;
     const cur =
       map.get(day) ?? { day, orders: 0, gross: 0, conta1: 0, conta2: 0 };
-    const t = Number(o.total ?? 0);
+    // Normalise to MDL so daily totals stay comparable across currencies.
+    // Without this a 100 EUR sale + a 100 MDL sale silently summed to 200
+    // (or 200 MDL, indistinguishable from 200 of either).
+    const t = toMdl(
+      Number(o.total ?? 0),
+      (o as { currency?: string | null }).currency,
+    );
     cur.orders += 1;
     cur.gross += t;
     if (o.account_scope === "conta1") cur.conta1 += t;
@@ -72,6 +91,7 @@ export async function reportTopProducts(
       price?: number;
       total?: number;
     }>;
+    const orderCurrency = (o as { currency?: string | null }).currency;
     for (const it of items) {
       const key = String(it.productId ?? it.partCode ?? "—");
       const cur =
@@ -83,7 +103,11 @@ export async function reportTopProducts(
           gross: 0,
         };
       cur.qty += Number(it.quantity ?? 0);
-      cur.gross += Number(it.total ?? Number(it.quantity ?? 0) * Number(it.price ?? 0));
+      // Item totals are in the order's currency — convert to MDL so a
+      // best-seller chart doesn't silently rank EUR sales 20× higher.
+      const lineGross =
+        Number(it.total ?? Number(it.quantity ?? 0) * Number(it.price ?? 0));
+      cur.gross += toMdl(lineGross, orderCurrency);
       map.set(key, cur);
     }
   }
@@ -119,7 +143,10 @@ export async function reportTopClients(
         gross: 0,
       };
     cur.orders += 1;
-    cur.gross += Number(o.total ?? 0);
+    cur.gross += toMdl(
+      Number(o.total ?? 0),
+      (o as { currency?: string | null }).currency,
+    );
     map.set(key, cur);
   }
   return Array.from(map.values())
@@ -156,10 +183,17 @@ export async function reportMargin(
       cost_price?: number;
       total?: number;
     }>;
+    const orderCurrency = (o as { currency?: string | null }).currency;
     for (const it of items) {
       const key = String(it.productId ?? it.partCode ?? "—");
       const qty = Number(it.quantity ?? 0);
-      const revenue = Number(it.total ?? qty * Number(it.price ?? 0));
+      // Revenue is in the order's currency; cost_price is always MDL
+      // (catalog-side field). Normalise revenue to MDL too so the margin
+      // is computed against consistent units.
+      const revenue = toMdl(
+        Number(it.total ?? qty * Number(it.price ?? 0)),
+        orderCurrency,
+      );
       const cost = qty * Number(it.cost_price ?? 0);
       const cur =
         map.get(key) ?? {
@@ -192,16 +226,24 @@ export async function reportCashTrend(range: DateRange): Promise<CashTrendRow[]>
   const supabase = await createClient();
   const { data } = await supabase
     .from("cash_register_movements")
-    .select("occurred_at, direction, amount")
+    .select("occurred_at, direction, amount, amount_mdl")
     .gte("occurred_at", `${range.from}T00:00:00`)
     .lt("occurred_at", `${range.to}T23:59:59.999`)
     .order("occurred_at");
   const byDay = new Map<string, number>();
-  for (const m of data ?? []) {
+  for (const m of (data ?? []) as Array<{
+    occurred_at: string | null;
+    direction: string;
+    amount: number | null;
+    amount_mdl?: number | null;
+  }>) {
     const day = String(m.occurred_at ?? "").slice(0, 10);
     if (!day) continue;
-    const delta =
-      (m.direction === "in" ? 1 : -1) * Number(m.amount ?? 0);
+    // Use amount_mdl when present so a EUR cash inflow doesn't push the
+    // running balance ~20× too high. Fallback to amount only for legacy
+    // rows that haven't been backfilled yet.
+    const amt = m.amount_mdl != null ? Number(m.amount_mdl) : Number(m.amount ?? 0);
+    const delta = (m.direction === "in" ? 1 : -1) * amt;
     byDay.set(day, (byDay.get(day) ?? 0) + delta);
   }
   // Compute running balance starting from 0 at range.from

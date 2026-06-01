@@ -12,6 +12,10 @@ const movementSchema = z.object({
   reason: z.enum(["top_up", "withdrawal", "adjustment"]),
   notes: z.string().nullable().optional(),
   drawer: z.string().default("main"),
+  // Manual cash movements are almost always MDL (the physical till is in
+  // lei), but we accept EUR / USD for completeness — converted to MDL via
+  // the fixed reference table so the balance stays in one unit.
+  currency: z.enum(["MDL", "EUR", "USD"]).default("MDL"),
 });
 
 export type CashMovementInput = z.infer<typeof movementSchema>;
@@ -25,6 +29,7 @@ export async function recordCashMovement(
   if (!parsed.success) return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid" };
   const v = parsed.data;
   const supabase = await createClient();
+  const fxRate = v.currency === "EUR" ? 20 : v.currency === "USD" ? 17 : 1;
   const { data, error } = await supabase
     .from("cash_register_movements")
     .insert({
@@ -34,6 +39,11 @@ export async function recordCashMovement(
       notes: v.notes ?? null,
       drawer: v.drawer ?? "main",
       created_by: user.id,
+      ...({
+        currency: v.currency,
+        fx_rate: fxRate,
+        amount_mdl: Number((v.amount * fxRate).toFixed(2)),
+      } as object),
     })
     .select("id")
     .single();
@@ -46,13 +56,22 @@ export async function getCashBalance(
   drawer: string = "main",
 ): Promise<{ balance: number; movements_count: number }> {
   const supabase = await createClient();
+  // Sum amount_mdl when present (post-migration rows + backfill) so EUR/USD
+  // movements don't inflate the till balance by ~20x. Older rows that
+  // somehow miss amount_mdl fall back to amount — only happens before the
+  // migration ran. The currency column lets us double-check.
   const { data } = await supabase
     .from("cash_register_movements")
-    .select("direction, amount")
+    .select("direction, amount, amount_mdl, currency")
     .eq("drawer", drawer);
   let balance = 0;
-  for (const m of data ?? []) {
-    const v = Number(m.amount ?? 0);
+  for (const m of (data ?? []) as Array<{
+    direction: string;
+    amount: number | null;
+    amount_mdl?: number | null;
+    currency?: string | null;
+  }>) {
+    const v = m.amount_mdl != null ? Number(m.amount_mdl) : Number(m.amount ?? 0);
     balance += m.direction === "in" ? v : -v;
   }
   return { balance: Number(balance.toFixed(2)), movements_count: (data ?? []).length };
