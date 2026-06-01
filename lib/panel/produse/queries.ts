@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCode } from "@/lib/utils/normalize-code";
 
 export type PanelProductRow = {
   id: string;
@@ -46,11 +47,46 @@ export async function listPanelProducts(args: ListPanelProductsArgs): Promise<{
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (args.q) {
-    const q = `%${args.q.replace(/[%_]/g, "")}%`;
-    query = query.or(
-      `part_code.ilike.${q},name_ro.ilike.${q},name_en.ilike.${q},brand.ilike.${q},supplier_code.ilike.${q}`,
-    );
+  if (args.q && args.q.trim()) {
+    // Match the storefront / admin search: union of two passes so codes with
+    // embedded spaces, dashes, or slashes ("HU 7010 Z") still match the
+    // operator's normalized input ("HU7010Z") via products.search_codes — the
+    // trigger keeps that array stripped of separators and uppercased.
+    const trimmed = args.q.trim().replace(/[%_]/g, "");
+    const term = `%${trimmed}%`;
+    const normalized = normalizeCode(trimmed);
+
+    const [codeRowsRes, textRowsRes] = await Promise.all([
+      normalized.length > 0
+        ? supabase
+            .from("products")
+            .select("id")
+            .contains("search_codes", [normalized])
+            .limit(500)
+        : Promise.resolve({ data: [] as { id: string }[] }),
+      supabase
+        .from("products")
+        .select("id")
+        .or(
+          [
+            `part_code.ilike.${term}`,
+            `brand.ilike.${term}`,
+            `name_ro.ilike.${term}`,
+            `name_en.ilike.${term}`,
+            `supplier_code.ilike.${term}`,
+          ].join(","),
+        )
+        .limit(500),
+    ]);
+    const codeIds = ((codeRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
+    const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
+
+    if (matchedIds.length === 0) {
+      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
+    } else {
+      query = query.in("id", matchedIds);
+    }
   }
 
   switch (args.status) {
