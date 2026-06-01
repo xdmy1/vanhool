@@ -329,11 +329,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     await supabase.from("products").update({ stock_quantity: newQty }).eq("id", p.id);
   }
 
-  // Invoice (conta1 only). Refrens fires email + we mirror the metadata.
+  // Always mirror the sale into the invoices table — both books need a
+  // record so the operator can find it in /panel/facturi later. Refrens
+  // fires only for conta1 (fiscal); conta2 invoices are panel-only.
   let invoiceId: string | null = null;
   let invoiceUrl: string | null = null;
-  if (v.account_scope === "conta1") {
-    // Read next number from panel_settings
+  {
     const { data: settingsRows } = await supabase
       .from("panel_settings")
       .select("key, value")
@@ -346,14 +347,16 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     }
     const numberStr = String(nextNumber).padStart(5, "0");
 
+    const isPaidNow = v.payment_method === "already_paid";
     const { data: invRow, error: invErr } = await supabase
       .from("invoices")
       .insert({
         order_id: orderId,
-        account_scope: "conta1",
+        account_scope: v.account_scope,
         series,
         number: numberStr,
         issued_date: new Date().toISOString().slice(0, 10),
+        paid_at: isPaidNow ? new Date().toISOString() : null,
         currency: v.currency,
         customer_snapshot: {
           name: customer_name,
@@ -365,7 +368,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         subtotal,
         vat_amount: vatAmount,
         total,
-        status: "issued",
+        status: isPaidNow ? "paid" : "issued",
       })
       .select("id")
       .single();
@@ -390,8 +393,8 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         );
     }
 
-    // Fire Refrens in the background (don't block on failure)
-    if (customer_email) {
+    // Refrens runs only for the official book + when there's a real email.
+    if (v.account_scope === "conta1" && customer_email) {
       const refrensRes = await createInvoiceForOrder(orderId);
       if (refrensRes.ok && invoiceId) {
         await supabase
