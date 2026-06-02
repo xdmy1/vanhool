@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { AlertTriangle, CheckCircle2, ExternalLink, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Printer, X } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
@@ -375,6 +375,17 @@ export default async function PanelFacturiPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/panel/facturi/${r.id}/print` as "/panel"}
+                          locale={locale}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted-strong transition-colors hover:border-primary/40 hover:text-primary"
+                          title={t("action_print")}
+                        >
+                          <Printer className="size-3.5" />
+                          {t("action_print")}
+                        </Link>
                         {r.status === "issued" ? (
                           <MarkInvoicePaidButton
                             invoiceId={r.id}
