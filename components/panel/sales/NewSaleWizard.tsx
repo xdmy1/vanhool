@@ -312,7 +312,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         <div className="text-right text-sm text-muted-strong tabular-nums">
           {lineDiscountPct > 0 ? (
             <div className="text-xs text-success">
-              {t("sale_discount_footer", { percent: lineDiscountPct })}
+              {t("sale_discount_footer", { percent: Math.round(lineDiscountPct) })}
             </div>
           ) : null}
           {t("sale_subtotal_label")}{" "}
@@ -958,7 +958,7 @@ function StepProducts({
                       />
                       {hasDiscount ? (
                         <div className="mt-0.5 text-[10px] font-semibold text-success">
-                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                          -{Math.round(linePct)}%
                         </div>
                       ) : null}
                     </td>
@@ -1155,7 +1155,7 @@ function StepPayment({
                   </dd>
                 </div>
                 <div className="flex justify-between gap-6 text-success">
-                  <dt>{t("sale_discount_line_label", { percent: lineDiscountPct })}</dt>
+                  <dt>{t("sale_discount_line_label", { percent: Math.round(lineDiscountPct) })}</dt>
                   <dd className="tabular-nums">-{lineDiscountAmount.toFixed(2)} {currency}</dd>
                 </div>
               </>
@@ -1295,7 +1295,7 @@ function StepReview({
                           {effective.toFixed(2)}
                         </span>
                         <div className="text-[10px] text-success">
-                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                          -{Math.round(linePct)}%
                         </div>
                       </>
                     ) : (
@@ -1320,7 +1320,7 @@ function StepReview({
                 </tr>
                 <tr className="text-success">
                   <td colSpan={3} className="px-4 py-2 text-right text-xs">
-                    {t("sale_discount_line_label", { percent: lineDiscountPct })}
+                    {t("sale_discount_line_label", { percent: Math.round(lineDiscountPct) })}
                   </td>
                   <td className="px-4 py-2 text-right text-sm tabular-nums">
                     -{lineDiscountAmount.toFixed(2)} {currency}

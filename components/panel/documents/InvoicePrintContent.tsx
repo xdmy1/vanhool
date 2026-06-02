@@ -271,7 +271,7 @@ export function InvoicePrintContent({
                   ) : null}
                   {hasDiscount ? (
                     <div className="mt-0.5 text-[10px] font-semibold text-green-700">
-                      {labels.discountLabel} -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                      {labels.discountLabel} -{Math.round(linePct)}%
                     </div>
                   ) : null}
                 </td>
@@ -334,7 +334,7 @@ export function InvoicePrintContent({
                   <span>
                     {labels.discountLabel}
                     {linesDiscountPct > 0
-                      ? ` (-${linesDiscountPct.toFixed(linesDiscountPct % 1 === 0 ? 0 : 1)}%)`
+                      ? ` (-${Math.round(linesDiscountPct)}%)`
                       : ""}
                   </span>
                   <span className="font-medium">

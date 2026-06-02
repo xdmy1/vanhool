@@ -107,7 +107,7 @@ export default async function DeliveryNotePrintPage({
                   {it.name ?? "—"}
                   {hasDiscount ? (
                     <div style={{ fontSize: 10, color: "#15803d", fontWeight: 600 }}>
-                      {t("delivery_discount_label", { percent: pct })}
+                      {t("delivery_discount_label", { percent: Math.round(pct) })}
                     </div>
                   ) : null}
                 </td>
@@ -158,7 +158,7 @@ export default async function DeliveryNotePrintPage({
                 </tr>
                 <tr>
                   <td colSpan={6} className="num" style={{ color: "#15803d", fontWeight: 600 }}>
-                    {t("delivery_discount_label", { percent: discountPct })}
+                    {t("delivery_discount_label", { percent: Math.round(discountPct) })}
                   </td>
                   <td className="num" style={{ color: "#15803d", fontWeight: 600 }}>
                     -{discountAmount.toFixed(2)} {note.currency}

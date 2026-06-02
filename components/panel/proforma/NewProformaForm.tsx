@@ -410,7 +410,7 @@ export function NewProformaForm({
                       />
                       {hasDiscount ? (
                         <div className="mt-0.5 text-[10px] font-semibold text-success">
-                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                          -{Math.round(linePct)}%
                         </div>
                       ) : null}
                     </td>
@@ -469,7 +469,7 @@ export function NewProformaForm({
                   </tr>
                   <tr className="text-xs text-success">
                     <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide">
-                      {t("sale_discount_line_label", { percent: totals.discountPercent })}
+                      {t("sale_discount_line_label", { percent: Math.round(totals.discountPercent) })}
                     </td>
                     <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
                       -{totals.discountAmount.toFixed(2)}

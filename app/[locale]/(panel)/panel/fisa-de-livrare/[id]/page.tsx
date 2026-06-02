@@ -137,7 +137,7 @@ export default async function PanelDeliveryNoteDetail({
                             {price.toFixed(2)}
                           </div>
                           <div className="text-[10px] font-semibold text-success">
-                            -{pct.toFixed(pct % 1 === 0 ? 0 : 1)}%
+                            -{Math.round(pct)}%
                           </div>
                         </>
                       ) : (
@@ -181,7 +181,7 @@ export default async function PanelDeliveryNoteDetail({
                     </tr>
                     <tr>
                       <td colSpan={5} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-success">
-                        {t("delivery_discount_label", { percent: discountPct })}
+                        {t("delivery_discount_label", { percent: Math.round(discountPct) })}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-success">
                         -{discountAmount.toFixed(2)} {note.currency}

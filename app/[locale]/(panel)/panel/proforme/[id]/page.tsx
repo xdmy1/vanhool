@@ -169,7 +169,7 @@ export default async function PanelProformaDetailPage({
                       ) : null}
                       {hasDiscount ? (
                         <div className="mt-0.5 text-[10px] font-semibold text-success">
-                          {t("delivery_discount_label", { percent: pct })}
+                          {t("delivery_discount_label", { percent: Math.round(pct) })}
                         </div>
                       ) : null}
                     </td>
@@ -226,7 +226,7 @@ export default async function PanelProformaDetailPage({
                     </tr>
                     <tr>
                       <td colSpan={4} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-success">
-                        {t("delivery_discount_label", { percent: discountPct })}
+                        {t("delivery_discount_label", { percent: Math.round(discountPct) })}
                       </td>
                       <td className="px-4 py-2 text-right tabular-nums text-success">
                         -{discountAmount.toFixed(2)} {proforma.currency}
