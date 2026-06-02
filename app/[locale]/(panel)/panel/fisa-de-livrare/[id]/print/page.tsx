@@ -185,20 +185,45 @@ export default async function DeliveryNotePrintPage({
         </section>
       ) : null}
 
-      <section className="mt-12 grid grid-cols-2 gap-12">
+      <section className="mt-8 grid grid-cols-2 gap-12">
         <div>
-          <div className="border-b border-black pb-12 text-center text-xs">&nbsp;</div>
+          <div className="border-b border-black pb-10 text-center text-xs">&nbsp;</div>
           <div className="mt-1 text-center text-[10px] uppercase tracking-wide">
             {t("delivery_signature_warehouse")}
           </div>
         </div>
         <div>
-          <div className="border-b border-black pb-12 text-center text-xs">&nbsp;</div>
+          <div className="border-b border-black pb-10 text-center text-xs">&nbsp;</div>
           <div className="mt-1 text-center text-[10px] uppercase tracking-wide">
             {t("delivery_signature_client")}
           </div>
         </div>
       </section>
+
+      {(() => {
+        const terms = t.raw("invoice_print_terms") as string[] | undefined;
+        if (!Array.isArray(terms) || terms.length === 0) return null;
+        return (
+          <section
+            className="mt-4 break-inside-avoid border-t border-gray-300 pt-2 text-[7.5px] leading-[1.25] text-gray-700"
+            style={{ pageBreakInside: "avoid" }}
+          >
+            <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-black">
+              {t("invoice_print_terms_title")}
+            </div>
+            <ol
+              className="grid list-decimal grid-cols-2 gap-x-3 gap-y-0.5 pl-3 marker:font-semibold marker:text-gray-600"
+              style={{ columnGap: "12px" }}
+            >
+              {terms.map((term, i) => (
+                <li key={i} className="break-inside-avoid">
+                  {term}
+                </li>
+              ))}
+            </ol>
+          </section>
+        );
+      })()}
 
       <footer className="no-print mt-10 flex flex-col items-center gap-3">
         <div className="flex flex-wrap items-center gap-3">

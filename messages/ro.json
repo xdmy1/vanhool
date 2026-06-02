@@ -1528,6 +1528,21 @@
     "sale_review_subtotal_before_discount": "Subtotal fără reducere",
     "invoice_print_discount_before": "Subtotal fără reducere",
     "delivery_subtotal_before_discount": "Subtotal fără reducere",
-    "delivery_discount_label": "Reducere (-{percent}%)"
+    "delivery_discount_label": "Reducere (-{percent}%)",
+    "invoice_print_terms_title": "Termeni și condiții",
+    "invoice_print_terms": [
+      "Plată: Plata se efectuează integral prin transfer bancar în contul specificat pe această factură, conform termenilor agreați (ex. avans / 30 zile).",
+      "Livrare: Bunurile se livrează conform condițiilor de mai sus (Incoterms, dacă e cazul). Întârzierile cauzate de transportatori terți depășesc responsabilitatea noastră.",
+      "Garanție: Toate produsele beneficiază de garanție 24 de luni de la data emiterii facturii, pentru defecte de fabricație în condiții normale de utilizare și instalare corectă.",
+      "Proprietate: Bunurile rămân proprietatea vânzătorului până la încasarea integrală a plății.",
+      "Reclamații: Orice reclamație privind avarii sau discrepanțe se transmite în scris în termen de 5 zile de la recepție.",
+      "Jurisdicție: Litigiile decurgând din acest document sunt guvernate de legislația vânzătorului (Republica Moldova).",
+      "Valabilitate: Acest document este valabil 15 zile, dacă nu s-a convenit altfel.",
+      "Comisioane bancare: Toate taxele de transfer bancar (inclusiv băncile intermediare) sunt în sarcina cumpărătorului (tip transfer OUR).",
+      "Specificații tehnice: Produsele sunt livrate conform codurilor și specificațiilor agreate. Compatibilitatea și instalarea corectă rămân în sarcina cumpărătorului. Nu se acceptă răspundere pentru utilizare sau montaj necorespunzător.",
+      "Livrări parțiale: Vânzătorul își rezervă dreptul de a face livrări parțiale, fiecare considerată tranzacție separată și putând fi facturată distinct.",
+      "Forță majoră: Vânzătorul nu răspunde pentru întârzieri sau neexecutare datorate unor circumstanțe în afara controlului său (calamități, întreruperi de transport, tulburări politice, întârzieri ale furnizorilor etc.).",
+      "Contact livrare: Adrian Oborocean · +373 680 59 005 · adrian@inter-bus.md"
+    ]
   }
 }

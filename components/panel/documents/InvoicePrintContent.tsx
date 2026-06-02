@@ -60,6 +60,8 @@ type Labels = {
   linkedInvoice: string;
   discountLabel: string;
   discountBeforeLabel: string;
+  termsTitle: string;
+  terms: string[];
 };
 
 const FMT_DATE: Record<string, Intl.DateTimeFormat> = {};
@@ -369,6 +371,27 @@ export function InvoicePrintContent({
         <section className="mt-6 border-t border-gray-300 pt-3 text-xs text-gray-700">
           <div className="font-semibold uppercase tracking-wide">{labels.notesLabel}</div>
           <div className="mt-1 whitespace-pre-wrap">{invoice.notes}</div>
+        </section>
+      ) : null}
+
+      {labels.terms && labels.terms.length > 0 ? (
+        <section
+          className="mt-4 break-inside-avoid border-t border-gray-300 pt-2 text-[7.5px] leading-[1.25] text-gray-700"
+          style={{ pageBreakInside: "avoid" }}
+        >
+          <div className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-black">
+            {labels.termsTitle}
+          </div>
+          <ol
+            className="grid list-decimal grid-cols-2 gap-x-3 gap-y-0.5 pl-3 marker:font-semibold marker:text-gray-600"
+            style={{ columnGap: "12px" }}
+          >
+            {labels.terms.map((term, i) => (
+              <li key={i} className="break-inside-avoid">
+                {term}
+              </li>
+            ))}
+          </ol>
         </section>
       ) : null}
     </main>

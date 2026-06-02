@@ -1528,6 +1528,21 @@
     "sale_review_subtotal_before_discount": "Subtotal before discount",
     "invoice_print_discount_before": "Subtotal before discount",
     "delivery_subtotal_before_discount": "Subtotal before discount",
-    "delivery_discount_label": "Discount (-{percent}%)"
+    "delivery_discount_label": "Discount (-{percent}%)",
+    "invoice_print_terms_title": "Terms and Conditions",
+    "invoice_print_terms": [
+      "Payment: Payment must be made in full via bank transfer to the account specified on this document, according to the agreed terms (e.g. advance payment / net 30 days).",
+      "Delivery: Goods will be delivered as per the conditions stated above (Incoterms if applicable). Any delay caused by third-party carriers is beyond our responsibility.",
+      "Warranty: All products are covered by a 24-month warranty starting from the invoicing date, for manufacturing defects under normal use and proper installation.",
+      "Ownership: Ownership of goods remains with the seller until full payment is received.",
+      "Claims: Any claim regarding damage or discrepancies must be submitted in writing within 5 days of receipt of goods.",
+      "Jurisdiction: All disputes arising from this document shall be governed by the laws of the seller's jurisdiction (Republic of Moldova).",
+      "Validity: This document is valid for 15 days unless otherwise agreed.",
+      "Bank Charges: All bank transfer fees (including intermediary bank fees) are to be borne by the buyer (OUR transfer type).",
+      "Technical Specifications: All items are supplied according to the agreed product codes and specifications. Compatibility and proper installation remain the buyer's responsibility. No liability is accepted for misuse or improper installation.",
+      "Partial Deliveries: The seller reserves the right to make partial deliveries. Each partial delivery is a separate transaction and may be invoiced individually.",
+      "Force Majeure: The seller shall not be held liable for delays or failure to perform due to circumstances beyond its control (natural disasters, transport interruptions, political unrest, supplier delays, etc.).",
+      "Delivery Contact: Adrian Oborocean · +373 680 59 005 · adrian@inter-bus.md"
+    ]
   }
 }
