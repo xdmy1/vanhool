@@ -1526,6 +1526,8 @@
     "sale_discount_none_hint": "Leave empty to apply no discount.",
     "sale_line_col_discount_price": "Discount price",
     "sale_review_subtotal_before_discount": "Subtotal before discount",
-    "invoice_print_discount_before": "Subtotal before discount"
+    "invoice_print_discount_before": "Subtotal before discount",
+    "delivery_subtotal_before_discount": "Subtotal before discount",
+    "delivery_discount_label": "Discount (-{percent}%)"
   }
 }

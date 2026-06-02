@@ -94,17 +94,79 @@ export default async function DeliveryNotePrintPage({
           </tr>
         </thead>
         <tbody>
-          {note.items_snapshot.map((it, i) => (
-            <tr key={i}>
-              <td className="num">{i + 1}</td>
-              <td className="font-mono">{it.partCode ?? "—"}</td>
-              <td>{it.name ?? "—"}</td>
-              <td className="font-mono">{it.storage_location ?? "—"}</td>
-              <td className="num">{it.quantity ?? 0}</td>
-              <td className="num">{(it.price ?? 0).toFixed(2)}</td>
-              <td className="num">{(it.total ?? 0).toFixed(2)}</td>
-            </tr>
-          ))}
+          {note.items_snapshot.map((it, i) => {
+            const price = Number(it.price ?? 0);
+            const orig = Number(it.original_unit_price ?? 0);
+            const hasDiscount = orig > 0 && orig > price;
+            const pct = hasDiscount ? Math.max(0, (1 - price / orig) * 100) : 0;
+            return (
+              <tr key={i}>
+                <td className="num">{i + 1}</td>
+                <td className="font-mono">{it.partCode ?? "—"}</td>
+                <td>
+                  {it.name ?? "—"}
+                  {hasDiscount ? (
+                    <div style={{ fontSize: 10, color: "#15803d", fontWeight: 600 }}>
+                      {t("delivery_discount_label", { percent: pct })}
+                    </div>
+                  ) : null}
+                </td>
+                <td className="font-mono">{it.storage_location ?? "—"}</td>
+                <td className="num">{it.quantity ?? 0}</td>
+                <td className="num">
+                  {hasDiscount ? (
+                    <>
+                      <div style={{ fontSize: 10, color: "#6b7280", textDecoration: "line-through" }}>
+                        {orig.toFixed(2)}
+                      </div>
+                      <div style={{ color: "#15803d", fontWeight: 600 }}>{price.toFixed(2)}</div>
+                    </>
+                  ) : (
+                    price.toFixed(2)
+                  )}
+                </td>
+                <td className="num">{(it.total ?? 0).toFixed(2)}</td>
+              </tr>
+            );
+          })}
+          {(() => {
+            let before = 0;
+            let after = 0;
+            for (const it of note.items_snapshot) {
+              const qty = Number(it.quantity ?? 0);
+              const price = Number(it.price ?? 0);
+              const orig = Number(it.original_unit_price ?? 0);
+              const list = orig > 0 ? orig : price;
+              before += qty * list;
+              after += qty * price;
+            }
+            const discountAmount = Number((before - after).toFixed(2));
+            const discountPct =
+              before > 0 && discountAmount > 0
+                ? Math.min(100, Number(((discountAmount / before) * 100).toFixed(2)))
+                : 0;
+            if (discountAmount <= 0) return null;
+            return (
+              <>
+                <tr>
+                  <td colSpan={6} className="num" style={{ color: "#6b7280" }}>
+                    {t("delivery_subtotal_before_discount")}
+                  </td>
+                  <td className="num" style={{ color: "#6b7280", textDecoration: "line-through" }}>
+                    {before.toFixed(2)} {note.currency}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={6} className="num" style={{ color: "#15803d", fontWeight: 600 }}>
+                    {t("delivery_discount_label", { percent: discountPct })}
+                  </td>
+                  <td className="num" style={{ color: "#15803d", fontWeight: 600 }}>
+                    -{discountAmount.toFixed(2)} {note.currency}
+                  </td>
+                </tr>
+              </>
+            );
+          })()}
           <tr>
             <td colSpan={6} className="num" style={{ fontWeight: 600 }}>
               {t("delivery_total_label")}

@@ -116,22 +116,80 @@ export default async function PanelDeliveryNoteDetail({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {note.items_snapshot.map((it, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-2 font-mono text-xs">{it.partCode ?? "—"}</td>
-                  <td className="px-4 py-2">{it.name ?? "—"}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{it.storage_location ?? "—"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{it.quantity ?? 0}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {(it.price ?? 0).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                    {(it.total ?? 0).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
+              {note.items_snapshot.map((it, i) => {
+                const price = Number(it.price ?? 0);
+                const orig = Number(it.original_unit_price ?? 0);
+                const hasDiscount = orig > 0 && orig > price;
+                const pct = hasDiscount ? Math.max(0, (1 - price / orig) * 100) : 0;
+                return (
+                  <tr key={i}>
+                    <td className="px-4 py-2 font-mono text-xs">{it.partCode ?? "—"}</td>
+                    <td className="px-4 py-2">{it.name ?? "—"}</td>
+                    <td className="px-4 py-2 font-mono text-xs">{it.storage_location ?? "—"}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{it.quantity ?? 0}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {hasDiscount ? (
+                        <>
+                          <div className="text-[10px] text-muted line-through">
+                            {orig.toFixed(2)}
+                          </div>
+                          <div className="font-semibold text-success">
+                            {price.toFixed(2)}
+                          </div>
+                          <div className="text-[10px] font-semibold text-success">
+                            -{pct.toFixed(pct % 1 === 0 ? 0 : 1)}%
+                          </div>
+                        </>
+                      ) : (
+                        <>{price.toFixed(2)}</>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums font-semibold">
+                      {(it.total ?? 0).toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
+              {(() => {
+                let before = 0;
+                let after = 0;
+                for (const it of note.items_snapshot) {
+                  const qty = Number(it.quantity ?? 0);
+                  const price = Number(it.price ?? 0);
+                  const orig = Number(it.original_unit_price ?? 0);
+                  const list = orig > 0 ? orig : price;
+                  before += qty * list;
+                  after += qty * price;
+                }
+                const discountAmount = Number((before - after).toFixed(2));
+                const discountPct =
+                  before > 0 && discountAmount > 0
+                    ? Math.min(100, Number(((discountAmount / before) * 100).toFixed(2)))
+                    : 0;
+                if (discountAmount <= 0) return null;
+                return (
+                  <>
+                    <tr>
+                      <td colSpan={5} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-muted">
+                        {t("delivery_subtotal_before_discount")}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted line-through">
+                        {before.toFixed(2)} {note.currency}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={5} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-success">
+                        {t("delivery_discount_label", { percent: discountPct })}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-success">
+                        -{discountAmount.toFixed(2)} {note.currency}
+                      </td>
+                    </tr>
+                  </>
+                );
+              })()}
               <tr className="bg-surface-elevated">
                 <td colSpan={5} className="px-4 py-3 text-right text-xs uppercase tracking-wide text-muted">
                   {t("delivery_detail_total")}

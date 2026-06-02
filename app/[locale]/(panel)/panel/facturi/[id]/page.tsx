@@ -188,26 +188,91 @@ export default async function PanelInvoiceDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {invoice.items_snapshot.map((it, i) => (
-                <tr key={i}>
-                  <td className="px-4 py-2 font-mono text-xs">{it.partCode ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    <div>{it.name ?? "—"}</div>
-                    {it.description ? (
-                      <div className="text-[11px] text-muted">{it.description}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{it.quantity ?? 0}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {Number(it.unit_price ?? 0).toFixed(2)} {invoice.currency}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                    {Number(it.total ?? 0).toFixed(2)} {invoice.currency}
-                  </td>
-                </tr>
-              ))}
+              {invoice.items_snapshot.map((it, i) => {
+                const list = Number(it.unit_price ?? 0);
+                const dp =
+                  it.discounted_unit_price != null ? Number(it.discounted_unit_price) : null;
+                const eff = dp != null && dp >= 0 && dp < list ? dp : list;
+                const hasDiscount = eff < list;
+                const pct = hasDiscount && list > 0
+                  ? Math.max(0, (1 - eff / list) * 100)
+                  : 0;
+                return (
+                  <tr key={i}>
+                    <td className="px-4 py-2 font-mono text-xs">{it.partCode ?? "—"}</td>
+                    <td className="px-4 py-2">
+                      <div>{it.name ?? "—"}</div>
+                      {it.description ? (
+                        <div className="text-[11px] text-muted">{it.description}</div>
+                      ) : null}
+                      {hasDiscount ? (
+                        <div className="mt-0.5 text-[10px] font-semibold text-success">
+                          {t("delivery_discount_label", { percent: pct })}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">{it.quantity ?? 0}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {hasDiscount ? (
+                        <>
+                          <div className="text-[10px] text-muted line-through">
+                            {list.toFixed(2)} {invoice.currency}
+                          </div>
+                          <div className="font-semibold text-success">
+                            {eff.toFixed(2)} {invoice.currency}
+                          </div>
+                        </>
+                      ) : (
+                        <>{list.toFixed(2)} {invoice.currency}</>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums font-semibold">
+                      {Number(it.total ?? 0).toFixed(2)} {invoice.currency}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
+              {(() => {
+                let before = 0;
+                let after = 0;
+                for (const it of invoice.items_snapshot) {
+                  const qty = Number(it.quantity ?? 0);
+                  const list = Number(it.unit_price ?? 0);
+                  const dp =
+                    it.discounted_unit_price != null ? Number(it.discounted_unit_price) : null;
+                  const eff = dp != null && dp >= 0 && dp < list ? dp : list;
+                  before += qty * list;
+                  after += qty * eff;
+                }
+                const discountAmount = Number((before - after).toFixed(2));
+                const discountPct =
+                  before > 0 && discountAmount > 0
+                    ? Math.min(100, Number(((discountAmount / before) * 100).toFixed(2)))
+                    : 0;
+                if (discountAmount <= 0) return null;
+                return (
+                  <>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-muted">
+                        {t("delivery_subtotal_before_discount")}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-muted line-through">
+                        {before.toFixed(2)} {invoice.currency}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-success">
+                        {t("delivery_discount_label", { percent: discountPct })}
+                      </td>
+                      <td className="px-4 py-2 text-right tabular-nums text-success">
+                        -{discountAmount.toFixed(2)} {invoice.currency}
+                      </td>
+                    </tr>
+                  </>
+                );
+              })()}
               <tr className="bg-surface-elevated">
                 <td colSpan={4} className="px-4 py-3 text-right text-xs uppercase tracking-wide text-muted">
                   {t("delivery_detail_total")}

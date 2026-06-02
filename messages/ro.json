@@ -1526,6 +1526,8 @@
     "sale_discount_none_hint": "Lasă gol pentru a nu aplica reducere.",
     "sale_line_col_discount_price": "Preț redus",
     "sale_review_subtotal_before_discount": "Subtotal fără reducere",
-    "invoice_print_discount_before": "Subtotal fără reducere"
+    "invoice_print_discount_before": "Subtotal fără reducere",
+    "delivery_subtotal_before_discount": "Subtotal fără reducere",
+    "delivery_discount_label": "Reducere (-{percent}%)"
   }
 }

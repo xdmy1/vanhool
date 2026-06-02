@@ -1526,6 +1526,8 @@
     "sale_discount_none_hint": "Оставьте пустым, чтобы не применять скидку.",
     "sale_line_col_discount_price": "Цена со скидкой",
     "sale_review_subtotal_before_discount": "Итог без скидки",
-    "invoice_print_discount_before": "Итог без скидки"
+    "invoice_print_discount_before": "Итог без скидки",
+    "delivery_subtotal_before_discount": "Итог без скидки",
+    "delivery_discount_label": "Скидка (-{percent}%)"
   }
 }

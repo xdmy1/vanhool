@@ -23,7 +23,12 @@ export type DeliveryNoteItemSnapshot = {
   brand?: string | null;
   storage_location?: string | null;
   quantity?: number;
+  /** Effective per-unit price (what was actually charged). */
   price?: number;
+  /** List per-unit price (pre-discount). Older snapshots may omit it. */
+  original_unit_price?: number | null;
+  /** Per-unit saving = original_unit_price - price (snapshot-time copy). */
+  unit_discount?: number | null;
   total?: number;
 };
 
