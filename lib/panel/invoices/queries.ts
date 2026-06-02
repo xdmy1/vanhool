@@ -140,16 +140,30 @@ export type InvoiceDetail = {
 
 export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  // Try the full select first (incl. discount_percent). Fall back to the
+  // pre-migration column list if Supabase doesn't yet know about
+  // discount_percent — so the panel keeps loading even when the SQL
+  // migration hasn't been applied to this environment.
+  let { data, error } = await supabase
     .from("invoices")
     .select(
-      // Includes `output_locale` + `discount_percent` at runtime — the
-      // generated TS types are stale until the SQL migration is applied.
       "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
     .maybeSingle();
+  if (error && /discount_percent/i.test(error.message)) {
+    const retry = await supabase
+      .from("invoices")
+      .select(
+        "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
+          "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
+      )
+      .eq("id", id)
+      .maybeSingle();
+    data = retry.data;
+    error = retry.error;
+  }
   if (error || !data) return null;
 
   let linked_proforma: InvoiceDetail["linked_proforma"] = null;

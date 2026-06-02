@@ -195,7 +195,14 @@ export async function issueProforma(
       total,
       status: "sent",
       notes: v.notes ?? null,
-      ...({ output_locale: v.output_locale, discount_percent } as object),
+      // discount_percent column only exists after the panel discount migration
+      // runs. Omitting it when 0 keeps the insert working against legacy
+      // schemas while still persisting real discounts when the operator
+      // actually applies one.
+      ...({
+        output_locale: v.output_locale,
+        ...(discount_percent > 0 ? { discount_percent } : {}),
+      } as object),
     })
     .select("id")
     .single();
@@ -485,7 +492,10 @@ export async function updateProforma(
       due_date: due.toISOString().slice(0, 10),
       notes: v.notes ?? null,
       updated_at: new Date().toISOString(),
-      ...({ output_locale: v.output_locale, discount_percent } as object),
+      ...({
+        output_locale: v.output_locale,
+        ...(discount_percent > 0 ? { discount_percent } : {}),
+      } as object),
     })
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };

@@ -312,9 +312,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       discount_amount: discountAmount,
       shipping_cost: 0,
       total,
-      // discount_percent is a panel-only column (sql migration); cast keeps TS
-      // happy until generated types catch up.
-      ...({ discount_percent: discountPercent } as object),
+      // discount_percent is a panel-only column added by a later migration —
+      // skip the key when 0 so legacy schemas (pre-migration) keep working
+      // for non-discounted sales.
+      ...(discountPercent > 0
+        ? ({ discount_percent: discountPercent } as object)
+        : {}),
       status:
         v.payment_method === "already_paid" ? "confirmed" : "pending",
       payment_method: v.payment_method,
@@ -380,7 +383,10 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         // Mirror of an over-the-counter sale (vs. a directly-issued invoice
         // or a proforma conversion). Lets the facturi list filter / badge
         // these so the operator can still find them by origin.
-        ...({ source: "sale", discount_percent: discountPercent } as object),
+        ...({
+          source: "sale",
+          ...(discountPercent > 0 ? { discount_percent: discountPercent } : {}),
+        } as object),
         total,
         status: isPaidNow ? "paid" : "issued",
       })
