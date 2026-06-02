@@ -188,9 +188,45 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     if (inv) linked_invoice = inv;
   }
 
-  const items = Array.isArray(data.items_snapshot)
+  let items = Array.isArray(data.items_snapshot)
     ? (data.items_snapshot as InvoiceItemSnapshot[])
     : [];
+
+  // Backfill items from the originating order when the invoice was created
+  // before createManualSale started persisting items_snapshot. Without this
+  // the printed invoice would render an empty line table for every legacy
+  // sale. We translate the order-shape (`price` = effective, `original_unit_price`
+  // = list) into the invoice shape the print template expects.
+  if (items.length === 0 && data.order_id) {
+    const { data: order } = await supabase
+      .from("orders")
+      .select("items")
+      .eq("id", data.order_id)
+      .maybeSingle();
+    const rawItems = Array.isArray(order?.items) ? (order!.items as Array<Record<string, unknown>>) : [];
+    if (rawItems.length > 0) {
+      items = rawItems.map((it) => {
+        const price = Number((it.price as number) ?? 0);
+        const orig =
+          it.original_unit_price != null
+            ? Number(it.original_unit_price as number)
+            : price;
+        const qty = Number((it.quantity as number) ?? 0);
+        const hasDiscount = orig > 0 && orig > price;
+        return {
+          productId: it.productId as string | undefined,
+          partCode: (it.partCode as string | null) ?? null,
+          name: (it.name as string | null) ?? null,
+          description: null,
+          quantity: qty,
+          unit_price: orig,
+          discounted_unit_price: hasDiscount ? price : null,
+          vat_rate: Number((it.vat_rate as number) ?? 0),
+          total: Number((it.total as number) ?? qty * price),
+        } as InvoiceItemSnapshot;
+      });
+    }
+  }
 
   return {
     id: data.id,

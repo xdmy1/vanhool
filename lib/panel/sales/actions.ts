@@ -392,6 +392,29 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const numberStr = String(nextNumber).padStart(5, "0");
 
     const isPaidNow = v.payment_method === "already_paid";
+
+    // Items snapshot in INVOICE shape — InvoicePrintContent expects
+    // `unit_price` (list) + `discounted_unit_price` (effective). Without
+    // this the printable factură rendered an empty table because
+    // items_snapshot stayed null.
+    const invoiceItemsSnapshot = v.items.map((line) => {
+      const p = byId.get(line.product_id)!;
+      const dp = line.discounted_unit_price;
+      const eff =
+        dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
+      return {
+        productId: p.id,
+        partCode: p.part_code,
+        name: p.name_ro,
+        description: null,
+        quantity: line.qty,
+        unit_price: line.unit_price,
+        discounted_unit_price: eff < line.unit_price ? eff : null,
+        vat_rate: 0,
+        total: Number((line.qty * eff).toFixed(2)),
+      };
+    });
+
     const { data: invRow, error: invErr } = await supabase
       .from("invoices")
       .insert({
@@ -409,6 +432,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
           idno: customer_idno,
           address: customer_address,
         } as unknown as Json,
+        items_snapshot: invoiceItemsSnapshot as unknown as Json,
         subtotal,
         vat_amount: vatAmount,
         // Mirror of an over-the-counter sale (vs. a directly-issued invoice
