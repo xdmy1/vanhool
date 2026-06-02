@@ -1523,6 +1523,9 @@
     "sale_discount_new_total_label": "New total (after discount)",
     "sale_discount_new_total_hint": "Original total: {original} {currency}. Type the final amount.",
     "sale_discount_derived_label": "Derived discount",
-    "sale_discount_none_hint": "Leave empty to apply no discount."
+    "sale_discount_none_hint": "Leave empty to apply no discount.",
+    "sale_line_col_discount_price": "Discount price",
+    "sale_review_subtotal_before_discount": "Subtotal before discount",
+    "invoice_print_discount_before": "Subtotal before discount"
   }
 }

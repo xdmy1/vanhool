@@ -86,7 +86,10 @@ export type InvoiceItemSnapshot = {
   name?: string;
   description?: string | null;
   quantity?: number;
+  /** List price per unit (pre-discount). */
   unit_price?: number;
+  /** Effective price per unit when a per-line discount was applied. */
+  discounted_unit_price?: number | null;
   vat_rate?: number;
   total?: number;
 };

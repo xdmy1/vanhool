@@ -42,7 +42,13 @@ type WalkIn = {
 type Line = {
   product: ProductSearchResult;
   qty: number;
+  /** Normal price per unit — what the line "would have cost" at full price. */
   unit_price: number;
+  /**
+   * Operator-typed discounted price per unit. null / equal-or-higher than
+   * `unit_price` → no discount applied on this line.
+   */
+  discounted_unit_price: number | null;
 };
 
 export function NewSaleWizard({ locale }: { locale: string }) {
@@ -83,42 +89,37 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [notes, setNotes] = useState("");
   // Optional VAT typed in manually by the owner. Empty = no VAT applied.
   const [vatAmount, setVatAmount] = useState<string>("");
-  // Optional commercial discount. Operator types the FINAL total the client
-  // actually pays; the percent gets derived. Empty = no discount.
-  const [discountedTotalInput, setDiscountedTotalInput] = useState<string>("");
 
   const [submitting, startSubmit] = useTransition();
 
+  // Subtotal numbers are derived from per-line discounts (the operator types
+  // a lower unit price on individual lines, never a global percent). Lines
+  // without a discounted_unit_price contribute at the full unit_price.
+  const effectiveOf = (l: Line): number =>
+    l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+      ? l.discounted_unit_price
+      : l.unit_price;
   const subtotal = useMemo(
+    () => lines.reduce((s, l) => s + l.qty * effectiveOf(l), 0),
+    [lines],
+  );
+  const subtotalBeforeDiscount = useMemo(
     () => lines.reduce((s, l) => s + l.qty * l.unit_price, 0),
     [lines],
   );
+  const lineDiscountAmount = Number(
+    (subtotalBeforeDiscount - subtotal).toFixed(2),
+  );
+  const lineDiscountPct =
+    subtotalBeforeDiscount > 0
+      ? Math.min(
+          100,
+          Number(((lineDiscountAmount / subtotalBeforeDiscount) * 100).toFixed(2)),
+        )
+      : 0;
   const vatNum =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const grossBeforeDiscount = Number((subtotal + vatNum).toFixed(2));
-  // Derive discount from the typed "new total" — empty / >= original / <= 0
-  // → no discount.
-  const discountInfo = (() => {
-    const raw = Number(discountedTotalInput);
-    if (
-      !discountedTotalInput.trim() ||
-      !Number.isFinite(raw) ||
-      raw <= 0 ||
-      grossBeforeDiscount <= 0 ||
-      raw >= grossBeforeDiscount
-    ) {
-      return { pct: 0, amount: 0, total: grossBeforeDiscount };
-    }
-    const amount = Number((grossBeforeDiscount - raw).toFixed(2));
-    const pct = Math.min(
-      100,
-      Number(((amount / grossBeforeDiscount) * 100).toFixed(2)),
-    );
-    return { pct, amount, total: Number(raw.toFixed(2)) };
-  })();
-  const discountPct = discountInfo.pct;
-  const discountAmount = discountInfo.amount;
-  const grandTotal = discountInfo.total;
+  const grandTotal = Number((subtotal + vatNum).toFixed(2));
 
   const customerSet = client !== null || (walkinMode && walkin.name.trim().length > 0);
   const STEPS = [
@@ -187,6 +188,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           product_id: l.product.id,
           qty: l.qty,
           unit_price: l.unit_price,
+          discounted_unit_price:
+            l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+              ? l.discounted_unit_price
+              : null,
         })),
         payment_method: paymentMethod,
         currency,
@@ -195,7 +200,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         vehicle_plate: vehiclePlate || null,
         notes: notes || null,
         vat_amount: vatNum,
-        discount_percent: discountPct,
+        // Document-level discount_percent is derived from the line reductions
+        // (single source of truth = per-line). Keep it so historical reporting
+        // continues to work.
+        discount_percent: lineDiscountPct,
       };
       const res = await createManualSale(payload);
       if (res.ok) {
@@ -267,9 +275,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           setNotes={setNotes}
           vatAmount={vatAmount}
           setVatAmount={setVatAmount}
-          discountedTotalInput={discountedTotalInput}
-          setDiscountedTotalInput={setDiscountedTotalInput}
           subtotal={subtotal}
+          subtotalBeforeDiscount={subtotalBeforeDiscount}
+          lineDiscountAmount={lineDiscountAmount}
+          lineDiscountPct={lineDiscountPct}
           fallbackAddress={client?.billing_address ?? ""}
         />
       ) : null}
@@ -286,9 +295,10 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           vehiclePlate={vehiclePlate}
           notes={notes}
           subtotal={subtotal}
+          subtotalBeforeDiscount={subtotalBeforeDiscount}
+          lineDiscountAmount={lineDiscountAmount}
+          lineDiscountPct={lineDiscountPct}
           vatAmount={vatNum}
-          discountPercent={discountPct}
-          discountAmount={discountAmount}
           grandTotal={grandTotal}
           currency={currency}
         />
@@ -300,9 +310,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           {t("action_back")}
         </Button>
         <div className="text-right text-sm text-muted-strong tabular-nums">
-          {discountPct > 0 ? (
+          {lineDiscountPct > 0 ? (
             <div className="text-xs text-success">
-              {t("sale_discount_footer", { percent: discountPct })}
+              {t("sale_discount_footer", { percent: lineDiscountPct })}
             </div>
           ) : null}
           {t("sale_subtotal_label")}{" "}
@@ -705,7 +715,10 @@ function StepProducts({
         ? priceFromMarkup(p.cost_price)! * RATES_TO_MDL[currency]
         : p.price;
     const unitPrice = convertPrice(baseMdl, "MDL", currency);
-    setLines([...lines, { product: p, qty: 1, unit_price: unitPrice }]);
+    setLines([
+      ...lines,
+      { product: p, qty: 1, unit_price: unitPrice, discounted_unit_price: null },
+    ]);
     setQ("");
     setResults([]);
   }
@@ -720,6 +733,10 @@ function StepProducts({
       lines.map((l) => ({
         ...l,
         unit_price: convertPrice(l.unit_price, currency, next),
+        discounted_unit_price:
+          l.discounted_unit_price != null
+            ? convertPrice(l.discounted_unit_price, currency, next)
+            : null,
       })),
     );
     setCurrency(next);
@@ -862,71 +879,110 @@ function StepProducts({
                 <th className="px-4 py-3">{t("sale_line_col_location")}</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_qty")}</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_price")}</th>
+                <th className="px-4 py-3 text-right">{t("sale_line_col_discount_price")}</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_total")}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface">
-              {lines.map((l, idx) => (
-                <tr key={l.product.id}>
-                  <td className="px-4 py-2 font-mono text-xs">{l.product.part_code}</td>
-                  <td className="px-4 py-2">{l.product.name_ro}</td>
-                  <td className="px-4 py-2 text-xs text-muted">
-                    {l.product.storage_location ?? "—"}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Input
-                      type="number"
-                      step={1}
-                      min={1}
-                      max={l.product.stock_quantity}
-                      value={l.qty}
-                      onChange={(e) =>
-                        update(idx, {
-                          qty: Math.max(1, Math.trunc(Number(e.target.value || 0))),
-                        })
-                      }
-                      className="ml-auto h-8 w-20 text-right"
-                    />
-                    <div className="text-[10px] text-muted">
-                      {t("sale_products_stock_label", { qty: l.product.stock_quantity })}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <PriceWithVatHelper
-                      value={l.unit_price}
-                      onChange={(v) => update(idx, { unit_price: v })}
-                      step="0.01"
-                      size="sm"
-                      inputClassName="ml-auto h-8 w-24 text-right"
-                    />
-                    {l.product.cost_price > 0 ? (
+              {lines.map((l, idx) => {
+                const hasDiscount =
+                  l.discounted_unit_price != null &&
+                  l.discounted_unit_price < l.unit_price;
+                const effective = hasDiscount
+                  ? (l.discounted_unit_price as number)
+                  : l.unit_price;
+                const linePct = hasDiscount
+                  ? Math.max(0, (1 - effective / l.unit_price) * 100)
+                  : 0;
+                return (
+                  <tr key={l.product.id}>
+                    <td className="px-4 py-2 font-mono text-xs">{l.product.part_code}</td>
+                    <td className="px-4 py-2">{l.product.name_ro}</td>
+                    <td className="px-4 py-2 text-xs text-muted">
+                      {l.product.storage_location ?? "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Input
+                        type="number"
+                        step={1}
+                        min={1}
+                        max={l.product.stock_quantity}
+                        value={l.qty}
+                        onChange={(e) =>
+                          update(idx, {
+                            qty: Math.max(1, Math.trunc(Number(e.target.value || 0))),
+                          })
+                        }
+                        className="ml-auto h-8 w-20 text-right"
+                      />
                       <div className="text-[10px] text-muted">
-                        {t("sale_line_margin", {
-                          pct: (
-                            ((l.unit_price - l.product.cost_price) /
-                              l.product.cost_price) *
-                            100
-                          ).toFixed(0),
-                        })}
+                        {t("sale_products_stock_label", { qty: l.product.stock_quantity })}
                       </div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                    <Price value={l.qty * l.unit_price} currency={currency} size="sm" accent={false} />
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => remove(idx)}
-                      className="text-destructive hover:text-destructive/80"
-                      aria-label={t("action_delete")}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <PriceWithVatHelper
+                        value={l.unit_price}
+                        onChange={(v) => update(idx, { unit_price: v })}
+                        step="0.01"
+                        size="sm"
+                        inputClassName="ml-auto h-8 w-24 text-right"
+                      />
+                      {l.product.cost_price > 0 ? (
+                        <div className="text-[10px] text-muted">
+                          {t("sale_line_margin", {
+                            pct: (
+                              ((l.unit_price - l.product.cost_price) /
+                                l.product.cost_price) *
+                              100
+                            ).toFixed(0),
+                          })}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={l.discounted_unit_price ?? ""}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          update(idx, {
+                            discounted_unit_price:
+                              raw === "" ? null : Math.max(0, Number(raw)),
+                          });
+                        }}
+                        placeholder={l.unit_price.toFixed(2)}
+                        className="ml-auto h-8 w-24 text-right"
+                      />
+                      {hasDiscount ? (
+                        <div className="mt-0.5 text-[10px] font-semibold text-success">
+                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums font-semibold">
+                      {hasDiscount ? (
+                        <div className="text-[10px] text-muted line-through">
+                          {(l.qty * l.unit_price).toFixed(2)}
+                        </div>
+                      ) : null}
+                      <Price value={l.qty * effective} currency={currency} size="sm" accent={false} />
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => remove(idx)}
+                        className="text-destructive hover:text-destructive/80"
+                        aria-label={t("action_delete")}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -953,9 +1009,10 @@ function StepPayment({
   setNotes,
   vatAmount,
   setVatAmount,
-  discountedTotalInput,
-  setDiscountedTotalInput,
   subtotal,
+  subtotalBeforeDiscount,
+  lineDiscountAmount,
+  lineDiscountPct,
   fallbackAddress,
 }: {
   scope: Scope;
@@ -972,9 +1029,10 @@ function StepPayment({
   setNotes: (v: string) => void;
   vatAmount: string;
   setVatAmount: (v: string) => void;
-  discountedTotalInput: string;
-  setDiscountedTotalInput: (v: string) => void;
   subtotal: number;
+  subtotalBeforeDiscount: number;
+  lineDiscountAmount: number;
+  lineDiscountPct: number;
   fallbackAddress: string;
 }) {
   const t = useTranslations("panel");
@@ -985,32 +1043,11 @@ function StepPayment({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Mirror the parent's discount/vat math so the StepPayment totals panel
-  // updates live as the operator tweaks either input.
+  // VAT is reactive to the typed amount; the line discount values come from
+  // the parent (single source of truth = the lines themselves).
   const liveVat =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const liveGross = Number((subtotal + liveVat).toFixed(2));
-  const live = (() => {
-    const raw = Number(discountedTotalInput);
-    if (
-      !discountedTotalInput.trim() ||
-      !Number.isFinite(raw) ||
-      raw <= 0 ||
-      liveGross <= 0 ||
-      raw >= liveGross
-    ) {
-      return { pct: 0, amount: 0, total: liveGross };
-    }
-    const amount = Number((liveGross - raw).toFixed(2));
-    const pct = Math.min(
-      100,
-      Number(((amount / liveGross) * 100).toFixed(2)),
-    );
-    return { pct, amount, total: Number(raw.toFixed(2)) };
-  })();
-  const liveDiscountPct = live.pct;
-  const liveDiscountAmount = live.amount;
-  const liveTotal = live.total;
+  const liveTotal = Number((subtotal + liveVat).toFixed(2));
 
   const methods: Array<{ v: "cash" | "transfer" | "already_paid"; label: string }> = [
     { v: "cash", label: t("sale_pay_cash") },
@@ -1109,6 +1146,20 @@ function StepPayment({
             />
           </Field>
           <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
+            {lineDiscountPct > 0 ? (
+              <>
+                <div className="flex justify-between gap-6">
+                  <dt className="text-muted">{t("sale_review_subtotal_before_discount")}</dt>
+                  <dd className="tabular-nums text-muted line-through">
+                    {subtotalBeforeDiscount.toFixed(2)} {currency}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-6 text-success">
+                  <dt>{t("sale_discount_line_label", { percent: lineDiscountPct })}</dt>
+                  <dd className="tabular-nums">-{lineDiscountAmount.toFixed(2)} {currency}</dd>
+                </div>
+              </>
+            ) : null}
             <div className="flex justify-between gap-6">
               <dt className="text-muted">{t("sale_review_total")}</dt>
               <dd className="tabular-nums">{subtotal.toFixed(2)} {currency}</dd>
@@ -1119,12 +1170,6 @@ function StepPayment({
                 {liveVat.toFixed(2)} {currency}
               </dd>
             </div>
-            {liveDiscountPct > 0 ? (
-              <div className="flex justify-between gap-6 text-success">
-                <dt>{t("sale_discount_line_label", { percent: liveDiscountPct })}</dt>
-                <dd className="tabular-nums">-{liveDiscountAmount.toFixed(2)} {currency}</dd>
-              </div>
-            ) : null}
             <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
               <dt>{t("sale_total_label")}</dt>
               <dd className="tabular-nums">
@@ -1132,55 +1177,6 @@ function StepPayment({
               </dd>
             </div>
           </dl>
-        </div>
-      </div>
-
-      <div className="rounded-md border border-border bg-surface p-5">
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("sale_discount_section")}
-        </h3>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field
-            label={t("sale_discount_new_total_label")}
-            hint={t("sale_discount_new_total_hint", { original: liveGross.toFixed(2), currency })}
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min={0}
-                value={discountedTotalInput}
-                onChange={(e) => setDiscountedTotalInput(e.target.value)}
-                placeholder={liveGross > 0 ? liveGross.toFixed(2) : "0.00"}
-                className="w-40"
-              />
-              <span className="text-sm text-muted">{currency}</span>
-              {liveDiscountPct > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setDiscountedTotalInput("")}
-                  className="ml-1 text-xs text-muted hover:text-destructive"
-                >
-                  {t("sale_discount_clear")}
-                </button>
-              ) : null}
-            </div>
-          </Field>
-          <div className="text-right text-xs md:justify-self-end">
-            {liveDiscountPct > 0 ? (
-              <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-success">
-                <div className="text-[10px] uppercase tracking-wide opacity-70">
-                  {t("sale_discount_derived_label")}
-                </div>
-                <div className="text-sm font-semibold tabular-nums">
-                  -{liveDiscountPct.toFixed(liveDiscountPct % 1 === 0 ? 0 : 2)}% · -{liveDiscountAmount.toFixed(2)} {currency}
-                </div>
-              </div>
-            ) : (
-              <div className="text-[11px] text-muted">{t("sale_discount_none_hint")}</div>
-            )}
-          </div>
         </div>
       </div>
     </section>
@@ -1201,9 +1197,10 @@ function StepReview({
   vehiclePlate,
   notes,
   subtotal,
+  subtotalBeforeDiscount,
+  lineDiscountAmount,
+  lineDiscountPct,
   vatAmount,
-  discountPercent,
-  discountAmount,
   grandTotal,
   currency,
 }: {
@@ -1217,9 +1214,10 @@ function StepReview({
   vehiclePlate: string;
   notes: string;
   subtotal: number;
+  subtotalBeforeDiscount: number;
+  lineDiscountAmount: number;
+  lineDiscountPct: number;
   vatAmount: number;
-  discountPercent: number;
-  discountAmount: number;
   grandTotal: number;
   currency: "MDL" | "EUR" | "USD";
 }) {
@@ -1270,19 +1268,66 @@ function StepReview({
             </tr>
           </thead>
           <tbody className="divide-y divide-border bg-surface">
-            {lines.map((l) => (
-              <tr key={l.product.id}>
-                <td className="px-4 py-2">
-                  <div className="font-mono text-xs">{l.product.part_code}</div>
-                  <div className="text-sm">{l.product.name_ro}</div>
-                </td>
-                <td className="px-4 py-2 text-right tabular-nums">{l.qty}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{l.unit_price.toFixed(2)} {currency}</td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                  <Price value={l.qty * l.unit_price} currency={currency} size="sm" accent={false} />
-                </td>
-              </tr>
-            ))}
+            {lines.map((l) => {
+              const hasDiscount =
+                l.discounted_unit_price != null &&
+                l.discounted_unit_price < l.unit_price;
+              const effective = hasDiscount
+                ? (l.discounted_unit_price as number)
+                : l.unit_price;
+              const linePct = hasDiscount
+                ? Math.max(0, (1 - effective / l.unit_price) * 100)
+                : 0;
+              return (
+                <tr key={l.product.id}>
+                  <td className="px-4 py-2">
+                    <div className="font-mono text-xs">{l.product.part_code}</div>
+                    <div className="text-sm">{l.product.name_ro}</div>
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums">{l.qty}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {hasDiscount ? (
+                      <>
+                        <span className="mr-1 text-muted line-through">
+                          {l.unit_price.toFixed(2)}
+                        </span>
+                        <span className="font-semibold text-success">
+                          {effective.toFixed(2)}
+                        </span>
+                        <div className="text-[10px] text-success">
+                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                        </div>
+                      </>
+                    ) : (
+                      <>{l.unit_price.toFixed(2)} {currency}</>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right tabular-nums font-semibold">
+                    <Price value={l.qty * effective} currency={currency} size="sm" accent={false} />
+                  </td>
+                </tr>
+              );
+            })}
+            {lineDiscountPct > 0 ? (
+              <>
+                <tr>
+                  <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
+                    {t("sale_review_subtotal_before_discount")}
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm tabular-nums text-muted line-through">
+                    {subtotalBeforeDiscount.toFixed(2)} {currency}
+                  </td>
+                </tr>
+                <tr className="text-success">
+                  <td colSpan={3} className="px-4 py-2 text-right text-xs">
+                    {t("sale_discount_line_label", { percent: lineDiscountPct })}
+                  </td>
+                  <td className="px-4 py-2 text-right text-sm tabular-nums">
+                    -{lineDiscountAmount.toFixed(2)} {currency}
+                  </td>
+                </tr>
+              </>
+            ) : null}
             <tr>
               <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
                 {t("sale_review_total")}
@@ -1298,16 +1343,6 @@ function StepReview({
                 </td>
                 <td className="px-4 py-2 text-right text-sm tabular-nums">
                   {vatAmount.toFixed(2)} {currency}
-                </td>
-              </tr>
-            ) : null}
-            {discountPercent > 0 ? (
-              <tr className="text-success">
-                <td colSpan={3} className="px-4 py-2 text-right text-xs">
-                  {t("sale_discount_line_label", { percent: discountPercent })}
-                </td>
-                <td className="px-4 py-2 text-right text-sm tabular-nums">
-                  -{discountAmount.toFixed(2)} {currency}
                 </td>
               </tr>
             ) : null}

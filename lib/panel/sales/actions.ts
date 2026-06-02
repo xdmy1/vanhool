@@ -159,7 +159,13 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
 const lineSchema = z.object({
   product_id: z.string().uuid(),
   qty: z.number().positive(),
+  /** Normal "list" price per unit — what the line would cost without a discount. */
   unit_price: z.number().nonnegative(),
+  /**
+   * Optional discounted price per unit. When omitted / null / >= unit_price,
+   * the line is sold at unit_price (no per-line discount).
+   */
+  discounted_unit_price: z.number().nonnegative().nullable().optional(),
 });
 
 const walkinSchema = z.object({
@@ -265,6 +271,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   // Validate stock + build items snapshot
   const items: Array<Record<string, unknown>> = [];
   let subtotal = 0;
+  let subtotalBeforeDiscount = 0;
   for (const line of v.items) {
     const p = byId.get(line.product_id);
     if (!p) return { ok: false, reason: `product_missing:${line.product_id}` };
@@ -274,8 +281,16 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         reason: `stock_insufficient:${p.part_code ?? p.id.slice(0, 8)} (disponibil ${p.stock_quantity ?? 0})`,
       };
     }
-    const lineTotal = Number((line.qty * line.unit_price).toFixed(2));
-    subtotal += lineTotal;
+    // Effective price = discounted_unit_price if set and lower than the list
+    // price; else the list price. Anything >= list price collapses to list
+    // (no negative or zero-saving discounts).
+    const dp = line.discounted_unit_price;
+    const effective =
+      dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
+    const lineTotalEff = Number((line.qty * effective).toFixed(2));
+    const lineTotalGross = Number((line.qty * line.unit_price).toFixed(2));
+    subtotal += lineTotalEff;
+    subtotalBeforeDiscount += lineTotalGross;
     items.push({
       productId: p.id,
       partCode: p.part_code,
@@ -283,20 +298,36 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       brand: p.brand,
       storage_location: p.storage_location,
       quantity: line.qty,
-      price: line.unit_price,
+      // `price` keeps backwards-compat with anything that read the old shape;
+      // it now reflects the EFFECTIVE per-unit price (what the customer pays).
+      price: effective,
+      // Pre-discount per-unit price — only meaningful when > price. Older
+      // snapshots without this field render as no-discount.
+      original_unit_price: line.unit_price,
+      unit_discount: Number((line.unit_price - effective).toFixed(2)),
       cost_price: Number(p.cost_price ?? 0),
-      total: lineTotal,
+      total: lineTotalEff,
     });
   }
   subtotal = Number(subtotal.toFixed(2));
+  subtotalBeforeDiscount = Number(subtotalBeforeDiscount.toFixed(2));
 
   const vatAmount = Number(((v.vat_amount ?? 0)).toFixed(2));
-  // Commercial discount is taken off the gross (subtotal + vat). discount=0
-  // (or undefined) leaves the total unchanged.
-  const discountPercent = Math.min(100, Math.max(0, v.discount_percent ?? 0));
-  const grossBeforeDiscount = subtotal + vatAmount;
-  const discountAmount = Number(((grossBeforeDiscount * discountPercent) / 100).toFixed(2));
-  const total = Number((grossBeforeDiscount - discountAmount).toFixed(2));
+  // Document-level discount = sum of per-line reductions. We keep
+  // `discount_percent` derived from that so historical reports continue to
+  // group invoices by discount magnitude. The client-side passes the same
+  // number, but we recompute defensively from the items in case of drift.
+  const discountAmount = Number(
+    (subtotalBeforeDiscount - subtotal).toFixed(2),
+  );
+  const discountPercent =
+    subtotalBeforeDiscount > 0
+      ? Math.min(
+          100,
+          Number(((discountAmount / subtotalBeforeDiscount) * 100).toFixed(2)),
+        )
+      : 0;
+  const total = Number((subtotal + vatAmount).toFixed(2));
 
   // Insert order
   const { data: order, error: oErr } = await supabase

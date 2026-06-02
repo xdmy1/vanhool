@@ -1523,6 +1523,9 @@
     "sale_discount_new_total_label": "Total nou (cu reducere)",
     "sale_discount_new_total_hint": "Total fără reducere: {original} {currency}. Tastează suma finală.",
     "sale_discount_derived_label": "Reducere derivată",
-    "sale_discount_none_hint": "Lasă gol pentru a nu aplica reducere."
+    "sale_discount_none_hint": "Lasă gol pentru a nu aplica reducere.",
+    "sale_line_col_discount_price": "Preț redus",
+    "sale_review_subtotal_before_discount": "Subtotal fără reducere",
+    "invoice_print_discount_before": "Subtotal fără reducere"
   }
 }

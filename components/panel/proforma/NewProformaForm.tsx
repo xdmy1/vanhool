@@ -29,7 +29,13 @@ type Line = {
   name: string;
   description: string;
   quantity: number;
+  /** Normal "list" price per unit, VAT-inclusive (conta1) or net (conta2). */
   unit_price: number;
+  /**
+   * Optional per-line discounted price. null / >= unit_price → no discount
+   * on this line.
+   */
+  discounted_unit_price: number | null;
   vat_rate: number;
 };
 
@@ -55,6 +61,7 @@ const EMPTY_LINE: Line = {
   description: "",
   quantity: 1,
   unit_price: 0,
+  discounted_unit_price: null,
   // Prices are entered VAT-inclusive (Moldova: standard 20% TVA on conta1).
   // The totals computation extracts the net + VAT components from the gross.
   vat_rate: 20,
@@ -114,9 +121,6 @@ export function NewProformaForm({
   );
   const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  // Operator types the FINAL total the client pays — % gets derived from the
-  // delta. Empty / >= original / <= 0 → no discount.
-  const [discountedTotalInput, setDiscountedTotalInput] = useState<string>("");
   const [pending, startSubmit] = useTransition();
 
   // Switching books flips every line's VAT to the new default — conta 2 is
@@ -130,63 +134,47 @@ export function NewProformaForm({
 
   const totals = useMemo(() => {
     // unit_price is VAT-inclusive — break the gross back into net + vat so the
-    // proforma still itemizes TVA on the printed document.
+    // proforma still itemizes TVA on the printed document. The "effective"
+    // gross per line uses the discounted price when one is set; the
+    // "before discount" gross uses the list price so the print stack can
+    // surface both numbers.
     let net = 0;
     let vat = 0;
     let gross = 0;
+    let grossBeforeDiscount = 0;
     for (const l of lines) {
-      const lineGross = l.quantity * l.unit_price;
+      const eff =
+        l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+          ? l.discounted_unit_price
+          : l.unit_price;
+      const lineGross = l.quantity * eff;
+      const lineGrossBefore = l.quantity * l.unit_price;
       const factor = 1 + l.vat_rate / 100;
       const lineNet = factor > 0 ? lineGross / factor : lineGross;
       gross += lineGross;
+      grossBeforeDiscount += lineGrossBefore;
       net += lineNet;
       vat += lineGross - lineNet;
     }
     const grossRounded = Number(gross.toFixed(2));
-    // Derive discount from the typed "new total". Empty / out-of-range falls
-    // back to no discount.
-    const raw = Number(discountedTotalInput);
-    let pct = 0;
-    let discountAmount = 0;
-    let finalTotal = grossRounded;
-    if (
-      discountedTotalInput.trim() &&
-      Number.isFinite(raw) &&
-      raw > 0 &&
-      grossRounded > 0 &&
-      raw < grossRounded
-    ) {
-      discountAmount = Number((grossRounded - raw).toFixed(2));
-      pct = Math.min(100, Number(((discountAmount / grossRounded) * 100).toFixed(2)));
-      finalTotal = Number(raw.toFixed(2));
-    }
+    const grossBeforeRounded = Number(grossBeforeDiscount.toFixed(2));
+    const discountAmount = Number((grossBeforeRounded - grossRounded).toFixed(2));
+    const pct =
+      grossBeforeRounded > 0 && discountAmount > 0
+        ? Math.min(
+            100,
+            Number(((discountAmount / grossBeforeRounded) * 100).toFixed(2)),
+          )
+        : 0;
     return {
       subtotal: Number(net.toFixed(2)),
       vat: Number(vat.toFixed(2)),
-      grossBeforeDiscount: grossRounded,
+      grossBeforeDiscount: grossBeforeRounded,
       discountPercent: pct,
       discountAmount,
-      total: finalTotal,
+      total: grossRounded,
     };
-  }, [lines, discountedTotalInput]);
-
-  // When editing an existing proforma with a saved discount, pre-fill the
-  // "new total" input so the operator sees what they originally agreed to.
-  useEffect(() => {
-    if (initial?.discountPercent && initial.discountPercent > 0) {
-      // Recompute from the lines we just rehydrated.
-      const grossInit = (initial.lines ?? []).reduce(
-        (s, l) => s + l.quantity * l.unit_price,
-        0,
-      );
-      const finalT = grossInit * (1 - initial.discountPercent / 100);
-      if (finalT > 0 && Number.isFinite(finalT)) {
-        setDiscountedTotalInput(finalT.toFixed(2));
-      }
-    }
-    // Intentionally only on mount — operator typing is the source of truth after.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lines]);
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -257,6 +245,10 @@ export function NewProformaForm({
         description: l.description || null,
         quantity: l.quantity,
         unit_price: l.unit_price,
+        discounted_unit_price:
+          l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+            ? l.discounted_unit_price
+            : null,
         vat_rate: l.vat_rate,
       })),
       due_days: dueDays,
@@ -264,7 +256,6 @@ export function NewProformaForm({
       account_scope: scope,
       output_locale: outputLocale,
       notes: notes || null,
-      discount_percent: totals.discountPercent,
     };
 
     startSubmit(async () => {
@@ -328,107 +319,166 @@ export function NewProformaForm({
                 <th className="px-2 py-2">{t("proforma_form_line_name")}</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_qty")}</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_price")}</th>
+                <th className="px-2 py-2 text-right">{t("sale_line_col_discount_price")}</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_vat")}</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_total")}</th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {lines.map((l, idx) => (
-                <tr key={idx}>
-                  <td className="px-2 py-2">
-                    <PartCodeAutocomplete
-                      value={l.part_code}
-                      onChange={(v) => setLine(idx, { part_code: v })}
-                      onSelect={(m) =>
-                        setLine(idx, {
-                          part_code: m.code,
-                          // Only overwrite name when the operator hasn't typed
-                          // a custom one yet — keeps manual edits intact.
-                          name: l.name.trim() ? l.name : m.name,
-                          unit_price: m.unit_price,
-                        })
-                      }
-                      placeholder={t("proforma_form_line_partcode_placeholder")}
-                      emptyHint={t("proforma_form_line_partcode_empty")}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <Input
-                      value={l.name}
-                      onChange={(e) => setLine(idx, { name: e.target.value })}
-                      placeholder={t("proforma_form_line_name_placeholder")}
-                      className="h-9 text-xs"
-                    />
-                    <Input
-                      value={l.description}
-                      onChange={(e) => setLine(idx, { description: e.target.value })}
-                      placeholder={t("proforma_form_line_desc_placeholder")}
-                      className="mt-1 h-8 text-[11px]"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
-                      step={1}
-                      min={1}
-                      value={l.quantity}
-                      onChange={(e) =>
-                        setLine(idx, {
-                          quantity: Math.max(0, Math.trunc(Number(e.target.value || 0))),
-                        })
-                      }
-                      className="h-9 w-20 text-right"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <PriceWithVatHelper
-                      value={l.unit_price}
-                      onChange={(v) => setLine(idx, { unit_price: v })}
-                      step="0.01"
-                      size="sm"
-                      inputClassName="h-9 w-24 text-right"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
-                      step={1}
-                      min={0}
-                      value={l.vat_rate}
-                      onChange={(e) =>
-                        setLine(idx, {
-                          vat_rate: Math.max(0, Math.trunc(Number(e.target.value || 0))),
-                        })
-                      }
-                      disabled={scope === "conta2"}
-                      title={
-                        scope === "conta2"
-                          ? "Conta 2 — TVA forțată la 0%"
-                          : undefined
-                      }
-                      className="h-9 w-16 text-right disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                    {(l.quantity * l.unit_price).toFixed(2)}
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      className="text-destructive hover:text-destructive/80"
-                      disabled={lines.length === 1}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {lines.map((l, idx) => {
+                const hasDiscount =
+                  l.discounted_unit_price != null &&
+                  l.discounted_unit_price < l.unit_price;
+                const eff = hasDiscount
+                  ? (l.discounted_unit_price as number)
+                  : l.unit_price;
+                const linePct = hasDiscount
+                  ? Math.max(0, (1 - eff / l.unit_price) * 100)
+                  : 0;
+                return (
+                  <tr key={idx}>
+                    <td className="px-2 py-2">
+                      <PartCodeAutocomplete
+                        value={l.part_code}
+                        onChange={(v) => setLine(idx, { part_code: v })}
+                        onSelect={(m) =>
+                          setLine(idx, {
+                            part_code: m.code,
+                            // Only overwrite name when the operator hasn't typed
+                            // a custom one yet — keeps manual edits intact.
+                            name: l.name.trim() ? l.name : m.name,
+                            unit_price: m.unit_price,
+                          })
+                        }
+                        placeholder={t("proforma_form_line_partcode_placeholder")}
+                        emptyHint={t("proforma_form_line_partcode_empty")}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Input
+                        value={l.name}
+                        onChange={(e) => setLine(idx, { name: e.target.value })}
+                        placeholder={t("proforma_form_line_name_placeholder")}
+                        className="h-9 text-xs"
+                      />
+                      <Input
+                        value={l.description}
+                        onChange={(e) => setLine(idx, { description: e.target.value })}
+                        placeholder={t("proforma_form_line_desc_placeholder")}
+                        className="mt-1 h-8 text-[11px]"
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <Input
+                        type="number"
+                        step={1}
+                        min={1}
+                        value={l.quantity}
+                        onChange={(e) =>
+                          setLine(idx, {
+                            quantity: Math.max(0, Math.trunc(Number(e.target.value || 0))),
+                          })
+                        }
+                        className="h-9 w-20 text-right"
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <PriceWithVatHelper
+                        value={l.unit_price}
+                        onChange={(v) => setLine(idx, { unit_price: v })}
+                        step="0.01"
+                        size="sm"
+                        inputClassName="h-9 w-24 text-right"
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={l.discounted_unit_price ?? ""}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setLine(idx, {
+                            discounted_unit_price:
+                              raw === "" ? null : Math.max(0, Number(raw)),
+                          });
+                        }}
+                        placeholder={l.unit_price > 0 ? l.unit_price.toFixed(2) : "—"}
+                        className="h-9 w-24 text-right"
+                      />
+                      {hasDiscount ? (
+                        <div className="mt-0.5 text-[10px] font-semibold text-success">
+                          -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <Input
+                        type="number"
+                        step={1}
+                        min={0}
+                        value={l.vat_rate}
+                        onChange={(e) =>
+                          setLine(idx, {
+                            vat_rate: Math.max(0, Math.trunc(Number(e.target.value || 0))),
+                          })
+                        }
+                        disabled={scope === "conta2"}
+                        title={
+                          scope === "conta2"
+                            ? "Conta 2 — TVA forțată la 0%"
+                            : undefined
+                        }
+                        className="h-9 w-16 text-right disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums font-semibold">
+                      {hasDiscount ? (
+                        <div className="text-[10px] text-muted line-through">
+                          {(l.quantity * l.unit_price).toFixed(2)}
+                        </div>
+                      ) : null}
+                      {(l.quantity * eff).toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeLine(idx)}
+                        className="text-destructive hover:text-destructive/80"
+                        disabled={lines.length === 1}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
+              {totals.discountPercent > 0 ? (
+                <>
+                  <tr className="text-xs">
+                    <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                      {t("sale_review_subtotal_before_discount")}
+                    </td>
+                    <td colSpan={2} className="px-2 py-2 text-right tabular-nums text-muted line-through">
+                      {totals.grossBeforeDiscount.toFixed(2)}
+                    </td>
+                  </tr>
+                  <tr className="text-xs text-success">
+                    <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide">
+                      {t("sale_discount_line_label", { percent: totals.discountPercent })}
+                    </td>
+                    <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
+                      -{totals.discountAmount.toFixed(2)}
+                    </td>
+                  </tr>
+                </>
+              ) : null}
               <tr className="bg-surface-elevated text-xs">
-                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_subtotal")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -436,25 +486,15 @@ export function NewProformaForm({
                 </td>
               </tr>
               <tr className="text-xs">
-                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_vat_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
                   {totals.vat.toFixed(2)}
                 </td>
               </tr>
-              {totals.discountPercent > 0 ? (
-                <tr className="text-xs text-success">
-                  <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide">
-                    {t("sale_discount_line_label", { percent: totals.discountPercent })}
-                  </td>
-                  <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
-                    -{totals.discountAmount.toFixed(2)}
-                  </td>
-                </tr>
-              ) : null}
               <tr className="bg-surface-elevated text-sm font-bold">
-                <td colSpan={5} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -526,54 +566,6 @@ export function NewProformaForm({
               onChange={(e) => setDueDays(Math.max(0, Number(e.target.value || 0)))}
             />
           </Field>
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field
-            label={t("sale_discount_new_total_label")}
-            hint={t("sale_discount_new_total_hint", {
-              original: totals.grossBeforeDiscount.toFixed(2),
-              currency,
-            })}
-          >
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min={0}
-                value={discountedTotalInput}
-                onChange={(e) => setDiscountedTotalInput(e.target.value)}
-                placeholder={totals.grossBeforeDiscount > 0
-                  ? totals.grossBeforeDiscount.toFixed(2)
-                  : "0.00"}
-                className="w-40"
-              />
-              <span className="text-sm text-muted">{currency}</span>
-              {totals.discountPercent > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setDiscountedTotalInput("")}
-                  className="ml-1 text-xs text-muted hover:text-destructive"
-                >
-                  {t("sale_discount_clear")}
-                </button>
-              ) : null}
-            </div>
-          </Field>
-          <div className="text-right text-xs md:justify-self-end">
-            {totals.discountPercent > 0 ? (
-              <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-success">
-                <div className="text-[10px] uppercase tracking-wide opacity-70">
-                  {t("sale_discount_derived_label")}
-                </div>
-                <div className="text-sm font-semibold tabular-nums">
-                  -{totals.discountPercent.toFixed(totals.discountPercent % 1 === 0 ? 0 : 2)}% · -{totals.discountAmount.toFixed(2)} {currency}
-                </div>
-              </div>
-            ) : (
-              <div className="text-[11px] text-muted">{t("sale_discount_none_hint")}</div>
-            )}
-          </div>
         </div>
         <div className="mt-3">
           <Field label={t("proforma_form_notes")}>

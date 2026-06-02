@@ -75,6 +75,7 @@ export default async function InvoicePrintPage({
           linkedProforma: t("invoice_print_linked_proforma"),
           linkedInvoice: t("invoice_print_linked_invoice"),
           discountLabel: t("invoice_print_discount"),
+          discountBeforeLabel: t("invoice_print_discount_before"),
         }}
       />
       <footer className="no-print mt-6 flex flex-col items-center gap-2 pb-10">

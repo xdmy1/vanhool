@@ -56,6 +56,10 @@ export default async function EditProformaPage({
             description: it.description ?? "",
             quantity: Number(it.quantity ?? 1),
             unit_price: Number(it.unit_price ?? 0),
+            discounted_unit_price:
+              it.discounted_unit_price != null
+                ? Number(it.discounted_unit_price)
+                : null,
             vat_rate: Number(it.vat_rate ?? 20),
           }))
         : [
@@ -65,6 +69,7 @@ export default async function EditProformaPage({
               description: "",
               quantity: 1,
               unit_price: 0,
+              discounted_unit_price: null,
               vat_rate: 20,
             },
           ],
@@ -73,7 +78,6 @@ export default async function EditProformaPage({
     outputLocale: proforma.output_locale,
     dueDays: diffDays(proforma.issued_date, proforma.due_date),
     notes: proforma.notes ?? "",
-    discountPercent: proforma.discount_percent || undefined,
   };
 
   const number = `${proforma.series ?? ""}${proforma.number ?? ""}`;

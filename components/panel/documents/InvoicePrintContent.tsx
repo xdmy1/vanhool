@@ -59,6 +59,7 @@ type Labels = {
   linkedProforma: string;
   linkedInvoice: string;
   discountLabel: string;
+  discountBeforeLabel: string;
 };
 
 const FMT_DATE: Record<string, Intl.DateTimeFormat> = {};
@@ -101,6 +102,30 @@ export function InvoicePrintContent({
   const totalFmt = fmtMoney(invoice.total, invoice.currency);
   const isPaid = invoice.status === "paid";
   const bank = pickBankForCurrency(banks, invoice.currency);
+
+  // Reconstruct the pre-discount gross from the snapshot so the totals stack
+  // shows "what it would have cost" alongside "what it costs now". Items
+  // without a per-line discount contribute identically to both totals; older
+  // snapshots without `discounted_unit_price` also collapse cleanly.
+  const grossBeforeDiscount = items.reduce((s, it) => {
+    const qty = Number(it.quantity ?? 0);
+    const list = Number(it.unit_price ?? 0);
+    return s + qty * list;
+  }, 0);
+  const grossAfter = items.reduce((s, it) => {
+    const qty = Number(it.quantity ?? 0);
+    const list = Number(it.unit_price ?? 0);
+    const dp =
+      it.discounted_unit_price != null ? Number(it.discounted_unit_price) : null;
+    const eff = dp != null && dp >= 0 && dp < list ? dp : list;
+    return s + qty * eff;
+  }, 0);
+  const linesDiscountAmount = Number((grossBeforeDiscount - grossAfter).toFixed(2));
+  const linesDiscountPct =
+    grossBeforeDiscount > 0 && linesDiscountAmount > 0
+      ? Math.min(100, Number(((linesDiscountAmount / grossBeforeDiscount) * 100).toFixed(2)))
+      : 0;
+  const hasAnyDiscount = linesDiscountAmount > 0 || invoice.discount_percent > 0;
 
   return (
     <main className="doc-sheet mx-auto max-w-[210mm] p-8">
@@ -213,12 +238,23 @@ export function InvoicePrintContent({
         <tbody>
           {items.map((it, i) => {
             const qty = Number(it.quantity ?? 0);
-            const rate = Number(it.unit_price ?? 0);
+            const listRate = Number(it.unit_price ?? 0);
+            // Per-line discount: discounted_unit_price overrides the list rate
+            // when present and lower. Effective rate = what the customer pays.
+            const dp =
+              it.discounted_unit_price != null
+                ? Number(it.discounted_unit_price)
+                : null;
+            const hasDiscount = dp != null && dp >= 0 && dp < listRate;
+            const effRate = hasDiscount ? dp! : listRate;
+            const linePct = hasDiscount && listRate > 0
+              ? Math.max(0, (1 - effRate / listRate) * 100)
+              : 0;
             // unit_price is VAT-inclusive (gross) — break it back into net
             // + VAT so the document itemizes TVA without inflating the price.
             const vatRate = Number(it.vat_rate ?? 0);
             const factor = 1 + vatRate / 100;
-            const gross = qty * rate;
+            const gross = qty * effRate;
             const amount = factor > 0 ? gross / factor : gross;
             const vat = gross - amount;
             const total = gross;
@@ -233,10 +269,28 @@ export function InvoicePrintContent({
                   {it.description ? (
                     <div className="text-[11px] text-gray-600">{it.description}</div>
                   ) : null}
+                  {hasDiscount ? (
+                    <div className="mt-0.5 text-[10px] font-semibold text-green-700">
+                      {labels.discountLabel} -{linePct.toFixed(linePct % 1 === 0 ? 0 : 1)}%
+                    </div>
+                  ) : null}
                 </td>
                 <td className="num">{Number(it.vat_rate ?? 0)}%</td>
                 <td className="num">{qty}</td>
-                <td className="num">{fmtMoney(rate, invoice.currency)}</td>
+                <td className="num">
+                  {hasDiscount ? (
+                    <>
+                      <div className="text-[10px] text-gray-500 line-through">
+                        {fmtMoney(listRate, invoice.currency)}
+                      </div>
+                      <div className="font-semibold text-green-700">
+                        {fmtMoney(effRate, invoice.currency)}
+                      </div>
+                    </>
+                  ) : (
+                    fmtMoney(effRate, invoice.currency)
+                  )}
+                </td>
                 <td className="num">{fmtMoney(amount, invoice.currency)}</td>
                 <td className="num">{fmtMoney(vat, invoice.currency)}</td>
                 <td className="num font-semibold">{fmtMoney(total, invoice.currency)}</td>
@@ -267,7 +321,28 @@ export function InvoicePrintContent({
           )}
         </div>
         <div className="flex flex-col items-end justify-start gap-2 text-sm">
-          <div className="w-full max-w-[260px]">
+          <div className="w-full max-w-[280px]">
+            {hasAnyDiscount && linesDiscountAmount > 0 ? (
+              <>
+                <div className="flex justify-between border-b border-gray-300 py-1 text-gray-500">
+                  <span>{labels.discountBeforeLabel}</span>
+                  <span className="line-through">
+                    {fmtMoney(grossBeforeDiscount, invoice.currency)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-gray-300 py-1 text-green-700">
+                  <span>
+                    {labels.discountLabel}
+                    {linesDiscountPct > 0
+                      ? ` (-${linesDiscountPct.toFixed(linesDiscountPct % 1 === 0 ? 0 : 1)}%)`
+                      : ""}
+                  </span>
+                  <span className="font-medium">
+                    -{fmtMoney(linesDiscountAmount, invoice.currency)}
+                  </span>
+                </div>
+              </>
+            ) : null}
             <div className="flex justify-between border-b border-gray-300 py-1">
               <span className="text-gray-600">{labels.amountSubtotal}</span>
               <span className="font-medium">{fmtMoney(invoice.subtotal, invoice.currency)}</span>
@@ -276,17 +351,6 @@ export function InvoicePrintContent({
               <span className="text-gray-600">{labels.vatTotal}</span>
               <span className="font-medium">{fmtMoney(invoice.vat_amount, invoice.currency)}</span>
             </div>
-            {invoice.discount_percent > 0 ? (
-              <div className="flex justify-between border-b border-gray-300 py-1 text-green-700">
-                <span>{labels.discountLabel} ({invoice.discount_percent.toFixed(invoice.discount_percent % 1 === 0 ? 0 : 1)}%)</span>
-                <span className="font-medium">
-                  -{fmtMoney(
-                    Number((((invoice.subtotal + invoice.vat_amount) * invoice.discount_percent) / 100).toFixed(2)),
-                    invoice.currency,
-                  )}
-                </span>
-              </div>
-            ) : null}
             <div className="mt-1 flex items-center justify-between border-b-2 border-black py-1 text-base font-bold">
               <span>{labels.totalLabel} ({invoice.currency})</span>
               <span>{totalFmt}</span>

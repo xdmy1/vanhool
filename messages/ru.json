@@ -1523,6 +1523,9 @@
     "sale_discount_new_total_label": "Новый итог (со скидкой)",
     "sale_discount_new_total_hint": "Итог без скидки: {original} {currency}. Введите окончательную сумму.",
     "sale_discount_derived_label": "Вычисленная скидка",
-    "sale_discount_none_hint": "Оставьте пустым, чтобы не применять скидку."
+    "sale_discount_none_hint": "Оставьте пустым, чтобы не применять скидку.",
+    "sale_line_col_discount_price": "Цена со скидкой",
+    "sale_review_subtotal_before_discount": "Итог без скидки",
+    "invoice_print_discount_before": "Итог без скидки"
   }
 }

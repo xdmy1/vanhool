@@ -15,7 +15,13 @@ const lineSchema = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   quantity: z.number().positive(),
+  /** Normal "list" price per unit. */
   unit_price: z.number().nonnegative(),
+  /**
+   * Optional per-line discounted price. null / >= unit_price → no per-line
+   * discount; the line settles at `unit_price`.
+   */
+  discounted_unit_price: z.number().nonnegative().nullable().optional(),
   vat_rate: z.number().nonnegative().default(0),
 });
 
@@ -50,34 +56,53 @@ export type ProformaInput = z.infer<typeof proformaInputSchema>;
 // ---- Helpers ---------------------------------------------------------------
 
 function totals(
-  items: Array<{ quantity: number; unit_price: number; vat_rate: number }>,
-  discountPercent = 0,
+  items: Array<{
+    quantity: number;
+    unit_price: number;
+    discounted_unit_price?: number | null;
+    vat_rate: number;
+  }>,
 ) {
   // `unit_price` is treated as VAT-inclusive (gross). Break it back into
-  // net + VAT so the printed document still itemizes TVA.
+  // net + VAT so the printed document still itemizes TVA. Per-line discount
+  // uses the discounted price when it's set AND lower than the list price.
   let net = 0;
   let vat = 0;
   let gross = 0;
+  let grossBeforeDiscount = 0;
   for (const i of items) {
-    const lineGross = i.quantity * i.unit_price;
+    const eff =
+      i.discounted_unit_price != null &&
+      i.discounted_unit_price >= 0 &&
+      i.discounted_unit_price < i.unit_price
+        ? i.discounted_unit_price
+        : i.unit_price;
+    const lineGross = i.quantity * eff;
+    const lineGrossBefore = i.quantity * i.unit_price;
     const factor = 1 + i.vat_rate / 100;
     const lineNet = factor > 0 ? lineGross / factor : lineGross;
     gross += lineGross;
+    grossBeforeDiscount += lineGrossBefore;
     net += lineNet;
     vat += lineGross - lineNet;
   }
-  // Discount is the final step: comes off the gross. subtotal + vat_amount
-  // stay as the pre-discount net + tax so the line-by-line breakdown remains
-  // auditable on the printed document.
-  const pct = Math.min(100, Math.max(0, discountPercent));
-  const discountAmount = Number(((gross * pct) / 100).toFixed(2));
-  const finalTotal = Number((gross - discountAmount).toFixed(2));
+  const finalTotal = Number(gross.toFixed(2));
+  const grossBeforeRounded = Number(grossBeforeDiscount.toFixed(2));
+  const discountAmount = Number((grossBeforeRounded - finalTotal).toFixed(2));
+  const pct =
+    grossBeforeRounded > 0 && discountAmount > 0
+      ? Math.min(
+          100,
+          Number(((discountAmount / grossBeforeRounded) * 100).toFixed(2)),
+        )
+      : 0;
   return {
     subtotal: Number(net.toFixed(2)),
     vat_amount: Number(vat.toFixed(2)),
     total: finalTotal,
     discount_percent: pct,
     discount_amount: discountAmount,
+    subtotal_before_discount: grossBeforeRounded,
   };
 }
 
@@ -146,23 +171,30 @@ export async function issueProforma(
   const itemsForTotals = items.map((i) => ({
     quantity: i.quantity,
     unit_price: i.unit_price,
+    discounted_unit_price: i.discounted_unit_price ?? null,
     vat_rate: i.vat_rate,
   }));
-  const { subtotal, vat_amount, total, discount_percent } = totals(
-    itemsForTotals,
-    v.discount_percent,
-  );
+  const { subtotal, vat_amount, total, discount_percent } = totals(itemsForTotals);
 
-  const itemsSnapshot = items.map((i) => ({
-    productId: i.product_id ?? null,
-    partCode: i.part_code ?? null,
-    name: i.name,
-    description: i.description ?? null,
-    quantity: i.quantity,
-    unit_price: i.unit_price,
-    vat_rate: i.vat_rate,
-    total: Number((i.quantity * i.unit_price).toFixed(2)),
-  }));
+  const itemsSnapshot = items.map((i) => {
+    const dp = i.discounted_unit_price;
+    const eff =
+      dp != null && dp >= 0 && dp < i.unit_price ? dp : i.unit_price;
+    return {
+      productId: i.product_id ?? null,
+      partCode: i.part_code ?? null,
+      name: i.name,
+      description: i.description ?? null,
+      quantity: i.quantity,
+      // Snapshot the LIST price as `unit_price`. The effective price the
+      // customer actually pays lives in `discounted_unit_price`. Older
+      // snapshots without `discounted_unit_price` render unchanged.
+      unit_price: i.unit_price,
+      discounted_unit_price: eff < i.unit_price ? eff : null,
+      vat_rate: i.vat_rate,
+      total: Number((i.quantity * eff).toFixed(2)),
+    };
+  });
 
   const { series, number } = await takeNextNumber(
     supabase,
@@ -459,20 +491,26 @@ export async function updateProforma(
     itemsNormalized.map((i) => ({
       quantity: i.quantity,
       unit_price: i.unit_price,
+      discounted_unit_price: i.discounted_unit_price ?? null,
       vat_rate: i.vat_rate,
     })),
-    v.discount_percent,
   );
-  const itemsSnapshot = itemsNormalized.map((i) => ({
-    productId: i.product_id ?? null,
-    partCode: i.part_code ?? null,
-    name: i.name,
-    description: i.description ?? null,
-    quantity: i.quantity,
-    unit_price: i.unit_price,
-    vat_rate: i.vat_rate,
-    total: Number((i.quantity * i.unit_price).toFixed(2)),
-  }));
+  const itemsSnapshot = itemsNormalized.map((i) => {
+    const dp = i.discounted_unit_price;
+    const eff =
+      dp != null && dp >= 0 && dp < i.unit_price ? dp : i.unit_price;
+    return {
+      productId: i.product_id ?? null,
+      partCode: i.part_code ?? null,
+      name: i.name,
+      description: i.description ?? null,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      discounted_unit_price: eff < i.unit_price ? eff : null,
+      vat_rate: i.vat_rate,
+      total: Number((i.quantity * eff).toFixed(2)),
+    };
+  });
 
   // Recompute due_date relative to the original issued_date so editing the
   // proforma doesn't accidentally shift the maturity window.
