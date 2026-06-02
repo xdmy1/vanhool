@@ -1519,6 +1519,10 @@
     "sale_discount_clear": "șterge",
     "sale_discount_footer": "Reducere {percent}%",
     "sale_discount_line_label": "Reducere comercială ({percent}%)",
-    "invoice_print_discount": "Reducere"
+    "invoice_print_discount": "Reducere",
+    "sale_discount_new_total_label": "Total nou (cu reducere)",
+    "sale_discount_new_total_hint": "Total fără reducere: {original} {currency}. Tastează suma finală.",
+    "sale_discount_derived_label": "Reducere derivată",
+    "sale_discount_none_hint": "Lasă gol pentru a nu aplica reducere."
   }
 }

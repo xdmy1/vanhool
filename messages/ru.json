@@ -1519,6 +1519,10 @@
     "sale_discount_clear": "сбросить",
     "sale_discount_footer": "Скидка {percent}%",
     "sale_discount_line_label": "Коммерческая скидка ({percent}%)",
-    "invoice_print_discount": "Скидка"
+    "invoice_print_discount": "Скидка",
+    "sale_discount_new_total_label": "Новый итог (со скидкой)",
+    "sale_discount_new_total_hint": "Итог без скидки: {original} {currency}. Введите окончательную сумму.",
+    "sale_discount_derived_label": "Вычисленная скидка",
+    "sale_discount_none_hint": "Оставьте пустым, чтобы не применять скидку."
   }
 }

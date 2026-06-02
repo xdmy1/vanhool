@@ -83,9 +83,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [notes, setNotes] = useState("");
   // Optional VAT typed in manually by the owner. Empty = no VAT applied.
   const [vatAmount, setVatAmount] = useState<string>("");
-  // Optional commercial discount, in percent. 0/empty = no discount.
-  // Applied on the gross (subtotal + vat) so 1000 EUR @ 10% → 900 EUR.
-  const [discountPercent, setDiscountPercent] = useState<string>("");
+  // Optional commercial discount. Operator types the FINAL total the client
+  // actually pays; the percent gets derived. Empty = no discount.
+  const [discountedTotalInput, setDiscountedTotalInput] = useState<string>("");
 
   const [submitting, startSubmit] = useTransition();
 
@@ -95,14 +95,30 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   );
   const vatNum =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const grossBeforeDiscount = subtotal + vatNum;
-  const discountPct = (() => {
-    const n = Number(discountPercent);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    return Math.min(100, n);
+  const grossBeforeDiscount = Number((subtotal + vatNum).toFixed(2));
+  // Derive discount from the typed "new total" — empty / >= original / <= 0
+  // → no discount.
+  const discountInfo = (() => {
+    const raw = Number(discountedTotalInput);
+    if (
+      !discountedTotalInput.trim() ||
+      !Number.isFinite(raw) ||
+      raw <= 0 ||
+      grossBeforeDiscount <= 0 ||
+      raw >= grossBeforeDiscount
+    ) {
+      return { pct: 0, amount: 0, total: grossBeforeDiscount };
+    }
+    const amount = Number((grossBeforeDiscount - raw).toFixed(2));
+    const pct = Math.min(
+      100,
+      Number(((amount / grossBeforeDiscount) * 100).toFixed(2)),
+    );
+    return { pct, amount, total: Number(raw.toFixed(2)) };
   })();
-  const discountAmount = Number((grossBeforeDiscount * discountPct / 100).toFixed(2));
-  const grandTotal = Number((grossBeforeDiscount - discountAmount).toFixed(2));
+  const discountPct = discountInfo.pct;
+  const discountAmount = discountInfo.amount;
+  const grandTotal = discountInfo.total;
 
   const customerSet = client !== null || (walkinMode && walkin.name.trim().length > 0);
   const STEPS = [
@@ -251,8 +267,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           setNotes={setNotes}
           vatAmount={vatAmount}
           setVatAmount={setVatAmount}
-          discountPercent={discountPercent}
-          setDiscountPercent={setDiscountPercent}
+          discountedTotalInput={discountedTotalInput}
+          setDiscountedTotalInput={setDiscountedTotalInput}
           subtotal={subtotal}
           fallbackAddress={client?.billing_address ?? ""}
         />
@@ -937,8 +953,8 @@ function StepPayment({
   setNotes,
   vatAmount,
   setVatAmount,
-  discountPercent,
-  setDiscountPercent,
+  discountedTotalInput,
+  setDiscountedTotalInput,
   subtotal,
   fallbackAddress,
 }: {
@@ -956,8 +972,8 @@ function StepPayment({
   setNotes: (v: string) => void;
   vatAmount: string;
   setVatAmount: (v: string) => void;
-  discountPercent: string;
-  setDiscountPercent: (v: string) => void;
+  discountedTotalInput: string;
+  setDiscountedTotalInput: (v: string) => void;
   subtotal: number;
   fallbackAddress: string;
 }) {
@@ -973,14 +989,28 @@ function StepPayment({
   // updates live as the operator tweaks either input.
   const liveVat =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const liveDiscountPct = (() => {
-    const n = Number(discountPercent);
-    if (!Number.isFinite(n) || n <= 0) return 0;
-    return Math.min(100, n);
+  const liveGross = Number((subtotal + liveVat).toFixed(2));
+  const live = (() => {
+    const raw = Number(discountedTotalInput);
+    if (
+      !discountedTotalInput.trim() ||
+      !Number.isFinite(raw) ||
+      raw <= 0 ||
+      liveGross <= 0 ||
+      raw >= liveGross
+    ) {
+      return { pct: 0, amount: 0, total: liveGross };
+    }
+    const amount = Number((liveGross - raw).toFixed(2));
+    const pct = Math.min(
+      100,
+      Number(((amount / liveGross) * 100).toFixed(2)),
+    );
+    return { pct, amount, total: Number(raw.toFixed(2)) };
   })();
-  const liveGross = subtotal + liveVat;
-  const liveDiscountAmount = Number((liveGross * liveDiscountPct / 100).toFixed(2));
-  const liveTotal = Number((liveGross - liveDiscountAmount).toFixed(2));
+  const liveDiscountPct = live.pct;
+  const liveDiscountAmount = live.amount;
+  const liveTotal = live.total;
 
   const methods: Array<{ v: "cash" | "transfer" | "already_paid"; label: string }> = [
     { v: "cash", label: t("sale_pay_cash") },
@@ -1109,34 +1139,49 @@ function StepPayment({
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
           {t("sale_discount_section")}
         </h3>
-        <Field
-          label={t("sale_discount_label")}
-          hint={t("sale_discount_hint")}
-        >
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              min={0}
-              max={100}
-              value={discountPercent}
-              onChange={(e) => setDiscountPercent(e.target.value)}
-              placeholder="0"
-              className="w-28"
-            />
-            <span className="text-sm text-muted">%</span>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <Field
+            label={t("sale_discount_new_total_label")}
+            hint={t("sale_discount_new_total_hint", { original: liveGross.toFixed(2), currency })}
+          >
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min={0}
+                value={discountedTotalInput}
+                onChange={(e) => setDiscountedTotalInput(e.target.value)}
+                placeholder={liveGross > 0 ? liveGross.toFixed(2) : "0.00"}
+                className="w-40"
+              />
+              <span className="text-sm text-muted">{currency}</span>
+              {liveDiscountPct > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setDiscountedTotalInput("")}
+                  className="ml-1 text-xs text-muted hover:text-destructive"
+                >
+                  {t("sale_discount_clear")}
+                </button>
+              ) : null}
+            </div>
+          </Field>
+          <div className="text-right text-xs md:justify-self-end">
             {liveDiscountPct > 0 ? (
-              <button
-                type="button"
-                onClick={() => setDiscountPercent("")}
-                className="ml-1 text-xs text-muted hover:text-destructive"
-              >
-                {t("sale_discount_clear")}
-              </button>
-            ) : null}
+              <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-success">
+                <div className="text-[10px] uppercase tracking-wide opacity-70">
+                  {t("sale_discount_derived_label")}
+                </div>
+                <div className="text-sm font-semibold tabular-nums">
+                  -{liveDiscountPct.toFixed(liveDiscountPct % 1 === 0 ? 0 : 2)}% · -{liveDiscountAmount.toFixed(2)} {currency}
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted">{t("sale_discount_none_hint")}</div>
+            )}
           </div>
-        </Field>
+        </div>
       </div>
     </section>
   );

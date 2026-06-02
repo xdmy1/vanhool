@@ -114,9 +114,9 @@ export function NewProformaForm({
   );
   const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [discountPercent, setDiscountPercent] = useState<string>(
-    initial?.discountPercent ? String(initial.discountPercent) : "",
-  );
+  // Operator types the FINAL total the client pays — % gets derived from the
+  // delta. Empty / >= original / <= 0 → no discount.
+  const [discountedTotalInput, setDiscountedTotalInput] = useState<string>("");
   const [pending, startSubmit] = useTransition();
 
   // Switching books flips every line's VAT to the new default — conta 2 is
@@ -142,19 +142,51 @@ export function NewProformaForm({
       net += lineNet;
       vat += lineGross - lineNet;
     }
-    const pctRaw = Number(discountPercent);
-    const pct = Number.isFinite(pctRaw) && pctRaw > 0 ? Math.min(100, pctRaw) : 0;
-    const discountAmount = Number(((gross * pct) / 100).toFixed(2));
-    const finalTotal = Number((gross - discountAmount).toFixed(2));
+    const grossRounded = Number(gross.toFixed(2));
+    // Derive discount from the typed "new total". Empty / out-of-range falls
+    // back to no discount.
+    const raw = Number(discountedTotalInput);
+    let pct = 0;
+    let discountAmount = 0;
+    let finalTotal = grossRounded;
+    if (
+      discountedTotalInput.trim() &&
+      Number.isFinite(raw) &&
+      raw > 0 &&
+      grossRounded > 0 &&
+      raw < grossRounded
+    ) {
+      discountAmount = Number((grossRounded - raw).toFixed(2));
+      pct = Math.min(100, Number(((discountAmount / grossRounded) * 100).toFixed(2)));
+      finalTotal = Number(raw.toFixed(2));
+    }
     return {
       subtotal: Number(net.toFixed(2)),
       vat: Number(vat.toFixed(2)),
-      grossBeforeDiscount: Number(gross.toFixed(2)),
+      grossBeforeDiscount: grossRounded,
       discountPercent: pct,
       discountAmount,
       total: finalTotal,
     };
-  }, [lines, discountPercent]);
+  }, [lines, discountedTotalInput]);
+
+  // When editing an existing proforma with a saved discount, pre-fill the
+  // "new total" input so the operator sees what they originally agreed to.
+  useEffect(() => {
+    if (initial?.discountPercent && initial.discountPercent > 0) {
+      // Recompute from the lines we just rehydrated.
+      const grossInit = (initial.lines ?? []).reduce(
+        (s, l) => s + l.quantity * l.unit_price,
+        0,
+      );
+      const finalT = grossInit * (1 - initial.discountPercent / 100);
+      if (finalT > 0 && Number.isFinite(finalT)) {
+        setDiscountedTotalInput(finalT.toFixed(2));
+      }
+    }
+    // Intentionally only on mount — operator typing is the source of truth after.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -495,28 +527,32 @@ export function NewProformaForm({
             />
           </Field>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <Field
-            label={t("sale_discount_label")}
-            hint={t("sale_discount_hint")}
+            label={t("sale_discount_new_total_label")}
+            hint={t("sale_discount_new_total_hint", {
+              original: totals.grossBeforeDiscount.toFixed(2),
+              currency,
+            })}
           >
             <div className="flex items-center gap-2">
               <Input
                 type="number"
                 inputMode="decimal"
-                step="0.5"
+                step="0.01"
                 min={0}
-                max={100}
-                value={discountPercent}
-                onChange={(e) => setDiscountPercent(e.target.value)}
-                placeholder="0"
-                className="w-28"
+                value={discountedTotalInput}
+                onChange={(e) => setDiscountedTotalInput(e.target.value)}
+                placeholder={totals.grossBeforeDiscount > 0
+                  ? totals.grossBeforeDiscount.toFixed(2)
+                  : "0.00"}
+                className="w-40"
               />
-              <span className="text-sm text-muted">%</span>
+              <span className="text-sm text-muted">{currency}</span>
               {totals.discountPercent > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setDiscountPercent("")}
+                  onClick={() => setDiscountedTotalInput("")}
                   className="ml-1 text-xs text-muted hover:text-destructive"
                 >
                   {t("sale_discount_clear")}
@@ -524,6 +560,20 @@ export function NewProformaForm({
               ) : null}
             </div>
           </Field>
+          <div className="text-right text-xs md:justify-self-end">
+            {totals.discountPercent > 0 ? (
+              <div className="rounded-md border border-success/30 bg-success/5 px-3 py-2 text-success">
+                <div className="text-[10px] uppercase tracking-wide opacity-70">
+                  {t("sale_discount_derived_label")}
+                </div>
+                <div className="text-sm font-semibold tabular-nums">
+                  -{totals.discountPercent.toFixed(totals.discountPercent % 1 === 0 ? 0 : 2)}% · -{totals.discountAmount.toFixed(2)} {currency}
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted">{t("sale_discount_none_hint")}</div>
+            )}
+          </div>
         </div>
         <div className="mt-3">
           <Field label={t("proforma_form_notes")}>

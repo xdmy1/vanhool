@@ -1519,6 +1519,10 @@
     "sale_discount_clear": "clear",
     "sale_discount_footer": "Discount {percent}%",
     "sale_discount_line_label": "Commercial discount ({percent}%)",
-    "invoice_print_discount": "Discount"
+    "invoice_print_discount": "Discount",
+    "sale_discount_new_total_label": "New total (after discount)",
+    "sale_discount_new_total_hint": "Original total: {original} {currency}. Type the final amount.",
+    "sale_discount_derived_label": "Derived discount",
+    "sale_discount_none_hint": "Leave empty to apply no discount."
   }
 }
