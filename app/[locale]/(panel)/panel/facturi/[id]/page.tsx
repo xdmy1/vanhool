@@ -5,6 +5,7 @@ import { ExternalLink, Printer } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
+import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { VoidInvoiceButton } from "@/components/panel/documents/VoidInvoiceButton";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
@@ -65,6 +66,10 @@ export default async function PanelInvoiceDetailPage({
                 {t("action_print")}
               </Link>
             </Button>
+            <SendToAccountantButton
+              invoiceId={invoice.id}
+              initialSentAt={invoice.accountant_sent_at}
+            />
             {invoice.refrens_url ? (
               <Button asChild variant="outline" className="gap-1.5">
                 <a href={invoice.refrens_url} target="_blank" rel="noreferrer">

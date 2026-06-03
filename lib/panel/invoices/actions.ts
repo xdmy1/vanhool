@@ -5,7 +5,14 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { sendResendEmail } from "@/lib/email/resend";
+import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import type { Json } from "@/lib/supabase/database.types";
+
+// Bookkeeper inbox — single recipient for the "send to accountant" button
+// on each invoice / proforma detail page. Per project owner; not stored in
+// settings because it's a fixed business address.
+const ACCOUNTANT_EMAIL = "bobernagadamianw2312@gmail.com";
 
 // ---- Schemas ---------------------------------------------------------------
 
@@ -748,6 +755,58 @@ export async function voidInvoice(
   revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
   revalidatePath("/[locale]/admin/orders", "page");
   return { ok: true };
+}
+
+/**
+ * Forward an invoice / proforma to the bookkeeper's inbox. Records the
+ * timestamp on the row so the button can flip from "trimite" (green) to
+ * "trimis · re-trimite" (yellow). Re-sends are allowed — every click
+ * pushes a new email and bumps the timestamp.
+ */
+export async function sendInvoiceToAccountant(
+  invoiceId: string,
+): Promise<
+  | { ok: true; sentAt: string }
+  | { ok: false; reason: string }
+> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+
+  const { getInvoice } = await import("@/lib/panel/invoices/queries");
+  const invoice = await getInvoice(invoiceId);
+  if (!invoice) return { ok: false, reason: "invoice_not_found" };
+
+  const { subject, html, text } = accountantInvoiceEmail(invoice);
+
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) {
+    return { ok: false, reason: result.reason };
+  }
+
+  const supabase = await createClient();
+  const sentAt = new Date().toISOString();
+  // Defensive write: omit accountant_sent_at if the migration hasn't been
+  // applied yet — the email already went out, the UI just won't persist
+  // the "sent" indicator across reloads in that case.
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update(({ accountant_sent_at: sentAt } as never))
+    .eq("id", invoiceId);
+  if (updateError && /accountant_sent_at/i.test(updateError.message)) {
+    console.warn(
+      "[panel.invoices] accountant_sent_at column missing — apply sql/invoices-accountant-sent.sql",
+    );
+  }
+
+  revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
+  revalidatePath(`/[locale]/panel/proforme/${invoiceId}`, "page");
+  return { ok: true, sentAt };
 }
 
 /**

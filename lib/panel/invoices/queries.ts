@@ -130,6 +130,9 @@ export type InvoiceDetail = {
   total: number;
   /** Commercial discount % applied on the gross. 0 = no discount. */
   discount_percent: number;
+  /** ISO timestamp set the first time this document was emailed to the
+   * accountant. Null while it's still pending. */
+  accountant_sent_at: string | null;
   notes: string | null;
   refrens_invoice_id: string | null;
   refrens_url: string | null;
@@ -143,19 +146,18 @@ export type InvoiceDetail = {
 
 export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   const supabase = await createClient();
-  // Try the full select first (incl. discount_percent). Fall back to the
-  // pre-migration column list if Supabase doesn't yet know about
-  // discount_percent — so the panel keeps loading even when the SQL
-  // migration hasn't been applied to this environment.
+  // Try the full select first (incl. discount_percent, accountant_sent_at).
+  // Fall back to a column list without the optional new fields if the SQL
+  // migration hasn't run yet — so the panel keeps loading either way.
   let { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, accountant_sent_at, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
     .maybeSingle();
-  if (error && /discount_percent/i.test(error.message)) {
+  if (error && /(discount_percent|accountant_sent_at)/i.test(error.message)) {
     const retry = await supabase
       .from("invoices")
       .select(
@@ -261,6 +263,8 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     discount_percent: Number(
       (data as { discount_percent?: number | string | null }).discount_percent ?? 0,
     ),
+    accountant_sent_at:
+      (data as { accountant_sent_at?: string | null }).accountant_sent_at ?? null,
     notes: data.notes,
     refrens_invoice_id: data.refrens_invoice_id,
     refrens_url: data.refrens_url,

@@ -6,6 +6,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
+import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -70,6 +71,10 @@ export default async function PanelProformaDetailPage({
                 {t("action_print")}
               </Link>
             </Button>
+            <SendToAccountantButton
+              invoiceId={proforma.id}
+              initialSentAt={proforma.accountant_sent_at}
+            />
           </div>
         }
       />

@@ -1543,6 +1543,12 @@
       "Livrări parțiale: Vânzătorul își rezervă dreptul de a face livrări parțiale, fiecare considerată tranzacție separată și putând fi facturată distinct.",
       "Forță majoră: Vânzătorul nu răspunde pentru întârzieri sau neexecutare datorate unor circumstanțe în afara controlului său (calamități, întreruperi de transport, tulburări politice, întârzieri ale furnizorilor etc.).",
       "Contact livrare: Adrian Oborocean · +373 680 59 005 · adrian@inter-bus.md"
-    ]
+    ],
+    "accountant_send_label": "Trimite contabilului",
+    "accountant_send_resend_label": "Trimis · re-trimite",
+    "accountant_send_pending": "Se trimite…",
+    "accountant_send_success": "Trimis către contabil",
+    "accountant_send_error": "Eroare la trimitere: {reason}",
+    "accountant_send_last": "Ultima trimitere: {when}"
   }
 }

@@ -1543,6 +1543,12 @@
       "Partial Deliveries: The seller reserves the right to make partial deliveries. Each partial delivery is a separate transaction and may be invoiced individually.",
       "Force Majeure: The seller shall not be held liable for delays or failure to perform due to circumstances beyond its control (natural disasters, transport interruptions, political unrest, supplier delays, etc.).",
       "Delivery Contact: Adrian Oborocean · +373 680 59 005 · adrian@inter-bus.md"
-    ]
+    ],
+    "accountant_send_label": "Send to accountant",
+    "accountant_send_resend_label": "Sent · resend",
+    "accountant_send_pending": "Sending…",
+    "accountant_send_success": "Sent to accountant",
+    "accountant_send_error": "Send failed: {reason}",
+    "accountant_send_last": "Last sent: {when}"
   }
 }
