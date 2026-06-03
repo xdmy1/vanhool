@@ -2,15 +2,16 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/lib/i18n/routing";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import {
   createPromo,
-  deletePromo,
+  deletePromoWithPin,
   updatePromo,
   type PromoFormValues,
 } from "@/lib/admin/promocodes/actions";
@@ -49,7 +50,6 @@ export function PromoForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [delPending, startDelTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
     initial?.discountType ?? "percentage",
@@ -103,19 +103,6 @@ export function PromoForm({
     });
   };
 
-  const onDelete = () => {
-    if (!promoId) return;
-    if (!confirm(labels.confirm_delete)) return;
-    startDelTransition(async () => {
-      const res = await deletePromo(promoId);
-      if (!res.ok) {
-        toast.error(res.message ?? labels.error_generic);
-        return;
-      }
-      toast.success("✓");
-      router.replace(`/${locale}/admin/promocodes`);
-    });
-  };
 
   return (
     <form
@@ -209,7 +196,7 @@ export function PromoForm({
           type="submit"
           size="md"
           className=""
-          disabled={pending || delPending}
+          disabled={pending}
         >
           <Save className="size-4" />
           {pending ? (isEdit ? labels.saving : labels.creating) : isEdit ? labels.save : labels.create}
@@ -225,18 +212,15 @@ export function PromoForm({
             {labels.cancel}
           </Link>
         </Button>
-        {isEdit ? (
-          <Button
-            type="button"
-            size="md"
-            variant="destructive"
-            className="ml-auto"
-            onClick={onDelete}
-            disabled={delPending || pending}
-          >
-            <Trash2 className="size-4" />
-            {labels.delete}
-          </Button>
+        {isEdit && promoId ? (
+          <div className="ml-auto">
+            <PinDeleteButton
+              action={deletePromoWithPin}
+              entityId={promoId}
+              redirectTo={`/${locale}/admin/promocodes`}
+              label={labels.delete}
+            />
+          </div>
         ) : null}
       </div>
     </form>

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -335,13 +336,25 @@ export async function updateProduct(
   return { ok: true, id };
 }
 
-export async function deleteProduct(id: string): Promise<ProductActionResult> {
+export async function deleteProduct(id: string, pin?: string): Promise<ProductActionResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, code: "forbidden" };
+  if (!verifyAdminPin(pin)) return { ok: false, code: "validation", message: "bad_pin" };
   const { error } = await auth.supabase.from("products").delete().eq("id", id);
   if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
   revalidatePath("/", "layout");
   return { ok: true, id };
+}
+
+/** Wrapper with the same shape as PinDeleteButton expects. */
+export async function deleteProductWithPin(
+  id: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const res = await deleteProduct(id, pin);
+  if (res.ok) return { ok: true };
+  if (res.message === "bad_pin") return { ok: false, reason: "bad_pin" };
+  return { ok: false, reason: res.message ?? res.code };
 }
 
 export async function toggleProductActive(

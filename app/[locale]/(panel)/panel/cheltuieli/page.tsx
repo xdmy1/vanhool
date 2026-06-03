@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { ExpenseForm } from "@/components/panel/expenses/ExpenseForm";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteExpense } from "@/lib/panel/expenses/actions";
 import { listExpenses } from "@/lib/panel/expenses/queries";
 import {
   EXPENSE_CATEGORIES,
@@ -99,12 +101,13 @@ export default async function PanelCheltuieliPage({
               <th className="px-4 py-3">{t("expenses_col_supplier")}</th>
               <th className="px-4 py-3">{t("expenses_col_payment")}</th>
               <th className="px-4 py-3 text-right">{t("expenses_col_amount")}</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border bg-surface">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
                   {t("expenses_empty")}
                 </td>
               </tr>
@@ -126,6 +129,13 @@ export default async function PanelCheltuieliPage({
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums font-semibold">
                     {r.amount.toFixed(2)} {r.currency}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <PinDeleteButton
+                      action={deleteExpense}
+                      entityId={r.id}
+                      compact
+                    />
                   </td>
                 </tr>
               ))

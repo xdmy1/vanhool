@@ -2,16 +2,17 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TranslateButton } from "@/components/admin/TranslateButton";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { Link } from "@/lib/i18n/routing";
 import {
   createCategory,
-  deleteCategory,
+  deleteCategoryWithPin,
   updateCategory,
   type CategoryFormValues,
 } from "@/lib/admin/categories/actions";
@@ -52,7 +53,6 @@ export function CategoryForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [delPending, startDelTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [parentId, setParentId] = useState<string | null>(initial?.parentId ?? null);
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
@@ -95,20 +95,6 @@ export function CategoryForm({
       toast.success("✓");
       if (isEdit) router.refresh();
       else router.replace(`/${locale}/admin/categories`);
-    });
-  };
-
-  const onDelete = () => {
-    if (!categoryId) return;
-    if (!confirm(labels.confirm_delete)) return;
-    startDelTransition(async () => {
-      const res = await deleteCategory(categoryId);
-      if (!res.ok) {
-        toast.error(res.message ?? labels.error_generic);
-        return;
-      }
-      toast.success("✓");
-      router.replace(`/${locale}/admin/categories`);
     });
   };
 
@@ -189,7 +175,7 @@ export function CategoryForm({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" size="md" className="" disabled={pending || delPending}>
+        <Button type="submit" size="md" className="" disabled={pending}>
           <Save className="size-4" />
           {pending ? (isEdit ? labels.saving : labels.creating) : isEdit ? labels.save : labels.create}
         </Button>
@@ -198,18 +184,15 @@ export function CategoryForm({
             {labels.cancel}
           </Link>
         </Button>
-        {isEdit ? (
-          <Button
-            type="button"
-            size="md"
-            variant="destructive"
-            className="ml-auto"
-            onClick={onDelete}
-            disabled={delPending || pending}
-          >
-            <Trash2 className="size-4" />
-            {labels.delete}
-          </Button>
+        {isEdit && categoryId ? (
+          <div className="ml-auto">
+            <PinDeleteButton
+              action={deleteCategoryWithPin}
+              entityId={categoryId}
+              redirectTo={`/${locale}/admin/categories`}
+              label={labels.delete}
+            />
+          </div>
         ) : null}
       </div>
     </form>

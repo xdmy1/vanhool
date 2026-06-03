@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { EXPENSE_CATEGORIES } from "@/lib/panel/expenses/categories";
 
 const expenseSchema = z.object({
@@ -62,9 +63,13 @@ export async function createExpense(
   return { ok: true, id: data.id };
 }
 
-export async function deleteExpense(id: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+export async function deleteExpense(
+  id: string,
+  pin?: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = await createClient();
   const { error } = await supabase.from("expenses").delete().eq("id", id);
   if (error) return { ok: false, reason: error.message };

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { MultiImageUpload } from "@/components/admin/products/MultiImageUpload";
 import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { TranslateButton } from "@/components/admin/TranslateButton";
 import { Link } from "@/lib/i18n/routing";
 import {
   createProduct,
-  deleteProduct,
+  deleteProductWithPin,
   updateProduct,
   type CrossReference,
   type ProductFormValues,
@@ -162,7 +163,6 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [delPending, startDelTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
@@ -360,20 +360,6 @@ export function ProductForm({
         await linkPurchaseLineToProduct(linkLineId, res.id);
       }
       router.replace(redirectAfterCreate ?? `/${locale}/admin/products/${"id" in res ? res.id : ""}`);
-    });
-  };
-
-  const onDelete = () => {
-    if (!productId) return;
-    if (!confirm(labels.confirm_delete)) return;
-    startDelTransition(async () => {
-      const res = await deleteProduct(productId);
-      if (!res.ok) {
-        toast.error(res.message ?? labels.error_generic);
-        return;
-      }
-      toast.success("✓");
-      router.replace(`/${locale}/admin/products`);
     });
   };
 
@@ -792,7 +778,7 @@ export function ProductForm({
             type="submit"
             size="lg"
             className="w-full"
-            disabled={pending || delPending}
+            disabled={pending}
           >
             <Save className="size-4" />
             {pending
@@ -814,18 +800,15 @@ export function ProductForm({
               {labels.cancel}
             </Link>
           </Button>
-          {isEdit ? (
-            <Button
-              type="button"
-              size="md"
-              variant="destructive"
-              className="mt-4 w-full"
-              onClick={onDelete}
-              disabled={delPending || pending}
-            >
-              <Trash2 className="size-4" />
-              {labels.delete}
-            </Button>
+          {isEdit && productId ? (
+            <div className="mt-4 w-full">
+              <PinDeleteButton
+                action={deleteProductWithPin}
+                entityId={productId}
+                redirectTo={`/${locale}/admin/products`}
+                label={labels.delete}
+              />
+            </div>
           ) : null}
         </div>
       </aside>

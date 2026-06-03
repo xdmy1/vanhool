@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { translateToAll, type TranslateLocale } from "@/lib/translation/translate";
 
 async function requireAdmin() {
@@ -235,11 +236,22 @@ export async function quickCreateCategory(
   };
 }
 
-export async function deleteCategory(id: string): Promise<CategoryActionResult> {
+export async function deleteCategory(id: string, pin?: string): Promise<CategoryActionResult> {
   const auth = await requireAdmin();
   if (!auth.ok) return { ok: false, code: "forbidden" };
+  if (!verifyAdminPin(pin)) return { ok: false, code: "validation", message: "bad_pin" };
   const { error } = await auth.supabase.from("categories").delete().eq("id", id);
   if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
   revalidatePath("/", "layout");
   return { ok: true, id };
+}
+
+export async function deleteCategoryWithPin(
+  id: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const res = await deleteCategory(id, pin);
+  if (res.ok) return { ok: true };
+  if (res.message === "bad_pin") return { ok: false, reason: "bad_pin" };
+  return { ok: false, reason: res.message ?? res.code };
 }

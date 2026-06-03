@@ -2,15 +2,16 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Edit, Star, StarOff, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Edit, Star, StarOff, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Link } from "@/lib/i18n/routing";
 import { PartImage } from "@/components/common/PartImage";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { Price } from "@/components/common/Price";
 import { illustrationFor } from "@/lib/db/types";
 import {
-  deleteProduct,
+  deleteProductWithPin,
   toggleProductActive,
   toggleProductFeatured,
 } from "@/lib/admin/products/actions";
@@ -48,19 +49,6 @@ export function ProductsTable({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-
-  const onDelete = (id: string) => {
-    if (!confirm(labels.confirm_delete)) return;
-    startTransition(async () => {
-      const res = await deleteProduct(id);
-      if (!res.ok) {
-        toast.error(res.message ?? "error");
-        return;
-      }
-      toast.success("✓");
-      router.refresh();
-    });
-  };
 
   const onToggleActive = (id: string, current: boolean) => {
     startTransition(async () => {
@@ -216,11 +204,10 @@ export function ProductsTable({
                     >
                       <Edit className="size-3.5" />
                     </Link>
-                    <IconBtn
-                      title={labels.delete}
-                      onClick={() => onDelete(p.id)}
-                      icon={Trash2}
-                      tone="destructive"
+                    <PinDeleteButton
+                      action={deleteProductWithPin}
+                      entityId={p.id}
+                      compact
                     />
                   </div>
                 </td>

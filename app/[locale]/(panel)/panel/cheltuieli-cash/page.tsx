@@ -4,6 +4,8 @@ import { ArrowDown, ArrowUp, Wallet } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { ExpenseForm } from "@/components/panel/expenses/ExpenseForm";
 import { CashMovementForm } from "@/components/panel/expenses/CashMovementForm";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteExpense } from "@/lib/panel/expenses/actions";
 import { listExpenses } from "@/lib/panel/expenses/queries";
 import { getCashBalance, listCashMovements } from "@/lib/panel/cash/actions";
 import { type ExpenseCategory } from "@/lib/panel/expenses/categories";
@@ -65,12 +67,13 @@ export default async function PanelCheltuieliCashPage({
                   <th className="px-3 py-2">{t("expenses_col_category")}</th>
                   <th className="px-3 py-2">{t("expenses_col_description")}</th>
                   <th className="px-3 py-2 text-right">{t("expenses_col_amount")}</th>
+                  <th className="px-3 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-surface">
                 {expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-xs text-muted">
+                    <td colSpan={5} className="px-3 py-6 text-center text-xs text-muted">
                       {t("expenses_empty")}
                     </td>
                   </tr>
@@ -86,6 +89,13 @@ export default async function PanelCheltuieliCashPage({
                       <td className="px-3 py-2">{r.description}</td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {r.amount.toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <PinDeleteButton
+                          action={deleteExpense}
+                          entityId={r.id}
+                          compact
+                        />
                       </td>
                     </tr>
                   ))
