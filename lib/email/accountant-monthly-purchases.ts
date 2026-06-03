@@ -115,14 +115,14 @@ export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="720" style="max-width:720px;background:#ffffff;border-radius:8px;overflow:hidden">
 
         <tr><td style="padding:20px 24px;background:#f4f1ea;border-bottom:1px solid #d8d2c5">
-          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Achiziții conta 1 · raport lunar</div>
+          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Raport achiziții lunare</div>
           <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${escapeHtml(rangeStr)}</div>
-          <div style="font-size:12px;color:#6b6358;margin-top:2px">${count} document${count === 1 ? "" : "e"} fiscal${count === 1 ? "ă" : "e"}</div>
+          <div style="font-size:12px;color:#6b6358;margin-top:2px">${count} document${count === 1 ? "" : "e"}</div>
         </td></tr>
 
         <tr><td style="padding:16px 24px;background:#fffbe6;border-bottom:1px solid #f3e8aa">
           <div style="font-size:13px;color:#5a4906;line-height:1.5">
-            <strong>Raport achiziții conta 1</strong> — vă rugăm să introduceți în evidența contabilă achizițiile listate mai jos pentru perioada ${escapeHtml(rangeStr)}.
+            <strong>Raport achiziții</strong> — vă rugăm să introduceți în evidența contabilă achizițiile listate mai jos pentru perioada ${escapeHtml(rangeStr)}.
           </div>
         </td></tr>
 
@@ -150,8 +150,8 @@ export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
 </body></html>`;
 
   const textLines: string[] = [
-    `Raport achiziții conta 1 — ${rangeStr}`,
-    `${count} document(e) fiscal(e)`,
+    `Raport achiziții lunare — ${rangeStr}`,
+    `${count} document(e)`,
     "",
   ];
   for (const [i, p] of purchases.entries()) {
@@ -178,7 +178,7 @@ export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
     }
   }
 
-  const subject = `Achiziții conta 1 · ${rangeStr} · ${count} document(e)`;
+  const subject = `Raport achiziții lunare · ${rangeStr} · ${count} document(e)`;
 
   return { subject, html, text: textLines.join("\n") };
 }
