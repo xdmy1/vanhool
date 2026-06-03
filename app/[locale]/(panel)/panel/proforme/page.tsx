@@ -5,6 +5,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
+import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -117,7 +118,7 @@ export default async function PanelProformePage({
                       {r.total.toFixed(2)} {r.currency}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/panel/proforme/${r.id}/print` as "/panel"}
                           locale={locale}
@@ -129,6 +130,11 @@ export default async function PanelProformePage({
                           <Printer className="size-3.5" />
                           {t("action_print")}
                         </Link>
+                        <SendToAccountantButton
+                          invoiceId={r.id}
+                          initialSentAt={r.accountant_sent_at}
+                          compact
+                        />
                         {r.status === "sent" || r.status === "draft" ? (
                           <ConvertProformaButton
                             proformaId={r.id}

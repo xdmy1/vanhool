@@ -1549,6 +1549,8 @@
     "accountant_send_pending": "Se trimite…",
     "accountant_send_success": "Trimis către contabil",
     "accountant_send_error": "Eroare la trimitere: {reason}",
-    "accountant_send_last": "Ultima trimitere: {when}"
+    "accountant_send_last": "Ultima trimitere: {when}",
+    "accountant_send_compact": "Contabilului",
+    "accountant_send_resend_compact": "Trimis"
   }
 }

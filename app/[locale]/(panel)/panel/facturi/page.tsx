@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Printer, X } from "lucide-re
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
+import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -374,7 +375,7 @@ export default async function PanelFacturiPage({
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/panel/facturi/${r.id}/print` as "/panel"}
                           locale={locale}
@@ -386,6 +387,11 @@ export default async function PanelFacturiPage({
                           <Printer className="size-3.5" />
                           {t("action_print")}
                         </Link>
+                        <SendToAccountantButton
+                          invoiceId={r.id}
+                          initialSentAt={r.accountant_sent_at}
+                          compact
+                        />
                         {r.status === "issued" ? (
                           <MarkInvoicePaidButton
                             invoiceId={r.id}

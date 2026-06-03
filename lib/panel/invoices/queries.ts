@@ -19,6 +19,7 @@ export type InvoiceRow = {
   refrens_url: string | null;
   proforma_id: string | null;
   converted_to_invoice_id: string | null;
+  accountant_sent_at: string | null;
   customer_snapshot: {
     name?: string;
     idno?: string | null;
@@ -39,43 +40,56 @@ export async function listInvoices(args: {
   overdueOnly?: boolean;
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("invoices")
-    .select(
-      "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, customer_snapshot, account_scope",
-    )
-    .order("issued_date", { ascending: false })
-    .limit(300);
-  if (args.type) query = query.eq("type", args.type);
-  if (args.scope) query = query.eq("account_scope", args.scope);
-  if (args.from) query = query.gte("issued_date", args.from);
-  if (args.to) query = query.lte("issued_date", args.to);
-  if (args.overdueOnly) {
-    const today = new Date().toISOString().slice(0, 10);
-    query = query.eq("status", "issued").lt("due_date", today);
+
+  const buildQuery = (includeAccountant: boolean) => {
+    let q = supabase
+      .from("invoices")
+      .select(
+        includeAccountant
+          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, customer_snapshot, account_scope"
+          : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, customer_snapshot, account_scope",
+      )
+      .order("issued_date", { ascending: false })
+      .limit(300);
+    if (args.type) q = q.eq("type", args.type);
+    if (args.scope) q = q.eq("account_scope", args.scope);
+    if (args.from) q = q.gte("issued_date", args.from);
+    if (args.to) q = q.lte("issued_date", args.to);
+    if (args.overdueOnly) {
+      const today = new Date().toISOString().slice(0, 10);
+      q = q.eq("status", "issued").lt("due_date", today);
+    }
+    if (args.q) {
+      const term = `%${args.q.replace(/[%_]/g, "")}%`;
+      q = q.or(`number.ilike.${term},refrens_invoice_id.ilike.${term}`);
+    }
+    return q;
+  };
+
+  let { data, error } = await buildQuery(true);
+  if (error && /accountant_sent_at/i.test(error.message)) {
+    const retry = await buildQuery(false);
+    data = retry.data;
+    error = retry.error;
   }
-  if (args.q) {
-    const q = `%${args.q.replace(/[%_]/g, "")}%`;
-    query = query.or(`number.ilike.${q},refrens_invoice_id.ilike.${q}`);
-  }
-  const { data } = await query;
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    order_id: r.order_id,
-    type: r.type,
-    account_scope: r.account_scope,
-    series: r.series,
-    number: r.number,
-    issued_date: r.issued_date,
-    due_date: r.due_date,
-    paid_at: r.paid_at,
-    currency: r.currency ?? "MDL",
+  return (((data ?? []) as unknown) as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id as string,
+    order_id: r.order_id as string | null,
+    type: r.type as InvoiceListType,
+    account_scope: r.account_scope as "conta1" | "conta2",
+    series: r.series as string | null,
+    number: r.number as string | null,
+    issued_date: r.issued_date as string,
+    due_date: r.due_date as string | null,
+    paid_at: r.paid_at as string | null,
+    currency: (r.currency as string | null) ?? "MDL",
     total: Number(r.total ?? 0),
-    status: r.status,
-    refrens_invoice_id: r.refrens_invoice_id,
-    refrens_url: r.refrens_url,
-    proforma_id: r.proforma_id,
-    converted_to_invoice_id: r.converted_to_invoice_id,
+    status: r.status as InvoiceRow["status"],
+    refrens_invoice_id: r.refrens_invoice_id as string | null,
+    refrens_url: r.refrens_url as string | null,
+    proforma_id: r.proforma_id as string | null,
+    converted_to_invoice_id: r.converted_to_invoice_id as string | null,
+    accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
     customer_snapshot: r.customer_snapshot as InvoiceRow["customer_snapshot"],
   }));
 }

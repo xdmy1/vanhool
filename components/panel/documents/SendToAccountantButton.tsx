@@ -17,9 +17,12 @@ import { cn } from "@/lib/utils/cn";
 export function SendToAccountantButton({
   invoiceId,
   initialSentAt,
+  compact = false,
 }: {
   invoiceId: string;
   initialSentAt: string | null;
+  /** Smaller form factor for inline use in list rows. */
+  compact?: boolean;
 }) {
   const t = useTranslations("panel");
   const router = useRouter();
@@ -45,6 +48,14 @@ export function SendToAccountantButton({
   const label = wasSent
     ? t("accountant_send_resend_label")
     : t("accountant_send_label");
+  // Tooltip carries the full text even in compact mode so the operator
+  // doesn't lose context when the label is iconified.
+  const tooltip =
+    wasSent && sentAt
+      ? t("accountant_send_last", {
+          when: new Date(sentAt).toLocaleString("ro-RO"),
+        })
+      : t("accountant_send_label");
 
   return (
     <button
@@ -52,21 +63,22 @@ export function SendToAccountantButton({
       onClick={fire}
       disabled={pending}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-70",
+        "inline-flex items-center gap-1.5 rounded-md border font-medium transition-colors disabled:cursor-wait disabled:opacity-70",
+        compact ? "px-2 py-1 text-xs" : "px-3 py-1.5 text-xs",
         wasSent
           ? "border-warning bg-warning/15 text-warning hover:bg-warning/25"
           : "border-success bg-success/15 text-success hover:bg-success/25",
       )}
-      title={
-        wasSent && sentAt
-          ? t("accountant_send_last", {
-              when: new Date(sentAt).toLocaleString("ro-RO"),
-            })
-          : t("accountant_send_label")
-      }
+      title={tooltip}
     >
       {wasSent ? <Check className="size-3.5" /> : <Mail className="size-3.5" />}
-      {pending ? t("accountant_send_pending") : label}
+      {pending
+        ? t("accountant_send_pending")
+        : compact
+          ? wasSent
+            ? t("accountant_send_resend_compact")
+            : t("accountant_send_compact")
+          : label}
     </button>
   );
 }
