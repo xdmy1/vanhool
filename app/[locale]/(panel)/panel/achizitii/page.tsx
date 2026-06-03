@@ -5,6 +5,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { SendMonthlyPurchasesButton } from "@/components/panel/purchases/SendMonthlyPurchasesButton";
 import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { listPurchases } from "@/lib/panel/purchases/queries";
 import { getActiveBook } from "@/lib/panel/scope";
@@ -45,12 +46,15 @@ export default async function PanelAchizitiiPage({
         title={t("achizitii_title")}
         subtitle={t("achizitii_subtitle")}
         actions={
-          <Button asChild className="gap-1.5">
-            <Link href={"/panel/achizitii/new" as "/panel"} locale={locale}>
-              <Plus className="size-4" />
-              {t("achizitii_new_button")}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {scope === "conta1" ? <SendMonthlyPurchasesButton /> : null}
+            <Button asChild className="gap-1.5">
+              <Link href={"/panel/achizitii/new" as "/panel"} locale={locale}>
+                <Plus className="size-4" />
+                {t("achizitii_new_button")}
+              </Link>
+            </Button>
+          </div>
         }
       />
 

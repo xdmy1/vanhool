@@ -1560,6 +1560,15 @@
     "pin_delete_pending": "Se șterge…",
     "pin_delete_confirm": "Șterge definitiv",
     "pin_delete_success": "Șters",
-    "action_close": "Închide"
+    "action_close": "Închide",
+    "monthly_send_label": "Trimite contabilului luna",
+    "monthly_send_title": "Trimite achizițiile lunare contabilului",
+    "monthly_send_subtitle": "Doar achizițiile cu conta 1 vor fi incluse. Selectează luna și introdu PIN-ul.",
+    "monthly_send_month_label": "Luna",
+    "monthly_send_pending": "Se trimite…",
+    "monthly_send_confirm": "Trimite",
+    "monthly_send_success": "Trimis · {count} achiziții",
+    "monthly_send_empty": "Nicio achiziție conta 1 în această lună.",
+    "monthly_send_bad_month": "Selectează o lună validă."
   }
 }

@@ -801,12 +801,14 @@ export async function deleteInvoiceWithPin(
  */
 export async function sendInvoiceToAccountant(
   invoiceId: string,
+  pin: string,
 ): Promise<
   | { ok: true; sentAt: string }
   | { ok: false; reason: string }
 > {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
 
   const { getInvoice } = await import("@/lib/panel/invoices/queries");
   const invoice = await getInvoice(invoiceId);

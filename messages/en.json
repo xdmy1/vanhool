@@ -1560,6 +1560,15 @@
     "pin_delete_pending": "Deleting…",
     "pin_delete_confirm": "Delete permanently",
     "pin_delete_success": "Deleted",
-    "action_close": "Close"
+    "action_close": "Close",
+    "monthly_send_label": "Send month to accountant",
+    "monthly_send_title": "Send monthly purchases to the accountant",
+    "monthly_send_subtitle": "Only conta 1 purchases will be included. Pick the month and enter the PIN.",
+    "monthly_send_month_label": "Month",
+    "monthly_send_pending": "Sending…",
+    "monthly_send_confirm": "Send",
+    "monthly_send_success": "Sent · {count} purchases",
+    "monthly_send_empty": "No conta 1 purchases in this month.",
+    "monthly_send_bad_month": "Pick a valid month."
   }
 }

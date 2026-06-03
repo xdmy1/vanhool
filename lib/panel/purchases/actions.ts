@@ -6,6 +6,11 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
+import { sendResendEmail } from "@/lib/email/resend";
+import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
+import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
+
+const ACCOUNTANT_EMAIL = "bobernagadamianw2312@gmail.com";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
@@ -336,6 +341,43 @@ export async function cancelPurchase(
   if (error) return { ok: false, reason: error.message };
   revalidatePath("/[locale]/panel/achizitii", "page");
   return { ok: true };
+}
+
+/**
+ * Forward every conta1 purchase whose `document_date` lands inside
+ * `[from, to]` to the bookkeeper's inbox. PIN-gated. Conta2 purchases
+ * (cash / non-fiscal) are deliberately excluded — the accountant only
+ * cares about the fiscal book.
+ */
+export async function sendConta1PurchasesMonthly(
+  from: string,
+  to: string,
+  pin: string,
+): Promise<
+  | { ok: true; count: number; sentAt: string }
+  | { ok: false; reason: string }
+> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return { ok: false, reason: "bad_range" };
+  }
+
+  const data = await getConta1PurchasesForRange(from, to);
+  if (data.count === 0) return { ok: false, reason: "empty_range" };
+
+  const { subject, html, text } = accountantMonthlyPurchasesEmail(data);
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  return { ok: true, count: data.count, sentAt: new Date().toISOString() };
 }
 
 /**

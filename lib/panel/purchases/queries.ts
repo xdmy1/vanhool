@@ -47,6 +47,128 @@ export async function listPurchases(args: {
   });
 }
 
+export type PurchasesForMonth = {
+  from: string;
+  to: string;
+  count: number;
+  totalsByCurrency: Array<{ currency: string; total: number; vat_amount: number }>;
+  purchases: Array<{
+    id: string;
+    document_number: string | null;
+    document_date: string;
+    supplier_name: string;
+    status: string;
+    currency: string;
+    subtotal: number;
+    vat_amount: number;
+    total: number;
+    items: Array<{
+      supplier_code: string | null;
+      internal_code: string | null;
+      description: string;
+      quantity: number;
+      unit_cost: number;
+      vat_rate: number;
+      line_total: number;
+    }>;
+  }>;
+};
+
+/**
+ * Fetch every conta1 purchase whose `document_date` falls in
+ * `[fromIso, toIso]`, joined with supplier name and line items.
+ * Used by the "Trimite contabilului" monthly export.
+ */
+export async function getConta1PurchasesForRange(
+  fromIso: string,
+  toIso: string,
+): Promise<PurchasesForMonth> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("purchases")
+    .select(
+      "id, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
+    )
+    .eq("account_scope", "conta1")
+    .gte("document_date", fromIso)
+    .lte("document_date", toIso)
+    .order("document_date", { ascending: true });
+  if (error) {
+    return {
+      from: fromIso,
+      to: toIso,
+      count: 0,
+      totalsByCurrency: [],
+      purchases: [],
+    };
+  }
+
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    document_number: string | null;
+    document_date: string;
+    status: string;
+    currency: string | null;
+    subtotal: number | string | null;
+    vat_amount: number | string | null;
+    total: number | string | null;
+    suppliers: { name: string } | null;
+    purchase_items: Array<{
+      id: string;
+      supplier_code: string | null;
+      internal_code: string | null;
+      description: string;
+      quantity: number | string;
+      unit_cost: number | string;
+      vat_rate: number | string;
+      line_total: number | string;
+    }> | null;
+  }>;
+
+  const totalsMap = new Map<string, { total: number; vat_amount: number }>();
+  const purchases = rows.map((r) => {
+    const currency = r.currency ?? "MDL";
+    const total = Number(r.total ?? 0);
+    const vat = Number(r.vat_amount ?? 0);
+    const cur = totalsMap.get(currency) ?? { total: 0, vat_amount: 0 };
+    cur.total += total;
+    cur.vat_amount += vat;
+    totalsMap.set(currency, cur);
+    return {
+      id: r.id,
+      document_number: r.document_number,
+      document_date: r.document_date,
+      supplier_name: r.suppliers?.name ?? "—",
+      status: r.status,
+      currency,
+      subtotal: Number(r.subtotal ?? 0),
+      vat_amount: vat,
+      total,
+      items: (r.purchase_items ?? []).map((it) => ({
+        supplier_code: it.supplier_code,
+        internal_code: it.internal_code,
+        description: it.description,
+        quantity: Number(it.quantity ?? 0),
+        unit_cost: Number(it.unit_cost ?? 0),
+        vat_rate: Number(it.vat_rate ?? 0),
+        line_total: Number(it.line_total ?? 0),
+      })),
+    };
+  });
+
+  return {
+    from: fromIso,
+    to: toIso,
+    count: purchases.length,
+    totalsByCurrency: Array.from(totalsMap.entries()).map(([currency, v]) => ({
+      currency,
+      total: Number(v.total.toFixed(2)),
+      vat_amount: Number(v.vat_amount.toFixed(2)),
+    })),
+    purchases,
+  };
+}
+
 export type PurchaseDetail = {
   id: string;
   supplier_id: string;

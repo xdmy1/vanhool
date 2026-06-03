@@ -1560,6 +1560,15 @@
     "pin_delete_pending": "Удаление…",
     "pin_delete_confirm": "Удалить навсегда",
     "pin_delete_success": "Удалено",
-    "action_close": "Закрыть"
+    "action_close": "Закрыть",
+    "monthly_send_label": "Месяц бухгалтеру",
+    "monthly_send_title": "Отправить месячные закупки бухгалтеру",
+    "monthly_send_subtitle": "Включаются только закупки конта 1. Выберите месяц и введите PIN.",
+    "monthly_send_month_label": "Месяц",
+    "monthly_send_pending": "Отправка…",
+    "monthly_send_confirm": "Отправить",
+    "monthly_send_success": "Отправлено · {count} закупок",
+    "monthly_send_empty": "Нет закупок конта 1 в этом месяце.",
+    "monthly_send_bad_month": "Выберите корректный месяц."
   }
 }
