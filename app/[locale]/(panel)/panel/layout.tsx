@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { PanelSidebar } from "@/components/panel/PanelSidebar";
 import { PanelTopbar } from "@/components/panel/PanelTopbar";
+import { PanelMobileNav } from "@/components/panel/PanelMobileNav";
 import { requirePanelUser } from "@/lib/panel/auth";
 import { getActiveBook } from "@/lib/panel/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -55,29 +56,31 @@ export default async function PanelLayout({
       .neq("status", "cancelled"),
   ]);
 
+  const sidebarLabels = {
+    overview: tPanel("nav_overview"),
+    comenziSite: tPanel("nav_comenzi_site"),
+    clienti: tPanel("nav_clienti"),
+    produse: tPanel("nav_produse"),
+    stock: tPanel("nav_stock"),
+    vanzareNoua: tPanel("nav_vanzare_noua"),
+    achizitii: tPanel("nav_achizitii"),
+    proforme: tPanel("nav_proforme"),
+    facturi: tPanel("nav_facturi"),
+    fiseLivrare: tPanel("nav_fise_livrare"),
+    cheltuieli: tPanel("nav_cheltuieli"),
+    cheltuieliCash: tPanel("nav_cheltuieli_cash"),
+    rapoarte: tPanel("nav_rapoarte"),
+    statistici: tPanel("nav_statistici"),
+    exportDocumente: tPanel("nav_export_documente"),
+    setari: tPanel("nav_setari"),
+    back: tPanel("nav_back_to_admin"),
+  };
+
   return (
     <div className="flex min-h-dvh bg-background">
       <PanelSidebar
         locale={locale}
-        labels={{
-          overview: tPanel("nav_overview"),
-          comenziSite: tPanel("nav_comenzi_site"),
-          clienti: tPanel("nav_clienti"),
-          produse: tPanel("nav_produse"),
-          stock: tPanel("nav_stock"),
-          vanzareNoua: tPanel("nav_vanzare_noua"),
-          achizitii: tPanel("nav_achizitii"),
-          proforme: tPanel("nav_proforme"),
-          facturi: tPanel("nav_facturi"),
-          fiseLivrare: tPanel("nav_fise_livrare"),
-          cheltuieli: tPanel("nav_cheltuieli"),
-          cheltuieliCash: tPanel("nav_cheltuieli_cash"),
-          rapoarte: tPanel("nav_rapoarte"),
-          statistici: tPanel("nav_statistici"),
-          exportDocumente: tPanel("nav_export_documente"),
-          setari: tPanel("nav_setari"),
-          back: tPanel("nav_back_to_admin"),
-        }}
+        labels={sidebarLabels}
         badges={{ triagePending: triagePending ?? 0 }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -97,6 +100,16 @@ export default async function PanelLayout({
             conta2: tPanel("conta2"),
             lockedHint: tPanel("scope_locked_hint"),
           }}
+          mobileNav={
+            <PanelMobileNav>
+              <PanelSidebar
+                locale={locale}
+                labels={sidebarLabels}
+                badges={{ triagePending: triagePending ?? 0 }}
+                compact
+              />
+            </PanelMobileNav>
+          }
         />
         <main className="flex-1">{children}</main>
       </div>

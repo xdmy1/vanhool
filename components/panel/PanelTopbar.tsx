@@ -13,6 +13,7 @@ export function PanelTopbar({
   locale,
   scope,
   labels,
+  mobileNav,
 }: {
   email: string;
   displayName: string | null;
@@ -29,12 +30,15 @@ export function PanelTopbar({
     conta2: string;
     lockedHint: string;
   };
+  /** Optional hamburger button (visible only below lg). */
+  mobileNav?: React.ReactNode;
 }) {
   return (
     <header
       data-panel-chrome
-      className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-6"
+      className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/90 px-3 backdrop-blur md:gap-3 md:px-6"
     >
+      {mobileNav}
       <BookScopeSwitcher
         locale={locale}
         current={scope}

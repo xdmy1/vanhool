@@ -1571,6 +1571,10 @@
     "monthly_send_empty": "Nicio achiziție conta 1 în această lună.",
     "monthly_send_bad_month": "Selectează o lună validă.",
     "pin_confirm_subtitle": "Introdu PIN-ul de administrator pentru a confirma.",
-    "accountant_send_confirm": "Trimite"
+    "accountant_send_confirm": "Trimite",
+    "monthly_invoices_label": "Trimite facturile lunii",
+    "monthly_invoices_title": "Trimite facturile lunii contabilului",
+    "monthly_proformas_label": "Trimite proformele lunii",
+    "monthly_proformas_title": "Trimite proformele lunii contabilului"
   }
 }

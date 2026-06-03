@@ -1571,6 +1571,10 @@
     "monthly_send_empty": "Нет закупок конта 1 в этом месяце.",
     "monthly_send_bad_month": "Выберите корректный месяц.",
     "pin_confirm_subtitle": "Введите PIN администратора для подтверждения.",
-    "accountant_send_confirm": "Отправить"
+    "accountant_send_confirm": "Отправить",
+    "monthly_invoices_label": "Счета за месяц",
+    "monthly_invoices_title": "Отправить счета за месяц бухгалтеру",
+    "monthly_proformas_label": "Проформы за месяц",
+    "monthly_proformas_title": "Отправить проформы за месяц бухгалтеру"
   }
 }

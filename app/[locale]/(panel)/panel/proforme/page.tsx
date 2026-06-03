@@ -6,8 +6,12 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { SendMonthlyDocsButton } from "@/components/panel/documents/SendMonthlyDocsButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
-import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
+import {
+  deleteInvoiceWithPin,
+  sendProformasMonthly,
+} from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -54,12 +58,19 @@ export default async function PanelProformePage({
         title={t("proforma_list_title")}
         subtitle={t("proforma_list_subtitle")}
         actions={
-          <Button asChild className="gap-1.5">
-            <Link href={"/panel/proforme/new" as "/panel"} locale={locale}>
-              <Plus className="size-4" />
-              {t("proforma_new_button")}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <SendMonthlyDocsButton
+              action={sendProformasMonthly}
+              title={t("monthly_proformas_title")}
+              label={t("monthly_proformas_label")}
+            />
+            <Button asChild className="gap-1.5">
+              <Link href={"/panel/proforme/new" as "/panel"} locale={locale}>
+                <Plus className="size-4" />
+                {t("proforma_new_button")}
+              </Link>
+            </Button>
+          </div>
         }
       />
 

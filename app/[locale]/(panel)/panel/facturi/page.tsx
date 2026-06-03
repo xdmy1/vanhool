@@ -5,8 +5,12 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { SendMonthlyDocsButton } from "@/components/panel/documents/SendMonthlyDocsButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
-import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
+import {
+  deleteInvoiceWithPin,
+  sendConta1InvoicesMonthly,
+} from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -162,6 +166,13 @@ export default async function PanelFacturiPage({
         eyebrow={t("conta1_eyebrow")}
         title={t("facturi_title")}
         subtitle={t("facturi_subtitle")}
+        actions={
+          <SendMonthlyDocsButton
+            action={sendConta1InvoicesMonthly}
+            title={t("monthly_invoices_title")}
+            label={t("monthly_invoices_label")}
+          />
+        }
       />
 
       <div className="mt-6 space-y-3">

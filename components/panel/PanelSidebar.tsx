@@ -57,10 +57,13 @@ export function PanelSidebar({
   locale,
   labels,
   badges,
+  compact = false,
 }: {
   locale: string;
   labels: SidebarLabels;
   badges?: { triagePending?: number };
+  /** Drawer mode for mobile — drops sticky positioning + hides on lg. */
+  compact?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -93,7 +96,13 @@ export function PanelSidebar({
   return (
     <aside
       data-panel-chrome
-      className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface-elevated md:flex"
+      className={cn(
+        // Drawer mode (mobile) renders without sticky positioning since the
+        // wrapper handles it; desktop layout keeps the original sticky bar.
+        compact
+          ? "flex h-full w-full flex-col bg-surface-elevated"
+          : "sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface-elevated lg:flex",
+      )}
     >
       <div className="flex h-16 items-center gap-3 border-b border-border px-5">
         <Logo className="h-7 w-auto text-foreground" />

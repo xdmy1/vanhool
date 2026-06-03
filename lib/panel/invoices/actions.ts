@@ -759,6 +759,93 @@ export async function voidInvoice(
 }
 
 /**
+ * Bulk-forward conta1 invoices in a date range to the bookkeeper.
+ * PIN-gated. Conta 2 documents are excluded — only the fiscal book
+ * goes out.
+ */
+export async function sendConta1InvoicesMonthly(
+  from: string,
+  to: string,
+  pin: string,
+): Promise<
+  | { ok: true; count: number; sentAt: string }
+  | { ok: false; reason: string }
+> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return { ok: false, reason: "bad_range" };
+  }
+  const { getDocumentsForRange } = await import("@/lib/panel/invoices/queries");
+  const { accountantMonthlyDocumentsEmail } = await import(
+    "@/lib/email/accountant-monthly-documents"
+  );
+  const data = await getDocumentsForRange({
+    type: "invoice",
+    from,
+    to,
+    scope: "conta1",
+  });
+  if (data.count === 0) return { ok: false, reason: "empty_range" };
+
+  const { subject, html, text } = accountantMonthlyDocumentsEmail({
+    type: "invoice",
+    ...data,
+  });
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+  return { ok: true, count: data.count, sentAt: new Date().toISOString() };
+}
+
+/**
+ * Bulk-forward proformas in a date range. By design includes both
+ * books — proformas aren't fiscal so the conta split is less load-
+ * bearing here.
+ */
+export async function sendProformasMonthly(
+  from: string,
+  to: string,
+  pin: string,
+): Promise<
+  | { ok: true; count: number; sentAt: string }
+  | { ok: false; reason: string }
+> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return { ok: false, reason: "bad_range" };
+  }
+  const { getDocumentsForRange } = await import("@/lib/panel/invoices/queries");
+  const { accountantMonthlyDocumentsEmail } = await import(
+    "@/lib/email/accountant-monthly-documents"
+  );
+  const data = await getDocumentsForRange({ type: "proforma", from, to });
+  if (data.count === 0) return { ok: false, reason: "empty_range" };
+
+  const { subject, html, text } = accountantMonthlyDocumentsEmail({
+    type: "proforma",
+    ...data,
+  });
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+  return { ok: true, count: data.count, sentAt: new Date().toISOString() };
+}
+
+/**
  * Hard-delete an invoice or proforma row. Used by the admin "Șterge"
  * action on /panel/facturi and /panel/proforme — gated by the admin PIN.
  * Unlinks references first so FK constraints don't block the delete.

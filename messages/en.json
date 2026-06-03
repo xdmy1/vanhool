@@ -1571,6 +1571,10 @@
     "monthly_send_empty": "No conta 1 purchases in this month.",
     "monthly_send_bad_month": "Pick a valid month.",
     "pin_confirm_subtitle": "Enter the admin PIN to confirm.",
-    "accountant_send_confirm": "Send"
+    "accountant_send_confirm": "Send",
+    "monthly_invoices_label": "Send month invoices",
+    "monthly_invoices_title": "Send month invoices to accountant",
+    "monthly_proformas_label": "Send month proformas",
+    "monthly_proformas_title": "Send month proformas to accountant"
   }
 }

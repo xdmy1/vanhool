@@ -288,3 +288,92 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     linked_invoice,
   };
 }
+
+/**
+ * Bulk fetch every invoice / proforma matching `type` whose `issued_date`
+ * lands in `[from, to]`. Used by the monthly bookkeeper exports.
+ */
+export async function getDocumentsForRange(args: {
+  type: "invoice" | "proforma";
+  from: string;
+  to: string;
+  scope?: "conta1" | "conta2";
+}): Promise<{
+  from: string;
+  to: string;
+  count: number;
+  totalsByCurrency: Array<{ currency: string; total: number; vat_amount: number }>;
+  documents: InvoiceDetail[];
+}> {
+  const supabase = await createClient();
+  let q = supabase
+    .from("invoices")
+    .select(
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
+    )
+    .eq("type", args.type)
+    .gte("issued_date", args.from)
+    .lte("issued_date", args.to)
+    .order("issued_date", { ascending: true });
+  if (args.scope) q = q.eq("account_scope", args.scope);
+  const { data, error } = await q;
+  if (error) {
+    return { from: args.from, to: args.to, count: 0, totalsByCurrency: [], documents: [] };
+  }
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+  const totalsMap = new Map<string, { total: number; vat_amount: number }>();
+  const documents: InvoiceDetail[] = rows.map((d) => {
+    const items = Array.isArray(d.items_snapshot)
+      ? (d.items_snapshot as InvoiceItemSnapshot[])
+      : [];
+    const currency = (d.currency as string | null) ?? "MDL";
+    const total = Number((d.total as number) ?? 0);
+    const vat = Number((d.vat_amount as number) ?? 0);
+    const cur = totalsMap.get(currency) ?? { total: 0, vat_amount: 0 };
+    cur.total += total;
+    cur.vat_amount += vat;
+    totalsMap.set(currency, cur);
+    return {
+      id: d.id as string,
+      type: d.type as InvoiceListType,
+      order_id: d.order_id as string | null,
+      account_scope: d.account_scope as "conta1" | "conta2",
+      series: d.series as string | null,
+      number: d.number as string | null,
+      issued_date: d.issued_date as string,
+      due_date: d.due_date as string | null,
+      paid_at: d.paid_at as string | null,
+      currency,
+      output_locale: "ro",
+      status: d.status as InvoiceDetail["status"],
+      paid_amount: null,
+      paid_currency: null,
+      paid_method: null,
+      customer_snapshot: (d.customer_snapshot ?? {}) as CustomerSnapshot,
+      items_snapshot: items,
+      subtotal: Number((d.subtotal as number) ?? 0),
+      vat_amount: vat,
+      total,
+      discount_percent: 0,
+      accountant_sent_at: null,
+      notes: d.notes as string | null,
+      refrens_invoice_id: d.refrens_invoice_id as string | null,
+      refrens_url: d.refrens_url as string | null,
+      proforma_id: d.proforma_id as string | null,
+      converted_to_invoice_id: d.converted_to_invoice_id as string | null,
+      linked_proforma: null,
+      linked_invoice: null,
+    };
+  });
+  return {
+    from: args.from,
+    to: args.to,
+    count: documents.length,
+    totalsByCurrency: Array.from(totalsMap.entries()).map(([currency, v]) => ({
+      currency,
+      total: Number(v.total.toFixed(2)),
+      vat_amount: Number(v.vat_amount.toFixed(2)),
+    })),
+    documents,
+  };
+}
