@@ -1569,6 +1569,8 @@
     "monthly_send_confirm": "Trimite",
     "monthly_send_success": "Trimis · {count} achiziții",
     "monthly_send_empty": "Nicio achiziție conta 1 în această lună.",
-    "monthly_send_bad_month": "Selectează o lună validă."
+    "monthly_send_bad_month": "Selectează o lună validă.",
+    "pin_confirm_subtitle": "Introdu PIN-ul de administrator pentru a confirma.",
+    "accountant_send_confirm": "Trimite"
   }
 }

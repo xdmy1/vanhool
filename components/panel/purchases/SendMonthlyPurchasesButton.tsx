@@ -152,7 +152,7 @@ export function SendMonthlyPurchasesButton() {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted">
-                  {t("pin_delete_subtitle")}
+                  {t("pin_confirm_subtitle")}
                 </span>
                 <input
                   ref={pinRef}

@@ -1569,6 +1569,8 @@
     "monthly_send_confirm": "Отправить",
     "monthly_send_success": "Отправлено · {count} закупок",
     "monthly_send_empty": "Нет закупок конта 1 в этом месяце.",
-    "monthly_send_bad_month": "Выберите корректный месяц."
+    "monthly_send_bad_month": "Выберите корректный месяц.",
+    "pin_confirm_subtitle": "Введите PIN администратора для подтверждения.",
+    "accountant_send_confirm": "Отправить"
   }
 }

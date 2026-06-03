@@ -136,7 +136,7 @@ export function SendToAccountantButton({
               </button>
             </div>
             <p className="mb-3 text-xs text-muted-strong">
-              {t("pin_delete_subtitle")}
+              {t("pin_confirm_subtitle")}
             </p>
             <form
               onSubmit={(e) => {
@@ -176,7 +176,7 @@ export function SendToAccountantButton({
                   className="inline-flex items-center gap-1.5 rounded-md border border-success bg-success px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-success/90 disabled:opacity-70"
                 >
                   <Mail className="size-3.5" />
-                  {pending ? t("accountant_send_pending") : t("pin_delete_confirm")}
+                  {pending ? t("accountant_send_pending") : t("accountant_send_confirm")}
                 </button>
               </div>
             </form>
