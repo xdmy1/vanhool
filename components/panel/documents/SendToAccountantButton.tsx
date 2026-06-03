@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Mail } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,8 @@ import { useTranslations } from "next-intl";
 
 import { sendInvoiceToAccountant } from "@/lib/panel/invoices/actions";
 import { cn } from "@/lib/utils/cn";
+
+const STORAGE_PREFIX = "panel.accountant_sent.";
 
 /**
  * Forwards an invoice / proforma to the bookkeeper. Green when never sent,
@@ -28,6 +30,18 @@ export function SendToAccountantButton({
   const router = useRouter();
   const [sentAt, setSentAt] = useState<string | null>(initialSentAt);
   const [pending, startTransition] = useTransition();
+
+  // Hydrate from localStorage on mount so the "sent" state survives even
+  // when the SQL migration hasn't been applied (server-side timestamp is
+  // null, but the operator definitely clicked the button — we honor that).
+  // DB-side timestamp always wins if present.
+  useEffect(() => {
+    if (initialSentAt) return;
+    if (typeof window === "undefined") return;
+    const cached = window.localStorage.getItem(STORAGE_PREFIX + invoiceId);
+    if (cached) setSentAt(cached);
+  }, [initialSentAt, invoiceId]);
+
   const wasSent = !!sentAt;
 
   function fire() {
@@ -35,6 +49,9 @@ export function SendToAccountantButton({
       const res = await sendInvoiceToAccountant(invoiceId);
       if (res.ok) {
         setSentAt(res.sentAt);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_PREFIX + invoiceId, res.sentAt);
+        }
         toast.success(t("accountant_send_success"));
         // Refresh so other parts of the page (e.g. a "last sent" timestamp
         // if we add one later) re-read the row.

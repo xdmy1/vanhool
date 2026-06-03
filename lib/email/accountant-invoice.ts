@@ -52,6 +52,7 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
 } {
   const isProforma = invoice.type === "proforma";
   const docLabel = isProforma ? "Proformă" : "Factură";
+  const requestLabel = "Solicitare e-factură";
   const number = `${invoice.series ?? ""}${invoice.number ?? "—"}`;
   const customer = invoice.customer_snapshot as CustomerSnapshot;
   const items = invoice.items_snapshot as InvoiceItemSnapshot[];
@@ -133,9 +134,15 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#ffffff;border-radius:8px;overflow:hidden">
 
         <tr><td style="padding:20px 24px;background:#f4f1ea;border-bottom:1px solid #d8d2c5">
-          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">${docLabel} · ${escapeHtml(scopeLabel)}</div>
-          <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${escapeHtml(number)}</div>
-          <div style="font-size:12px;color:#6b6358;margin-top:2px">Emisă: ${fmtDate(invoice.issued_date)}${invoice.due_date ? ` · Scadență: ${fmtDate(invoice.due_date)}` : ""}</div>
+          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">${escapeHtml(requestLabel)}</div>
+          <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${docLabel} ${escapeHtml(number)}</div>
+          <div style="font-size:12px;color:#6b6358;margin-top:2px">${escapeHtml(scopeLabel)} · Emisă: ${fmtDate(invoice.issued_date)}${invoice.due_date ? ` · Scadență: ${fmtDate(invoice.due_date)}` : ""}</div>
+        </td></tr>
+
+        <tr><td style="padding:16px 24px;background:#fffbe6;border-bottom:1px solid #f3e8aa">
+          <div style="font-size:13px;color:#5a4906;line-height:1.5">
+            <strong>Solicitare e-factură</strong> — vă rugăm să procesați emiterea facturii fiscale electronice pentru documentul de mai jos.
+          </div>
         </td></tr>
 
         <tr><td style="padding:20px 24px">
@@ -178,7 +185,10 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
 </body></html>`;
 
   const textLines: string[] = [
+    `${requestLabel}`,
     `${docLabel} ${number}`,
+    `Vă rugăm să procesați emiterea facturii fiscale electronice pentru documentul de mai jos.`,
+    ``,
     `Emisă: ${fmtDate(invoice.issued_date)}`,
     `Client: ${customer?.name ?? "—"}`,
   ];
@@ -205,7 +215,7 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
   textLines.push(`TVA: ${invoice.vat_amount.toFixed(2)} ${invoice.currency}`);
   textLines.push(`TOTAL: ${invoice.total.toFixed(2)} ${invoice.currency}`);
 
-  const subject = `${docLabel} ${number} — ${customer?.name ?? "Client"} — ${invoice.total.toFixed(2)} ${invoice.currency}`;
+  const subject = `Solicitare e-factură · ${docLabel} ${number} — ${customer?.name ?? "Client"} — ${invoice.total.toFixed(2)} ${invoice.currency}`;
 
   return { subject, html, text: textLines.join("\n") };
 }
