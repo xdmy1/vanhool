@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CheckCircle2, Plus, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { IssuePOButton } from "@/components/panel/purchases/IssuePOButton";
@@ -55,14 +57,21 @@ export default async function PanelAchizitieDetailPage({
           scope: scopeLabel,
         })}
         actions={
-          <span
-            className={cn(
-              "rounded px-3 py-1 text-xs uppercase tracking-wide",
-              STATUS_TONE[purchase.status],
-            )}
-          >
-            {statusLabel}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                "rounded px-3 py-1 text-xs uppercase tracking-wide",
+                STATUS_TONE[purchase.status],
+              )}
+            >
+              {statusLabel}
+            </span>
+            <PinDeleteButton
+              action={deletePurchaseWithPin}
+              entityId={purchase.id}
+              redirectTo={`/${locale}/panel/achizitii`}
+            />
+          </div>
         }
       />
 

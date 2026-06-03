@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
@@ -332,6 +333,28 @@ export async function cancelPurchase(
     .from("purchases")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", purchaseId);
+  if (error) return { ok: false, reason: error.message };
+  revalidatePath("/[locale]/panel/achizitii", "page");
+  return { ok: true };
+}
+
+/**
+ * Hard-delete a purchase + its line items. PIN-gated. Stock isn't
+ * rolled back automatically — admin should already have cancelled
+ * the purchase first if it was posted.
+ */
+export async function deletePurchaseWithPin(
+  purchaseId: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  const supabase = await createClient();
+  // purchase_items cascade via FK normally; do it explicitly in case the
+  // constraint isn't set to ON DELETE CASCADE in the deployed schema.
+  await supabase.from("purchase_items").delete().eq("purchase_id", purchaseId);
+  const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);
   if (error) return { ok: false, reason: error.message };
   revalidatePath("/[locale]/panel/achizitii", "page");
   return { ok: true };

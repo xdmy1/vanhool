@@ -1551,6 +1551,15 @@
     "accountant_send_error": "Ошибка отправки: {reason}",
     "accountant_send_last": "Последняя отправка: {when}",
     "accountant_send_compact": "Бухгалтеру",
-    "accountant_send_resend_compact": "Отправлено"
+    "accountant_send_resend_compact": "Отправлено",
+    "pin_delete_title": "Подтверждение удаления",
+    "pin_delete_subtitle": "Введите PIN администратора для подтверждения удаления.",
+    "pin_delete_required": "PIN обязателен",
+    "pin_delete_bad_pin": "Неверный PIN",
+    "pin_delete_error": "Ошибка: {reason}",
+    "pin_delete_pending": "Удаление…",
+    "pin_delete_confirm": "Удалить навсегда",
+    "pin_delete_success": "Удалено",
+    "action_close": "Закрыть"
   }
 }

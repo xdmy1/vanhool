@@ -4,6 +4,8 @@ import { Printer } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { Link } from "@/lib/i18n/routing";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteDeliveryNote } from "@/lib/panel/delivery_notes/actions";
 import { listDeliveryNotes } from "@/lib/panel/delivery_notes/queries";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
@@ -98,22 +100,28 @@ export default async function PanelFiseLivrarePage({
                       {r.total !== null ? `${r.total.toFixed(2)} ${r.currency}` : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/panel/fisa-de-livrare/${r.id}` as "/panel"}
-                        locale={locale}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {t("action_open")}
-                      </Link>{" "}
-                      ·{" "}
-                      <Link
-                        href={`/panel/fisa-de-livrare/${r.id}/print` as "/panel"}
-                        locale={locale}
-                        className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
-                      >
-                        <Printer className="size-3" />
-                        {t("delivery_action_print")}
-                      </Link>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Link
+                          href={`/panel/fisa-de-livrare/${r.id}` as "/panel"}
+                          locale={locale}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t("action_open")}
+                        </Link>
+                        <Link
+                          href={`/panel/fisa-de-livrare/${r.id}/print` as "/panel"}
+                          locale={locale}
+                          className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                        >
+                          <Printer className="size-3" />
+                          {t("delivery_action_print")}
+                        </Link>
+                        <PinDeleteButton
+                          action={deleteDeliveryNote}
+                          entityId={r.id}
+                          compact
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

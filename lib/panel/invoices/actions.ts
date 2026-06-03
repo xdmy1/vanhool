@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { sendResendEmail } from "@/lib/email/resend";
 import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import type { Json } from "@/lib/supabase/database.types";
@@ -754,6 +755,41 @@ export async function voidInvoice(
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
   revalidatePath("/[locale]/admin/orders", "page");
+  return { ok: true };
+}
+
+/**
+ * Hard-delete an invoice or proforma row. Used by the admin "Șterge"
+ * action on /panel/facturi and /panel/proforme — gated by the admin PIN.
+ * Unlinks references first so FK constraints don't block the delete.
+ */
+export async function deleteInvoiceWithPin(
+  invoiceId: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  const supabase = await createClient();
+
+  // Clear back-links so the FK on orders.invoice_id / invoices.* doesn't
+  // block the delete. Other invoices that point at this one (proforma_id
+  // or converted_to_invoice_id) get their links cleared too.
+  await supabase.from("orders").update({ invoice_id: null }).eq("invoice_id", invoiceId);
+  await supabase
+    .from("invoices")
+    .update({ proforma_id: null })
+    .eq("proforma_id", invoiceId);
+  await supabase
+    .from("invoices")
+    .update({ converted_to_invoice_id: null })
+    .eq("converted_to_invoice_id", invoiceId);
+
+  const { error } = await supabase.from("invoices").delete().eq("id", invoiceId);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath("/[locale]/panel/proforme", "page");
   return { ok: true };
 }
 

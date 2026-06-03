@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { VoidInvoiceButton } from "@/components/panel/documents/VoidInvoiceButton";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -81,6 +83,11 @@ export default async function PanelInvoiceDetailPage({
             {invoice.status !== "void" ? (
               <VoidInvoiceButton invoiceId={invoice.id} />
             ) : null}
+            <PinDeleteButton
+              action={deleteInvoiceWithPin}
+              entityId={invoice.id}
+              redirectTo={`/${locale}/panel/facturi`}
+            />
           </div>
         }
       />

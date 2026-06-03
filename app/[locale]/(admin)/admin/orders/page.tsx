@@ -6,6 +6,8 @@ import { Price } from "@/components/common/Price";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { FilterChips } from "@/components/admin/FilterChips";
 import { OrderStatusSelect } from "@/components/admin/orders/OrderStatusSelect";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteOrderWithPin } from "@/lib/admin/orders/actions";
 import { adminListOrders } from "@/lib/admin/queries";
 import type { OrderStatus } from "@/lib/admin/orders/constants";
 
@@ -151,13 +153,20 @@ export default async function AdminOrdersPage({
                       <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Link
-                        href={`/admin/orders/${o.id}` as "/admin/orders"}
-                        locale={locale}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        {t("common_view")} →
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/orders/${o.id}` as "/admin/orders"}
+                          locale={locale}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t("common_view")} →
+                        </Link>
+                        <PinDeleteButton
+                          action={deleteOrderWithPin}
+                          entityId={o.id}
+                          compact
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

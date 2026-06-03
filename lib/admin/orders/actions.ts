@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { ORDER_STATUSES, type OrderStatus } from "./constants";
 
 async function requireAdmin() {
@@ -58,5 +59,32 @@ export async function updateOrderNotes(
     .eq("id", id);
   if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Hard-delete an order. Cascades: clears any linked invoices and
+ * delivery_notes first (those records get removed too — admin clicked
+ * delete on the order, intent is "everything goes"). PIN-gated.
+ */
+export async function deleteOrderWithPin(
+  id: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  const supabase = auth.supabase;
+
+  // Cascade: nuke linked invoices + delivery notes so FKs don't block.
+  await supabase.from("invoices").delete().eq("order_id", id);
+  await supabase.from("delivery_notes").delete().eq("order_id", id);
+
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/admin/orders", "page");
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
   return { ok: true };
 }

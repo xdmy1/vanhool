@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Mail, MapPin, Phone, User as UserIcon } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteOrderWithPin } from "@/lib/admin/orders/actions";
 import { Price } from "@/components/common/Price";
 import { OrderStatusSelect } from "@/components/admin/orders/OrderStatusSelect";
 import { OrderNotes } from "@/components/admin/orders/OrderNotes";
@@ -74,11 +76,18 @@ export default async function AdminOrderDetailPage({
         subtitle={formattedDate}
         back={{ href: "/admin/orders", label: t("order_detail_back"), locale }}
         actions={
-          <OrderStatusSelect
-            orderId={order.id}
-            initialStatus={(order.status as OrderStatus) ?? "pending"}
-            labels={statusLabels}
-          />
+          <div className="flex items-center gap-2">
+            <OrderStatusSelect
+              orderId={order.id}
+              initialStatus={(order.status as OrderStatus) ?? "pending"}
+              labels={statusLabels}
+            />
+            <PinDeleteButton
+              action={deleteOrderWithPin}
+              entityId={order.id}
+              redirectTo={`/${locale}/admin/orders`}
+            />
+          </div>
         }
       />
 

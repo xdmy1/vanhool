@@ -6,6 +6,8 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -133,6 +135,11 @@ export default async function PanelProformePage({
                         <SendToAccountantButton
                           invoiceId={r.id}
                           initialSentAt={r.accountant_sent_at}
+                          compact
+                        />
+                        <PinDeleteButton
+                          action={deleteInvoiceWithPin}
+                          entityId={r.id}
                           compact
                         />
                         {r.status === "sent" || r.status === "draft" ? (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 
 export async function markPrinted(
   id: string,
@@ -45,9 +46,11 @@ export async function setDeliveryStatus(
  */
 export async function deleteDeliveryNote(
   id: string,
+  pin?: string,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = await createClient();
   await supabase
     .from("orders")

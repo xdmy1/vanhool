@@ -5,6 +5,8 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
@@ -390,6 +392,11 @@ export default async function PanelFacturiPage({
                         <SendToAccountantButton
                           invoiceId={r.id}
                           initialSentAt={r.accountant_sent_at}
+                          compact
+                        />
+                        <PinDeleteButton
+                          action={deleteInvoiceWithPin}
+                          entityId={r.id}
                           compact
                         />
                         {r.status === "issued" ? (

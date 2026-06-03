@@ -1551,6 +1551,15 @@
     "accountant_send_error": "Eroare la trimitere: {reason}",
     "accountant_send_last": "Ultima trimitere: {when}",
     "accountant_send_compact": "Contabilului",
-    "accountant_send_resend_compact": "Trimis"
+    "accountant_send_resend_compact": "Trimis",
+    "pin_delete_title": "Confirmare ștergere",
+    "pin_delete_subtitle": "Introdu PIN-ul de administrator pentru a confirma ștergerea.",
+    "pin_delete_required": "PIN obligatoriu",
+    "pin_delete_bad_pin": "PIN incorect",
+    "pin_delete_error": "Eroare: {reason}",
+    "pin_delete_pending": "Se șterge…",
+    "pin_delete_confirm": "Șterge definitiv",
+    "pin_delete_success": "Șters",
+    "action_close": "Închide"
   }
 }

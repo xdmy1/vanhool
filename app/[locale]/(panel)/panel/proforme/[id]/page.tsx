@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -74,6 +76,11 @@ export default async function PanelProformaDetailPage({
             <SendToAccountantButton
               invoiceId={proforma.id}
               initialSentAt={proforma.accountant_sent_at}
+            />
+            <PinDeleteButton
+              action={deleteInvoiceWithPin}
+              entityId={proforma.id}
+              redirectTo={`/${locale}/panel/proforme`}
             />
           </div>
         }

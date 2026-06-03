@@ -1551,6 +1551,15 @@
     "accountant_send_error": "Send failed: {reason}",
     "accountant_send_last": "Last sent: {when}",
     "accountant_send_compact": "Accountant",
-    "accountant_send_resend_compact": "Sent"
+    "accountant_send_resend_compact": "Sent",
+    "pin_delete_title": "Confirm deletion",
+    "pin_delete_subtitle": "Enter the admin PIN to confirm deletion.",
+    "pin_delete_required": "PIN required",
+    "pin_delete_bad_pin": "Wrong PIN",
+    "pin_delete_error": "Error: {reason}",
+    "pin_delete_pending": "Deleting…",
+    "pin_delete_confirm": "Delete permanently",
+    "pin_delete_success": "Deleted",
+    "action_close": "Close"
   }
 }
