@@ -55,32 +55,29 @@ export function PanelMobileNav({ children }: { children: React.ReactNode }) {
       </button>
 
       {open ? (
-        <div
-          className="fixed inset-0 z-[80] lg:hidden"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
-          }}
-        >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        <>
+          <div
+            className="fixed inset-0 z-[79] bg-black/50 backdrop-blur-sm lg:hidden"
+            onClick={() => setOpen(false)}
+          />
           <aside
             className={cn(
-              "relative z-10 flex h-full w-72 max-w-[85vw] flex-col bg-surface-elevated shadow-xl",
-              "animate-in slide-in-from-left duration-200",
+              "fixed inset-y-0 left-0 z-[80] flex h-dvh w-72 max-w-[85vw] flex-col bg-surface-elevated shadow-2xl lg:hidden",
             )}
           >
             <div className="flex items-center justify-end border-b border-border px-3 py-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="grid size-8 place-items-center rounded-md text-muted hover:bg-surface hover:text-foreground"
+                className="grid size-9 place-items-center rounded-md text-muted hover:bg-surface hover:text-foreground"
                 aria-label="Close menu"
               >
-                <X className="size-4" />
+                <X className="size-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">{children}</div>
           </aside>
-        </div>
+        </>
       ) : null}
     </>
   );
