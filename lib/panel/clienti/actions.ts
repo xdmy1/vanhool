@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import type { Database } from "@/lib/supabase/database.types";
 
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -194,3 +195,41 @@ export async function updatePanelClient(
   revalidatePath("/[locale]/panel/clienti", "page");
   return { ok: true };
 }
+
+/**
+ * Hard-delete a client. PIN-gated. Detaches references from orders /
+ * invoices first so the FK doesn't block the delete. The auth.users
+ * row is dropped via the admin API since cascade isn't configured on
+ * profiles → auth.users.
+ */
+export async function deleteClientWithPin(
+  id: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  if (id === user.id) return { ok: false, reason: "cannot_delete_self" };
+  const supabase = await createClient();
+
+  // Detach references so the profile row can drop without FK errors.
+  // Orders / invoices stay — they keep their customer_snapshot, just
+  // lose the live link to the (now deleted) profile.
+  await supabase.from("orders").update({ user_id: null }).eq("user_id", id);
+
+  const { error } = await supabase.from("profiles").delete().eq("id", id);
+  if (error) return { ok: false, reason: error.message };
+
+  // Auth row is admin-API only; ignore failures so the panel still
+  // moves on (profile already gone is the source of truth for the UI).
+  try {
+    const admin = getSupabaseAdmin();
+    await admin.auth.admin.deleteUser(id);
+  } catch (e) {
+    console.warn("[panel.clienti] auth.deleteUser failed (non-fatal):", e);
+  }
+
+  revalidatePath("/[locale]/panel/clienti", "page");
+  return { ok: true };
+}
+

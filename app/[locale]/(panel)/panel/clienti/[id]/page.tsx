@@ -6,6 +6,8 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { Price } from "@/components/common/Price";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
 import { getPanelClient } from "@/lib/panel/clienti/queries";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
@@ -49,15 +51,22 @@ export default async function PanelClientDetailPage({
             : t("clienti_detail_individual")
         }
         actions={
-          <Button asChild variant="outline" className="gap-1.5">
-            <Link
-              href={`/panel/clienti/${id}/edit` as "/panel"}
-              locale={locale}
-            >
-              <Edit3 className="size-4" />
-              {t("action_edit")}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="gap-1.5">
+              <Link
+                href={`/panel/clienti/${id}/edit` as "/panel"}
+                locale={locale}
+              >
+                <Edit3 className="size-4" />
+                {t("action_edit")}
+              </Link>
+            </Button>
+            <PinDeleteButton
+              action={deleteClientWithPin}
+              entityId={id}
+              redirectTo={`/${locale}/panel/clienti`}
+            />
+          </div>
         }
       />
 

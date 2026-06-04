@@ -3,6 +3,8 @@ import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/lib/i18n/routing";
 import { Price } from "@/components/common/Price";
+import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
 import { cn } from "@/lib/utils/cn";
 import type { PanelClientRow } from "@/lib/panel/clienti/queries";
 
@@ -36,6 +38,7 @@ export async function ClientsTable({
             <th className="px-4 py-3 text-right">{t("clienti_col_discount")}</th>
             <th className="px-4 py-3 text-right">{t("clienti_col_orders")}</th>
             <th className="px-4 py-3 text-right">{t("clienti_col_total")}</th>
+            <th className="px-4 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-surface">
@@ -86,6 +89,13 @@ export async function ClientsTable({
                   ) : (
                     "—"
                   )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <PinDeleteButton
+                    action={deleteClientWithPin}
+                    entityId={r.id}
+                    compact
+                  />
                 </td>
               </tr>
             );
