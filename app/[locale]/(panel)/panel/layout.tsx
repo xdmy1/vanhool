@@ -63,6 +63,7 @@ export default async function PanelLayout({
     produse: tPanel("nav_produse"),
     stock: tPanel("nav_stock"),
     vanzareNoua: tPanel("nav_vanzare_noua"),
+    precomenzi: tPanel("nav_precomenzi"),
     achizitii: tPanel("nav_achizitii"),
     proforme: tPanel("nav_proforme"),
     facturi: tPanel("nav_facturi"),

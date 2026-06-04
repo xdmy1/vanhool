@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BarChart3,
   Boxes,
+  Clock,
   ClipboardList,
   FileBarChart,
   FileSignature,
@@ -40,6 +41,7 @@ type SidebarLabels = {
   produse: string;
   stock: string;
   vanzareNoua: string;
+  precomenzi: string;
   achizitii: string;
   proforme: string;
   facturi: string;
@@ -76,6 +78,7 @@ export function PanelSidebar({
       badge: badges?.triagePending,
     },
     { href: "/panel/vanzare-noua", icon: ShoppingCart, label: labels.vanzareNoua },
+    { href: "/panel/precomenzi", icon: Clock, label: labels.precomenzi },
     { href: "/panel/clienti", icon: Users, label: labels.clienti },
     { href: "/panel/produse", icon: Package, label: labels.produse },
     { href: "/panel/stock", icon: Boxes, label: labels.stock },
