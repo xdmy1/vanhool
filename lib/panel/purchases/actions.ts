@@ -10,7 +10,10 @@ import { sendResendEmail } from "@/lib/email/resend";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 
-const ACCOUNTANT_EMAIL = "bobernagadamianw2312@gmail.com";
+// Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
+// env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
+const ACCOUNTANT_EMAIL =
+  process.env.ACCOUNTANT_EMAIL || "Accounting-em@mail.ru";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";

@@ -13,7 +13,10 @@ import type { Json } from "@/lib/supabase/database.types";
 // Bookkeeper inbox — single recipient for the "send to accountant" button
 // on each invoice / proforma detail page. Per project owner; not stored in
 // settings because it's a fixed business address.
-const ACCOUNTANT_EMAIL = "bobernagadamianw2312@gmail.com";
+// Bookkeeper inbox for all forwarded fiscal documents (e-facturi + monthly
+// reports). Override via env if it ever needs to change without a redeploy.
+const ACCOUNTANT_EMAIL =
+  process.env.ACCOUNTANT_EMAIL || "Accounting-em@mail.ru";
 
 // ---- Schemas ---------------------------------------------------------------
 
