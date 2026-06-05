@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Save, Search, User } from "lucide-react";
+import { Building2, Plus, Save, Search, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -17,6 +17,24 @@ import { createPreorder, sendPreorderReceipt } from "@/lib/panel/preorders/actio
 import { cn } from "@/lib/utils/cn";
 
 type SupplierOption = { id: string; name: string };
+
+type LineItem = {
+  partCode: string;
+  description: string;
+  quantity: number;
+  /** Supplier cost per unit — drives the margin pill. */
+  supplierCost: string;
+  /** Customer-facing sell price per unit. Empty string until typed. */
+  unitPrice: string;
+};
+
+const EMPTY_LINE: LineItem = {
+  partCode: "",
+  description: "",
+  quantity: 1,
+  supplierCost: "",
+  unitPrice: "",
+};
 
 // Synthetic placeholder used for panel-created clients without a real email;
 // hide it from documents so it never leaks back as the customer's address.
@@ -45,24 +63,35 @@ export function PreorderForm({
   const [walkinPhone, setWalkinPhone] = useState("");
   const [walkinEmail, setWalkinEmail] = useState("");
 
-  const [partCode, setPartCode] = useState("");
-  const [description, setDescription] = useState("");
-  const [quantity, setQuantity] = useState(1);
+  // Per-line items (part + qty + cost + price). The shared customer +
+  // supplier + ETA + currency + notes live outside this array — server
+  // stamps every row with the same preorder_group_id when items.length>1.
+  const [lines, setLines] = useState<LineItem[]>([{ ...EMPTY_LINE }]);
   const [supplierId, setSupplierId] = useState<string>("");
-  const [supplierCost, setSupplierCost] = useState<string>("");
-  // Operator types the SELLING price. Margin is computed from that and shown
-  // back as a read-only indicator — no more silent "default 25%" markup.
-  const [unitPriceManual, setUnitPriceManual] = useState<string>("");
   const [currency, setCurrency] = useState<"MDL" | "EUR" | "USD">("MDL");
   const [eta, setEta] = useState<string>("");
   const [notes, setNotes] = useState("");
 
-  const unitPrice = Number(unitPriceManual) || 0;
-  const cost = Number(supplierCost) || 0;
-  const marginPct = useMemo(() => {
-    if (cost <= 0 || unitPrice <= 0) return null;
-    return ((unitPrice - cost) / cost) * 100;
-  }, [cost, unitPrice]);
+  function setLine(i: number, patch: Partial<LineItem>) {
+    setLines((prev) =>
+      prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)),
+    );
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { ...EMPTY_LINE }]);
+  }
+  function removeLine(i: number) {
+    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+  }
+
+  const grandTotal = useMemo(
+    () =>
+      lines.reduce(
+        (s, l) => s + (Number(l.unitPrice) || 0) * (Number(l.quantity) || 0),
+        0,
+      ),
+    [lines],
+  );
 
   // Resolve customer-name / phone / email out of either the picked client
   // or the walk-in fields, depending on which mode is active. Form payload
@@ -108,15 +137,26 @@ export function PreorderForm({
       toast.error(t("preorder_form_customer_required"));
       return;
     }
-    if (!description.trim()) {
+    const cleanLines = lines
+      .map((l) => ({
+        partCode: l.partCode.trim(),
+        description: l.description.trim(),
+        quantity: Math.max(0, Math.trunc(Number(l.quantity) || 0)),
+        supplierCost: Number(l.supplierCost) || 0,
+        unitPrice: Number(l.unitPrice) || 0,
+      }))
+      .filter((l) => l.description.length > 0);
+    if (cleanLines.length === 0) {
       toast.error(t("preorder_form_part_required"));
       return;
     }
-    if (quantity <= 0) {
+    const badQty = cleanLines.find((l) => l.quantity <= 0);
+    if (badQty) {
       toast.error(t("preorder_form_qty_required"));
       return;
     }
-    if (unitPrice <= 0) {
+    const badPrice = cleanLines.find((l) => l.unitPrice <= 0);
+    if (badPrice) {
       toast.error(t("preorder_form_price_required"));
       return;
     }
@@ -129,17 +169,13 @@ export function PreorderForm({
         currency,
         expected_delivery_date: eta || null,
         notes: notes.trim() || null,
-        // Wrap the single-row UI into the server's items[] shape. Multi-row
-        // UI lands in a follow-up — backend already supports it.
-        items: [
-          {
-            part_code: partCode.trim() || null,
-            description: description.trim(),
-            quantity,
-            supplier_unit_cost: cost,
-            unit_price: unitPrice,
-          },
-        ],
+        items: cleanLines.map((l) => ({
+          part_code: l.partCode || null,
+          description: l.description,
+          quantity: l.quantity,
+          supplier_unit_cost: l.supplierCost,
+          unit_price: l.unitPrice,
+        })),
       });
       if (res.ok) {
         toast.success(t("preorder_form_created"));
@@ -187,33 +223,130 @@ export function PreorderForm({
       />
 
       <section className="rounded-md border border-border bg-surface p-5">
-        <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">
-          {t("preorder_form_section_part")}
-        </h3>
-        <div className="grid gap-3 md:grid-cols-[160px_1fr_140px]">
-          <Field label={t("preorder_form_part_code")}>
-            <Input
-              value={partCode}
-              onChange={(e) => setPartCode(e.target.value)}
-              className="font-mono"
-            />
-          </Field>
-          <Field label={t("preorder_form_description")} required>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </Field>
-          <Field label={t("preorder_form_quantity")} required>
-            <Input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(Math.max(1, Math.trunc(Number(e.target.value || 1))))
-              }
-            />
-          </Field>
+        <header className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {t("preorder_form_section_part")}
+          </h3>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addLine}
+            className="gap-1.5"
+          >
+            <Plus className="size-4" />
+            {t("preorder_form_line_add")}
+          </Button>
+        </header>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-muted">
+              <tr>
+                <th className="px-2 py-2 w-32">{t("preorder_form_part_code")}</th>
+                <th className="px-2 py-2">{t("preorder_form_description")}</th>
+                <th className="px-2 py-2 w-16 text-right">{t("preorder_form_quantity")}</th>
+                <th className="px-2 py-2 w-28 text-right">{t("preorder_form_supplier_cost")}</th>
+                <th className="px-2 py-2 w-28 text-right">{t("preorder_form_unit_price")}</th>
+                <th className="px-2 py-2 w-24 text-right">{t("preorder_form_line_total")}</th>
+                <th className="px-2 py-2 w-10" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {lines.map((l, idx) => {
+                const qty = Number(l.quantity) || 0;
+                const cost = Number(l.supplierCost) || 0;
+                const price = Number(l.unitPrice) || 0;
+                const margin =
+                  cost > 0 && price > 0 ? ((price - cost) / cost) * 100 : null;
+                return (
+                  <tr key={idx}>
+                    <td className="px-2 py-2 align-top">
+                      <Input
+                        value={l.partCode}
+                        onChange={(e) => setLine(idx, { partCode: e.target.value })}
+                        className="h-9 font-mono text-xs"
+                      />
+                    </td>
+                    <td className="px-2 py-2 align-top">
+                      <Input
+                        value={l.description}
+                        onChange={(e) => setLine(idx, { description: e.target.value })}
+                        placeholder={t("preorder_form_description")}
+                        className="h-9 text-xs"
+                      />
+                    </td>
+                    <td className="px-2 py-2 align-top text-right">
+                      <Input
+                        type="number"
+                        min={1}
+                        value={l.quantity}
+                        onChange={(e) =>
+                          setLine(idx, {
+                            quantity: Math.max(0, Math.trunc(Number(e.target.value || 0))),
+                          })
+                        }
+                        className="h-9 w-16 text-right"
+                      />
+                    </td>
+                    <td className="px-2 py-2 align-top text-right">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={l.supplierCost}
+                        onChange={(e) => setLine(idx, { supplierCost: e.target.value })}
+                        placeholder="0.00"
+                        className="h-9 w-24 text-right"
+                      />
+                    </td>
+                    <td className="px-2 py-2 align-top text-right">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={l.unitPrice}
+                        onChange={(e) => setLine(idx, { unitPrice: e.target.value })}
+                        placeholder="0.00"
+                        className="h-9 w-24 text-right"
+                      />
+                      {margin != null ? (
+                        <div
+                          className={cn(
+                            "mt-0.5 text-[10px] font-semibold tabular-nums",
+                            margin < 0
+                              ? "text-destructive"
+                              : margin < 10
+                                ? "text-warning"
+                                : "text-success",
+                          )}
+                          title={`Cost: ${cost.toFixed(2)} ${currency}`}
+                        >
+                          Marja {margin >= 0 ? "+" : ""}
+                          {margin.toFixed(0)}%
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-2 py-2 align-top text-right tabular-nums text-xs">
+                      {(qty * price).toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2 align-top text-right">
+                      {lines.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => removeLine(idx)}
+                          className="text-muted transition-colors hover:text-destructive"
+                          aria-label={t("preorder_form_line_remove")}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -221,7 +354,7 @@ export function PreorderForm({
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted">
           {t("preorder_form_section_supplier")}
         </h3>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-3">
           <Field label={t("preorder_form_supplier")}>
             <select
               value={supplierId}
@@ -236,58 +369,18 @@ export function PreorderForm({
               ))}
             </select>
           </Field>
-          <Field label={t("preorder_form_supplier_cost")}>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                value={supplierCost}
-                onChange={(e) => setSupplierCost(e.target.value)}
-                placeholder="0.00"
-              />
-              <select
-                value={currency}
-                onChange={(e) =>
-                  setCurrency(e.target.value as "MDL" | "EUR" | "USD")
-                }
-                className="h-10 rounded-md border border-border bg-surface px-2 text-sm"
-              >
-                <option value="MDL">MDL</option>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-              </select>
-            </div>
-          </Field>
-          <Field label={t("preorder_form_unit_price")} required>
-            <Input
-              type="number"
-              step="0.01"
-              min={0}
-              value={unitPriceManual}
-              onChange={(e) => setUnitPriceManual(e.target.value)}
-              placeholder="0.00"
-            />
-            {marginPct != null ? (
-              <div
-                className={cn(
-                  "mt-1 text-[11px] font-semibold tabular-nums",
-                  marginPct < 0
-                    ? "text-destructive"
-                    : marginPct < 10
-                      ? "text-warning"
-                      : "text-success",
-                )}
-                title={`Cost: ${cost.toFixed(2)} ${currency}`}
-              >
-                Marja {marginPct >= 0 ? "+" : ""}
-                {marginPct.toFixed(1)}%
-              </div>
-            ) : (
-              <p className="mt-1 text-[11px] text-muted">
-                {t("preorder_form_unit_price_no_cost")}
-              </p>
-            )}
+          <Field label={t("preorder_form_currency_label")}>
+            <select
+              value={currency}
+              onChange={(e) =>
+                setCurrency(e.target.value as "MDL" | "EUR" | "USD")
+              }
+              className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            >
+              <option value="MDL">MDL</option>
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
           </Field>
           <Field label={t("preorder_form_eta")}>
             <DateInputEU value={eta} onChange={(iso) => setEta(iso)} />
@@ -295,7 +388,7 @@ export function PreorderForm({
         </div>
         <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
           {t("preorder_form_total_preview", {
-            total: (quantity * unitPrice).toFixed(2),
+            total: grandTotal.toFixed(2),
             currency,
           })}
         </div>
