@@ -13,7 +13,7 @@ import {
   listAllPanelClients,
   type ClientSearchResult,
 } from "@/lib/panel/sales/actions";
-import { createPreorder } from "@/lib/panel/preorders/actions";
+import { createPreorder, sendPreorderReceipt } from "@/lib/panel/preorders/actions";
 import { cn } from "@/lib/utils/cn";
 
 type SupplierOption = { id: string; name: string };
@@ -92,6 +92,16 @@ export function PreorderForm({
     };
   }
 
+  // After-create panel: when the preorder is registered we DON'T immediately
+  // redirect — instead show a small block with two CTAs:
+  //   • "Trimite email de înregistrare" → fires sendPreorderReceipt
+  //   • "Mergi la listă"                 → navigates to /panel/precomenzi
+  // This is the flow the operator asked for: register → optionally email →
+  // then leave the form.
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [receiptPending, startReceipt] = useTransition();
+  const [receiptSent, setReceiptSent] = useState(false);
+
   function submit() {
     const customer = resolveCustomer();
     if (!customer) {
@@ -115,21 +125,42 @@ export function PreorderForm({
         customer_name: customer.name,
         customer_phone: customer.phone,
         customer_email: customer.email,
-        part_code: partCode.trim() || null,
-        description: description.trim(),
-        quantity,
         supplier_id: supplierId || null,
-        supplier_unit_cost: cost,
-        unit_price: unitPrice,
         currency,
         expected_delivery_date: eta || null,
         notes: notes.trim() || null,
+        // Wrap the single-row UI into the server's items[] shape. Multi-row
+        // UI lands in a follow-up — backend already supports it.
+        items: [
+          {
+            part_code: partCode.trim() || null,
+            description: description.trim(),
+            quantity,
+            supplier_unit_cost: cost,
+            unit_price: unitPrice,
+          },
+        ],
       });
       if (res.ok) {
         toast.success(t("preorder_form_created"));
-        router.push(`/${locale}/panel/precomenzi`);
+        setCreatedId(res.id);
       } else {
         toast.error(t("accountant_send_error", { reason: res.reason }));
+      }
+    });
+  }
+
+  function sendReceipt() {
+    if (!createdId) return;
+    startReceipt(async () => {
+      const res = await sendPreorderReceipt(createdId);
+      if (res.ok) {
+        setReceiptSent(true);
+        toast.success(t("preorder_receipt_sent"));
+      } else {
+        toast.error(
+          t("preorder_receipt_failed", { reason: res.reason }),
+        );
       }
     });
   }
@@ -282,12 +313,44 @@ export function PreorderForm({
         </Field>
       </section>
 
-      <div className="flex justify-end">
-        <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
-          <Save className="size-4" />
-          {pending ? t("preorder_form_saving") : t("preorder_form_submit")}
-        </Button>
-      </div>
+      {createdId ? (
+        <section className="rounded-md border border-success/40 bg-success/5 p-5">
+          <h3 className="text-sm font-semibold text-success">
+            {t("preorder_form_created")}
+          </h3>
+          <p className="mt-1 text-xs text-muted-strong">
+            {t("preorder_form_after_create_hint")}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={sendReceipt}
+              disabled={receiptPending || receiptSent}
+              className="gap-1.5"
+            >
+              {receiptSent
+                ? t("preorder_receipt_sent")
+                : receiptPending
+                  ? t("preorder_receipt_sending")
+                  : t("preorder_receipt_send")}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.push(`/${locale}/panel/precomenzi`)}
+            >
+              {t("preorder_form_go_to_list")}
+            </Button>
+          </div>
+        </section>
+      ) : (
+        <div className="flex justify-end">
+          <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
+            <Save className="size-4" />
+            {pending ? t("preorder_form_saving") : t("preorder_form_submit")}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
