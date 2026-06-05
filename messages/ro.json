@@ -1626,6 +1626,7 @@
     "preorder_form_margin_hint": "Se aplică peste prețul furnizorului pentru a calcula prețul clientului.",
     "preorder_form_unit_price": "Preț client / unitate",
     "preorder_form_unit_price_hint": "Calculat automat: {derived} {currency}. Lasă gol pentru a folosi valoarea calculată.",
+    "preorder_form_unit_price_no_cost": "Introdu costul furnizorului pentru a vedea marja.",
     "preorder_form_eta": "Livrare estimată (data)",
     "preorder_form_notes": "Note interne",
     "preorder_form_notes_placeholder": "Detalii pentru tine — clientul nu le vede.",

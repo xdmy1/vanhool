@@ -1626,6 +1626,7 @@
     "preorder_form_margin_hint": "Applied on top of the supplier price to compute the customer price.",
     "preorder_form_unit_price": "Customer price / unit",
     "preorder_form_unit_price_hint": "Auto-computed: {derived} {currency}. Leave empty to use the computed value.",
+    "preorder_form_unit_price_no_cost": "Enter the supplier cost to see the margin.",
     "preorder_form_eta": "Estimated delivery (date)",
     "preorder_form_notes": "Internal notes",
     "preorder_form_notes_placeholder": "For your eyes only — the customer won't see these.",

@@ -1626,6 +1626,7 @@
     "preorder_form_margin_hint": "Применяется поверх цены поставщика для расчёта цены клиента.",
     "preorder_form_unit_price": "Цена клиенту / ед.",
     "preorder_form_unit_price_hint": "Авто: {derived} {currency}. Оставьте пустым, чтобы использовать авто.",
+    "preorder_form_unit_price_no_cost": "Введите закупочную цену, чтобы увидеть наценку.",
     "preorder_form_eta": "Ожидаемая дата доставки",
     "preorder_form_notes": "Внутренние заметки",
     "preorder_form_notes_placeholder": "Только для вас — клиент их не увидит.",
