@@ -124,11 +124,11 @@ export default async function AdminOrderDetailPage({
                       {item.name}
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
-                      {item.quantity} × {item.price.toFixed(2)} lei
+                      {item.quantity} × {fmtAmount(item.price, order.currency)}
                     </div>
                   </div>
                   <div className="shrink-0 text-sm font-semibold tabular-nums">
-                    {(item.price * item.quantity).toFixed(2)} lei
+                    {fmtAmount(item.price * item.quantity, order.currency)}
                   </div>
                 </li>
               ))}
@@ -173,11 +173,14 @@ export default async function AdminOrderDetailPage({
               {t("order_detail_summary")}
             </h2>
             <dl className="space-y-2 text-sm">
-              <Row label={tCart("subtotal")} value={`${Number(order.subtotal ?? 0).toFixed(2)} lei`} />
+              <Row
+                label={tCart("subtotal")}
+                value={fmtAmount(Number(order.subtotal ?? 0), order.currency)}
+              />
               {Number(order.discount_amount ?? 0) > 0 ? (
                 <Row
                   label={tCart("discount")}
-                  value={`-${Number(order.discount_amount).toFixed(2)} lei`}
+                  value={`-${fmtAmount(Number(order.discount_amount), order.currency)}`}
                   tone="success"
                 />
               ) : null}
@@ -187,7 +190,7 @@ export default async function AdminOrderDetailPage({
                   Number(order.shipping_cost ?? 0) === 0 ? (
                     <span className="text-success">{tCart("free")}</span>
                   ) : (
-                    `${Number(order.shipping_cost).toFixed(2)} lei`
+                    fmtAmount(Number(order.shipping_cost), order.currency)
                   )
                 }
               />
@@ -196,7 +199,11 @@ export default async function AdminOrderDetailPage({
               <span className="text-[11px] font-semibold">
                 {tCart("total")}
               </span>
-              <Price value={Number(order.total ?? 0)} size="xl" />
+              <Price
+                value={Number(order.total ?? 0)}
+                currency={order.currency}
+                size="xl"
+              />
             </div>
           </section>
 
@@ -212,6 +219,18 @@ export default async function AdminOrderDetailPage({
       </div>
     </div>
   );
+}
+
+// Format a money amount with the order's currency — `123.45 lei` for MDL,
+// `€123.45` for EUR / `$123.45` for USD. Mirrors the panel's Price helper so
+// admin and panel show the same string for the same number.
+function fmtAmount(value: number, currency: string): string {
+  const c = (currency || "MDL").toUpperCase();
+  const n = (Number.isFinite(value) ? value : 0).toFixed(2);
+  if (c === "EUR") return `€${n}`;
+  if (c === "USD") return `$${n}`;
+  if (c === "MDL") return `${n} lei`;
+  return `${n} ${c}`;
 }
 
 function Row({

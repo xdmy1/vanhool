@@ -198,6 +198,8 @@ export type AdminOrderRow = {
   discount_amount: number | null;
   shipping_cost: number | null;
   total: number | null;
+  /** EUR / USD / MDL. Defaults to MDL on legacy rows. */
+  currency: string;
   status: string | null;
   payment_method: string | null;
   notes: string | null;
@@ -213,7 +215,7 @@ export type AdminOrderFilter = {
 };
 
 const ORDER_COLUMNS =
-  "id, user_id, customer_name, customer_email, customer_phone, customer_address, items, subtotal, discount_amount, shipping_cost, total, status, payment_method, notes, created_at, updated_at";
+  "id, user_id, customer_name, customer_email, customer_phone, customer_address, items, subtotal, discount_amount, shipping_cost, total, currency, status, payment_method, notes, created_at, updated_at";
 
 export async function adminListOrders(filter: AdminOrderFilter = {}) {
   const supabase = await createClient();
@@ -240,8 +242,14 @@ export async function adminListOrders(filter: AdminOrderFilter = {}) {
   query = query.order("created_at", { ascending: false }).range(from, to);
 
   const { data, count } = await query;
+  const rows = (((data ?? []) as unknown) as Array<Record<string, unknown>>).map(
+    (r) => ({
+      ...(r as object),
+      currency: ((r as { currency?: string | null }).currency ?? "MDL").toUpperCase(),
+    }),
+  ) as AdminOrderRow[];
   return {
-    rows: (data ?? []) as AdminOrderRow[],
+    rows,
     total: count ?? 0,
     page,
     perPage,
@@ -255,7 +263,13 @@ export async function adminGetOrder(id: string): Promise<AdminOrderRow | null> {
     .select(ORDER_COLUMNS)
     .eq("id", id)
     .maybeSingle();
-  return (data as AdminOrderRow | null) ?? null;
+  if (!data) return null;
+  return {
+    ...(data as object),
+    currency: (
+      (data as unknown as { currency?: string | null }).currency ?? "MDL"
+    ).toUpperCase(),
+  } as AdminOrderRow;
 }
 
 export type AdminPromoRow = {

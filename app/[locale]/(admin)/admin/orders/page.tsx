@@ -150,7 +150,12 @@ export default async function AdminOrdersPage({
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
+                      <Price
+                        value={Number(o.total ?? 0)}
+                        currency={o.currency}
+                        size="sm"
+                        accent={false}
+                      />
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-2">
