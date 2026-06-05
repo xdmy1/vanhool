@@ -434,6 +434,104 @@ export async function sendConta1PurchasesMonthly(
 }
 
 /**
+ * Forward an entire purchase document (header + every line) to the
+ * bookkeeper. Triggered from the "Contabilului" button on each row of
+ * /panel/achizitii. Conta1 only — same reasoning as the monthly export.
+ */
+export async function sendPurchaseToAccountant(
+  purchaseId: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+
+  const supabase = await createClient();
+  const { data: header } = await supabase
+    .from("purchases")
+    .select(
+      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
+    )
+    .eq("id", purchaseId)
+    .maybeSingle();
+  if (!header) return { ok: false, reason: "purchase_not_found" };
+  if ((header as { account_scope: string }).account_scope !== "conta1") {
+    return { ok: false, reason: "conta1_only" };
+  }
+  const h = header as unknown as {
+    id: string;
+    document_number: string | null;
+    document_date: string;
+    status: string;
+    currency: string | null;
+    subtotal: number | string | null;
+    vat_amount: number | string | null;
+    total: number | string | null;
+    suppliers: { name: string } | null;
+    purchase_items: Array<{
+      id: string;
+      supplier_code: string | null;
+      internal_code: string | null;
+      description: string;
+      quantity: number | string;
+      unit_cost: number | string;
+      vat_rate: number | string;
+      line_total: number | string;
+    }> | null;
+  };
+  const currency = (h.currency ?? "MDL").toUpperCase();
+  const purchase = {
+    id: h.id,
+    document_number: h.document_number,
+    document_date: h.document_date,
+    supplier_name: h.suppliers?.name ?? "—",
+    status: h.status,
+    currency,
+    subtotal: Number(h.subtotal ?? 0),
+    vat_amount: Number(h.vat_amount ?? 0),
+    total: Number(h.total ?? 0),
+    items: (h.purchase_items ?? []).map((it) => ({
+      supplier_code: it.supplier_code,
+      internal_code: it.internal_code,
+      description: it.description,
+      quantity: Number(it.quantity ?? 0),
+      unit_cost: Number(it.unit_cost ?? 0),
+      vat_rate: Number(it.vat_rate ?? 0),
+      line_total: Number(it.line_total ?? 0),
+    })),
+  };
+  const { subject, html, text } = accountantMonthlyPurchasesEmail(
+    {
+      from: purchase.document_date,
+      to: purchase.document_date,
+      count: 1,
+      totalsByCurrency: [
+        {
+          currency,
+          total: purchase.total,
+          vat_amount: purchase.vat_amount,
+        },
+      ],
+      purchases: [purchase],
+    },
+    { mode: "single" },
+  );
+
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  revalidatePath("/[locale]/panel/achizitii", "page");
+  revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
+  return { ok: true };
+}
+
+/**
  * Forward a single purchase line to the bookkeeper. Used when the
  * operator wants to break out one item from a larger document — e.g.
  * a single part needs to land in a separate accounting category.

@@ -42,13 +42,23 @@ function fmtRange(from: string, to: string): string {
   return `${fmtDate(from)} → ${fmtDate(to)}`;
 }
 
-export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
+export function accountantMonthlyPurchasesEmail(
+  data: PurchasesForMonth,
+  options?: { mode?: "monthly" | "single" },
+): {
   subject: string;
   html: string;
   text: string;
 } {
   const { from, to, count, purchases, totalsByCurrency } = data;
   const rangeStr = fmtRange(from, to);
+  const singleMode = options?.mode === "single";
+  const eyebrow = singleMode
+    ? "Achiziție · raport complet"
+    : "Raport achiziții lunare";
+  const requestLine = singleMode
+    ? "Vă rugăm să luați în evidență achiziția de mai jos."
+    : "Vă rugăm să introduceți în evidența contabilă achizițiile listate mai jos pentru perioada";
 
   const purchasesHtml = purchases
     .map((p, idx) => {
@@ -115,14 +125,14 @@ export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="720" style="max-width:720px;background:#ffffff;border-radius:8px;overflow:hidden">
 
         <tr><td style="padding:20px 24px;background:#f4f1ea;border-bottom:1px solid #d8d2c5">
-          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Raport achiziții lunare</div>
-          <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${escapeHtml(rangeStr)}</div>
-          <div style="font-size:12px;color:#6b6358;margin-top:2px">${count} document${count === 1 ? "" : "e"}</div>
+          <div style="font-size:11px;color:#c0392b;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">${escapeHtml(eyebrow)}</div>
+          <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${escapeHtml(singleMode ? (purchases[0]?.supplier_name ?? "Achiziție") : rangeStr)}</div>
+          <div style="font-size:12px;color:#6b6358;margin-top:2px">${singleMode ? (purchases[0]?.document_number ? `Doc ${escapeHtml(purchases[0].document_number)} · ${fmtDate(purchases[0].document_date)}` : fmtDate(purchases[0]?.document_date ?? "")) : `${count} document${count === 1 ? "" : "e"}`}</div>
         </td></tr>
 
         <tr><td style="padding:16px 24px;background:#fffbe6;border-bottom:1px solid #f3e8aa">
           <div style="font-size:13px;color:#5a4906;line-height:1.5">
-            <strong>Raport achiziții</strong> — vă rugăm să introduceți în evidența contabilă achizițiile listate mai jos pentru perioada ${escapeHtml(rangeStr)}.
+            <strong>${singleMode ? "Solicitare contabilitate" : "Raport achiziții"}</strong> — ${escapeHtml(requestLine)}${singleMode ? "" : " " + escapeHtml(rangeStr) + "."}
           </div>
         </td></tr>
 
@@ -178,7 +188,9 @@ export function accountantMonthlyPurchasesEmail(data: PurchasesForMonth): {
     }
   }
 
-  const subject = `Raport achiziții lunare · ${rangeStr} · ${count} document(e)`;
+  const subject = singleMode && purchases[0]
+    ? `Achiziție · ${purchases[0].supplier_name}${purchases[0].document_number ? ` · ${purchases[0].document_number}` : ""} · ${fmtDate(purchases[0].document_date)}`
+    : `Raport achiziții lunare · ${rangeStr} · ${count} document(e)`;
 
   return { subject, html, text: textLines.join("\n") };
 }

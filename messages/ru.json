@@ -1647,6 +1647,7 @@
     "achizitii_supplier_field_vat_code": "Код НДС",
     "achizitii_line_catalog_hint": "Отметьте, чтобы при проводке закупки автоматически создался товар. Снимите для разовых деталей, которые вы не продаёте онлайн.",
     "achizitii_line_send_accountant": "Отправить строку бухгалтеру",
-    "achizitii_line_send_accountant_compact": "Бухгалтеру"
+    "achizitii_line_send_accountant_compact": "Бухгалтеру",
+    "achizitii_row_send_accountant": "Отправить закупку бухгалтеру"
   }
 }

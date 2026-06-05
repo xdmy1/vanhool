@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { SendMonthlyPurchasesButton } from "@/components/panel/purchases/SendMonthlyPurchasesButton";
+import { SendPurchaseButton } from "@/components/panel/purchases/SendPurchaseButton";
 import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { listPurchases } from "@/lib/panel/purchases/queries";
 import { getActiveBook } from "@/lib/panel/scope";
@@ -98,7 +99,7 @@ export default async function PanelAchizitiiPage({
                       {r.total.toFixed(2)} {r.currency}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
                           href={`/panel/achizitii/${r.id}` as "/panel"}
                           locale={locale}
@@ -106,6 +107,9 @@ export default async function PanelAchizitiiPage({
                         >
                           {t("action_open")}
                         </Link>
+                        {scope === "conta1" ? (
+                          <SendPurchaseButton purchaseId={r.id} />
+                        ) : null}
                         <PinDeleteButton
                           action={deletePurchaseWithPin}
                           entityId={r.id}
