@@ -28,6 +28,10 @@ type Line = {
   quantity: number;
   unit_cost: number;
   vat_rate: number;
+  /** When true, postPurchase creates a product in the catalog from this
+   * line (or increments stock if it already exists). Default false —
+   * not every purchased part belongs on the storefront. */
+  add_to_catalog: boolean;
 };
 
 const EMPTY_LINE: Line = {
@@ -39,6 +43,7 @@ const EMPTY_LINE: Line = {
   // Start at 0 so a freshly-typed cost shows up as-is in the line total;
   // the operator picks +TVA 20% explicitly when needed.
   vat_rate: 0,
+  add_to_catalog: false,
 };
 
 export function PurchaseForm({
@@ -114,6 +119,7 @@ export function PurchaseForm({
           quantity: l.quantity,
           unit_cost: l.unit_cost,
           vat_rate: l.vat_rate,
+          add_to_catalog: !!l.add_to_catalog,
         })),
       });
       if (res.ok) {
@@ -203,6 +209,9 @@ export function PurchaseForm({
                 <th className="px-2 py-2 text-right">{t("achizitii_line_qty")}</th>
                 <th className="px-2 py-2 text-right" colSpan={2}>{t("achizitii_line_cost")}</th>
                 <th className="px-2 py-2 text-right">{t("achizitii_line_total")}</th>
+                <th className="px-2 py-2 text-center" title={t("achizitii_line_catalog_hint")}>
+                  {t("achizitii_line_catalog")}
+                </th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
@@ -272,6 +281,17 @@ export function PurchaseForm({
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {(l.quantity * l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={l.add_to_catalog}
+                      onChange={(e) =>
+                        setLine(idx, { add_to_catalog: e.target.checked })
+                      }
+                      className="size-4 cursor-pointer accent-primary"
+                      title={t("achizitii_line_catalog_hint")}
+                    />
                   </td>
                   <td className="px-2 py-2 text-right">
                     <button

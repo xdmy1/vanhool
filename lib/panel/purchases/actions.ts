@@ -8,6 +8,7 @@ import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { sendResendEmail } from "@/lib/email/resend";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
+import { accountantPurchaseLineEmail } from "@/lib/email/accountant-purchase-line";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
@@ -27,6 +28,10 @@ const lineInputSchema = z.object({
   quantity: z.number().positive(),
   unit_cost: z.number().nonnegative(),
   vat_rate: z.number().nonnegative().default(20),
+  /** Opt-in: when true, postPurchase creates / restocks a catalog product
+   * for this line. When false (default), the line is purely an accounting
+   * record — no product is created and no stock is tracked. */
+  add_to_catalog: z.boolean().optional().default(false),
 });
 
 const purchaseSchema = z.object({
@@ -96,8 +101,20 @@ export async function createPurchase(
     unit_cost: i.unit_cost,
     vat_rate: i.vat_rate ?? 20,
     line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
+    add_to_catalog: !!i.add_to_catalog,
   }));
-  const { error: lErr } = await supabase.from("purchase_items").insert(lines);
+  // Insert; if the catalog column hasn't been migrated yet, retry without
+  // it so existing schemas keep working — flag just defaults to false.
+  // Cast through never to satisfy stale generated types.
+  let lErr = (
+    await supabase.from("purchase_items").insert(lines as never)
+  ).error;
+  if (lErr && /add_to_catalog/i.test(lErr.message)) {
+    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+    lErr = (
+      await supabase.from("purchase_items").insert(stripped as never)
+    ).error;
+  }
   if (lErr) {
     await supabase.from("purchases").delete().eq("id", header.id);
     return { ok: false, reason: `items: ${lErr.message}` };
@@ -142,11 +159,36 @@ export async function postPurchase(
   // Markup is configurable from /panel/setari — falls back to 30% if unset.
   const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
 
-  const { data: items } = await supabase
+  // Try with the opt-in catalog flag; fall back if the migration hasn't
+  // been applied yet (every line is then treated as add_to_catalog=true,
+  // matching the old auto-create behaviour).
+  type ItemRow = {
+    id: string;
+    product_id: string | null;
+    supplier_code: string | null;
+    internal_code: string | null;
+    description: string;
+    quantity: number;
+    unit_cost: number;
+    add_to_catalog?: boolean;
+  };
+  let itemsRes = await supabase
     .from("purchase_items")
-    .select("id, product_id, supplier_code, internal_code, description, quantity, unit_cost")
+    .select(
+      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, add_to_catalog" as
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost",
+    )
     .eq("purchase_id", purchaseId);
-  if (!items || items.length === 0) return { ok: false, reason: "no_items" };
+  if (itemsRes.error && /add_to_catalog/i.test(itemsRes.error.message)) {
+    itemsRes = await supabase
+      .from("purchase_items")
+      .select(
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost",
+      )
+      .eq("purchase_id", purchaseId);
+  }
+  const items = (itemsRes.data ?? []) as unknown as ItemRow[];
+  if (items.length === 0) return { ok: false, reason: "no_items" };
 
   // Fetch supplier name for cross_reference entries
   const { data: supplier } = await supabase
@@ -157,6 +199,14 @@ export async function postPurchase(
   const supplierName = supplier?.name ?? "Furnizor";
 
   for (const it of items) {
+    // Skip catalog-related work for lines the operator marked off. The
+    // purchase line itself stays in the books — it's just decoupled
+    // from any product row. If `add_to_catalog` is undefined (pre-
+    // migration schema), default to true to preserve old behaviour.
+    const wantsCatalog =
+      (it as { add_to_catalog?: boolean }).add_to_catalog ?? true;
+    if (!wantsCatalog && !it.product_id) continue;
+
     let productId = it.product_id;
 
     const costMdl = Number((Number(it.unit_cost) * toMdl).toFixed(2));
@@ -381,6 +431,73 @@ export async function sendConta1PurchasesMonthly(
   if (!result.ok) return { ok: false, reason: result.reason };
 
   return { ok: true, count: data.count, sentAt: new Date().toISOString() };
+}
+
+/**
+ * Forward a single purchase line to the bookkeeper. Used when the
+ * operator wants to break out one item from a larger document — e.g.
+ * a single part needs to land in a separate accounting category.
+ * PIN-gated. Only conta1 lines are eligible (conta2 stays cash-only).
+ */
+export async function sendPurchaseLineToAccountant(
+  lineId: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+
+  const supabase = await createClient();
+  const { data: line } = await supabase
+    .from("purchase_items")
+    .select(
+      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
+    )
+    .eq("id", lineId)
+    .maybeSingle();
+  if (!line) return { ok: false, reason: "line_not_found" };
+
+  const { data: header } = await supabase
+    .from("purchases")
+    .select(
+      "id, account_scope, document_number, document_date, currency, suppliers(name)",
+    )
+    .eq("id", line.purchase_id)
+    .maybeSingle();
+  if (!header) return { ok: false, reason: "purchase_not_found" };
+  if ((header as { account_scope: string }).account_scope !== "conta1") {
+    return { ok: false, reason: "conta1_only" };
+  }
+  const supplierName =
+    (header as { suppliers: { name: string } | null }).suppliers?.name ??
+    "Furnizor";
+
+  const { subject, html, text } = accountantPurchaseLineEmail({
+    supplierName,
+    documentNumber: (header as { document_number: string | null }).document_number,
+    documentDate: (header as { document_date: string }).document_date,
+    currency: ((header as { currency: string | null }).currency ?? "MDL").toUpperCase(),
+    line: {
+      supplier_code: line.supplier_code,
+      internal_code: line.internal_code,
+      description: line.description,
+      quantity: Number(line.quantity ?? 0),
+      unit_cost: Number(line.unit_cost ?? 0),
+      vat_rate: Number(line.vat_rate ?? 0),
+      line_total: Number(line.line_total ?? 0),
+    },
+  });
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  revalidatePath(`/[locale]/panel/achizitii/${line.purchase_id}`, "page");
+  return { ok: true };
 }
 
 /**

@@ -4,6 +4,7 @@ import { CheckCircle2, Plus, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { SendPurchaseLineButton } from "@/components/panel/purchases/SendPurchaseLineButton";
 import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
@@ -123,6 +124,9 @@ export default async function PanelAchizitieDetailPage({
                 <th className="px-4 py-3 text-right">{t("achizitii_line_cost")}</th>
                 <th className="px-4 py-3 text-right">{t("achizitii_line_total")}</th>
                 <th className="px-4 py-3">{t("achizitii_line_catalog")}</th>
+                {purchase.account_scope === "conta1" ? (
+                  <th className="px-4 py-3" />
+                ) : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -157,6 +161,11 @@ export default async function PanelAchizitieDetailPage({
                       </Link>
                     )}
                   </td>
+                  {purchase.account_scope === "conta1" ? (
+                    <td className="px-4 py-2 text-right">
+                      <SendPurchaseLineButton lineId={it.id} />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

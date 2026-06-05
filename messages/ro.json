@@ -1637,6 +1637,9 @@
     "preorder_form_created": "Precomandă creată",
     "preorder_form_saving": "Se salvează…",
     "preorder_form_submit": "Salvează precomanda",
-    "achizitii_supplier_field_vat_code": "Cod TVA"
+    "achizitii_supplier_field_vat_code": "Cod TVA",
+    "achizitii_line_catalog_hint": "Bifează ca să se creeze automat un produs în catalog la postarea achiziției. Lasă nebifat pentru piese unicale care nu se vând pe site.",
+    "achizitii_line_send_accountant": "Trimite linia contabilului",
+    "achizitii_line_send_accountant_compact": "Contabilului"
   }
 }

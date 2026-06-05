@@ -1637,6 +1637,9 @@
     "preorder_form_created": "Предзаказ создан",
     "preorder_form_saving": "Сохранение…",
     "preorder_form_submit": "Сохранить предзаказ",
-    "achizitii_supplier_field_vat_code": "Код НДС"
+    "achizitii_supplier_field_vat_code": "Код НДС",
+    "achizitii_line_catalog_hint": "Отметьте, чтобы при проводке закупки автоматически создался товар. Снимите для разовых деталей, которые вы не продаёте онлайн.",
+    "achizitii_line_send_accountant": "Отправить строку бухгалтеру",
+    "achizitii_line_send_accountant_compact": "Бухгалтеру"
   }
 }

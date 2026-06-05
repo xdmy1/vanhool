@@ -1637,6 +1637,9 @@
     "preorder_form_created": "Pre-order created",
     "preorder_form_saving": "Saving…",
     "preorder_form_submit": "Save pre-order",
-    "achizitii_supplier_field_vat_code": "VAT code"
+    "achizitii_supplier_field_vat_code": "VAT code",
+    "achizitii_line_catalog_hint": "Tick to auto-create a product in the catalog when the purchase is posted. Leave unchecked for one-off parts you don't sell online.",
+    "achizitii_line_send_accountant": "Send line to accountant",
+    "achizitii_line_send_accountant_compact": "Accountant"
   }
 }
