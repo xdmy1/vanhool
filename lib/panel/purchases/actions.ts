@@ -8,7 +8,6 @@ import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { sendResendEmail } from "@/lib/email/resend";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
-import { accountantPurchaseLineEmail } from "@/lib/email/accountant-purchase-line";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
@@ -528,73 +527,6 @@ export async function sendPurchaseToAccountant(
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
-  return { ok: true };
-}
-
-/**
- * Forward a single purchase line to the bookkeeper. Used when the
- * operator wants to break out one item from a larger document — e.g.
- * a single part needs to land in a separate accounting category.
- * PIN-gated. Only conta1 lines are eligible (conta2 stays cash-only).
- */
-export async function sendPurchaseLineToAccountant(
-  lineId: string,
-  pin: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const user = await getPanelUser();
-  if (!user) return { ok: false, reason: "unauthorized" };
-  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
-
-  const supabase = await createClient();
-  const { data: line } = await supabase
-    .from("purchase_items")
-    .select(
-      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
-    )
-    .eq("id", lineId)
-    .maybeSingle();
-  if (!line) return { ok: false, reason: "line_not_found" };
-
-  const { data: header } = await supabase
-    .from("purchases")
-    .select(
-      "id, account_scope, document_number, document_date, currency, suppliers(name)",
-    )
-    .eq("id", line.purchase_id)
-    .maybeSingle();
-  if (!header) return { ok: false, reason: "purchase_not_found" };
-  if ((header as { account_scope: string }).account_scope !== "conta1") {
-    return { ok: false, reason: "conta1_only" };
-  }
-  const supplierName =
-    (header as { suppliers: { name: string } | null }).suppliers?.name ??
-    "Furnizor";
-
-  const { subject, html, text } = accountantPurchaseLineEmail({
-    supplierName,
-    documentNumber: (header as { document_number: string | null }).document_number,
-    documentDate: (header as { document_date: string }).document_date,
-    currency: ((header as { currency: string | null }).currency ?? "MDL").toUpperCase(),
-    line: {
-      supplier_code: line.supplier_code,
-      internal_code: line.internal_code,
-      description: line.description,
-      quantity: Number(line.quantity ?? 0),
-      unit_cost: Number(line.unit_cost ?? 0),
-      vat_rate: Number(line.vat_rate ?? 0),
-      line_total: Number(line.line_total ?? 0),
-    },
-  });
-  const result = await sendResendEmail({
-    to: ACCOUNTANT_EMAIL,
-    subject,
-    html,
-    text,
-    replyTo: user.email ? { email: user.email } : undefined,
-  });
-  if (!result.ok) return { ok: false, reason: result.reason };
-
-  revalidatePath(`/[locale]/panel/achizitii/${line.purchase_id}`, "page");
   return { ok: true };
 }
 
