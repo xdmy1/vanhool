@@ -1636,6 +1636,7 @@
     "preorder_form_price_required": "Customer price must be positive",
     "preorder_form_created": "Pre-order created",
     "preorder_form_saving": "Saving…",
-    "preorder_form_submit": "Save pre-order"
+    "preorder_form_submit": "Save pre-order",
+    "achizitii_supplier_field_vat_code": "VAT code"
   }
 }

@@ -1636,6 +1636,7 @@
     "preorder_form_price_required": "Цена клиенту должна быть положительной",
     "preorder_form_created": "Предзаказ создан",
     "preorder_form_saving": "Сохранение…",
-    "preorder_form_submit": "Сохранить предзаказ"
+    "preorder_form_submit": "Сохранить предзаказ",
+    "achizitii_supplier_field_vat_code": "Код НДС"
   }
 }

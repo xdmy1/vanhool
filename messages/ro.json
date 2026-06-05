@@ -1636,6 +1636,7 @@
     "preorder_form_price_required": "Prețul client trebuie să fie pozitiv",
     "preorder_form_created": "Precomandă creată",
     "preorder_form_saving": "Se salvează…",
-    "preorder_form_submit": "Salvează precomanda"
+    "preorder_form_submit": "Salvează precomanda",
+    "achizitii_supplier_field_vat_code": "Cod TVA"
   }
 }

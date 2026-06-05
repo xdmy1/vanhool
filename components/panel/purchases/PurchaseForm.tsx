@@ -350,6 +350,7 @@ function SupplierPicker({
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newIdno, setNewIdno] = useState("");
+  const [newVatCode, setNewVatCode] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newAddress, setNewAddress] = useState("");
@@ -378,6 +379,7 @@ function SupplierPicker({
       const res = await createSupplier({
         name: newName.trim(),
         idno: newIdno || null,
+        vat_code: newVatCode || null,
         contact_phone: newPhone || null,
         contact_email: newEmail || null,
         address: newAddress || null,
@@ -389,6 +391,7 @@ function SupplierPicker({
         setNewOpen(false);
         setNewName("");
         setNewIdno("");
+        setNewVatCode("");
         setNewPhone("");
         setNewEmail("");
         setNewAddress("");
@@ -474,6 +477,13 @@ function SupplierPicker({
           </Field>
           <Field label={t("achizitii_supplier_field_idno")}>
             <Input value={newIdno} onChange={(e) => setNewIdno(e.target.value)} />
+          </Field>
+          <Field label={t("achizitii_supplier_field_vat_code")}>
+            <Input
+              value={newVatCode}
+              onChange={(e) => setNewVatCode(e.target.value)}
+              className="font-mono"
+            />
           </Field>
           <Field label={t("achizitii_supplier_field_phone")}>
             <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
