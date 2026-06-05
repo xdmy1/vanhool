@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import { issuePurchaseOrder } from "@/lib/panel/purchases/actions";
 
 export function IssuePOButton({
@@ -58,10 +58,9 @@ export function IssuePOButton({
           <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
             {t("po_expected_delivery")}
           </label>
-          <Input
-            type="date"
+          <DateInputEU
             value={expected}
-            onChange={(e) => setExpected(e.target.value)}
+            onChange={(iso) => setExpected(iso)}
           />
         </div>
         <Button onClick={go} disabled={pending} className="gap-1.5">

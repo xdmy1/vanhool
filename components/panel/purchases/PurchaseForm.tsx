@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { cn } from "@/lib/utils/cn";
@@ -151,10 +152,9 @@ export function PurchaseForm({
             />
           </Field>
           <Field label={t("achizitii_doc_date")} required>
-            <Input
-              type="date"
+            <DateInputEU
               value={documentDate}
-              onChange={(e) => setDocumentDate(e.target.value)}
+              onChange={(iso) => setDocumentDate(iso)}
             />
           </Field>
           <Field label={t("achizitii_doc_currency")}>

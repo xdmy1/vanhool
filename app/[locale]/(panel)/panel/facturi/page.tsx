@@ -1,6 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AlertTriangle, CheckCircle2, ExternalLink, Printer, X } from "lucide-react";
 
+import { FacturiDateRangeFields } from "./FacturiDateRangeFields";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoicePaidButton";
@@ -256,18 +258,9 @@ export default async function PanelFacturiPage({
             {hiddenParams.map(([k, v]) => (
               <input key={k} type="hidden" name={k} value={v} />
             ))}
-            <input
-              type="date"
-              name="from"
-              defaultValue={fromParam ?? ""}
-              className="h-7 rounded-sm border border-border bg-surface px-1 text-xs text-foreground"
-            />
-            <span className="text-muted">—</span>
-            <input
-              type="date"
-              name="to"
-              defaultValue={toParam ?? ""}
-              className="h-7 rounded-sm border border-border bg-surface px-1 text-xs text-foreground"
+            <FacturiDateRangeFields
+              fromParam={fromParam ?? ""}
+              toParam={toParam ?? ""}
             />
             <button
               type="submit"

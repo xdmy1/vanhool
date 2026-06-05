@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import { createExpense } from "@/lib/panel/expenses/actions";
 import {
   EXPENSE_CATEGORIES,
@@ -98,7 +99,7 @@ export function ExpenseForm({ scope, forceCash = false }: Props) {
           />
         </Field>
         <Field label={t("expenses_form_paid_at")}>
-          <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+          <DateInputEU value={paidAt} onChange={(iso) => setPaidAt(iso)} />
         </Field>
         <Field label={t("expenses_form_payment_method")}>
           <select

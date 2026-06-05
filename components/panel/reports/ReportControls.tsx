@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import {
   downloadReportCsv,
   type ReportKind,
@@ -81,13 +82,13 @@ export function ReportControls({
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
           {t("reports_controls_from")}
         </label>
-        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <DateInputEU value={from} onChange={(iso) => setFrom(iso)} />
       </div>
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
           {t("reports_controls_to")}
         </label>
-        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DateInputEU value={to} onChange={(iso) => setTo(iso)} />
       </div>
       {showScope && kind !== "invoices" ? (
         <div>

@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import { createPreorder } from "@/lib/panel/preorders/actions";
 
 type SupplierOption = { id: string; name: string };
@@ -230,11 +231,7 @@ export function PreorderForm({
             />
           </Field>
           <Field label={t("preorder_form_eta")}>
-            <Input
-              type="date"
-              value={eta}
-              onChange={(e) => setEta(e.target.value)}
-            />
+            <DateInputEU value={eta} onChange={(iso) => setEta(iso)} />
           </Field>
         </div>
         <div className="mt-3 rounded-md border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">

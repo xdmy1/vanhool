@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInputEU } from "@/components/common/DateInputEU";
 import { markInvoicePaid } from "@/lib/panel/invoices/actions";
 import { cn } from "@/lib/utils/cn";
 
@@ -100,12 +101,7 @@ export function MarkInvoicePaidButton({
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
             {t("invoice_mark_paid_date")}
           </span>
-          <Input
-            type="date"
-            value={paidAt}
-            onChange={(e) => setPaidAt(e.target.value)}
-            max={todayIso()}
-          />
+          <DateInputEU value={paidAt} onChange={(iso) => setPaidAt(iso)} />
         </label>
 
         <label className="flex flex-col gap-1">
