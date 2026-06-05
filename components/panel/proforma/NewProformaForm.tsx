@@ -37,6 +37,12 @@ type Line = {
    */
   discounted_unit_price: number | null;
   vat_rate: number;
+  /**
+   * Cost from the catalog (MDL). Stays on the wizard side only — never
+   * sent to the server — and powers the "Marja X%" indicator next to the
+   * unit price so the operator sees the realised margin while pricing.
+   */
+  cost_price: number;
 };
 
 type WalkIn = {
@@ -65,6 +71,7 @@ const EMPTY_LINE: Line = {
   // Prices are entered VAT-inclusive (Moldova: standard 20% TVA on conta1).
   // The totals computation extracts the net + VAT components from the gross.
   vat_rate: 20,
+  cost_price: 0,
 };
 
 // Synthetic placeholder used when a client is created without a real email.
@@ -110,7 +117,10 @@ export function NewProformaForm({
 
   const [scope, setScopeState] = useState<"conta1" | "conta2">(initial?.scope ?? "conta1");
   const [client, setClient] = useState<ClientSearchResult | null>(null);
-  const [walkinMode, setWalkinMode] = useState(true);
+  // Default to the existing-clients picker (matches the new-sale wizard).
+  // Walk-in mode is one tab click away — but the common case is selling to
+  // a registered customer, so don't make the operator switch every time.
+  const [walkinMode, setWalkinMode] = useState(false);
   const [walkin, setWalkin] = useState<WalkIn>(initial?.walkin ?? EMPTY_WALKIN);
   const [lines, setLines] = useState<Line[]>(
     initial?.lines ?? [{ ...EMPTY_LINE, vat_rate: defaultVatFor(initial?.scope ?? "conta1") }],
@@ -349,6 +359,7 @@ export function NewProformaForm({
                             // a custom one yet — keeps manual edits intact.
                             name: l.name.trim() ? l.name : m.name,
                             unit_price: m.unit_price,
+                            cost_price: m.cost_price,
                           })
                         }
                         placeholder={t("proforma_form_line_partcode_placeholder")}
@@ -391,6 +402,29 @@ export function NewProformaForm({
                         size="sm"
                         inputClassName="h-9 w-24 text-right"
                       />
+                      {l.cost_price > 0 ? (() => {
+                        // Markup over catalog cost — derived from the price
+                        // the operator typed (or auto-filled from the part
+                        // selection). Negative = selling below cost, shown in
+                        // destructive red as a sanity warning.
+                        const markup = ((l.unit_price - l.cost_price) / l.cost_price) * 100;
+                        const sign = markup >= 0 ? "+" : "";
+                        return (
+                          <div
+                            className={cn(
+                              "mt-0.5 text-[10px] font-semibold tabular-nums",
+                              markup < 0
+                                ? "text-destructive"
+                                : markup < 10
+                                  ? "text-warning"
+                                  : "text-success",
+                            )}
+                            title={`Cost: ${l.cost_price.toFixed(2)}`}
+                          >
+                            Marja {sign}{markup.toFixed(0)}%
+                          </div>
+                        );
+                      })() : null}
                     </td>
                     <td className="px-2 py-2 text-right">
                       <Input

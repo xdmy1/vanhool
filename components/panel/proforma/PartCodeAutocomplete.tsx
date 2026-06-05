@@ -13,6 +13,9 @@ export type ProformaPartMatch = {
   code: string;
   name: string;
   unit_price: number;
+  /** Catalog cost — passed through so the line can show the realised
+   * markup % once the operator edits the selling price. */
+  cost_price: number;
 };
 
 /**
@@ -73,6 +76,7 @@ export function PartCodeAutocomplete({
       code: p.part_code ?? "",
       name: p.name_ro ?? "",
       unit_price: p.price,
+      cost_price: p.cost_price ?? 0,
     });
     setOpen(false);
   }
