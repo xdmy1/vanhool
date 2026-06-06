@@ -213,6 +213,7 @@ export type PurchaseDetail = {
     unit_cost: number;
     vat_rate: number;
     line_total: number;
+    add_to_catalog: boolean;
   }>;
 };
 
@@ -280,13 +281,26 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
     .eq("id", id)
     .maybeSingle();
   if (!header) return null;
-  const { data: items } = await supabase
+  // Try with the catalog flag; fall back if the column migration hasn't
+  // run yet so detail / edit pages keep loading either way.
+  let itemsRes = await supabase
     .from("purchase_items")
     .select(
-      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
+      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, add_to_catalog" as
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
     )
     .eq("purchase_id", id)
     .order("created_at");
+  if (itemsRes.error && /add_to_catalog/i.test(itemsRes.error.message)) {
+    itemsRes = await supabase
+      .from("purchase_items")
+      .select(
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
+      )
+      .eq("purchase_id", id)
+      .order("created_at");
+  }
+  const items = itemsRes.data;
   const supplier = (header as unknown as { suppliers: { name: string } | null }).suppliers;
   return {
     id: header.id,
@@ -315,6 +329,9 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
       unit_cost: Number(it.unit_cost),
       vat_rate: Number(it.vat_rate),
       line_total: Number(it.line_total ?? it.quantity * it.unit_cost),
+      add_to_catalog: Boolean(
+        (it as { add_to_catalog?: boolean }).add_to_catalog,
+      ),
     })),
   };
 }

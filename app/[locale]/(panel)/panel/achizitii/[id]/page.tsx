@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { CheckCircle2, Plus, Printer } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
@@ -58,6 +58,15 @@ export default async function PanelAchizitieDetailPage({
         })}
         actions={
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="gap-1.5">
+              <Link
+                href={`/panel/achizitii/${purchase.id}/edit` as "/panel"}
+                locale={locale}
+              >
+                <Pencil className="size-4" />
+                {t("action_edit")}
+              </Link>
+            </Button>
             <span
               className={cn(
                 "rounded px-3 py-1 text-xs uppercase tracking-wide",

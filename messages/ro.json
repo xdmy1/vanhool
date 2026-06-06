@@ -1652,6 +1652,8 @@
     "achizitii_line_catalog_hint": "Bifează ca să se creeze automat un produs în catalog la postarea achiziției. Lasă nebifat pentru piese unicale care nu se vând pe site.",
     "achizitii_line_send_accountant": "Trimite linia contabilului",
     "achizitii_line_send_accountant_compact": "Contabilului",
-    "achizitii_row_send_accountant": "Trimite achiziția contabilului"
+    "achizitii_row_send_accountant": "Trimite achiziția contabilului",
+    "achizitii_edit_title": "Editează achiziția",
+    "achizitii_edit_subtitle": "Modifică detaliile achiziției. Stocul nu este reajustat automat — fii atent dacă achiziția e deja postată."
   }
 }

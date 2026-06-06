@@ -1652,6 +1652,8 @@
     "achizitii_line_catalog_hint": "Отметьте, чтобы при проводке закупки автоматически создался товар. Снимите для разовых деталей, которые вы не продаёте онлайн.",
     "achizitii_line_send_accountant": "Отправить строку бухгалтеру",
     "achizitii_line_send_accountant_compact": "Бухгалтеру",
-    "achizitii_row_send_accountant": "Отправить закупку бухгалтеру"
+    "achizitii_row_send_accountant": "Отправить закупку бухгалтеру",
+    "achizitii_edit_title": "Редактировать закупку",
+    "achizitii_edit_subtitle": "Изменить детали закупки. Склад не корректируется автоматически — будьте внимательны для проведённых документов."
   }
 }

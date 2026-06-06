@@ -16,8 +16,20 @@ import {
   createSupplier,
   searchSuppliers,
 } from "@/lib/panel/suppliers/actions";
-import { createPurchase } from "@/lib/panel/purchases/actions";
+import { createPurchase, updatePurchase } from "@/lib/panel/purchases/actions";
 import type { AccountScope } from "@/lib/panel/scope";
+
+export type PurchaseFormInitial = {
+  id: string;
+  supplier: Supplier;
+  scope: AccountScope;
+  documentNumber: string;
+  documentDate: string;
+  currency: string;
+  fxRate: number | null;
+  notes: string;
+  lines: Line[];
+};
 
 type Supplier = { id: string; name: string; idno: string | null; contact_phone: string | null };
 
@@ -49,22 +61,34 @@ const EMPTY_LINE: Line = {
 export function PurchaseForm({
   locale,
   defaultScope,
+  initial,
 }: {
   locale: string;
   defaultScope: AccountScope;
+  /** When set, the form runs in EDIT mode against the existing purchase. */
+  initial?: PurchaseFormInitial;
 }) {
   const t = useTranslations("panel");
   const router = useRouter();
-  const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [scope, setScope] = useState<AccountScope>(defaultScope);
-  const [documentNumber, setDocumentNumber] = useState("");
-  const [documentDate, setDocumentDate] = useState(
-    new Date().toISOString().slice(0, 10),
+  const isEdit = !!initial;
+  const [supplier, setSupplier] = useState<Supplier | null>(
+    initial?.supplier ?? null,
   );
-  const [currency, setCurrency] = useState("MDL");
-  const [fxRate, setFxRate] = useState<number | null>(null);
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ ...EMPTY_LINE }]);
+  const [scope, setScope] = useState<AccountScope>(initial?.scope ?? defaultScope);
+  const [documentNumber, setDocumentNumber] = useState(
+    initial?.documentNumber ?? "",
+  );
+  const [documentDate, setDocumentDate] = useState(
+    initial?.documentDate ?? new Date().toISOString().slice(0, 10),
+  );
+  const [currency, setCurrency] = useState(initial?.currency ?? "MDL");
+  const [fxRate, setFxRate] = useState<number | null>(initial?.fxRate ?? null);
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [lines, setLines] = useState<Line[]>(
+    initial?.lines && initial.lines.length > 0
+      ? initial.lines
+      : [{ ...EMPTY_LINE }],
+  );
   const [pending, startSave] = useTransition();
 
   const totals = useMemo(() => {
@@ -104,7 +128,7 @@ export function PurchaseForm({
       return;
     }
     startSave(async () => {
-      const res = await createPurchase({
+      const payload = {
         supplier_id: supplier.id,
         account_scope: scope,
         document_number: documentNumber || null,
@@ -121,10 +145,14 @@ export function PurchaseForm({
           vat_rate: l.vat_rate,
           add_to_catalog: !!l.add_to_catalog,
         })),
-      });
+      };
+      const res = isEdit
+        ? await updatePurchase(initial!.id, payload)
+        : await createPurchase(payload);
       if (res.ok) {
         toast.success(t("achizitii_saved"));
-        router.push(`/${locale}/panel/achizitii/${res.id}`);
+        const targetId = "id" in res ? res.id : initial!.id;
+        router.push(`/${locale}/panel/achizitii/${targetId}`);
       } else {
         toast.error(t("achizitii_save_error", { reason: res.reason }));
       }

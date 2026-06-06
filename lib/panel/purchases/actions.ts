@@ -543,6 +543,75 @@ export async function sendPurchaseToAccountant(
 }
 
 /**
+ * Update an existing purchase — header fields + replace all line items
+ * with the new set. Posted purchases CAN be edited but stock is NOT
+ * re-adjusted automatically; the operator is expected to know that
+ * editing a posted document doesn't roll back / re-apply stock moves.
+ */
+export async function updatePurchase(
+  id: string,
+  raw: unknown,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  const parsed = purchaseSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid" };
+  const v = parsed.data;
+  const { subtotal, vat_amount, total } = computeTotals(v.items);
+
+  const supabase = await createClient();
+  const { error: hErr } = await supabase
+    .from("purchases")
+    .update({
+      supplier_id: v.supplier_id,
+      account_scope: v.account_scope,
+      document_number: v.document_number ?? null,
+      document_date: v.document_date,
+      currency: v.currency,
+      fx_rate: v.fx_rate ?? null,
+      subtotal,
+      vat_amount,
+      total,
+      notes: v.notes ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (hErr) return { ok: false, reason: hErr.message };
+
+  // Replace items wholesale. Keeps the loop simple and avoids stale lines
+  // when the operator removed a row. add_to_catalog is preserved through
+  // the same fallback path createPurchase uses.
+  await supabase.from("purchase_items").delete().eq("purchase_id", id);
+
+  const lines = v.items.map((i) => ({
+    purchase_id: id,
+    product_id: i.product_id ?? null,
+    supplier_code: i.supplier_code ?? null,
+    internal_code: i.internal_code ?? null,
+    description: i.description,
+    quantity: i.quantity,
+    unit_cost: i.unit_cost,
+    vat_rate: i.vat_rate ?? 20,
+    line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
+    add_to_catalog: !!i.add_to_catalog,
+  }));
+  let lErr = (
+    await supabase.from("purchase_items").insert(lines as never)
+  ).error;
+  if (lErr && /add_to_catalog/i.test(lErr.message)) {
+    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+    lErr = (
+      await supabase.from("purchase_items").insert(stripped as never)
+    ).error;
+  }
+  if (lErr) return { ok: false, reason: `items: ${lErr.message}` };
+
+  revalidatePath("/[locale]/panel/achizitii", "page");
+  revalidatePath(`/[locale]/panel/achizitii/${id}`, "page");
+  return { ok: true };
+}
+
+/**
  * Hard-delete a purchase + its line items. PIN-gated. Stock isn't
  * rolled back automatically — admin should already have cancelled
  * the purchase first if it was posted.
