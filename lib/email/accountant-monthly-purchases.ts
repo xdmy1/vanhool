@@ -77,6 +77,39 @@ export function accountantMonthlyPurchasesEmail(
         )
         .join("");
 
+      // Compact supplier registration block — IDNO, VAT code, address,
+      // phone, email. Anything missing simply collapses out of the layout.
+      const supplierRows: string[] = [];
+      if (p.supplier_idno) {
+        supplierRows.push(
+          `<div style="font-size:11px;color:#6b6358">IDNO: <span style="font-family:ui-monospace,monospace;color:#2a2622">${escapeHtml(p.supplier_idno)}</span></div>`,
+        );
+      }
+      if (p.supplier_vat_code) {
+        supplierRows.push(
+          `<div style="font-size:11px;color:#6b6358">Cod TVA: <span style="font-family:ui-monospace,monospace;color:#2a2622">${escapeHtml(p.supplier_vat_code)}</span></div>`,
+        );
+      }
+      if (p.supplier_address) {
+        supplierRows.push(
+          `<div style="font-size:11px;color:#6b6358">Adresă: <span style="color:#2a2622">${escapeHtml(p.supplier_address)}</span></div>`,
+        );
+      }
+      if (p.supplier_phone) {
+        supplierRows.push(
+          `<div style="font-size:11px;color:#6b6358">Telefon: <span style="color:#2a2622">${escapeHtml(p.supplier_phone)}</span></div>`,
+        );
+      }
+      if (p.supplier_email) {
+        supplierRows.push(
+          `<div style="font-size:11px;color:#6b6358">Email: <span style="color:#2a2622">${escapeHtml(p.supplier_email)}</span></div>`,
+        );
+      }
+      const supplierBlock =
+        supplierRows.length > 0
+          ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #d8d2c5">${supplierRows.join("")}</div>`
+          : "";
+
       return `<div style="margin-bottom:16px;border:1px solid #d8d2c5;border-radius:6px;overflow:hidden">
         <div style="padding:10px 14px;background:#f4f1ea;border-bottom:1px solid #d8d2c5">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">
@@ -85,6 +118,7 @@ export function accountantMonthlyPurchasesEmail(
           </div>
           <div style="margin-top:4px;font-size:14px;font-weight:600;color:#2a2622">${escapeHtml(p.supplier_name)}</div>
           ${p.document_number ? `<div style="margin-top:2px;font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">Doc: ${escapeHtml(p.document_number)}</div>` : ""}
+          ${supplierBlock}
         </div>
         <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse">
           <thead>
@@ -168,6 +202,11 @@ export function accountantMonthlyPurchasesEmail(
     textLines.push(
       `[${i + 1}] ${fmtDate(p.document_date)} · ${p.supplier_name}${p.document_number ? ` · Doc ${p.document_number}` : ""}`,
     );
+    if (p.supplier_idno) textLines.push(`   IDNO: ${p.supplier_idno}`);
+    if (p.supplier_vat_code) textLines.push(`   Cod TVA: ${p.supplier_vat_code}`);
+    if (p.supplier_address) textLines.push(`   Adresă: ${p.supplier_address}`);
+    if (p.supplier_phone) textLines.push(`   Telefon: ${p.supplier_phone}`);
+    if (p.supplier_email) textLines.push(`   Email: ${p.supplier_email}`);
     for (const it of p.items) {
       const code = it.supplier_code ? `${it.supplier_code} ` : "";
       textLines.push(

@@ -449,7 +449,7 @@ export async function sendPurchaseToAccountant(
   const { data: header } = await supabase
     .from("purchases")
     .select(
-      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
+      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
     )
     .eq("id", purchaseId)
     .maybeSingle();
@@ -466,7 +466,14 @@ export async function sendPurchaseToAccountant(
     subtotal: number | string | null;
     vat_amount: number | string | null;
     total: number | string | null;
-    suppliers: { name: string } | null;
+    suppliers: {
+      name: string;
+      idno: string | null;
+      vat_code: string | null;
+      contact_email: string | null;
+      contact_phone: string | null;
+      address: string | null;
+    } | null;
     purchase_items: Array<{
       id: string;
       supplier_code: string | null;
@@ -484,6 +491,11 @@ export async function sendPurchaseToAccountant(
     document_number: h.document_number,
     document_date: h.document_date,
     supplier_name: h.suppliers?.name ?? "—",
+    supplier_idno: h.suppliers?.idno ?? null,
+    supplier_vat_code: h.suppliers?.vat_code ?? null,
+    supplier_email: h.suppliers?.contact_email ?? null,
+    supplier_phone: h.suppliers?.contact_phone ?? null,
+    supplier_address: h.suppliers?.address ?? null,
     status: h.status,
     currency,
     subtotal: Number(h.subtotal ?? 0),

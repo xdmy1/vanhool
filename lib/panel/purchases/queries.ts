@@ -57,6 +57,11 @@ export type PurchasesForMonth = {
     document_number: string | null;
     document_date: string;
     supplier_name: string;
+    supplier_idno: string | null;
+    supplier_vat_code: string | null;
+    supplier_email: string | null;
+    supplier_phone: string | null;
+    supplier_address: string | null;
     status: string;
     currency: string;
     subtotal: number;
@@ -87,7 +92,7 @@ export async function getConta1PurchasesForRange(
   const { data, error } = await supabase
     .from("purchases")
     .select(
-      "id, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
+      "id, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
     )
     .eq("account_scope", "conta1")
     .gte("document_date", fromIso)
@@ -112,7 +117,14 @@ export async function getConta1PurchasesForRange(
     subtotal: number | string | null;
     vat_amount: number | string | null;
     total: number | string | null;
-    suppliers: { name: string } | null;
+    suppliers: {
+      name: string;
+      idno: string | null;
+      vat_code: string | null;
+      contact_email: string | null;
+      contact_phone: string | null;
+      address: string | null;
+    } | null;
     purchase_items: Array<{
       id: string;
       supplier_code: string | null;
@@ -139,6 +151,11 @@ export async function getConta1PurchasesForRange(
       document_number: r.document_number,
       document_date: r.document_date,
       supplier_name: r.suppliers?.name ?? "—",
+      supplier_idno: r.suppliers?.idno ?? null,
+      supplier_vat_code: r.suppliers?.vat_code ?? null,
+      supplier_email: r.suppliers?.contact_email ?? null,
+      supplier_phone: r.suppliers?.contact_phone ?? null,
+      supplier_address: r.suppliers?.address ?? null,
       status: r.status,
       currency,
       subtotal: Number(r.subtotal ?? 0),
