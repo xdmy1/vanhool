@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import type { Json } from "@/lib/supabase/database.types";
 
 const triageSchema = z.object({
@@ -136,5 +137,35 @@ export async function triageOrder(
   revalidatePath("/[locale]/panel/comenzi-site", "page");
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath("/[locale]/panel/cheltuieli-cash", "page");
+  return { ok: true };
+}
+
+/**
+ * Cancel a storefront order straight from the triage tray. Doesn't touch
+ * stock, invoices, or delivery notes — cancellation here means "we never
+ * fulfilled this, mark it dead and stop showing it as a pending decision."
+ * PIN-gated like every other destructive admin action.
+ */
+export async function cancelStorefrontOrder(
+  orderId: string,
+  pin: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      status: "cancelled",
+      triaged_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/comenzi-site", "page");
+  revalidatePath("/[locale]/admin/orders", "page");
   return { ok: true };
 }

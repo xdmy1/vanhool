@@ -1654,6 +1654,11 @@
     "achizitii_line_send_accountant_compact": "Contabilului",
     "achizitii_row_send_accountant": "Trimite achiziția contabilului",
     "achizitii_edit_title": "Editează achiziția",
-    "achizitii_edit_subtitle": "Modifică detaliile achiziției. Stocul nu este reajustat automat — fii atent dacă achiziția e deja postată."
+    "achizitii_edit_subtitle": "Modifică detaliile achiziției. Stocul nu este reajustat automat — fii atent dacă achiziția e deja postată.",
+    "triage_cancel_button": "Anulează",
+    "triage_cancel_title": "Anulează comanda",
+    "triage_cancel_subtitle": "Comanda va fi marcată ca anulată. Stocul, facturile și fișele de livrare NU sunt modificate — atenție dacă marfa a plecat deja. Introdu PIN-ul de administrator.",
+    "triage_cancel_confirm": "Anulează comanda",
+    "triage_cancel_success": "Comandă anulată"
   }
 }
