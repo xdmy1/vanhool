@@ -17,6 +17,7 @@ import {
   searchSuppliers,
 } from "@/lib/panel/suppliers/actions";
 import { createPurchase, updatePurchase } from "@/lib/panel/purchases/actions";
+import { searchProducts, type ProductSearchResult } from "@/lib/panel/sales/actions";
 import type { AccountScope } from "@/lib/panel/scope";
 
 export type PurchaseFormInitial = {
@@ -44,6 +45,10 @@ type Line = {
    * line (or increments stock if it already exists). Default false —
    * not every purchased part belongs on the storefront. */
   add_to_catalog: boolean;
+  /** Link to an existing product when the operator picked one through
+   * the internal-code autocomplete. postPurchase increments that product's
+   * stock instead of creating a duplicate. */
+  product_id: string | null;
 };
 
 const EMPTY_LINE: Line = {
@@ -56,6 +61,7 @@ const EMPTY_LINE: Line = {
   // the operator picks +TVA 20% explicitly when needed.
   vat_rate: 0,
   add_to_catalog: false,
+  product_id: null,
 };
 
 export function PurchaseForm({
@@ -144,6 +150,7 @@ export function PurchaseForm({
           unit_cost: l.unit_cost,
           vat_rate: l.vat_rate,
           add_to_catalog: !!l.add_to_catalog,
+          product_id: l.product_id ?? null,
         })),
       };
       const res = isEdit
@@ -256,20 +263,36 @@ export function PurchaseForm({
                   </td>
                   <td className="px-2 py-2">
                     <div className="flex items-center gap-1">
-                      <Input
+                      <InternalCodeAutocomplete
                         value={l.internal_code}
-                        onChange={(e) =>
+                        linkedProductId={l.product_id}
+                        onChange={(code) =>
                           setLine(idx, {
-                            internal_code: e.target.value.toUpperCase(),
+                            internal_code: code.toUpperCase(),
+                            // Typing manually breaks any prior link.
+                            product_id: null,
                           })
                         }
-                        className="h-9 font-mono text-xs"
-                        placeholder={t("achizitii_line_internal_code_placeholder")}
+                        onPickProduct={(p) =>
+                          setLine(idx, {
+                            internal_code: (p.part_code ?? "").toUpperCase(),
+                            description: l.description.trim()
+                              ? l.description
+                              : p.name_ro ?? "",
+                            product_id: p.id,
+                            // Linking to an existing catalog product
+                            // implicitly means the catalog already knows
+                            // about it — keep the checkbox in sync.
+                            add_to_catalog: true,
+                          })
+                        }
                       />
                       <CodeGeneratorButton
                         size="sm"
                         label={t("achizitii_gen_short")}
-                        onGenerated={(code) => setLine(idx, { internal_code: code })}
+                        onGenerated={(code) =>
+                          setLine(idx, { internal_code: code, product_id: null })
+                        }
                       />
                     </div>
                   </td>
@@ -574,6 +597,127 @@ function Field({
         {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Internal-code input with a suggestion dropdown. While the operator
+ * types, `searchProducts` looks the term up against the catalog
+ * (normalized search_codes + part_code/name ilike). Picking a suggestion
+ * links the line to the existing product (so postPurchase reuses it
+ * instead of creating a duplicate) and pre-fills the description.
+ */
+function InternalCodeAutocomplete({
+  value,
+  linkedProductId,
+  onChange,
+  onPickProduct,
+}: {
+  value: string;
+  linkedProductId: string | null;
+  onChange: (next: string) => void;
+  onPickProduct: (product: ProductSearchResult) => void;
+}) {
+  const [results, setResults] = useState<ProductSearchResult[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<number | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // 250 ms debounce; bail on short / linked inputs.
+  useEffect(() => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    if (linkedProductId) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    const term = value.trim();
+    if (term.length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    setSearching(true);
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const rows = await searchProducts(term);
+        setResults(rows);
+        setOpen(rows.length > 0);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [value, linkedProductId]);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className="relative flex-1">
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (results.length > 0) setOpen(true);
+        }}
+        className={cn(
+          "h-9 font-mono text-xs",
+          linkedProductId ? "border-success/50 bg-success/5" : "",
+        )}
+        placeholder="Cod intern…"
+      />
+      {linkedProductId ? (
+        <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
+          ✓ Legat de produs existent
+        </div>
+      ) : null}
+      {open && results.length > 0 ? (
+        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-md border border-border bg-surface shadow-lg">
+          {results.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  // mousedown — fires before the input's blur, so the
+                  // value sticks on the line being edited.
+                  e.preventDefault();
+                  onPickProduct(p);
+                  setOpen(false);
+                }}
+                className="block w-full px-3 py-1.5 text-left text-xs hover:bg-surface-elevated"
+              >
+                <div className="font-mono font-semibold text-foreground">
+                  {p.part_code ?? "—"}
+                </div>
+                <div className="truncate text-[11px] text-muted-strong">
+                  {p.name_ro ?? p.brand ?? "—"}
+                </div>
+                <div className="text-[10px] text-muted">
+                  stoc {p.stock_quantity} · cost {Number(p.cost_price).toFixed(2)}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {searching ? (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-muted">
+          …
+        </div>
+      ) : null}
     </div>
   );
 }

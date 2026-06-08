@@ -1,0 +1,10 @@
+am editat putin achizitia si am trimis-o din nou contabilului dar nu imi arata ca a fost trimisa contabilului, contabilul a primit-o tot ok dar mie nu imi arata ca sa trimis.
+
+
+aici in achizititii cand deschid sa vad daca totul e ok si sa trimit contabilului imi arata doar pretul net, pe cand eu am bifat butonul +20% tva, in email se duce corect la contabil suma +20%tva, dar aici imi arata doar suma net
+
+
+aici la fiecare achizitie noua sunt des coduri care deja le avem introduse in sistemul nostru si stock-ul a fost epuizat si acum cumparam din nou, noi de fiecare data trebuie sa cautam codul si aceeasi denumire sa scriem ca sa nu se suprapuna piesele, putem face ca cand introducem cod intern si daca este acel cod in baza sa mi-l propuna si sa alegem sa se autocompleteze codul si denumirea piesei ? merci
+
+
+aici aceste piese sunt cu bifa scoasa sa nu fie postate in catalog, dar dupa salavare arata ca postat si apar in lista de produse ca nefinalizate cum si era..

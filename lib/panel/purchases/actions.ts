@@ -200,10 +200,16 @@ export async function postPurchase(
   for (const it of items) {
     // Skip catalog-related work for lines the operator marked off. The
     // purchase line itself stays in the books — it's just decoupled
-    // from any product row. If `add_to_catalog` is undefined (pre-
-    // migration schema), default to true to preserve old behaviour.
+    // from any product row.
+    //
+    // Default is FALSE (safe) when the column is missing or the value
+    // is undefined: the operator already saw an UNCHECKED checkbox in
+    // the UI in that case, and we honour that. The earlier default of
+    // `true` was the catalog-flood bug — every line would be auto-
+    // created even after the operator explicitly unticked the box,
+    // because pre-migration rows came back with the field absent.
     const wantsCatalog =
-      (it as { add_to_catalog?: boolean }).add_to_catalog ?? true;
+      (it as { add_to_catalog?: boolean }).add_to_catalog ?? false;
     if (!wantsCatalog && !it.product_id) continue;
 
     let productId = it.product_id;
@@ -440,7 +446,10 @@ export async function sendConta1PurchasesMonthly(
 export async function sendPurchaseToAccountant(
   purchaseId: string,
   pin: string,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<
+  | { ok: true; sentAt: string }
+  | { ok: false; reason: string }
+> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
@@ -537,9 +546,24 @@ export async function sendPurchaseToAccountant(
   });
   if (!result.ok) return { ok: false, reason: result.reason };
 
+  // Stamp the send time so the UI can flip the button from green
+  // ("Contabilului") to yellow ("Trimis · re-trimite"). Defensive: if the
+  // accountant_sent_at migration isn't applied yet, the email already
+  // went out — just log + skip the persist so the action still succeeds.
+  const sentAt = new Date().toISOString();
+  const { error: stampErr } = await supabase
+    .from("purchases")
+    .update({ accountant_sent_at: sentAt } as never)
+    .eq("id", purchaseId);
+  if (stampErr && /accountant_sent_at/i.test(stampErr.message)) {
+    console.warn(
+      "[panel.purchases] accountant_sent_at column missing — apply sql/purchases-accountant-sent.sql",
+    );
+  }
+
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
-  return { ok: true };
+  return { ok: true, sentAt };
 }
 
 /**

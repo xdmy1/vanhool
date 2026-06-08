@@ -11,6 +11,7 @@ export type PurchaseListRow = {
   total: number;
   currency: string;
   created_at: string;
+  accountant_sent_at: string | null;
 };
 
 export async function listPurchases(args: {
@@ -18,31 +19,44 @@ export async function listPurchases(args: {
   q?: string;
 }): Promise<PurchaseListRow[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("purchases")
-    .select(
-      "id, document_number, document_date, account_scope, status, total, currency, created_at, suppliers(name)",
-    )
-    .eq("account_scope", args.scope)
-    .order("document_date", { ascending: false })
-    .limit(100);
-  if (args.q) {
-    const q = `%${args.q.replace(/[%_]/g, "")}%`;
-    query = query.ilike("document_number", q);
+
+  const buildQuery = (includeSent: boolean) => {
+    let q = supabase
+      .from("purchases")
+      .select(
+        includeSent
+          ? "id, document_number, document_date, account_scope, status, total, currency, created_at, accountant_sent_at, suppliers(name)"
+          : "id, document_number, document_date, account_scope, status, total, currency, created_at, suppliers(name)",
+      )
+      .eq("account_scope", args.scope)
+      .order("document_date", { ascending: false })
+      .limit(100);
+    if (args.q) {
+      const term = `%${args.q.replace(/[%_]/g, "")}%`;
+      q = q.ilike("document_number", term);
+    }
+    return q;
+  };
+
+  let { data, error } = await buildQuery(true);
+  if (error && /accountant_sent_at/i.test(error.message)) {
+    const retry = await buildQuery(false);
+    data = retry.data;
+    error = retry.error;
   }
-  const { data } = await query;
-  return (data ?? []).map((r) => {
-    const supplier = (r as unknown as { suppliers: { name: string } | null }).suppliers;
+  return (((data ?? []) as unknown) as Array<Record<string, unknown>>).map((r) => {
+    const supplier = r.suppliers as { name: string } | null;
     return {
-      id: r.id,
-      document_number: r.document_number,
-      document_date: r.document_date,
+      id: r.id as string,
+      document_number: (r.document_number as string | null) ?? null,
+      document_date: r.document_date as string,
       supplier_name: supplier?.name ?? "—",
-      account_scope: r.account_scope,
-      status: r.status,
+      account_scope: r.account_scope as AccountScope,
+      status: r.status as PurchaseListRow["status"],
       total: Number(r.total ?? 0),
-      currency: r.currency ?? "MDL",
-      created_at: r.created_at,
+      currency: (r.currency as string | null) ?? "MDL",
+      created_at: r.created_at as string,
+      accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
     };
   });
 }
@@ -203,6 +217,7 @@ export type PurchaseDetail = {
   po_issued_at: string | null;
   expected_delivery_date: string | null;
   notes: string | null;
+  accountant_sent_at: string | null;
   items: Array<{
     id: string;
     product_id: string | null;
@@ -273,13 +288,25 @@ export async function getPurchaseItemPrefill(
 
 export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   const supabase = await createClient();
-  const { data: header } = await supabase
+  // Try with accountant_sent_at; fall back if its migration is unapplied.
+  let headerRes = await supabase
     .from("purchases")
     .select(
-      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
+      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, suppliers(name)" as
+        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
     )
     .eq("id", id)
     .maybeSingle();
+  if (headerRes.error && /accountant_sent_at/i.test(headerRes.error.message)) {
+    headerRes = await supabase
+      .from("purchases")
+      .select(
+        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
+      )
+      .eq("id", id)
+      .maybeSingle();
+  }
+  const header = headerRes.data;
   if (!header) return null;
   // Try with the catalog flag; fall back if the column migration hasn't
   // run yet so detail / edit pages keep loading either way.
@@ -319,6 +346,9 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
     po_issued_at: header.po_issued_at,
     expected_delivery_date: header.expected_delivery_date,
     notes: header.notes,
+    accountant_sent_at:
+      (header as { accountant_sent_at?: string | null }).accountant_sent_at ??
+      null,
     items: (items ?? []).map((it) => ({
       id: it.id,
       product_id: it.product_id,

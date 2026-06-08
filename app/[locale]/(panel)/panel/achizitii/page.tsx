@@ -108,7 +108,10 @@ export default async function PanelAchizitiiPage({
                           {t("action_open")}
                         </Link>
                         {scope === "conta1" ? (
-                          <SendPurchaseButton purchaseId={r.id} />
+                          <SendPurchaseButton
+                            purchaseId={r.id}
+                            initialSentAt={r.accountant_sent_at}
+                          />
                         ) : null}
                         <PinDeleteButton
                           action={deletePurchaseWithPin}

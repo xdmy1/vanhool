@@ -4,6 +4,7 @@ import { CheckCircle2, Pencil, Plus, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { SendPurchaseButton } from "@/components/panel/purchases/SendPurchaseButton";
 import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
@@ -67,6 +68,13 @@ export default async function PanelAchizitieDetailPage({
                 {t("action_edit")}
               </Link>
             </Button>
+            {purchase.account_scope === "conta1" ? (
+              <SendPurchaseButton
+                purchaseId={purchase.id}
+                initialSentAt={purchase.accountant_sent_at}
+                size="default"
+              />
+            ) : null}
             <span
               className={cn(
                 "rounded px-3 py-1 text-xs uppercase tracking-wide",
@@ -135,15 +143,40 @@ export default async function PanelAchizitieDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {purchase.items.map((it) => (
+              {purchase.items.map((it) => {
+                // Display gross (cu TVA) — matches what the operator typed
+                // when they tagged the line as "+TVA 20%" in the form,
+                // and matches the gross figure the bookkeeper sees in the
+                // forwarded email. A small "net X" line stays for cross-
+                // check.
+                const grossUnit = Number(
+                  (it.unit_cost * (1 + it.vat_rate / 100)).toFixed(2),
+                );
+                const grossLine = Number(
+                  (it.line_total * (1 + it.vat_rate / 100)).toFixed(2),
+                );
+                const hasVat = it.vat_rate > 0;
+                return (
                 <tr key={it.id}>
                   <td className="px-4 py-2 font-mono text-xs">{it.supplier_code ?? "—"}</td>
                   <td className="px-4 py-2 font-mono text-xs">{it.internal_code ?? "—"}</td>
                   <td className="px-4 py-2">{it.description}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{it.quantity}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{it.unit_cost.toFixed(2)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    <div>{grossUnit.toFixed(2)}</div>
+                    {hasVat ? (
+                      <div className="text-[10px] text-muted">
+                        net {it.unit_cost.toFixed(2)} · TVA {it.vat_rate}%
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                    {it.line_total.toFixed(2)}
+                    <div>{grossLine.toFixed(2)}</div>
+                    {hasVat ? (
+                      <div className="text-[10px] font-normal text-muted">
+                        net {it.line_total.toFixed(2)}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2">
                     {it.product_id ? (
@@ -167,7 +200,8 @@ export default async function PanelAchizitieDetailPage({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </section>
