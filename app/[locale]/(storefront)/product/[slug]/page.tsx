@@ -9,11 +9,9 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 import { ProductBuyBox } from "@/components/product/ProductBuyBox";
-import { ProductAlternatives } from "@/components/product/ProductAlternatives";
 import { Link } from "@/lib/i18n/routing";
 import {
   getCrossCompatibleProducts,
-  getProductAlternativeCodes,
   getProductBySlug,
   getRelatedProducts,
 } from "@/lib/db/products";
@@ -47,9 +45,14 @@ export default async function ProductDetailPage({
   const product = await getProductBySlug(slug, loc);
   if (!product) notFound();
 
+  // Cross-references / OEM codes intentionally NOT fetched here: they
+  // still drive search matching via products.search_codes (DB trigger),
+  // and getCrossCompatibleProducts still surfaces same-code parts as
+  // "alternatives" tiles — but the raw code list is no longer shown
+  // publicly. The data stays in the DB; only the customer-facing UI
+  // panel was hiding shop-private cross-link data.
   const [
     related,
-    alternatives,
     crossCompatible,
     category,
     allCats,
@@ -60,7 +63,6 @@ export default async function ProductDetailPage({
     eurRate,
   ] = await Promise.all([
     getRelatedProducts(product, loc, 4),
-    getProductAlternativeCodes(product.id),
     getCrossCompatibleProducts(product.id, loc, 8),
     product.categorySlug ? getCategoryBySlug(product.categorySlug, loc) : null,
     getCategories(loc),
@@ -218,20 +220,13 @@ export default async function ProductDetailPage({
           </div>
         </div>
 
-        {/* Details: specs + alternative codes + compatibility */}
-        <div className="mt-14 grid gap-6 md:grid-cols-2">
+        {/* Details: specs only — alternative codes (OEM / cross-refs)
+            are deliberately hidden from the storefront. The codes
+            still power search matching via products.search_codes and
+            still surface "cross-compatible" tiles below, but we don't
+            publish the bare code list as a chip strip anymore. */}
+        <div className="mt-14">
           <ProductSpecs product={product} labels={specsLabels} />
-
-          <ProductAlternatives
-            data={alternatives}
-            locale={loc}
-            labels={{
-              title: tProd("alternatives_title"),
-              oem: tProd("alternatives_oem"),
-              cross: tProd("alternatives_cross"),
-              empty: tProd("alternatives_empty"),
-            }}
-          />
         </div>
 
         <div className="mt-6 grid gap-6 md:grid-cols-2">
