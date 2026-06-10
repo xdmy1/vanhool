@@ -392,6 +392,13 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const numberStr = String(nextNumber).padStart(5, "0");
 
     const isPaidNow = v.payment_method === "already_paid";
+    // Once cash is in and a fiscal invoice gets stamped, the document
+    // belongs in conta1 even if the SALE itself was tagged conta2. The
+    // order row stays in v.account_scope (the cash drawer / informal
+    // sale stays where the operator put it) — only the invoice flips.
+    // Matches /panel/facturi's "paid = official book" rule.
+    const invoiceAccountScope =
+      isPaidNow && v.account_scope === "conta2" ? "conta1" : v.account_scope;
 
     // Items snapshot in INVOICE shape — InvoicePrintContent expects
     // `unit_price` (list) + `discounted_unit_price` (effective). Without
@@ -419,7 +426,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       .from("invoices")
       .insert({
         order_id: orderId,
-        account_scope: v.account_scope,
+        account_scope: invoiceAccountScope,
         series,
         number: numberStr,
         issued_date: new Date().toISOString().slice(0, 10),

@@ -290,12 +290,31 @@ export async function convertProformaToInvoice(
     return { ok: false, reason: "already_converted" };
   }
 
-  // Default to the proforma's own scope so converting a conta2 proforma
-  // doesn't accidentally land the fiscal invoice in conta1.
-  const scope =
-    options?.account_scope ??
-    ((pf as { account_scope?: "conta1" | "conta2" }).account_scope ?? "conta1");
+  // Two-track scope. The proforma → invoice conversion produces a
+  // synthetic ORDER (the sale itself) and a fiscal INVOICE, and the
+  // operator wants them to live in different books when payment is
+  // already in:
+  //   • orderScope — the SALE's scope. A paid conta2 proforma was paid in
+  //     cash → the cash hit the conta2 drawer; the order keeps conta2
+  //     so the cash drawer/movement still ties to that informal sale.
+  //   • invoiceScope — the fiscal document. A paid proforma becomes a
+  //     real factură; once the document is fiscal, it lives in conta1
+  //     regardless of where the sale itself sat. Deferred conversion
+  //     stays on orderScope because no money has hit yet.
+  // `options.account_scope` overrides both — keeps the door open for a
+  // manual force if we ever need it.
   const paymentStatus = options?.payment_status ?? "paid";
+  const proformaScope =
+    (pf as { account_scope?: "conta1" | "conta2" }).account_scope ?? "conta1";
+  const orderScope: "conta1" | "conta2" =
+    options?.account_scope ?? proformaScope;
+  const invoiceScope: "conta1" | "conta2" =
+    options?.account_scope ??
+    (paymentStatus === "paid" ? "conta1" : proformaScope);
+  // Legacy alias so the rest of this function — which currently writes
+  // `scope` into the order insert — picks up orderScope without further
+  // edits.
+  const scope = orderScope;
   const dueInDays = Math.max(
     0,
     Math.min(7, Math.trunc(options?.due_in_days ?? 7)),
@@ -375,7 +394,7 @@ export async function convertProformaToInvoice(
     .from("invoices")
     .insert({
       order_id: orderId,
-      account_scope: scope,
+      account_scope: invoiceScope,
       type: "invoice",
       series,
       number,
@@ -597,17 +616,27 @@ export async function markInvoicePaid(
   // Treat the user-supplied date as the actual payment moment.
   const paidAt = new Date(`${v.paid_at}T12:00:00Z`).toISOString();
 
+  // Operator's rule: once payment hits, the fiscal record moves to the
+  // official book. A conta2 invoice that gets paid (cash, transfer, card —
+  // doesn't matter) is no longer an informal sale, it's a fiscal document,
+  // so it belongs in conta1. The originating order and the cash_register
+  // movement keep their conta2 scope — that's where the actual money was
+  // received. Only the invoice line flips.
   const { error } = await supabase
     .from("invoices")
     .update({
       status: "paid",
       paid_at: paidAt,
       updated_at: nowIso,
+      account_scope: "conta1",
       ...({ paid_amount: v.amount, paid_currency: v.currency, paid_method: v.method } as object),
     })
     .eq("id", invoiceId);
   if (error) return { ok: false, reason: error.message };
 
+  // Cash drawer entry uses the ORIGINAL scope (inv was read before the
+  // update), so a conta2/cash invoice still records the inflow into the
+  // cash register even though the invoice itself now reads as conta1.
   if (inv.account_scope === "conta2" && v.method === "cash" && inv.order_id) {
     const fxRate = v.currency === "EUR" ? 20 : v.currency === "USD" ? 17 : 1;
     await supabase.from("cash_register_movements").insert({
