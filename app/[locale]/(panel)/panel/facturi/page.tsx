@@ -83,6 +83,13 @@ export default async function PanelFacturiPage({
   const fromParam = typeof sp.from === "string" && sp.from ? sp.from : undefined;
   const toParam = typeof sp.to === "string" && sp.to ? sp.to : undefined;
   const overdueOnly = sp.overdue === "1";
+  const STATUS_FILTERS = ["draft", "issued", "paid", "void"] as const;
+  type StatusFilter = (typeof STATUS_FILTERS)[number];
+  const statusParam: StatusFilter | undefined =
+    typeof sp.status === "string" &&
+    (STATUS_FILTERS as readonly string[]).includes(sp.status)
+      ? (sp.status as StatusFilter)
+      : undefined;
 
   const rows = await listInvoices({
     q,
@@ -91,6 +98,7 @@ export default async function PanelFacturiPage({
     from: fromParam,
     to: toParam,
     overdueOnly,
+    status: statusParam,
   });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel = (s: string) =>
@@ -155,12 +163,31 @@ export default async function PanelFacturiPage({
   const overdueHref = (() => {
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) {
-      if (k === "overdue" || v === undefined) continue;
+      // Drop both `overdue` and `status` so toggling overdue clears any
+      // active status chip — the two are mutually exclusive in the UI.
+      if (k === "overdue" || k === "status" || v === undefined) continue;
       next.set(k, Array.isArray(v) ? v.join(",") : v);
     }
     if (!overdueOnly) next.set("overdue", "1");
     return next.toString() ? `?${next}` : "?";
   })();
+  // One href per status chip; clicking a status drops `overdue` so the
+  // chips behave as a single radio group rather than stacking.
+  const statusChips: Array<{ id: StatusFilter; label: string }> = [
+    { id: "draft", label: t("facturi_status_draft") },
+    { id: "issued", label: t("facturi_status_issued") },
+    { id: "paid", label: t("facturi_status_paid") },
+    { id: "void", label: t("facturi_status_void") },
+  ];
+  function statusHref(id: StatusFilter | null): string {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "status" || k === "overdue" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (id) next.set("status", id);
+    return next.toString() ? `?${next}` : "?";
+  }
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -221,6 +248,40 @@ export default async function PanelFacturiPage({
               {t("facturi_status_overdue")}
             </a>
           </div>
+        </div>
+
+        {/* Status filter row — independent radio group. Clicking a status
+            clears the overdue toggle (see statusHref / overdueHref).
+            "Toate" deselects status filtering. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <a
+            href={statusHref(null)}
+            className={cn(
+              "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+              !statusParam && !overdueOnly
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+            )}
+          >
+            {t("facturi_filter_all")}
+          </a>
+          {statusChips.map((s) => {
+            const active = statusParam === s.id;
+            return (
+              <a
+                key={s.id}
+                href={statusHref(s.id)}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+                )}
+              >
+                {s.label}
+              </a>
+            );
+          })}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">

@@ -85,7 +85,19 @@ export async function ClientsTable({
                 <td className="px-4 py-3 text-right tabular-nums">{r.orders_count}</td>
                 <td className="px-4 py-3 text-right tabular-nums">
                   {r.orders_count > 0 ? (
-                    <Price value={r.total_spent} size="sm" accent={false} />
+                    <div className="flex flex-col items-end gap-0.5">
+                      {Object.entries(r.total_spent_by_currency).map(
+                        ([currency, sum]) => (
+                          <Price
+                            key={currency}
+                            value={sum}
+                            currency={currency}
+                            size="sm"
+                            accent={false}
+                          />
+                        ),
+                      )}
+                    </div>
                   ) : (
                     "—"
                   )}

@@ -12,7 +12,14 @@ export type PanelClientRow = {
   discount_percent: number | null;
   created_at: string | null;
   orders_count: number;
-  total_spent: number;
+  /**
+   * Grouped per currency. Panel sales can be MDL/EUR/USD; storefront
+   * orders are MDL. Summing across currencies and tagging the result
+   * as `lei` was misleading (and is what the operator was seeing in the
+   * client detail header). Empty object means no orders. UI must render
+   * one entry per currency.
+   */
+  total_spent_by_currency: Record<string, number>;
 };
 
 const PAGE_SIZE = 50;
@@ -60,25 +67,47 @@ export async function listPanelClients(args: ListClientsArgs): Promise<{
   if (error) throw new Error(error.message);
 
   const ids = (profiles ?? []).map((p) => p.id);
-  // Aggregate orders per user, filtered by scope
-  const aggMap = new Map<string, { count: number; total: number }>();
+  // Aggregate orders per user, grouped by currency so EUR sales don't
+  // get silently summed into the MDL bucket.
+  const aggMap = new Map<
+    string,
+    { count: number; byCurrency: Record<string, number> }
+  >();
   if (ids.length > 0) {
-    const { data: ordersAgg } = await supabase
+    let { data: ordersAgg, error: aggErr } = await supabase
       .from("orders")
-      .select("user_id, total")
+      .select("user_id, total, currency")
       .eq("account_scope", args.scope)
       .in("user_id", ids);
+    // Defensive retry — older deploys may not have orders.currency yet.
+    if (aggErr && /currency/i.test(aggErr.message)) {
+      const retry = await supabase
+        .from("orders")
+        .select("user_id, total")
+        .eq("account_scope", args.scope)
+        .in("user_id", ids);
+      ordersAgg = retry.data as typeof ordersAgg;
+    }
     for (const o of ordersAgg ?? []) {
       if (!o.user_id) continue;
-      const cur = aggMap.get(o.user_id) ?? { count: 0, total: 0 };
+      const cur =
+        aggMap.get(o.user_id) ?? { count: 0, byCurrency: {} as Record<string, number> };
       cur.count += 1;
-      cur.total += Number(o.total ?? 0);
+      const code =
+        (((o as { currency?: string | null }).currency ?? "") || "MDL").toUpperCase();
+      cur.byCurrency[code] = (cur.byCurrency[code] ?? 0) + Number(o.total ?? 0);
       aggMap.set(o.user_id, cur);
+    }
+    // Round each per-currency total so we don't expose float jitter.
+    for (const a of aggMap.values()) {
+      for (const k of Object.keys(a.byCurrency)) {
+        a.byCurrency[k] = Number(a.byCurrency[k].toFixed(2));
+      }
     }
   }
 
   const rows: PanelClientRow[] = (profiles ?? []).map((p) => {
-    const agg = aggMap.get(p.id) ?? { count: 0, total: 0 };
+    const agg = aggMap.get(p.id) ?? { count: 0, byCurrency: {} };
     return {
       id: p.id,
       email: p.email,
@@ -90,7 +119,7 @@ export async function listPanelClients(args: ListClientsArgs): Promise<{
       discount_percent: p.discount_percent,
       created_at: p.created_at,
       orders_count: agg.count,
-      total_spent: agg.total,
+      total_spent_by_currency: agg.byCurrency,
     };
   });
 
@@ -120,9 +149,17 @@ export type PanelClientDetail = PanelClientRow & {
   shipping_district: string | null;
   shipping_postal: string | null;
   shipping_same_as_billing: boolean | null;
+  /**
+   * Grouped by currency — storefront orders are MDL, but panel sales in
+   * EUR/USD shouldn't get silently re-stamped as `lei`. Empty object
+   * means no orders at all. UI renders one Price per currency.
+   */
+  total_spent_by_currency: Record<string, number>;
   recent_orders: Array<{
     id: string;
     total: number | null;
+    /** Always set — `MDL` for legacy rows without an explicit currency. */
+    currency: string;
     status: string | null;
     account_scope: "conta1" | "conta2";
     source: "storefront" | "panel" | "import";
@@ -144,22 +181,51 @@ export async function getPanelClient(
     .maybeSingle();
   if (!profile) return null;
 
-  const { data: ordersAgg } = await supabase
+  // `currency` lives on the orders table via a panel migration; older
+  // rows have it null and we default to MDL on read. Defensive retry on
+  // 42703 so the page still loads if the column hasn't been migrated
+  // (matches the pattern used in invoices/queries.ts).
+  let { data: ordersAgg, error: aggErr } = await supabase
     .from("orders")
-    .select("total")
+    .select("total, currency")
     .eq("account_scope", scope)
     .eq("user_id", id);
-  const total_spent = (ordersAgg ?? []).reduce(
-    (sum, o) => sum + Number(o.total ?? 0),
-    0,
-  );
+  if (aggErr && /currency/i.test(aggErr.message)) {
+    const retry = await supabase
+      .from("orders")
+      .select("total")
+      .eq("account_scope", scope)
+      .eq("user_id", id);
+    ordersAgg = retry.data as typeof ordersAgg;
+    aggErr = retry.error;
+  }
+  const total_spent_by_currency: Record<string, number> = {};
+  for (const o of ordersAgg ?? []) {
+    const cur =
+      (((o as { currency?: string | null }).currency ?? "") || "MDL").toUpperCase();
+    total_spent_by_currency[cur] = (total_spent_by_currency[cur] ?? 0) + Number(o.total ?? 0);
+  }
+  // Round to 2 dp after summing — avoids ugly 1234.5600000001 floats.
+  for (const k of Object.keys(total_spent_by_currency)) {
+    total_spent_by_currency[k] = Number(total_spent_by_currency[k].toFixed(2));
+  }
 
-  const { data: recent } = await supabase
+  let { data: recent, error: recentErr } = await supabase
     .from("orders")
-    .select("id, total, status, account_scope, source, created_at")
+    .select("id, total, currency, status, account_scope, source, created_at")
     .eq("user_id", id)
     .order("created_at", { ascending: false })
     .limit(20);
+  if (recentErr && /currency/i.test(recentErr.message)) {
+    const retry = await supabase
+      .from("orders")
+      .select("id, total, status, account_scope, source, created_at")
+      .eq("user_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    recent = retry.data as typeof recent;
+    recentErr = retry.error;
+  }
 
   return {
     id: profile.id,
@@ -185,10 +251,12 @@ export async function getPanelClient(
     shipping_postal: profile.shipping_postal,
     shipping_same_as_billing: profile.shipping_same_as_billing,
     orders_count: (ordersAgg ?? []).length,
-    total_spent,
+    total_spent_by_currency,
     recent_orders: (recent ?? []).map((r) => ({
       id: r.id,
       total: r.total,
+      currency:
+        ((((r as { currency?: string | null }).currency ?? "") || "MDL")).toUpperCase(),
       status: r.status,
       account_scope: r.account_scope,
       source: r.source,

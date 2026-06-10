@@ -38,6 +38,12 @@ export async function listInvoices(args: {
   to?: string;
   /** When true, restrict to invoices past their due_date and still 'issued'. */
   overdueOnly?: boolean;
+  /**
+   * Restrict to a single document status. Mutually exclusive with
+   * `overdueOnly` at the UI level — both go through the same chip
+   * row — but logically the call is safe to combine.
+   */
+  status?: InvoiceRow["status"];
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
 
@@ -58,6 +64,8 @@ export async function listInvoices(args: {
     if (args.overdueOnly) {
       const today = new Date().toISOString().slice(0, 10);
       q = q.eq("status", "issued").lt("due_date", today);
+    } else if (args.status) {
+      q = q.eq("status", args.status);
     }
     if (args.q) {
       const term = `%${args.q.replace(/[%_]/g, "")}%`;

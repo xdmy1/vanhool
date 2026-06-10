@@ -127,7 +127,25 @@ export default async function PanelClientDetailPage({
             <Stat label={t("clienti_detail_total_orders")} value={String(client.orders_count)} />
             <Stat
               label={t("clienti_detail_total_spent")}
-              value={<Price value={client.total_spent} size="lg" accent={false} />}
+              value={
+                Object.keys(client.total_spent_by_currency).length === 0 ? (
+                  <Price value={0} size="lg" accent={false} />
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {Object.entries(client.total_spent_by_currency).map(
+                      ([currency, sum]) => (
+                        <Price
+                          key={currency}
+                          value={sum}
+                          currency={currency}
+                          size="lg"
+                          accent={false}
+                        />
+                      ),
+                    )}
+                  </div>
+                )
+              }
             />
           </div>
 
@@ -167,7 +185,12 @@ export default async function PanelClientDetailPage({
                       </span>
                       <span className="w-28 text-right tabular-nums">
                         {o.total !== null ? (
-                          <Price value={Number(o.total)} size="sm" accent={false} />
+                          <Price
+                            value={Number(o.total)}
+                            currency={o.currency}
+                            size="sm"
+                            accent={false}
+                          />
                         ) : (
                           "—"
                         )}
