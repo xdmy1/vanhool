@@ -75,6 +75,15 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
       ? Math.round((discountAmount / beforeDiscount) * 100)
       : 0;
 
+  // Bookkeeper asked for the Preț/Total columns to be "inclusiv TVA".
+  // VAT is invoice-level on panel/storefront — derive its rate from
+  // the header (subtotal + vat = total) and scale every per-line figure
+  // by (1 + rate). When subtotal is 0 we fall back to the raw values.
+  const headerVatRate =
+    Number(invoice.subtotal) > 0
+      ? Number(invoice.vat_amount) / Number(invoice.subtotal)
+      : 0;
+  const grossFactor = 1 + headerVatRate;
   const ROW_BORDER = "border-bottom:1px solid #e5e1d8";
   const rowsHtml = items
     .map((it) => {
@@ -87,11 +96,15 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
       const linePct = hasDiscount && list > 0
         ? Math.round((1 - eff / list) * 100)
         : 0;
+      const grossEff = Number((eff * grossFactor).toFixed(2));
+      const grossList = Number((list * grossFactor).toFixed(2));
+      const netLineTotal = Number(it.total ?? qty * eff);
+      const grossLineTotal = Number((netLineTotal * grossFactor).toFixed(2));
       const priceCell = hasDiscount
-        ? `<div style="font-size:11px;color:#6b6358;text-decoration:line-through">${fmtMoney(list, invoice.currency)}</div>
-           <div style="color:#15803d;font-weight:600">${fmtMoney(eff, invoice.currency)}</div>
+        ? `<div style="font-size:11px;color:#6b6358;text-decoration:line-through">${fmtMoney(grossList, invoice.currency)}</div>
+           <div style="color:#15803d;font-weight:600">${fmtMoney(grossEff, invoice.currency)}</div>
            <div style="font-size:11px;color:#15803d;font-weight:600">-${linePct}%</div>`
-        : fmtMoney(eff, invoice.currency);
+        : fmtMoney(grossEff, invoice.currency);
       return `<tr style="${ROW_BORDER}">
         <td style="padding:6px 8px;font-size:13px;color:#2a2622">
           ${it.partCode ? `<div style="font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">${escapeHtml(String(it.partCode))}</div>` : ""}
@@ -99,28 +112,25 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
         </td>
         <td style="padding:6px 8px;font-size:13px;text-align:right;color:#2a2622">${qty}</td>
         <td style="padding:6px 8px;font-size:13px;text-align:right;color:#2a2622">${priceCell}</td>
-        <td style="padding:6px 8px;font-size:13px;text-align:right;font-weight:600;color:#2a2622">${fmtMoney(Number(it.total ?? qty * eff), invoice.currency)}</td>
+        <td style="padding:6px 8px;font-size:13px;text-align:right;font-weight:600;color:#2a2622">${fmtMoney(grossLineTotal, invoice.currency)}</td>
       </tr>`;
     })
     .join("");
 
+  // Footer kept tight per bookkeeper's request — only the figure that
+  // actually goes into the books. Discount line stays when present
+  // (the gross discount lets the bookkeeper see what was saved), then
+  // the single "Total inclusiv TVA" row. No standalone Subtotal/TVA
+  // breakdown — operator already sees per-line gross above.
   const totalsRows: string[] = [];
   if (discountAmount > 0) {
+    const grossDiscount = Number((discountAmount * grossFactor).toFixed(2));
     totalsRows.push(
-      `<tr><td style="padding:4px 8px;font-size:12px;text-align:right;color:#6b6358">Subtotal fără reducere</td><td style="padding:4px 8px;font-size:12px;text-align:right;color:#6b6358;text-decoration:line-through">${fmtMoney(beforeDiscount, invoice.currency)}</td></tr>`,
-    );
-    totalsRows.push(
-      `<tr><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d">Reducere (-${discountPct}%)</td><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d;font-weight:600">-${fmtMoney(discountAmount, invoice.currency)}</td></tr>`,
+      `<tr><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d">Reducere aplicată (-${discountPct}%)</td><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d;font-weight:600">-${fmtMoney(grossDiscount, invoice.currency)}</td></tr>`,
     );
   }
   totalsRows.push(
-    `<tr><td style="padding:4px 8px;font-size:13px;text-align:right;color:#6b6358">Subtotal</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.subtotal, invoice.currency)}</td></tr>`,
-  );
-  totalsRows.push(
-    `<tr><td style="padding:4px 8px;font-size:13px;text-align:right;color:#6b6358">TVA</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.vat_amount, invoice.currency)}</td></tr>`,
-  );
-  totalsRows.push(
-    `<tr style="border-top:2px solid #2a2622"><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">Total (${invoice.currency})</td><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(invoice.total, invoice.currency)}</td></tr>`,
+    `<tr style="border-top:2px solid #2a2622"><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">Total inclusiv TVA (${invoice.currency})</td><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(invoice.total, invoice.currency)}</td></tr>`,
   );
 
   const scopeLabel = invoice.account_scope === "conta1" ? "Conta 1 — fiscal" : "Conta 2 — cash";
@@ -200,20 +210,21 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
     const dp =
       it.discounted_unit_price != null ? Number(it.discounted_unit_price) : null;
     const eff = dp != null && dp >= 0 && dp < list ? dp : list;
-    const total = Number(it.total ?? qty * eff);
-    const discNote = eff < list ? `  [Reducere de la ${list.toFixed(2)}]` : "";
+    const grossEff = Number((eff * grossFactor).toFixed(2));
+    const grossList = Number((list * grossFactor).toFixed(2));
+    const netLineTotal = Number(it.total ?? qty * eff);
+    const grossLineTotal = Number((netLineTotal * grossFactor).toFixed(2));
+    const discNote = eff < list ? `  [Reducere de la ${grossList.toFixed(2)}]` : "";
     textLines.push(
-      `  ${it.partCode ? it.partCode + " " : ""}${it.name ?? ""}: ${qty} × ${eff.toFixed(2)} = ${total.toFixed(2)} ${invoice.currency}${discNote}`,
+      `  ${it.partCode ? it.partCode + " " : ""}${it.name ?? ""}: ${qty} × ${grossEff.toFixed(2)} = ${grossLineTotal.toFixed(2)} ${invoice.currency} (cu TVA)${discNote}`,
     );
   }
   textLines.push("");
   if (discountAmount > 0) {
-    textLines.push(`Subtotal fără reducere: ${beforeDiscount.toFixed(2)} ${invoice.currency}`);
-    textLines.push(`Reducere (-${discountPct}%): -${discountAmount.toFixed(2)} ${invoice.currency}`);
+    const grossDiscount = Number((discountAmount * grossFactor).toFixed(2));
+    textLines.push(`Reducere (-${discountPct}%): -${grossDiscount.toFixed(2)} ${invoice.currency}`);
   }
-  textLines.push(`Subtotal: ${invoice.subtotal.toFixed(2)} ${invoice.currency}`);
-  textLines.push(`TVA: ${invoice.vat_amount.toFixed(2)} ${invoice.currency}`);
-  textLines.push(`TOTAL: ${invoice.total.toFixed(2)} ${invoice.currency}`);
+  textLines.push(`TOTAL inclusiv TVA: ${invoice.total.toFixed(2)} ${invoice.currency}`);
 
   const subject = `Solicitare e-factură · ${docLabel} ${number} — ${customer?.name ?? "Client"} — ${invoice.total.toFixed(2)} ${invoice.currency}`;
 

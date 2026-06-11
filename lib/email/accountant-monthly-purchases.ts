@@ -63,18 +63,29 @@ export function accountantMonthlyPurchasesEmail(
   const purchasesHtml = purchases
     .map((p, idx) => {
       const itemsHtml = p.items
-        .map(
-          (it) => `<tr style="border-bottom:1px solid #eee5d2">
-        <td style="padding:5px 8px;font-size:11px;color:#2a2622;vertical-align:top">
-          ${it.supplier_code ? `<span style="font-family:ui-monospace,monospace;color:#6b6358">${escapeHtml(it.supplier_code)}</span><br/>` : ""}
-          ${escapeHtml(it.description)}
-        </td>
-        <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${it.quantity}</td>
-        <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(it.unit_cost, p.currency)}</td>
-        <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${it.vat_rate}%</td>
-        <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;font-weight:600;vertical-align:top">${fmtMoney(it.line_total, p.currency)}</td>
-      </tr>`,
-        )
+        .map((it) => {
+          // Accountant asked for GROSS in the Total column — bookkeeper
+          // doesn't want to add VAT in their head, they want the final
+          // figure that hits the books. Unit price flips to gross too so
+          // qty × unit == line total still checks out at a glance. The
+          // separate "TVA%" column drops out per the same request
+          // ("nu pune sumele aparte").
+          const grossUnit = Number(
+            (it.unit_cost * (1 + it.vat_rate / 100)).toFixed(2),
+          );
+          const grossLine = Number(
+            (it.line_total * (1 + it.vat_rate / 100)).toFixed(2),
+          );
+          return `<tr style="border-bottom:1px solid #eee5d2">
+            <td style="padding:5px 8px;font-size:11px;color:#2a2622;vertical-align:top">
+              ${it.supplier_code ? `<span style="font-family:ui-monospace,monospace;color:#6b6358">${escapeHtml(it.supplier_code)}</span><br/>` : ""}
+              ${escapeHtml(it.description)}
+            </td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${it.quantity}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(grossUnit, p.currency)}</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;font-weight:600;vertical-align:top">${fmtMoney(grossLine, p.currency)}</td>
+          </tr>`;
+        })
         .join("");
 
       // Compact supplier registration block — IDNO, VAT code, address,
@@ -125,26 +136,27 @@ export function accountantMonthlyPurchasesEmail(
             <tr style="background:#fafaf6">
               <th align="left" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Produs</th>
               <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Cant.</th>
-              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Preț unit.</th>
-              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">TVA</th>
-              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total</th>
+              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Preț unit. (cu TVA)</th>
+              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total (cu TVA)</th>
             </tr>
           </thead>
-          <tbody>${itemsHtml || `<tr><td colspan="5" style="padding:8px;text-align:center;color:#6b6358;font-size:11px">— fără linii —</td></tr>`}</tbody>
+          <tbody>${itemsHtml || `<tr><td colspan="4" style="padding:8px;text-align:center;color:#6b6358;font-size:11px">— fără linii —</td></tr>`}</tbody>
         </table>
         <div style="padding:8px 14px;background:#fafaf6;border-top:1px solid #d8d2c5;display:flex;justify-content:space-between;font-size:12px">
-          <span style="color:#6b6358">Subtotal: <span style="color:#2a2622">${fmtMoney(p.subtotal, p.currency)}</span> · TVA: <span style="color:#2a2622">${fmtMoney(p.vat_amount, p.currency)}</span></span>
+          <span style="color:#6b6358;text-transform:uppercase;letter-spacing:0.05em;font-size:11px">Total inclusiv TVA</span>
           <strong style="color:#2a2622">${fmtMoney(p.total, p.currency)}</strong>
         </div>
       </div>`;
     })
     .join("");
 
+  // Grand totals strip — accountant asked for one column only ("don't
+  // split the amounts"), so the per-currency table now shows the gross
+  // total straight up with the "inclusiv TVA" label as the column head.
   const totalsHtml = totalsByCurrency
     .map(
       (t) => `<tr>
       <td style="padding:6px 12px;font-size:12px;color:#6b6358">${t.currency}</td>
-      <td style="padding:6px 12px;font-size:12px;text-align:right;color:#2a2622">TVA: ${fmtMoney(t.vat_amount, t.currency)}</td>
       <td style="padding:6px 12px;font-size:14px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(t.total, t.currency)}</td>
     </tr>`,
     )
@@ -178,7 +190,7 @@ export function accountantMonthlyPurchasesEmail(
           totalsByCurrency.length > 0
             ? `<tr><td style="padding:0 24px 20px" align="right">
                 <table cellpadding="0" cellspacing="0" border="0" style="min-width:320px;border-top:2px solid #2a2622">
-                  <thead><tr><th colspan="3" style="padding:8px 12px;font-size:11px;text-align:left;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total general (pe valută)</th></tr></thead>
+                  <thead><tr><th colspan="2" style="padding:8px 12px;font-size:11px;text-align:left;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total general inclusiv TVA (pe valută)</th></tr></thead>
                   <tbody>${totalsHtml}</tbody>
                 </table>
               </td></tr>`
@@ -209,21 +221,21 @@ export function accountantMonthlyPurchasesEmail(
     if (p.supplier_email) textLines.push(`   Email: ${p.supplier_email}`);
     for (const it of p.items) {
       const code = it.supplier_code ? `${it.supplier_code} ` : "";
+      const grossUnit = Number((it.unit_cost * (1 + it.vat_rate / 100)).toFixed(2));
+      const grossLine = Number((it.line_total * (1 + it.vat_rate / 100)).toFixed(2));
       textLines.push(
-        `   • ${code}${it.description}: ${it.quantity} × ${it.unit_cost.toFixed(2)} (${it.vat_rate}%) = ${it.line_total.toFixed(2)} ${p.currency}`,
+        `   • ${code}${it.description}: ${it.quantity} × ${grossUnit.toFixed(2)} = ${grossLine.toFixed(2)} ${p.currency} (cu TVA)`,
       );
     }
     textLines.push(
-      `   Subtotal ${p.subtotal.toFixed(2)} + TVA ${p.vat_amount.toFixed(2)} = TOTAL ${p.total.toFixed(2)} ${p.currency}`,
+      `   TOTAL inclusiv TVA: ${p.total.toFixed(2)} ${p.currency}`,
     );
     textLines.push("");
   }
   if (totalsByCurrency.length > 0) {
-    textLines.push("Total general (pe valută):");
+    textLines.push("Total general inclusiv TVA (pe valută):");
     for (const t of totalsByCurrency) {
-      textLines.push(
-        `  ${t.currency}: total ${t.total.toFixed(2)} (TVA inclusă ${t.vat_amount.toFixed(2)})`,
-      );
+      textLines.push(`  ${t.currency}: ${t.total.toFixed(2)}`);
     }
   }
 

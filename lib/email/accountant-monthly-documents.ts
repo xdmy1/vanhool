@@ -67,6 +67,14 @@ export function accountantMonthlyDocumentsEmail(args: {
       const items = d.items_snapshot as InvoiceItemSnapshot[];
       const number = `${d.series ?? ""}${d.number ?? ""}`;
 
+      // VAT rate is invoice-level on the panel side. Derive it from the
+      // header (subtotal + vat = total). The per-line gross is then the
+      // net line scaled by (1 + vatRate). Bookkeeper asked for the Preț
+      // and Total columns to show "inclusiv TVA" already, so we apply
+      // the factor here and label the columns accordingly.
+      const vatRate =
+        Number(d.subtotal) > 0 ? Number(d.vat_amount) / Number(d.subtotal) : 0;
+      const grossFactor = 1 + vatRate;
       const rowsHtml = items
         .map((it) => {
           const qty = Number(it.quantity ?? 0);
@@ -78,11 +86,15 @@ export function accountantMonthlyDocumentsEmail(args: {
           const linePct = hasDiscount && list > 0
             ? Math.round((1 - eff / list) * 100)
             : 0;
+          const grossEff = Number((eff * grossFactor).toFixed(2));
+          const grossList = Number((list * grossFactor).toFixed(2));
+          const lineNet = Number(it.total ?? qty * eff);
+          const grossLine = Number((lineNet * grossFactor).toFixed(2));
           const priceCell = hasDiscount
-            ? `<div style="font-size:10px;color:#6b6358;text-decoration:line-through">${fmtMoney(list, d.currency)}</div>
-               <div style="color:#15803d;font-weight:600">${fmtMoney(eff, d.currency)}</div>
+            ? `<div style="font-size:10px;color:#6b6358;text-decoration:line-through">${fmtMoney(grossList, d.currency)}</div>
+               <div style="color:#15803d;font-weight:600">${fmtMoney(grossEff, d.currency)}</div>
                <div style="font-size:10px;color:#15803d;font-weight:600">-${linePct}%</div>`
-            : fmtMoney(eff, d.currency);
+            : fmtMoney(grossEff, d.currency);
           return `<tr style="border-bottom:1px solid #eee5d2">
             <td style="padding:4px 8px;font-size:11px;color:#2a2622;vertical-align:top">
               ${it.partCode ? `<div style="font-family:ui-monospace,monospace;font-size:10px;color:#6b6358">${escapeHtml(String(it.partCode))}</div>` : ""}
@@ -90,7 +102,7 @@ export function accountantMonthlyDocumentsEmail(args: {
             </td>
             <td style="padding:4px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${qty}</td>
             <td style="padding:4px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${priceCell}</td>
-            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#2a2622;font-weight:600;vertical-align:top">${fmtMoney(Number(it.total ?? qty * eff), d.currency)}</td>
+            <td style="padding:4px 8px;font-size:11px;text-align:right;color:#2a2622;font-weight:600;vertical-align:top">${fmtMoney(grossLine, d.currency)}</td>
           </tr>`;
         })
         .join("");
@@ -111,25 +123,26 @@ export function accountantMonthlyDocumentsEmail(args: {
             <tr style="background:#fafaf6">
               <th align="left" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Produs</th>
               <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Cant.</th>
-              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Preț</th>
-              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total</th>
+              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Preț (cu TVA)</th>
+              <th align="right" style="padding:5px 8px;font-size:9px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total (cu TVA)</th>
             </tr>
           </thead>
           <tbody>${rowsHtml || `<tr><td colspan="4" style="padding:8px;text-align:center;color:#6b6358;font-size:11px">— fără linii —</td></tr>`}</tbody>
         </table>
         <div style="padding:6px 14px;background:#fafaf6;border-top:1px solid #d8d2c5;display:flex;justify-content:space-between;font-size:11px">
-          <span style="color:#6b6358">Subtotal: <span style="color:#2a2622">${fmtMoney(d.subtotal, d.currency)}</span> · TVA: <span style="color:#2a2622">${fmtMoney(d.vat_amount, d.currency)}</span></span>
+          <span style="color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total inclusiv TVA</span>
           <strong style="color:#2a2622">${fmtMoney(d.total, d.currency)}</strong>
         </div>
       </div>`;
     })
     .join("");
 
+  // One-column total per currency (inclusiv TVA) — bookkeeper doesn't
+  // want a separate VAT line, just the figure that goes into the books.
   const totalsHtml = totalsByCurrency
     .map(
       (t) => `<tr>
       <td style="padding:6px 12px;font-size:12px;color:#6b6358">${t.currency}</td>
-      <td style="padding:6px 12px;font-size:12px;text-align:right;color:#2a2622">TVA: ${fmtMoney(t.vat_amount, t.currency)}</td>
       <td style="padding:6px 12px;font-size:14px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(t.total, t.currency)}</td>
     </tr>`,
     )
@@ -160,7 +173,7 @@ export function accountantMonthlyDocumentsEmail(args: {
           totalsByCurrency.length > 0
             ? `<tr><td style="padding:0 24px 20px" align="right">
                 <table cellpadding="0" cellspacing="0" border="0" style="min-width:320px;border-top:2px solid #2a2622">
-                  <thead><tr><th colspan="3" style="padding:8px 12px;font-size:11px;text-align:left;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total general (pe valută)</th></tr></thead>
+                  <thead><tr><th colspan="2" style="padding:8px 12px;font-size:11px;text-align:left;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">Total general inclusiv TVA (pe valută)</th></tr></thead>
                   <tbody>${totalsHtml}</tbody>
                 </table>
               </td></tr>`
