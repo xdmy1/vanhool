@@ -76,6 +76,39 @@ export async function deleteOrderWithPin(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = auth.supabase;
 
+  // Restore stock BEFORE removing the row. The sale path decrements
+  // stock on insert; hard-delete must undo that or the catalog ends up
+  // permanently short. Skip restoration if the order was already
+  // cancelled (stock was put back when status flipped to cancelled).
+  const { data: ord } = await supabase
+    .from("orders")
+    .select("id, status, items")
+    .eq("id", id)
+    .maybeSingle();
+  if (ord && ord.status !== "cancelled") {
+    const items = Array.isArray(ord.items)
+      ? (ord.items as Array<Record<string, unknown>>)
+      : [];
+    for (const it of items) {
+      const productId =
+        (it as { productId?: string | null }).productId ??
+        (it as { product_id?: string | null }).product_id ??
+        null;
+      const qty = Number((it as { quantity?: number }).quantity ?? 0);
+      if (!productId || qty <= 0) continue;
+      const { data: p } = await supabase
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", productId)
+        .maybeSingle();
+      if (!p) continue;
+      await supabase
+        .from("products")
+        .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
+        .eq("id", productId);
+    }
+  }
+
   // Cascade: nuke linked invoices + delivery notes so FKs don't block.
   await supabase.from("invoices").delete().eq("order_id", id);
   await supabase.from("delivery_notes").delete().eq("order_id", id);

@@ -891,6 +891,91 @@ export async function deleteInvoiceWithPin(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = await createClient();
 
+  // Run the same restoration steps `voidInvoice` does BEFORE removing
+  // the row — operator's complaint was that deleting a fiscal invoice
+  // left the stock decremented (the sale path bumped it down at
+  // post-sale time, hard-delete never bumped it back). Hard-delete is
+  // logically a void + remove: restore stock, cancel the order, return
+  // the delivery note, reverse the conta2/cash inflow.
+  const { data: invRaw } = await supabase
+    .from("invoices")
+    .select(
+      "id, type, order_id, account_scope, total, series, number, paid_method" as
+        "id, type, order_id, account_scope, total, series, number",
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  const inv = invRaw as
+    | (typeof invRaw & { paid_method?: string | null })
+    | null;
+
+  const nowIso = new Date().toISOString();
+
+  if (inv && inv.type === "invoice" && inv.order_id) {
+    const { data: ord } = await supabase
+      .from("orders")
+      .select("id, status, items, account_scope, total, currency")
+      .eq("id", inv.order_id)
+      .maybeSingle();
+
+    if (ord && ord.status !== "cancelled") {
+      const items = Array.isArray(ord.items)
+        ? (ord.items as Array<Record<string, unknown>>)
+        : [];
+      for (const it of items) {
+        const productId =
+          (it as { productId?: string | null }).productId ??
+          (it as { product_id?: string | null }).product_id ??
+          null;
+        const qty = Number((it as { quantity?: number }).quantity ?? 0);
+        if (!productId || qty <= 0) continue;
+        const { data: p } = await supabase
+          .from("products")
+          .select("stock_quantity")
+          .eq("id", productId)
+          .maybeSingle();
+        if (!p) continue;
+        await supabase
+          .from("products")
+          .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
+          .eq("id", productId);
+      }
+
+      await supabase
+        .from("orders")
+        .update({ status: "cancelled", updated_at: nowIso })
+        .eq("id", inv.order_id);
+
+      await supabase
+        .from("delivery_notes")
+        .update({ status: "returned", updated_at: nowIso })
+        .eq("order_id", inv.order_id)
+        .neq("status", "returned");
+
+      const wasCashIn =
+        inv.account_scope === "conta2" &&
+        (inv.paid_method === "cash" || inv.paid_method === null);
+      if (wasCashIn && Number(ord.total ?? 0) > 0) {
+        const ordCurrency = (ord as { currency?: string | null }).currency ?? "MDL";
+        const fxRate = ordCurrency === "EUR" ? 20 : ordCurrency === "USD" ? 17 : 1;
+        const amt = Number(ord.total);
+        await supabase.from("cash_register_movements").insert({
+          direction: "out",
+          amount: amt,
+          reason: "adjustment",
+          order_id: inv.order_id,
+          created_by: user.id,
+          notes: `Ștergere factură ${inv.series ?? ""}${inv.number ?? ""}`,
+          ...({
+            currency: ordCurrency,
+            fx_rate: fxRate,
+            amount_mdl: Number((amt * fxRate).toFixed(2)),
+          } as object),
+        });
+      }
+    }
+  }
+
   // Clear back-links so the FK on orders.invoice_id / invoices.* doesn't
   // block the delete. Other invoices that point at this one (proforma_id
   // or converted_to_invoice_id) get their links cleared too.
@@ -909,6 +994,8 @@ export async function deleteInvoiceWithPin(
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath("/[locale]/panel/proforme", "page");
+  revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
+  revalidatePath("/[locale]/admin/orders", "page");
   return { ok: true };
 }
 
