@@ -1394,6 +1394,8 @@
     "proforma_form_save_changes": "Сохранить изменения",
     "proforma_edit_title": "Редактировать проформу",
     "proforma_edit_subtitle": "Измените клиента, строки, валюту, язык или заметки. Серия и номер остаются прежними.",
+    "factura_edit_title": "Редактировать счёт",
+    "factura_edit_subtitle": "Разрешено до поступления оплаты. Серия и номер не меняются. Оплаченные, аннулированные и конвертированные счета заблокированы.",
     "proforma_updated_success": "Проформа обновлена",
     "proforma_created_success": "Проформа {number} выпущена",
     "proforma_col_number": "№",

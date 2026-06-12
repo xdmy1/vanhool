@@ -574,6 +574,97 @@ export async function updateProforma(
 }
 
 /**
+ * Edit an existing fiscal invoice. Same shape as updateProforma but
+ * gated to type='invoice' and rejected once the invoice is paid, void,
+ * or converted — those states are accounting-locked. Series + number
+ * stay fixed; only mutable detail (customer, items, totals, notes,
+ * scope, due window) gets rewritten.
+ */
+export async function updateInvoice(
+  id: string,
+  raw: unknown,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+
+  const parsed = proformaInputSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
+  }
+  const v = parsed.data;
+  const itemsNormalized = v.items.map((i) => ({
+    ...i,
+    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+  }));
+  const supabase = await createClient();
+
+  const { data: existing } = await supabase
+    .from("invoices")
+    .select("id, type, status, issued_date")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) return { ok: false, reason: "invoice_not_found" };
+  if (existing.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
+  // Accounting-locked states. Anything else (draft / issued / sent) is
+  // still editable — typos in customer details, fixing a wrong item.
+  if (existing.status === "paid") return { ok: false, reason: "already_paid" };
+  if (existing.status === "void") return { ok: false, reason: "voided" };
+
+  const { subtotal, vat_amount, total, discount_percent } = totals(
+    itemsNormalized.map((i) => ({
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      discounted_unit_price: i.discounted_unit_price ?? null,
+      vat_rate: i.vat_rate,
+    })),
+  );
+  const itemsSnapshot = itemsNormalized.map((i) => {
+    const dp = i.discounted_unit_price;
+    const eff =
+      dp != null && dp >= 0 && dp < i.unit_price ? dp : i.unit_price;
+    return {
+      productId: i.product_id ?? null,
+      partCode: i.part_code ?? null,
+      name: i.name,
+      description: i.description ?? null,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      discounted_unit_price: eff < i.unit_price ? eff : null,
+      vat_rate: i.vat_rate,
+      total: Number((i.quantity * eff).toFixed(2)),
+    };
+  });
+
+  const issued = new Date(existing.issued_date);
+  const due = new Date(issued.getTime() + (v.due_days ?? 7) * 86_400_000);
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      account_scope: v.account_scope,
+      currency: v.currency,
+      customer_snapshot: v.customer as unknown as Json,
+      items_snapshot: itemsSnapshot as unknown as Json,
+      subtotal,
+      vat_amount,
+      total,
+      due_date: due.toISOString().slice(0, 10),
+      notes: v.notes ?? null,
+      updated_at: new Date().toISOString(),
+      ...({
+        output_locale: v.output_locale,
+        ...(discount_percent > 0 ? { discount_percent } : {}),
+      } as object),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath(`/[locale]/panel/facturi/${id}`, "page");
+  return { ok: true };
+}
+
+/**
  * Mark a previously-issued fiscal invoice as paid. Captures when the money
  * came in, the amount and currency the customer actually settled in (may
  * differ from the invoice's own currency), and how it was paid. Closes the

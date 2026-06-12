@@ -16,7 +16,11 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
-import { issueProforma, updateProforma } from "@/lib/panel/invoices/actions";
+import {
+  issueProforma,
+  updateInvoice,
+  updateProforma,
+} from "@/lib/panel/invoices/actions";
 import { PartCodeAutocomplete } from "@/components/panel/proforma/PartCodeAutocomplete";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import {
@@ -107,9 +111,19 @@ export type ProformaInitial = {
 export function NewProformaForm({
   locale,
   initial,
+  /**
+   * What kind of document this form is editing. Default "proforma"
+   * keeps existing callers behaving exactly as before; "invoice"
+   * switches the EDIT path to updateInvoice and bounces back to
+   * /panel/facturi instead of /panel/proforme on success. Only
+   * relevant when `initial` is set — there is no create-flow for
+   * fiscal invoices from this form.
+   */
+  documentType = "proforma",
 }: {
   locale: string;
   initial?: ProformaInitial;
+  documentType?: "proforma" | "invoice";
 }) {
   const t = useTranslations("panel");
   const router = useRouter();
@@ -270,10 +284,17 @@ export function NewProformaForm({
 
     startSubmit(async () => {
       if (isEdit && initial) {
-        const res = await updateProforma(initial.id, payload);
+        const res =
+          documentType === "invoice"
+            ? await updateInvoice(initial.id, payload)
+            : await updateProforma(initial.id, payload);
         if (res.ok) {
           toast.success(t("proforma_updated_success"));
-          router.push(`/${locale}/panel/proforme/${initial.id}`);
+          const base =
+            documentType === "invoice"
+              ? `/${locale}/panel/facturi`
+              : `/${locale}/panel/proforme`;
+          router.push(`${base}/${initial.id}`);
         } else {
           toast.error(t("sale_error", { reason: res.reason }));
         }

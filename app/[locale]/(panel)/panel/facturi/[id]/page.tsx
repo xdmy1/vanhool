@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ExternalLink, Printer } from "lucide-react";
+import { ExternalLink, Pencil, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,23 @@ export default async function PanelInvoiceDetailPage({
                 {t("action_print")}
               </Link>
             </Button>
+            {/* Edit only while the invoice is still mutable. Paid /
+                voided / converted rows are accounting-locked and the
+                edit page redirects back here anyway, so we don't even
+                surface the button. */}
+            {invoice.status !== "paid" &&
+            invoice.status !== "void" &&
+            invoice.status !== "converted" ? (
+              <Button asChild variant="outline" className="gap-1.5">
+                <Link
+                  href={`/panel/facturi/${invoice.id}/edit` as "/panel"}
+                  locale={locale}
+                >
+                  <Pencil className="size-4" />
+                  {t("action_edit")}
+                </Link>
+              </Button>
+            ) : null}
             <SendToAccountantButton
               invoiceId={invoice.id}
               initialSentAt={invoice.accountant_sent_at}

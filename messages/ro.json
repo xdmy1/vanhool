@@ -1394,6 +1394,8 @@
     "proforma_form_save_changes": "Salvează modificările",
     "proforma_edit_title": "Editează pro-forma",
     "proforma_edit_subtitle": "Schimbă clientul, liniile, moneda, limba sau notele. Seria și numărul rămân aceleași.",
+    "factura_edit_title": "Editează factura",
+    "factura_edit_subtitle": "Permis până la încasare. Seria și numărul rămân aceleași. Facturile plătite, anulate sau convertite sunt blocate.",
     "proforma_updated_success": "Pro-formă actualizată",
     "proforma_created_success": "Pro-formă {number} emisă",
     "proforma_col_number": "Nr.",
