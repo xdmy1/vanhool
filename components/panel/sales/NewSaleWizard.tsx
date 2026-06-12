@@ -42,13 +42,22 @@ type WalkIn = {
 type Line = {
   product: ProductSearchResult;
   qty: number;
-  /** Normal price per unit — what the line "would have cost" at full price. */
+  /** Normal price per unit — what the line "would have cost" at full price.
+   * Always NET (without VAT) — the per-line vat_rate below is what carries
+   * the +TVA 20% selection through the wizard. */
   unit_price: number;
   /**
    * Operator-typed discounted price per unit. null / equal-or-higher than
    * `unit_price` → no discount applied on this line.
    */
   discounted_unit_price: number | null;
+  /**
+   * Per-line VAT percent. 0 = no VAT, 20 = +TVA 20% pill toggled on.
+   * Driven by the segmented selector inside `PriceWithVatHelper` in
+   * external mode — clicking the pill no longer multiplies the price
+   * inline, it just tags the line and the wizard sums the VAT at step 4.
+   */
+  vat_rate: 0 | 20;
 };
 
 export function NewSaleWizard({ locale }: { locale: string }) {
@@ -117,6 +126,29 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           Number(((lineDiscountAmount / subtotalBeforeDiscount) * 100).toFixed(2)),
         )
       : 0;
+  // Auto-derived VAT from the per-line +TVA 20% pills the operator
+  // toggled at step 3. Used as the source of truth on conta1 unless the
+  // operator types something else into the VAT field at step 4.
+  const derivedVatAmount = useMemo(() => {
+    const sum = lines.reduce(
+      (acc, l) => acc + l.qty * effectiveOf(l) * (l.vat_rate / 100),
+      0,
+    );
+    return Number(sum.toFixed(2));
+  }, [lines]);
+
+  // Keep `vatAmount` in sync with derivedVatAmount until the operator
+  // overrides it manually. `vatTouched` flips to true on any onChange of
+  // the input — after that, the auto-derived value stops overwriting
+  // their typed figure.
+  const [vatTouched, setVatTouched] = useState(false);
+  useEffect(() => {
+    if (vatTouched) return;
+    if (scope === "conta2") return;
+    const next = derivedVatAmount > 0 ? derivedVatAmount.toFixed(2) : "";
+    setVatAmount((prev) => (prev === next ? prev : next));
+  }, [derivedVatAmount, vatTouched, scope]);
+
   const vatNum =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
   const grandTotal = Number((subtotal + vatNum).toFixed(2));
@@ -275,6 +307,9 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           setNotes={setNotes}
           vatAmount={vatAmount}
           setVatAmount={setVatAmount}
+          derivedVatAmount={derivedVatAmount}
+          vatTouched={vatTouched}
+          setVatTouched={setVatTouched}
           subtotal={subtotal}
           subtotalBeforeDiscount={subtotalBeforeDiscount}
           lineDiscountAmount={lineDiscountAmount}
@@ -717,7 +752,13 @@ function StepProducts({
     const unitPrice = convertPrice(baseMdl, "MDL", currency);
     setLines([
       ...lines,
-      { product: p, qty: 1, unit_price: unitPrice, discounted_unit_price: null },
+      {
+        product: p,
+        qty: 1,
+        unit_price: unitPrice,
+        discounted_unit_price: null,
+        vat_rate: 0,
+      },
     ]);
     setQ("");
     setResults([]);
@@ -924,6 +965,8 @@ function StepProducts({
                       <PriceWithVatHelper
                         value={l.unit_price}
                         onChange={(v) => update(idx, { unit_price: v })}
+                        vatRate={l.vat_rate}
+                        onVatChange={(r) => update(idx, { vat_rate: r })}
                         step="0.01"
                         size="sm"
                         inputClassName="ml-auto h-8 w-24 text-right"
@@ -1009,6 +1052,9 @@ function StepPayment({
   setNotes,
   vatAmount,
   setVatAmount,
+  derivedVatAmount,
+  vatTouched,
+  setVatTouched,
   subtotal,
   subtotalBeforeDiscount,
   lineDiscountAmount,
@@ -1029,6 +1075,12 @@ function StepPayment({
   setNotes: (v: string) => void;
   vatAmount: string;
   setVatAmount: (v: string) => void;
+  /** VAT auto-computed from per-line `vat_rate` flags. The parent keeps
+   * the auto-sync logic so the value stays right even if the operator
+   * jumps back to step 3 and tweaks line VAT. */
+  derivedVatAmount: number;
+  vatTouched: boolean;
+  setVatTouched: (v: boolean) => void;
   subtotal: number;
   subtotalBeforeDiscount: number;
   lineDiscountAmount: number;
@@ -1131,7 +1183,13 @@ function StepPayment({
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <Field
             label={t("sale_vat_label")}
-            hint={scope === "conta2" ? t("sale_vat_locked_conta2") : t("sale_vat_hint")}
+            hint={
+              scope === "conta2"
+                ? t("sale_vat_locked_conta2")
+                : derivedVatAmount > 0 && !vatTouched
+                  ? `Auto-completat din +TVA 20% pe linii (${derivedVatAmount.toFixed(2)} ${currency}). Modifică pentru a suprascrie.`
+                  : t("sale_vat_hint")
+            }
           >
             <Input
               type="number"
@@ -1139,7 +1197,10 @@ function StepPayment({
               step="0.01"
               min={0}
               value={scope === "conta2" ? "0" : vatAmount}
-              onChange={(e) => setVatAmount(e.target.value)}
+              onChange={(e) => {
+                setVatTouched(true);
+                setVatAmount(e.target.value);
+              }}
               disabled={scope === "conta2"}
               placeholder="0.00"
               className="md:max-w-xs disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
