@@ -10,12 +10,14 @@ import {
   FileBarChart,
   FileSignature,
   FileText,
+  FolderTree,
   Globe,
   LayoutDashboard,
   Package,
   Receipt,
   Settings,
   ShoppingCart,
+  Tags,
   Truck,
   Users,
   Wallet,
@@ -36,7 +38,10 @@ type NavItem = {
 
 type SidebarLabels = {
   overview: string;
+  comenzi: string;
   comenziSite: string;
+  categorii: string;
+  promocodes: string;
   clienti: string;
   produse: string;
   stock: string;
@@ -77,10 +82,18 @@ export function PanelSidebar({
       label: labels.comenziSite,
       badge: badges?.triagePending,
     },
+    // Panel-side clone of /admin/orders so the operator can drill into
+    // any order without bouncing into the admin layout.
+    { href: "/panel/comenzi", icon: ShoppingCart, label: labels.comenzi },
     { href: "/panel/vanzare-noua", icon: ShoppingCart, label: labels.vanzareNoua },
     { href: "/panel/precomenzi", icon: Clock, label: labels.precomenzi },
     { href: "/panel/clienti", icon: Users, label: labels.clienti },
     { href: "/panel/produse", icon: Package, label: labels.produse },
+    // Catalog-shaped admin sections still live under /admin. The
+    // panel sidebar exposes them so the operator finds everything in
+    // one place; clicking still pivots to the admin layout for now.
+    { href: "/admin/categories", icon: FolderTree, label: labels.categorii },
+    { href: "/admin/promocodes", icon: Tags, label: labels.promocodes },
     { href: "/panel/stock", icon: Boxes, label: labels.stock },
     { href: "/panel/achizitii", icon: ClipboardList, label: labels.achizitii },
     { href: "/panel/proforme", icon: FileSignature, label: labels.proforme },

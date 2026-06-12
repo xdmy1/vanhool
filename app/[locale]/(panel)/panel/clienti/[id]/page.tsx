@@ -162,7 +162,7 @@ export default async function PanelClientDetailPage({
                 {client.recent_orders.map((o) => (
                   <li key={o.id}>
                     <Link
-                      href={`/admin/orders/${o.id}` as "/admin"}
+                      href={`/panel/comenzi/${o.id}` as "/admin"}
                       locale={locale}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-surface-elevated"
                     >

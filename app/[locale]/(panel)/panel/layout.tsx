@@ -58,7 +58,10 @@ export default async function PanelLayout({
 
   const sidebarLabels = {
     overview: tPanel("nav_overview"),
+    comenzi: tPanel("nav_comenzi"),
     comenziSite: tPanel("nav_comenzi_site"),
+    categorii: tPanel("nav_categorii"),
+    promocodes: tPanel("nav_promocodes"),
     clienti: tPanel("nav_clienti"),
     produse: tPanel("nav_produse"),
     stock: tPanel("nav_stock"),

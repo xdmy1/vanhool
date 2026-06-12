@@ -84,7 +84,7 @@ export default async function PanelComenziSitePage({
                     <tr key={r.id} className="hover:bg-surface-elevated">
                       <td className="px-4 py-3">
                         <Link
-                          href={`/admin/orders/${r.id}` as "/admin"}
+                          href={`/panel/comenzi/${r.id}` as "/admin"}
                           locale={locale}
                           className="font-mono text-xs text-primary hover:underline"
                         >

@@ -754,7 +754,10 @@
   },
   "panel": {
     "nav_overview": "Sumar",
+    "nav_comenzi": "Comenzi",
     "nav_comenzi_site": "Comenzi site",
+    "nav_categorii": "Categorii",
+    "nav_promocodes": "Coduri promo",
     "nav_clienti": "Clienți",
     "nav_produse": "Produse",
     "nav_stock": "Stock live",

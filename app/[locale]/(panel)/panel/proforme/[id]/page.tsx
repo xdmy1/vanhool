@@ -124,7 +124,7 @@ export default async function PanelProformaDetailPage({
                 <dt className="text-muted">{t("triage_col_order")}</dt>
                 <dd>
                   <Link
-                    href={`/admin/orders/${proforma.order_id}` as "/admin"}
+                    href={`/panel/comenzi/${proforma.order_id}` as "/admin"}
                     locale={locale}
                     className="font-mono text-primary hover:underline"
                   >

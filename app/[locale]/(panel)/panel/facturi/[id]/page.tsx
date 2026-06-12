@@ -152,7 +152,7 @@ export default async function PanelInvoiceDetailPage({
                 <dt className="text-muted">{t("triage_col_order")}</dt>
                 <dd>
                   <Link
-                    href={`/admin/orders/${invoice.order_id}` as "/admin"}
+                    href={`/panel/comenzi/${invoice.order_id}` as "/admin"}
                     locale={locale}
                     className="font-mono text-primary hover:underline"
                   >

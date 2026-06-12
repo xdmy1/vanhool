@@ -754,7 +754,10 @@
   },
   "panel": {
     "nav_overview": "Обзор",
+    "nav_comenzi": "Заказы",
     "nav_comenzi_site": "Заказы с сайта",
+    "nav_categorii": "Категории",
+    "nav_promocodes": "Промокоды",
     "nav_clienti": "Клиенты",
     "nav_produse": "Товары",
     "nav_stock": "Склад (live)",

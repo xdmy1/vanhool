@@ -754,7 +754,10 @@
   },
   "panel": {
     "nav_overview": "Overview",
+    "nav_comenzi": "Orders",
     "nav_comenzi_site": "Site orders",
+    "nav_categorii": "Categories",
+    "nav_promocodes": "Promo codes",
     "nav_clienti": "Customers",
     "nav_produse": "Products",
     "nav_stock": "Live stock",

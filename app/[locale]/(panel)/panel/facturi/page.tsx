@@ -474,7 +474,7 @@ export default async function PanelFacturiPage({
                         ) : null}
                         {r.order_id ? (
                           <Link
-                            href={`/admin/orders/${r.order_id}` as "/admin"}
+                            href={`/panel/comenzi/${r.order_id}` as "/admin"}
                             locale={locale}
                             className="text-xs text-primary hover:underline"
                           >
