@@ -39,6 +39,13 @@ type WalkIn = {
   company_name: string;
 };
 
+/** Unit of measure for a sale line. Default "buc" keeps qty as integer
+ * (the catalog default — most parts are sold by piece). "l" (litri) and
+ * "m" (metru liniar) flip the qty input to decimal and the line's
+ * displayed unit label so the bookkeeper / driver / invoice all see
+ * "1.5 l AdBlue" or "2.3 m furtun" instead of a bare "2". */
+type LineUnit = "buc" | "l" | "m";
+
 type Line = {
   product: ProductSearchResult;
   qty: number;
@@ -58,6 +65,9 @@ type Line = {
    * inline, it just tags the line and the wizard sums the VAT at step 4.
    */
   vat_rate: 0 | 20;
+  /** See LineUnit. Drives the qty input's `step` / `min` AND the unit
+   * label rendered next to the input. */
+  unit: LineUnit;
 };
 
 export function NewSaleWizard({ locale }: { locale: string }) {
@@ -224,6 +234,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
             l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
               ? l.discounted_unit_price
               : null,
+          unit: l.unit,
         })),
         payment_method: paymentMethod,
         currency,
@@ -758,6 +769,7 @@ function StepProducts({
         unit_price: unitPrice,
         discounted_unit_price: null,
         vat_rate: 0,
+        unit: "buc",
       },
     ]);
     setQ("");
@@ -944,19 +956,44 @@ function StepProducts({
                       {l.product.storage_location ?? "—"}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <Input
-                        type="number"
-                        step={1}
-                        min={1}
-                        max={l.product.stock_quantity}
-                        value={l.qty}
-                        onChange={(e) =>
-                          update(idx, {
-                            qty: Math.max(1, Math.trunc(Number(e.target.value || 0))),
-                          })
-                        }
-                        className="ml-auto h-8 w-20 text-right"
-                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          type="number"
+                          // Pieces stay integers; litri/m allow up to 3
+                          // decimals (typical for fluid + cable cuts).
+                          step={l.unit === "buc" ? 1 : 0.001}
+                          min={l.unit === "buc" ? 1 : 0.001}
+                          max={
+                            l.unit === "buc"
+                              ? l.product.stock_quantity
+                              : undefined
+                          }
+                          value={l.qty}
+                          onChange={(e) => {
+                            const raw = Number(e.target.value || 0);
+                            const next =
+                              l.unit === "buc"
+                                ? Math.max(1, Math.trunc(raw))
+                                : Math.max(0.001, raw);
+                            update(idx, { qty: next });
+                          }}
+                          className="h-8 w-20 text-right"
+                        />
+                        <UnitSelector
+                          value={l.unit}
+                          onChange={(u) => {
+                            // Switching to "buc" forces qty back to an
+                            // integer so we don't post 2.4 buc by accident.
+                            update(idx, {
+                              unit: u,
+                              qty:
+                                u === "buc"
+                                  ? Math.max(1, Math.trunc(l.qty))
+                                  : l.qty,
+                            });
+                          }}
+                        />
+                      </div>
                       <div className="text-[10px] text-muted">
                         {t("sale_products_stock_label", { qty: l.product.stock_quantity })}
                       </div>
@@ -1500,6 +1537,57 @@ function Field({
       </label>
       {children}
       {hint ? <p className="mt-1 text-[11px] text-muted">{hint}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Compact 3-way segmented selector for the sale line's unit of measure.
+ * "Buc" is the default (catalog stock); "L" / "M" let the operator
+ * type decimal qty for fluids / cable cuts. Lives right next to the
+ * qty input so the relationship is obvious at a glance.
+ */
+function UnitSelector({
+  value,
+  onChange,
+}: {
+  value: LineUnit;
+  onChange: (next: LineUnit) => void;
+}) {
+  const options: Array<{ id: LineUnit; label: string }> = [
+    { id: "buc", label: "buc" },
+    { id: "l", label: "L" },
+    { id: "m", label: "M" },
+  ];
+  return (
+    <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
+      {options.map((o, i) => {
+        const active = value === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            aria-pressed={active}
+            title={
+              o.id === "buc"
+                ? "Bucăți"
+                : o.id === "l"
+                  ? "Litri"
+                  : "Metru liniar"
+            }
+            className={cn(
+              "px-1.5 py-1 text-[9px] font-semibold transition-colors",
+              i > 0 ? "border-l border-border" : "",
+              active
+                ? "bg-foreground text-background"
+                : "bg-surface text-muted-strong hover:bg-surface-elevated",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

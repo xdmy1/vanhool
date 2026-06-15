@@ -166,6 +166,13 @@ const lineSchema = z.object({
    * the line is sold at unit_price (no per-line discount).
    */
   discounted_unit_price: z.number().nonnegative().nullable().optional(),
+  /**
+   * Unit of measure. Default "buc" (pieces — integer qty). Lines tagged
+   * "l" or "m" allow decimal qty (e.g. 1.5 litri AdBlue, 2.3 m furtun).
+   * Stored on the items snapshot so the bookkeeper / driver / invoice
+   * print all show the same unit the operator picked.
+   */
+  unit: z.enum(["buc", "l", "m"]).default("buc"),
 });
 
 const walkinSchema = z.object({
@@ -298,6 +305,10 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       brand: p.brand,
       storage_location: p.storage_location,
       quantity: line.qty,
+      // Unit of measure picked at sale time. Defaults to "buc" so
+      // legacy callers (Refrens conversion, delivery-note printer)
+      // that don't read this field still behave as before.
+      unit: line.unit,
       // `price` keeps backwards-compat with anything that read the old shape;
       // it now reflects the EFFECTIVE per-unit price (what the customer pays).
       price: effective,
@@ -415,6 +426,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         name: p.name_ro,
         description: null,
         quantity: line.qty,
+        unit: line.unit,
         unit_price: line.unit_price,
         discounted_unit_price: eff < line.unit_price ? eff : null,
         vat_rate: 0,
