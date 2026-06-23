@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { DateInputEU } from "@/components/common/DateInputEU";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { PurchaseFileUpload } from "@/components/panel/purchases/PurchaseFileUpload";
 import { cn } from "@/lib/utils/cn";
 import {
   createSupplier,
@@ -29,6 +30,9 @@ export type PurchaseFormInitial = {
   currency: string;
   fxRate: number | null;
   notes: string;
+  /** Storage path inside `purchase-docs/` for the supplier's original
+   * invoice. Empty / null = no attachment uploaded. */
+  fileUrl: string | null;
   lines: Line[];
 };
 
@@ -90,6 +94,7 @@ export function PurchaseForm({
   const [currency, setCurrency] = useState(initial?.currency ?? "MDL");
   const [fxRate, setFxRate] = useState<number | null>(initial?.fxRate ?? null);
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [fileUrl, setFileUrl] = useState<string | null>(initial?.fileUrl ?? null);
   const [lines, setLines] = useState<Line[]>(
     initial?.lines && initial.lines.length > 0
       ? initial.lines
@@ -142,6 +147,7 @@ export function PurchaseForm({
         currency,
         fx_rate: fxRate,
         notes: notes || null,
+        file_url: fileUrl,
         items: valid.map((l) => ({
           supplier_code: l.supplier_code || null,
           internal_code: l.internal_code || null,
@@ -395,6 +401,9 @@ export function PurchaseForm({
             className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
           />
         </Field>
+        <div className="mt-4">
+          <PurchaseFileUpload value={fileUrl} onChange={setFileUrl} />
+        </div>
       </section>
 
       <div className="flex justify-end">

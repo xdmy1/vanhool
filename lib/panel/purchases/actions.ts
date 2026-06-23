@@ -6,12 +6,71 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
-import { sendResendEmail } from "@/lib/email/resend";
+import { sendResendEmail, type ResendAttachment } from "@/lib/email/resend";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
 // env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
+const PURCHASE_DOCS_BUCKET = "purchase-docs";
+
+/**
+ * Fetch the operator's uploaded supplier invoice (PDF or image) out of
+ * the private `purchase-docs` bucket via the service-role client and
+ * return it as a Resend-ready base64 attachment. `null` / empty input
+ * collapses to an empty array so callers can pass the result through
+ * unconditionally.
+ *
+ * `file_url` may be:
+ *   • a relative storage path ("abc/2026/invoice.pdf") — preferred
+ *     shape persisted by the upload widget
+ *   • a fully-qualified URL — we extract the path after the bucket
+ *     name so legacy rows still resolve
+ * Either way we always download via the admin client; signed URLs
+ * expire and we don't want the bookkeeper to receive a dead link.
+ */
+async function loadPurchaseAttachment(
+  file_url: string | null,
+): Promise<ResendAttachment[]> {
+  if (!file_url) return [];
+  let storagePath = file_url;
+  // Normalize "https://.../storage/v1/object/(public|sign)/purchase-docs/<path>"
+  // — strip everything up to and including the bucket name.
+  const marker = `/${PURCHASE_DOCS_BUCKET}/`;
+  const idx = storagePath.indexOf(marker);
+  if (idx !== -1) {
+    storagePath = storagePath.slice(idx + marker.length);
+    // Signed URLs trail with `?token=...` — drop the query string.
+    storagePath = storagePath.split("?")[0];
+  }
+  try {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin.storage
+      .from(PURCHASE_DOCS_BUCKET)
+      .download(storagePath);
+    if (error || !data) {
+      console.warn(
+        "[panel.purchases] couldn't fetch attachment:",
+        error?.message ?? "no-blob",
+      );
+      return [];
+    }
+    const buf = Buffer.from(await data.arrayBuffer());
+    const filename = storagePath.split("/").pop() || "factura.bin";
+    return [
+      {
+        filename,
+        content: buf.toString("base64"),
+        contentType: data.type || undefined,
+      },
+    ];
+  } catch (e) {
+    console.warn("[panel.purchases] attachment fetch threw:", e);
+    return [];
+  }
+}
+
 const ACCOUNTANT_EMAIL =
   process.env.ACCOUNTANT_EMAIL || "Accounting-em@mail.ru";
 import type { AccountScope } from "@/lib/panel/scope";
@@ -41,6 +100,13 @@ const purchaseSchema = z.object({
   currency: z.string().default("MDL"),
   fx_rate: z.number().positive().nullable().optional(),
   notes: z.string().nullable().optional(),
+  /**
+   * Storage path inside the `purchase-docs` bucket for the supplier's
+   * original invoice (PDF or image). Persisted on purchases.file_url
+   * — the bookkeeper email pulls this file and attaches it so they
+   * see the actual document, not just our recap.
+   */
+  file_url: z.string().nullable().optional(),
   items: z.array(lineInputSchema).min(1),
 });
 
@@ -84,6 +150,7 @@ export async function createPurchase(
       total,
       status: "draft",
       notes: v.notes ?? null,
+      file_url: v.file_url ?? null,
       created_by: user.id,
     })
     .select("id")
@@ -458,7 +525,7 @@ export async function sendPurchaseToAccountant(
   const { data: header } = await supabase
     .from("purchases")
     .select(
-      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
+      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, file_url, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
     )
     .eq("id", purchaseId)
     .maybeSingle();
@@ -475,6 +542,7 @@ export async function sendPurchaseToAccountant(
     subtotal: number | string | null;
     vat_amount: number | string | null;
     total: number | string | null;
+    file_url: string | null;
     suppliers: {
       name: string;
       idno: string | null;
@@ -537,12 +605,20 @@ export async function sendPurchaseToAccountant(
     { mode: "single" },
   );
 
+  // If the operator attached the supplier's original document on the
+  // purchase form, pull it out of the `purchase-docs` bucket via the
+  // service-role client (the bucket is private — admin only) and
+  // base64-encode it for Resend. Failure to fetch is logged but
+  // doesn't block the email — the recap is still useful on its own.
+  const attachments = await loadPurchaseAttachment(h.file_url);
+
   const result = await sendResendEmail({
     to: ACCOUNTANT_EMAIL,
     subject,
     html,
     text,
     replyTo: user.email ? { email: user.email } : undefined,
+    attachments: attachments.length > 0 ? attachments : undefined,
   });
   if (!result.ok) return { ok: false, reason: result.reason };
 
@@ -597,6 +673,7 @@ export async function updatePurchase(
       vat_amount,
       total,
       notes: v.notes ?? null,
+      file_url: v.file_url ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

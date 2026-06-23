@@ -26,6 +26,16 @@ function fmtRecipient(r: ResendRecipient): string {
   return r.name ? `${r.name} <${r.email}>` : r.email;
 }
 
+/** Single email attachment for Resend. `content` is base64 (Resend
+ * decodes server-side). `contentType` is optional but bookkeepers
+ * tend to filter on it ("only PDFs"), so we pass it when known. */
+export type ResendAttachment = {
+  filename: string;
+  /** Base64-encoded payload — Node `Buffer.from(...).toString("base64")`. */
+  content: string;
+  contentType?: string;
+};
+
 export async function sendResendEmail({
   to,
   subject,
@@ -35,6 +45,7 @@ export async function sendResendEmail({
   cc,
   bcc,
   from,
+  attachments,
 }: {
   to: ResendRecipient | ResendRecipient[];
   subject: string;
@@ -44,6 +55,7 @@ export async function sendResendEmail({
   cc?: ResendRecipient[];
   bcc?: ResendRecipient[];
   from?: string;
+  attachments?: ResendAttachment[];
 }): Promise<ResendResult> {
   if (!isResendConfigured()) {
     console.warn("[resend] RESEND_API_KEY missing — skipping email");
@@ -60,6 +72,13 @@ export async function sendResendEmail({
   if (replyTo) body.reply_to = fmtRecipient(replyTo);
   if (cc?.length) body.cc = cc.map(fmtRecipient);
   if (bcc?.length) body.bcc = bcc.map(fmtRecipient);
+  if (attachments?.length) {
+    body.attachments = attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      ...(a.contentType ? { content_type: a.contentType } : {}),
+    }));
+  }
 
   let res: Response;
   try {

@@ -5,6 +5,7 @@ import { CheckCircle2, Pencil, Plus, Printer } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { SendPurchaseButton } from "@/components/panel/purchases/SendPurchaseButton";
+import { PurchaseAttachmentLink } from "@/components/panel/purchases/PurchaseAttachmentLink";
 import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
@@ -212,6 +213,18 @@ export default async function PanelAchizitieDetailPage({
               {t("achizitii_notes")}
             </h3>
             <p className="whitespace-pre-wrap">{purchase.notes}</p>
+          </section>
+        ) : null}
+
+        {purchase.file_url ? (
+          <section className="rounded-md border border-border bg-surface p-5 text-sm">
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+              Factura furnizorului
+            </h3>
+            <PurchaseAttachmentLink path={purchase.file_url} />
+            <p className="mt-2 text-[11px] text-muted">
+              Atașată automat la emailul către contabil.
+            </p>
           </section>
         ) : null}
 

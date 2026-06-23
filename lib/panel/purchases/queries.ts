@@ -218,6 +218,9 @@ export type PurchaseDetail = {
   expected_delivery_date: string | null;
   notes: string | null;
   accountant_sent_at: string | null;
+  /** Storage path or URL of the supplier's original invoice (PDF / image).
+   * Null = no attachment uploaded. */
+  file_url: string | null;
   items: Array<{
     id: string;
     product_id: string | null;
@@ -292,7 +295,7 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   let headerRes = await supabase
     .from("purchases")
     .select(
-      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, suppliers(name)" as
+      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, suppliers(name)" as
         "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
     )
     .eq("id", id)
@@ -301,7 +304,7 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
     headerRes = await supabase
       .from("purchases")
       .select(
-        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
+        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
       )
       .eq("id", id)
       .maybeSingle();
@@ -349,6 +352,8 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
     accountant_sent_at:
       (header as { accountant_sent_at?: string | null }).accountant_sent_at ??
       null,
+    file_url:
+      (header as { file_url?: string | null }).file_url ?? null,
     items: (items ?? []).map((it) => ({
       id: it.id,
       product_id: it.product_id,

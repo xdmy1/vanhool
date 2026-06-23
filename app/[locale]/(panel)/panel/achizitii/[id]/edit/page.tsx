@@ -36,6 +36,7 @@ export default async function PanelAchizitiiEditPage({
     currency: purchase.currency,
     fxRate: purchase.fx_rate,
     notes: purchase.notes ?? "",
+    fileUrl: purchase.file_url,
     lines: purchase.items.map((it) => ({
       supplier_code: it.supplier_code ?? "",
       internal_code: it.internal_code ?? "",
