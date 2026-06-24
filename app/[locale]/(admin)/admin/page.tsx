@@ -71,12 +71,12 @@ export default async function AdminOverviewPage({
         <StatCard
           icon={TrendingUp}
           label={t("stat_revenue_30d")}
-          value={<Price value={stats.revenueLast30} size="lg" accent={false} />}
+          value={<RevenueByCurrency totals={stats.revenueLast30} />}
         />
         <StatCard
           icon={Wallet}
           label={t("stat_revenue_total")}
-          value={<Price value={stats.revenueTotal} size="lg" accent={false} />}
+          value={<RevenueByCurrency totals={stats.revenueTotal} />}
         />
         <StatCard
           icon={AlertTriangle}
@@ -135,7 +135,12 @@ export default async function AdminOverviewPage({
                       </div>
                     </div>
                     <div className="text-right">
-                      <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
+                      <Price
+                        value={Number(o.total ?? 0)}
+                        currency={o.currency}
+                        size="sm"
+                        accent={false}
+                      />
                       <div className="text-xs text-muted">
                         {o.created_at
                           ? new Date(o.created_at).toLocaleDateString(dateLocale)
@@ -279,6 +284,31 @@ function Empty({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-center px-4 py-10 text-center text-sm text-muted">
       {children}
+    </div>
+  );
+}
+
+/**
+ * Stack one Price line per currency for the revenue stat cards. An
+ * empty record renders a single `0 lei` placeholder so the layout
+ * doesn't collapse on a fresh shop.
+ */
+function RevenueByCurrency({ totals }: { totals: Record<string, number> }) {
+  const entries = Object.entries(totals);
+  if (entries.length === 0) {
+    return <Price value={0} size="lg" accent={false} />;
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {entries.map(([currency, sum]) => (
+        <Price
+          key={currency}
+          value={sum}
+          currency={currency}
+          size="lg"
+          accent={false}
+        />
+      ))}
     </div>
   );
 }

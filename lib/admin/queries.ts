@@ -362,8 +362,14 @@ export async function adminListCustomers(q?: string): Promise<AdminCustomerRow[]
 export type OverviewStats = {
   ordersTotal: number;
   ordersPending: number;
-  revenueLast30: number;
-  revenueTotal: number;
+  /**
+   * Revenue grouped by currency. Panel sales happen in MDL / EUR /
+   * USD and summing them together as MDL ("lei") was actively
+   * misleading the operator. Empty record = no orders. Render one
+   * Price per entry on the dashboard.
+   */
+  revenueLast30: Record<string, number>;
+  revenueTotal: Record<string, number>;
   lowStockCount: number;
   productsActive: number;
   customersCount: number;
@@ -401,8 +407,11 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
       .lte("stock_quantity", 5)
       .eq("is_active", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("orders").select("total"),
-    supabase.from("orders").select("total").gte("created_at", since),
+    supabase.from("orders").select("total, currency"),
+    supabase
+      .from("orders")
+      .select("total, currency")
+      .gte("created_at", since),
     supabase
       .from("orders")
       .select(ORDER_COLUMNS)
@@ -417,8 +426,23 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
       .limit(5),
   ]);
 
-  const sumTotals = (rows: { total: number | null }[] | null) =>
-    (rows ?? []).reduce((acc, r) => acc + Number(r.total ?? 0), 0);
+  // Group revenue per currency so the overview doesn't pretend
+  // EUR sales are "lei". Default to MDL when the column is null
+  // (storefront orders predating the panel migration). Rounded to
+  // 2 dp after summing so floats don't leak ugly tails.
+  const groupByCurrency = (
+    rows: { total: number | null; currency?: string | null }[] | null,
+  ): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const r of rows ?? []) {
+      const code = ((r.currency ?? "") || "MDL").toUpperCase();
+      out[code] = (out[code] ?? 0) + Number(r.total ?? 0);
+    }
+    for (const k of Object.keys(out)) {
+      out[k] = Number(out[k].toFixed(2));
+    }
+    return out;
+  };
 
   return {
     ordersTotal: ordersTotalRes.count ?? 0,
@@ -426,8 +450,12 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     productsActive: productsActiveRes.count ?? 0,
     lowStockCount: lowStockCountRes.count ?? 0,
     customersCount: customersRes.count ?? 0,
-    revenueTotal: sumTotals(revenueAllRes.data as { total: number | null }[] | null),
-    revenueLast30: sumTotals(revenue30Res.data as { total: number | null }[] | null),
+    revenueTotal: groupByCurrency(
+      revenueAllRes.data as { total: number | null; currency?: string | null }[] | null,
+    ),
+    revenueLast30: groupByCurrency(
+      revenue30Res.data as { total: number | null; currency?: string | null }[] | null,
+    ),
     recentOrders: (recentOrdersRes.data ?? []) as AdminOrderRow[],
     lowStockProducts: (lowStockListRes.data ?? []) as AdminProductRow[],
   };
