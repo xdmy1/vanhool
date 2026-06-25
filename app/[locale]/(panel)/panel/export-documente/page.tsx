@@ -25,7 +25,6 @@ export default async function PanelExportPage({
           <p className="font-medium">{t("export_notes_title")}</p>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-strong">
             <li>{t("export_note_scope")}</li>
-            <li>{t("export_note_refrens")}</li>
             <li>{t("export_note_zip")}</li>
           </ul>
         </div>

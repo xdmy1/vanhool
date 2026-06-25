@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ExternalLink, Pencil, Printer } from "lucide-react";
+import { Pencil, Printer } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
@@ -89,14 +89,6 @@ export default async function PanelInvoiceDetailPage({
               invoiceId={invoice.id}
               initialSentAt={invoice.accountant_sent_at}
             />
-            {invoice.refrens_url ? (
-              <Button asChild variant="outline" className="gap-1.5">
-                <a href={invoice.refrens_url} target="_blank" rel="noreferrer">
-                  <ExternalLink className="size-4" />
-                  Refrens
-                </a>
-              </Button>
-            ) : null}
             {invoice.status !== "void" ? (
               <VoidInvoiceButton invoiceId={invoice.id} />
             ) : null}
