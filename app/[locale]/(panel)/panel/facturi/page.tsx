@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { AlertTriangle, CheckCircle2, ExternalLink, Printer, X } from "lucide-react";
+import { AlertTriangle, Printer, X } from "lucide-react";
 
 import { FacturiDateRangeFields } from "./FacturiDateRangeFields";
 
@@ -362,7 +362,6 @@ export default async function PanelFacturiPage({
                   <th className="px-4 py-3">{t("facturi_col_scope")}</th>
                   <th className="px-4 py-3">{t("facturi_col_status")}</th>
                   <th className="px-4 py-3 text-right">{t("facturi_col_total")}</th>
-                  <th className="px-4 py-3">{t("facturi_col_refrens")}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -425,26 +424,6 @@ export default async function PanelFacturiPage({
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold">
                       {r.total.toFixed(2)} {r.currency}
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.refrens_url ? (
-                        <a
-                          href={r.refrens_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          <ExternalLink className="size-3" />
-                          PDF
-                        </a>
-                      ) : r.refrens_invoice_id ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-success">
-                          <CheckCircle2 className="size-3" />
-                          {r.refrens_invoice_id.slice(0, 8)}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted">—</span>
-                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap items-center justify-end gap-2">

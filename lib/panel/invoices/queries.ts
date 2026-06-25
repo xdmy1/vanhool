@@ -72,8 +72,16 @@ export async function listInvoices(args: {
       q = q.eq("status", args.status);
     }
     if (args.q) {
-      const term = `%${args.q.replace(/[%_]/g, "")}%`;
-      q = q.or(`number.ilike.${term},refrens_invoice_id.ilike.${term}`);
+      // Strip SQL LIKE wildcards AND commas — commas are PostgREST's
+      // OR separator and would break the multi-field match below.
+      const term = `%${args.q.replace(/[%_,]/g, "")}%`;
+      // Search across document number, customer name (jsonb path),
+      // and freeform note. Drops the refrens_invoice_id branch — the
+      // operator no longer uses Refrens and didn't want the field
+      // surfaced in search hits.
+      q = q.or(
+        `number.ilike.${term},customer_snapshot->>name.ilike.${term},notes.ilike.${term}`,
+      );
     }
     return q;
   };
