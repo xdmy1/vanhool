@@ -20,6 +20,10 @@ export type InvoiceRow = {
   proforma_id: string | null;
   converted_to_invoice_id: string | null;
   accountant_sent_at: string | null;
+  /** Short freeform note operators attach for fast scanning on the
+   * list — typically a vehicle plate / bus identifier so a row of
+   * Davo Group proformas can be told apart at a glance. */
+  notes: string | null;
   customer_snapshot: {
     name?: string;
     idno?: string | null;
@@ -52,8 +56,8 @@ export async function listInvoices(args: {
       .from("invoices")
       .select(
         includeAccountant
-          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, customer_snapshot, account_scope"
-          : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, customer_snapshot, account_scope",
+          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, notes, customer_snapshot, account_scope"
+          : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
       .order("issued_date", { ascending: false })
       .limit(300);
@@ -98,6 +102,7 @@ export async function listInvoices(args: {
     proforma_id: r.proforma_id as string | null,
     converted_to_invoice_id: r.converted_to_invoice_id as string | null,
     accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
     customer_snapshot: r.customer_snapshot as InvoiceRow["customer_snapshot"],
   }));
 }

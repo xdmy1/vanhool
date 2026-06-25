@@ -6,6 +6,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
+import { InvoiceNoteCell } from "@/components/panel/documents/InvoiceNoteCell";
 import { SendMonthlyDocsButton } from "@/components/panel/documents/SendMonthlyDocsButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import {
@@ -89,6 +90,7 @@ export default async function PanelProformePage({
               <thead className="bg-surface-elevated text-left text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">{t("proforma_col_number")}</th>
+                  <th className="px-4 py-3">Notă</th>
                   <th className="px-4 py-3">{t("proforma_col_issued")}</th>
                   <th className="px-4 py-3">{t("proforma_col_due")}</th>
                   <th className="px-4 py-3">{t("proforma_col_client")}</th>
@@ -102,6 +104,9 @@ export default async function PanelProformePage({
                   <tr key={r.id} className="hover:bg-surface-elevated">
                     <td className="px-4 py-3 font-mono text-xs">
                       {r.series}{r.number}
+                    </td>
+                    <td className="px-4 py-3">
+                      <InvoiceNoteCell invoiceId={r.id} initial={r.notes} />
                     </td>
                     <td className="px-4 py-3 text-muted-strong">
                       {new Date(r.issued_date).toLocaleDateString(dateLocale)}

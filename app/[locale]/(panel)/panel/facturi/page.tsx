@@ -9,6 +9,7 @@ import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoiceP
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { SendMonthlyDocsButton } from "@/components/panel/documents/SendMonthlyDocsButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { InvoiceNoteCell } from "@/components/panel/documents/InvoiceNoteCell";
 import {
   deleteInvoiceWithPin,
   sendConta1InvoicesMonthly,
@@ -354,6 +355,7 @@ export default async function PanelFacturiPage({
               <thead className="bg-surface-elevated text-left text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">{t("facturi_col_number")}</th>
+                  <th className="px-4 py-3">Notă</th>
                   <th className="px-4 py-3">{t("facturi_col_date")}</th>
                   <th className="px-4 py-3">{t("facturi_col_client")}</th>
                   <th className="px-4 py-3">{t("facturi_col_source")}</th>
@@ -369,6 +371,9 @@ export default async function PanelFacturiPage({
                   <tr key={r.id} className="hover:bg-surface-elevated">
                     <td className="px-4 py-3 font-mono text-xs">
                       {r.series ?? ""}-{r.number ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <InvoiceNoteCell invoiceId={r.id} initial={r.notes} />
                     </td>
                     <td className="px-4 py-3 text-muted-strong">
                       {new Date(r.issued_date).toLocaleDateString(dateLocale)}

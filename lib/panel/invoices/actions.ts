@@ -1211,3 +1211,41 @@ export async function issueProformaFromOrder(
     notes: null,
   });
 }
+
+/**
+ * Light-touch update for the inline "notă" cell on the proforme +
+ * facturi lists. Operator wants to scrawl a vehicle plate / bus
+ * identifier without going through the full edit page — this writes
+ * ONLY the notes column and revalidates both lists so the new label
+ * shows up instantly.
+ *
+ * Available on any non-deleted invoice / proforma, regardless of
+ * status. The notes field is informational and never feeds the
+ * bookkeeper email totals.
+ */
+export async function setInvoiceQuickNote(
+  invoiceId: string,
+  note: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+
+  const trimmed = (note ?? "").trim();
+  // Cap at 200 chars — anything longer probably belongs in the
+  // full notes textarea on the edit page anyway, and we want the
+  // list cell to stay scannable.
+  const value = trimmed.length === 0 ? null : trimmed.slice(0, 200);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("invoices")
+    .update({ notes: value, updated_at: new Date().toISOString() })
+    .eq("id", invoiceId);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/proforme", "page");
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath(`/[locale]/panel/proforme/${invoiceId}`, "page");
+  revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
+  return { ok: true };
+}
