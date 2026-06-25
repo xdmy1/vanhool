@@ -16,6 +16,7 @@ import {
   getRelatedProducts,
 } from "@/lib/db/products";
 import { getCategories, getCategoryBySlug } from "@/lib/db/categories";
+import { getVehicleMakesForProduct } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
 import type { Locale } from "@/lib/db/types";
 
@@ -54,6 +55,7 @@ export default async function ProductDetailPage({
   const [
     related,
     crossCompatible,
+    vehicleMakes,
     category,
     allCats,
     tNav,
@@ -64,6 +66,7 @@ export default async function ProductDetailPage({
   ] = await Promise.all([
     getRelatedProducts(product, loc, 4),
     getCrossCompatibleProducts(product.id, loc, 8),
+    getVehicleMakesForProduct(product.id),
     product.categorySlug ? getCategoryBySlug(product.categorySlug, loc) : null,
     getCategories(loc),
     getTranslations("nav"),
@@ -236,10 +239,35 @@ export default async function ProductDetailPage({
                 {tProd("compatibility")}
               </h3>
             </div>
-            <div className="flex items-start gap-3 p-5 text-sm text-muted-strong">
-              <Info className="mt-0.5 size-4 shrink-0 text-primary" />
-              <p>{tProd("compatibility_empty")}</p>
-            </div>
+            {vehicleMakes.length > 0 ? (
+              <div className="p-5">
+                <div className="flex flex-wrap gap-1.5">
+                  {vehicleMakes.map((m) => (
+                    <Link
+                      key={m.id}
+                      href={`/catalog?vehicleMake=${m.slug}` as "/catalog"}
+                      locale={loc}
+                      className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-background/40 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+                    >
+                      {m.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={m.logoUrl}
+                          alt=""
+                          className="h-3.5 w-auto opacity-80"
+                        />
+                      ) : null}
+                      <span className="font-medium">{m.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 p-5 text-sm text-muted-strong">
+                <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                <p>{tProd("compatibility_empty")}</p>
+              </div>
+            )}
             <div className="border-t border-border p-5">
               <Button asChild variant="secondary" size="md" className="w-full">
                 <Link href="/contact" locale={loc}>

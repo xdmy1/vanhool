@@ -109,6 +109,37 @@ export async function listVehicleMakesForFilter(): Promise<VehicleMakeForFilter[
 }
 
 /**
+ * Vehicle makes linked to a given product via `product_vehicle_makes`.
+ * Used by the storefront product detail page to render the
+ * "Compatibility" chip strip — operator pins makes in admin, customers
+ * see them as clickable chips that filter the catalog by that make.
+ */
+export async function getVehicleMakesForProduct(
+  productId: string,
+): Promise<VehicleMake[]> {
+  const supabase = await createClient();
+  const { data: links } = await supabase
+    .from("product_vehicle_makes")
+    .select("vehicle_make_id")
+    .eq("product_id", productId);
+  const ids = (links ?? []).map((l) => l.vehicle_make_id as string);
+  if (ids.length === 0) return [];
+  const { data: makes } = await supabase
+    .from("vehicle_makes")
+    .select("id, slug, name, logo_url, is_popular")
+    .in("id", ids)
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+  return (makes ?? []).map((m) => ({
+    id: m.id,
+    slug: m.slug,
+    name: m.name,
+    logoUrl: m.logo_url,
+    isPopular: m.is_popular,
+  }));
+}
+
+/**
  * Resolve a list of vehicle_make slugs to the product ids linked to ANY of
  * them. Used by the catalog filter. Returns an empty array if no slug
  * matches an active make, or no products are linked.
