@@ -107,25 +107,41 @@ export function PartCodeAutocomplete({
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {results.map((p) => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => pick(p)}
-                    className={cn(
-                      "flex w-full items-center gap-3 px-3 py-2 text-left text-xs hover:bg-surface-elevated",
-                    )}
-                  >
-                    <span className="font-mono text-[11px] text-muted">
-                      {p.part_code ?? "—"}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{p.name_ro ?? "—"}</span>
-                    <span className="shrink-0 tabular-nums text-muted">
-                      {p.price.toFixed(2)}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {results.map((p) => {
+                const isDraft = p.source === "draft_purchase";
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => pick(p)}
+                      className={cn(
+                        "flex w-full items-center gap-3 px-3 py-2 text-left text-xs hover:bg-surface-elevated",
+                        isDraft && "bg-warning/5",
+                      )}
+                    >
+                      <span className="font-mono text-[11px] text-muted">
+                        {p.part_code ?? "—"}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{p.name_ro ?? "—"}</span>
+                        {isDraft ? (
+                          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-warning">
+                            <span className="rounded bg-warning/15 px-1 py-px font-semibold uppercase tracking-wide">
+                              draft
+                            </span>
+                            <span className="text-muted">
+                              {p.draft_purchase_label}
+                            </span>
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted">
+                        {p.price.toFixed(2)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

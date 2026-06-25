@@ -889,31 +889,62 @@ function StepProducts({
         </div>
         {results.length > 0 ? (
           <ul className="mt-3 divide-y divide-border rounded-md border border-border">
-            {results.map((p) => (
+            {results.map((p) => {
+              // Draft purchase lines surface in the dropdown so the
+              // operator KNOWS the part is in the shop, but they're
+              // not selectable for a real sale — stock isn't fiscally
+              // booked yet. Proforma flow has a separate picker that
+              // does accept them.
+              const isDraft = p.source === "draft_purchase";
+              return (
               <li key={p.id}>
                 <button
                   type="button"
-                  onClick={() => add(p)}
-                  className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-elevated"
+                  onClick={() => {
+                    if (isDraft) {
+                      toast.error(
+                        "Piesa e încă în achiziție draft. Postează achiziția pentru a o putea vinde.",
+                      );
+                      return;
+                    }
+                    add(p);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-elevated",
+                    isDraft && "cursor-not-allowed bg-warning/5 opacity-80 hover:bg-warning/5",
+                  )}
                 >
                   <span className="font-mono text-xs text-muted">{p.part_code}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {p.name_ro ?? "—"}
-                    {!p.is_active ? (
-                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-amber-800">
-                        draft
+                  <span className="min-w-0 flex-1 text-sm">
+                    <span className="block truncate">
+                      {p.name_ro ?? "—"}
+                      {!isDraft && !p.is_active ? (
+                        <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-amber-800">
+                          inactiv
+                        </span>
+                      ) : null}
+                    </span>
+                    {isDraft ? (
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-warning">
+                        <span className="rounded bg-warning/15 px-1 py-px font-semibold uppercase tracking-wide">
+                          draft
+                        </span>
+                        <span className="text-muted">{p.draft_purchase_label}</span>
                       </span>
                     ) : null}
                   </span>
                   <span className="text-xs text-muted">
-                    {t("sale_products_stock_label", { qty: p.stock_quantity })}
+                    {isDraft
+                      ? "—"
+                      : t("sale_products_stock_label", { qty: p.stock_quantity })}
                   </span>
                   <span className="w-24 text-right tabular-nums text-sm">
                     {p.price.toFixed(2)}
                   </span>
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         ) : null}
       </div>

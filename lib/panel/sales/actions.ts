@@ -97,6 +97,21 @@ export type ProductSearchResult = {
   stock_quantity: number;
   storage_location: string | null;
   is_active: boolean;
+  /**
+   * Origin of this row. "catalog" = real `products` row that's already
+   * been posted (i.e. has stock, can be sold). "draft_purchase" = a
+   * line on a not-yet-posted purchase — handy for putting a proforma
+   * together against parts that are physically in the shop but
+   * haven't been fiscally posted yet. The wizard / form decides
+   * whether to allow selection based on this field.
+   */
+  source: "catalog" | "draft_purchase";
+  /**
+   * When source === "draft_purchase": short context label like
+   * "Doc AAY5397778 · ICS AD AUTO TOTAL" so the operator sees which
+   * draft a match came from. Empty for catalog rows.
+   */
+  draft_purchase_label?: string;
 };
 
 export async function searchProducts(q: string): Promise<ProductSearchResult[]> {
@@ -140,7 +155,7 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
     .in("id", Array.from(ids))
     .order("name_ro")
     .limit(15);
-  return (data ?? []).map((p) => ({
+  const catalogResults: ProductSearchResult[] = (data ?? []).map((p) => ({
     id: p.id,
     part_code: p.part_code,
     name_ro: p.name_ro ?? p.name_en,
@@ -150,7 +165,82 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
     stock_quantity: Number(p.stock_quantity ?? 0),
     storage_location: p.storage_location,
     is_active: Boolean(p.is_active),
+    source: "catalog" as const,
   }));
+
+  // Second pass: items on DRAFT purchases. Operator wants to put
+  // these on proformas before the purchase is fiscally posted —
+  // they're physically in the shop, just not in the catalog yet.
+  // We surface them in the same dropdown with a "draft" badge.
+  const draftResults = await searchDraftPurchaseItems(trimmed, term);
+
+  // Catalog first (real stock), drafts after — order matters for the
+  // dropdown so a matching catalog row always sits above a draft.
+  return [...catalogResults, ...draftResults];
+}
+
+/**
+ * Look up line items on draft purchases by supplier_code OR
+ * internal_code (ilike). The parent purchase is joined for the
+ * supplier name + document number, both surfaced in the result's
+ * `draft_purchase_label` so the operator knows which draft a match
+ * came from.
+ *
+ * Returned shape mirrors a catalog row so the existing dropdown UI
+ * keeps working unchanged — only `source` flips and prices come
+ * from the unit_cost on the purchase line.
+ */
+async function searchDraftPurchaseItems(
+  trimmed: string,
+  term: string,
+): Promise<ProductSearchResult[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("purchase_items")
+    .select(
+      "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id, purchases!inner(status, document_number, suppliers(name))",
+    )
+    .eq("purchases.status", "draft")
+    .or(
+      `supplier_code.ilike.${term},internal_code.ilike.${term},description.ilike.${term}`,
+    )
+    .limit(15);
+  if (error || !data) return [];
+  return (data as unknown as Array<{
+    id: string;
+    supplier_code: string | null;
+    internal_code: string | null;
+    description: string | null;
+    quantity: number | string | null;
+    unit_cost: number | string | null;
+    purchase_id: string;
+    purchases: {
+      status: string;
+      document_number: string | null;
+      suppliers: { name: string } | null;
+    } | null;
+  }>).map((it) => {
+    const docNumber = it.purchases?.document_number ?? null;
+    const supplierName = it.purchases?.suppliers?.name ?? "—";
+    const label = docNumber
+      ? `Doc ${docNumber} · ${supplierName}`
+      : `Achiziție draft · ${supplierName}`;
+    return {
+      id: it.id,
+      part_code: it.internal_code ?? it.supplier_code,
+      name_ro: it.description ?? null,
+      brand: null,
+      // No selling price computed for draft lines — start from the
+      // purchase cost so the operator types the markup themselves.
+      price: Number(it.unit_cost ?? 0),
+      cost_price: Number(it.unit_cost ?? 0),
+      stock_quantity: Number(it.quantity ?? 0),
+      storage_location: null,
+      is_active: false,
+      source: "draft_purchase" as const,
+      draft_purchase_label: label,
+    };
+  });
 }
 
 // -----------------------------------------------------------------------------
