@@ -126,6 +126,12 @@ export type ProductSearchMeta = {
   draft_count: number;
   draft_error: string | null;
   draft_purchase_total: number;
+  /** count of purchase_items in any draft purchase the session can read */
+  draft_items_total: number;
+  /** count of purchase_items matching the term (no draft filter) */
+  items_match_total: number;
+  /** sample row from the first match to confirm columns flow through */
+  sample: string | null;
 };
 
 export async function searchProductsWithMeta(
@@ -140,20 +146,48 @@ export async function searchProductsWithMeta(
     if (r.source === "draft_purchase") draft++;
     else catalog++;
   }
-  // Independent probe so we can tell "no draft purchases at all"
-  // apart from "drafts exist but nothing matched the term".
+  // Independent probes so we can tell precisely where the search is
+  // failing: at the purchases RLS, the items RLS, or the ilike filter.
   const supabase = await createClient();
-  const { count, error } = await supabase
-    .from("purchases")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "draft");
+  const trimmed = q.trim();
+  const term = `%${trimmed.replace(/[%_]/g, "")}%`;
+  const [purchaseCount, draftIdsRes, allItemsInDraftsCount, matchAcrossAll] =
+    await Promise.all([
+      supabase
+        .from("purchases")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "draft"),
+      supabase.from("purchases").select("id").eq("status", "draft").limit(500),
+      // Will rerun via JS to count items in those drafts
+      Promise.resolve(null),
+      supabase
+        .from("purchase_items")
+        .select("id, supplier_code", { count: "exact", head: true })
+        .ilike("supplier_code", term),
+    ]);
+  const ids = (draftIdsRes.data ?? []).map((d) => d.id as string);
+  let itemsCount = 0;
+  let sample: string | null = null;
+  if (ids.length > 0) {
+    const r = await supabase
+      .from("purchase_items")
+      .select("supplier_code", { count: "exact" })
+      .in("purchase_id", ids)
+      .limit(1);
+    itemsCount = r.count ?? 0;
+    sample = (r.data?.[0]?.supplier_code as string | null) ?? null;
+  }
+
   return {
     results,
     meta: {
       catalog_count: catalog,
       draft_count: draft,
-      draft_error: error?.message ?? null,
-      draft_purchase_total: count ?? 0,
+      draft_error: purchaseCount.error?.message ?? null,
+      draft_purchase_total: purchaseCount.count ?? 0,
+      draft_items_total: itemsCount,
+      items_match_total: matchAcrossAll.count ?? 0,
+      sample,
     },
   };
 }
@@ -247,12 +281,14 @@ async function searchDraftPurchaseItems(
 ): Promise<ProductSearchResult[]> {
   const supabase = await createClient();
 
-  // Step 1: which purchases are currently in draft? Capture supplier
-  // names + document numbers up front so we can decorate matched
-  // items without a second join.
+  // Step 1: which purchases are currently in draft? Two-pass —
+  // first pull the draft ids + document_number with NO embedded
+  // join (embedded `suppliers(name)` was returning empty drafts in
+  // the panel session even though the parent rows are visible),
+  // then resolve supplier names with a separate IN-lookup.
   const { data: drafts, error: dErr } = await supabase
     .from("purchases")
-    .select("id, document_number, suppliers(name)")
+    .select("id, document_number, supplier_id")
     .eq("status", "draft")
     .limit(500);
   if (dErr) {
@@ -261,6 +297,23 @@ async function searchDraftPurchaseItems(
   }
   const draftIds = (drafts ?? []).map((d) => d.id as string);
   if (draftIds.length === 0) return [];
+  const supplierIds = Array.from(
+    new Set(
+      (drafts ?? [])
+        .map((d) => (d as { supplier_id: string | null }).supplier_id)
+        .filter((s): s is string => !!s),
+    ),
+  );
+  const supplierNames = new Map<string, string>();
+  if (supplierIds.length > 0) {
+    const { data: sups } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .in("id", supplierIds);
+    for (const s of (sups ?? []) as Array<{ id: string; name: string }>) {
+      supplierNames.set(s.id, s.name);
+    }
+  }
   const draftMeta = new Map<
     string,
     { docNumber: string | null; supplierName: string }
@@ -268,11 +321,12 @@ async function searchDraftPurchaseItems(
   for (const d of (drafts ?? []) as Array<{
     id: string;
     document_number: string | null;
-    suppliers: { name: string } | null;
+    supplier_id: string | null;
   }>) {
     draftMeta.set(d.id, {
       docNumber: d.document_number,
-      supplierName: d.suppliers?.name ?? "—",
+      supplierName:
+        (d.supplier_id ? supplierNames.get(d.supplier_id) : null) ?? "—",
     });
   }
 

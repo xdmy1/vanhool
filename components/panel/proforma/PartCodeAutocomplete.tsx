@@ -112,9 +112,15 @@ export function PartCodeAutocomplete({
               {pending ? "..." : (emptyHint ?? "—")}
               {/* Server diagnostic — temporary, lets us see WHY 0 hits */}
               {!pending && meta ? (
-                <div className="mt-1 font-mono text-[10px] text-warning">
-                  [debug] catalog={meta.catalog_count} · drafts={meta.draft_count} · draft_purchases_total={meta.draft_purchase_total}
-                  {meta.draft_error ? ` · err=${meta.draft_error}` : ""}
+                <div className="mt-1 space-y-0.5 font-mono text-[10px] text-warning">
+                  <div>
+                    [debug] catalog={meta.catalog_count} · drafts={meta.draft_count}
+                  </div>
+                  <div>
+                    purchases(draft)={meta.draft_purchase_total} · items_in_drafts={meta.draft_items_total} · ilike_global={meta.items_match_total}
+                  </div>
+                  <div>sample_supplier_code=&quot;{meta.sample ?? "—"}&quot;</div>
+                  {meta.draft_error ? <div>err={meta.draft_error}</div> : null}
                 </div>
               ) : null}
             </div>
