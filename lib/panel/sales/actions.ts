@@ -181,10 +181,17 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
 
 /**
  * Look up line items on draft purchases by supplier_code OR
- * internal_code (ilike). The parent purchase is joined for the
- * supplier name + document number, both surfaced in the result's
- * `draft_purchase_label` so the operator knows which draft a match
- * came from.
+ * internal_code (ilike). Two-step query instead of a `!inner` join:
+ *
+ *   1. fetch the IDs of every draft purchase
+ *   2. fetch purchase_items where purchase_id IN those IDs AND any
+ *      code/description field matches
+ *
+ * The `!inner` + `.eq("purchases.status","draft")` chain has bitten
+ * us with embedded RLS edge cases — the embedded read sometimes
+ * comes back empty even when the operator IS an admin. Splitting
+ * the call sidesteps that entirely and makes the query trivially
+ * debuggable.
  *
  * Returned shape mirrors a catalog row so the existing dropdown UI
  * keeps working unchanged — only `source` flips and prices come
@@ -195,18 +202,60 @@ async function searchDraftPurchaseItems(
   term: string,
 ): Promise<ProductSearchResult[]> {
   const supabase = await createClient();
+
+  // Step 1: which purchases are currently in draft? Capture supplier
+  // names + document numbers up front so we can decorate matched
+  // items without a second join.
+  const { data: drafts, error: dErr } = await supabase
+    .from("purchases")
+    .select("id, document_number, suppliers(name)")
+    .eq("status", "draft")
+    .limit(500);
+  if (dErr) {
+    console.warn("[searchDraftPurchaseItems] draft fetch failed:", dErr.message);
+    return [];
+  }
+  const draftIds = (drafts ?? []).map((d) => d.id as string);
+  if (draftIds.length === 0) return [];
+  const draftMeta = new Map<
+    string,
+    { docNumber: string | null; supplierName: string }
+  >();
+  for (const d of (drafts ?? []) as Array<{
+    id: string;
+    document_number: string | null;
+    suppliers: { name: string } | null;
+  }>) {
+    draftMeta.set(d.id, {
+      docNumber: d.document_number,
+      supplierName: d.suppliers?.name ?? "—",
+    });
+  }
+
+  // Step 2: items inside those drafts that match the term. ilike on
+  // raw stored strings — "STA22" finds "STA222779" naturally; codes
+  // with whitespace (e.g. "317 330") match when the user types the
+  // same whitespace. Normalization fallback below handles the
+  // collapsed-whitespace edge case.
   const { data, error } = await supabase
     .from("purchase_items")
     .select(
-      "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id, purchases!inner(status, document_number, suppliers(name))",
+      "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id",
     )
-    .eq("purchases.status", "draft")
+    .in("purchase_id", draftIds)
     .or(
       `supplier_code.ilike.${term},internal_code.ilike.${term},description.ilike.${term}`,
     )
-    .limit(15);
-  if (error || !data) return [];
-  return (data as unknown as Array<{
+    .limit(20);
+  if (error) {
+    console.warn("[searchDraftPurchaseItems] items fetch failed:", error.message);
+    return [];
+  }
+
+  // Normalized-code fallback: pulls a wider batch and filters in JS
+  // when the raw ilike yields zero results — covers the case where
+  // the operator typed "317330" but the stored code is "317 330".
+  let rows = (data ?? []) as Array<{
     id: string;
     supplier_code: string | null;
     internal_code: string | null;
@@ -214,24 +263,39 @@ async function searchDraftPurchaseItems(
     quantity: number | string | null;
     unit_cost: number | string | null;
     purchase_id: string;
-    purchases: {
-      status: string;
-      document_number: string | null;
-      suppliers: { name: string } | null;
-    } | null;
-  }>).map((it) => {
-    const docNumber = it.purchases?.document_number ?? null;
-    const supplierName = it.purchases?.suppliers?.name ?? "—";
-    const label = docNumber
-      ? `Doc ${docNumber} · ${supplierName}`
-      : `Achiziție draft · ${supplierName}`;
+  }>;
+  if (rows.length === 0) {
+    const normalizedTerm = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (normalizedTerm.length >= 2) {
+      const wide = await supabase
+        .from("purchase_items")
+        .select(
+          "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id",
+        )
+        .in("purchase_id", draftIds)
+        .limit(500);
+      const wideRows = (wide.data ?? []) as typeof rows;
+      rows = wideRows.filter((it) => {
+        const codes = [it.supplier_code, it.internal_code]
+          .filter(Boolean)
+          .map((c) =>
+            String(c ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
+          );
+        return codes.some((c) => c.includes(normalizedTerm));
+      });
+    }
+  }
+
+  return rows.map((it) => {
+    const meta = draftMeta.get(it.purchase_id);
+    const label = meta?.docNumber
+      ? `Doc ${meta.docNumber} · ${meta.supplierName}`
+      : `Achiziție draft · ${meta?.supplierName ?? "—"}`;
     return {
       id: it.id,
       part_code: it.internal_code ?? it.supplier_code,
       name_ro: it.description ?? null,
       brand: null,
-      // No selling price computed for draft lines — start from the
-      // purchase cost so the operator types the markup themselves.
       price: Number(it.unit_cost ?? 0),
       cost_price: Number(it.unit_cost ?? 0),
       stock_quantity: Number(it.quantity ?? 0),
