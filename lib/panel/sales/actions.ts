@@ -344,38 +344,32 @@ async function searchDraftPurchaseItems(
     });
   }
 
-  // Step 2: items inside those drafts that match the term. Originally
-  // a single `.or(supplier_code.ilike.X,internal_code.ilike.X,
-  // description.ilike.X)` call — that combination silently returned
-  // empty for the panel's authenticated session even though the raw
-  // SQL works (verified via service-role probes). Bug seems to be in
-  // how Supabase JS encodes a multi-field OR clause with ilike
-  // wildcards under PostgREST + RLS.
+  // Step 2: items matching the term — NO chaining .in() + .ilike().
+  // Three independent ilike scans return all matching items across
+  // EVERY purchase; then we filter by purchase_id ∈ draftIds in JS.
   //
-  // Workaround: three independent .ilike queries in parallel, then
-  // de-dup by id. Each query is a plain RLS-safe filter — works
-  // reliably across both contexts.
+  // Why: under the panel's authenticated session, chaining .in() +
+  // .ilike() silently returns 0 even though the same URL works via
+  // service-role probes AND each filter works standalone. Verified
+  // with on-page diagnostic — bug is purely in Supabase JS's URL
+  // composition for this chain. Splitting the filter into a JS
+  // post-step removes the failure mode entirely.
+  type Row = {
+    id: string;
+    supplier_code: string | null;
+    internal_code: string | null;
+    description: string | null;
+    quantity: number | string | null;
+    unit_cost: number | string | null;
+    purchase_id: string;
+  };
   const baseSelect =
     "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id";
+  const draftIdSet = new Set(draftIds);
   const [bySupplier, byInternal, byDescription] = await Promise.all([
-    supabase
-      .from("purchase_items")
-      .select(baseSelect)
-      .in("purchase_id", draftIds)
-      .ilike("supplier_code", term)
-      .limit(20),
-    supabase
-      .from("purchase_items")
-      .select(baseSelect)
-      .in("purchase_id", draftIds)
-      .ilike("internal_code", term)
-      .limit(20),
-    supabase
-      .from("purchase_items")
-      .select(baseSelect)
-      .in("purchase_id", draftIds)
-      .ilike("description", term)
-      .limit(20),
+    supabase.from("purchase_items").select(baseSelect).ilike("supplier_code", term).limit(50),
+    supabase.from("purchase_items").select(baseSelect).ilike("internal_code", term).limit(50),
+    supabase.from("purchase_items").select(baseSelect).ilike("description", term).limit(50),
   ]);
   if (bySupplier.error) {
     console.warn("[searchDraftPurchaseItems] supplier_code lookup failed:", bySupplier.error.message);
@@ -386,39 +380,36 @@ async function searchDraftPurchaseItems(
   if (byDescription.error) {
     console.warn("[searchDraftPurchaseItems] description lookup failed:", byDescription.error.message);
   }
-
-  type Row = {
-    id: string;
-    supplier_code: string | null;
-    internal_code: string | null;
-    description: string | null;
-    quantity: number | string | null;
-    unit_cost: number | string | null;
-    purchase_id: string;
-  };
   const dedup = new Map<string, Row>();
   for (const r of [
     ...((bySupplier.data ?? []) as Row[]),
     ...((byInternal.data ?? []) as Row[]),
     ...((byDescription.data ?? []) as Row[]),
   ]) {
-    if (!dedup.has(r.id)) dedup.set(r.id, r);
+    if (!dedup.has(r.id) && draftIdSet.has(r.purchase_id)) dedup.set(r.id, r);
   }
-  let rows = Array.from(dedup.values());
+  let rows = Array.from(dedup.values()).slice(0, 20);
 
-  // Normalized-code fallback: pulls a wider batch and filters in JS
-  // when raw ilike yields zero — covers "317330" typed vs "317 330"
-  // stored. Caps at 20 returned rows to keep the dropdown sane.
+  // Normalized-code fallback: pulls all items inside the drafts and
+  // filters in JS by collapsed-whitespace match. Covers "317330"
+  // typed vs "317 330" stored. Only runs when the ilike pass yields
+  // nothing.
   if (rows.length === 0) {
     const normalizedTerm = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (normalizedTerm.length >= 2) {
-      const wide = await supabase
-        .from("purchase_items")
-        .select(baseSelect)
-        .in("purchase_id", draftIds)
-        .limit(500);
-      const wideRows = (wide.data ?? []) as Row[];
-      rows = wideRows
+      // Pull items per-purchase to dodge the .in() + something
+      // chained-filter trap that bit the ilike step.
+      const perDraft = await Promise.all(
+        draftIds.map((pid) =>
+          supabase
+            .from("purchase_items")
+            .select(baseSelect)
+            .eq("purchase_id", pid)
+            .limit(500),
+        ),
+      );
+      const allRows = perDraft.flatMap((r) => (r.data ?? []) as Row[]);
+      rows = allRows
         .filter((it) => {
           const codes = [it.supplier_code, it.internal_code, it.description]
             .filter(Boolean)
