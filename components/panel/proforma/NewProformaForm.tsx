@@ -23,6 +23,7 @@ import {
 } from "@/lib/panel/invoices/actions";
 import { PartCodeAutocomplete } from "@/components/panel/proforma/PartCodeAutocomplete";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { MarkupShortcuts } from "@/components/panel/sales/MarkupShortcuts";
 import {
   type ClientSearchResult,
   listAllPanelClients,
@@ -428,29 +429,35 @@ export function NewProformaForm({
                         size="sm"
                         inputClassName="h-9 w-24 text-right"
                       />
-                      {l.cost_price > 0 ? (() => {
-                        // Markup over catalog cost — derived from the price
-                        // the operator typed (or auto-filled from the part
-                        // selection). Negative = selling below cost, shown in
-                        // destructive red as a sanity warning.
-                        const markup = ((l.unit_price - l.cost_price) / l.cost_price) * 100;
-                        const sign = markup >= 0 ? "+" : "";
-                        return (
-                          <div
-                            className={cn(
-                              "mt-0.5 text-[10px] font-semibold tabular-nums",
-                              markup < 0
-                                ? "text-destructive"
-                                : markup < 10
-                                  ? "text-warning"
-                                  : "text-success",
-                            )}
-                            title={`Cost: ${l.cost_price.toFixed(2)}`}
-                          >
-                            Marja {sign}{markup.toFixed(0)}%
-                          </div>
-                        );
-                      })() : null}
+                      <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                        <MarkupShortcuts
+                          cost={l.cost_price}
+                          unitPrice={l.unit_price}
+                          onPick={(v) => setLine(idx, { unit_price: v })}
+                        />
+                        {l.cost_price > 0 ? (() => {
+                          // Margin badge derived from the typed price — kept
+                          // next to the shortcuts so the operator can
+                          // double-check the figure they landed on.
+                          const markup = ((l.unit_price - l.cost_price) / l.cost_price) * 100;
+                          const sign = markup >= 0 ? "+" : "";
+                          return (
+                            <div
+                              className={cn(
+                                "text-[10px] font-semibold tabular-nums",
+                                markup < 0
+                                  ? "text-destructive"
+                                  : markup < 10
+                                    ? "text-warning"
+                                    : "text-success",
+                              )}
+                              title={`Cost: ${l.cost_price.toFixed(2)}`}
+                            >
+                              {sign}{markup.toFixed(0)}%
+                            </div>
+                          );
+                        })() : null}
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-right">
                       <Input

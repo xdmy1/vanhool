@@ -19,6 +19,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { MarkupShortcuts } from "@/components/panel/sales/MarkupShortcuts";
 import { Price } from "@/components/common/Price";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -1039,17 +1040,24 @@ function StepProducts({
                         size="sm"
                         inputClassName="ml-auto h-8 w-24 text-right"
                       />
-                      {l.product.cost_price > 0 ? (
-                        <div className="text-[10px] text-muted">
-                          {t("sale_line_margin", {
-                            pct: (
-                              ((l.unit_price - l.product.cost_price) /
-                                l.product.cost_price) *
-                              100
-                            ).toFixed(0),
-                          })}
-                        </div>
-                      ) : null}
+                      <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                        <MarkupShortcuts
+                          cost={l.product.cost_price}
+                          unitPrice={l.unit_price}
+                          onPick={(v) => update(idx, { unit_price: v })}
+                        />
+                        {l.product.cost_price > 0 ? (
+                          <div className="text-[10px] text-muted">
+                            {t("sale_line_margin", {
+                              pct: (
+                                ((l.unit_price - l.product.cost_price) /
+                                  l.product.cost_price) *
+                                100
+                              ).toFixed(0),
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-2 text-right">
                       <Input
