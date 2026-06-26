@@ -238,27 +238,37 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
   const ids = new Set<string>();
   for (const r of (codeRowsRes.data ?? []) as { id: string }[]) ids.add(r.id);
   for (const r of (textRowsRes.data ?? []) as { id: string }[]) ids.add(r.id);
-  if (ids.size === 0) return [];
-  const { data } = await supabase
-    .from("products")
-    .select(
-      "id, part_code, name_ro, name_en, brand, price, cost_price, stock_quantity, storage_location, is_active",
-    )
-    .in("id", Array.from(ids))
-    .order("name_ro")
-    .limit(15);
-  const catalogResults: ProductSearchResult[] = (data ?? []).map((p) => ({
-    id: p.id,
-    part_code: p.part_code,
-    name_ro: p.name_ro ?? p.name_en,
-    brand: p.brand,
-    price: Number(p.price ?? 0),
-    cost_price: Number(p.cost_price ?? 0),
-    stock_quantity: Number(p.stock_quantity ?? 0),
-    storage_location: p.storage_location,
-    is_active: Boolean(p.is_active),
-    source: "catalog" as const,
-  }));
+
+  // ✱ THE BUG that hid drafts: a previous version bailed out here
+  // with `if (ids.size === 0) return []` — that returned an empty
+  // result whenever the catalog had no match, skipping the draft
+  // search entirely. Operator typed "STA222", catalog had nothing,
+  // function returned [] without even querying purchase_items.
+  // Fixed: catalog ids feed an optional follow-up fetch; the draft
+  // search always runs alongside, and BOTH results are merged.
+  let catalogResults: ProductSearchResult[] = [];
+  if (ids.size > 0) {
+    const { data } = await supabase
+      .from("products")
+      .select(
+        "id, part_code, name_ro, name_en, brand, price, cost_price, stock_quantity, storage_location, is_active",
+      )
+      .in("id", Array.from(ids))
+      .order("name_ro")
+      .limit(15);
+    catalogResults = (data ?? []).map((p) => ({
+      id: p.id,
+      part_code: p.part_code,
+      name_ro: p.name_ro ?? p.name_en,
+      brand: p.brand,
+      price: Number(p.price ?? 0),
+      cost_price: Number(p.cost_price ?? 0),
+      stock_quantity: Number(p.stock_quantity ?? 0),
+      storage_location: p.storage_location,
+      is_active: Boolean(p.is_active),
+      source: "catalog" as const,
+    }));
+  }
 
   // Second pass: items on DRAFT purchases. Operator wants to put
   // these on proformas before the purchase is fiscally posted —
