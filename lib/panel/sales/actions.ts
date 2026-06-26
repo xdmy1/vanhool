@@ -276,30 +276,50 @@ async function searchDraftPurchaseItems(
     });
   }
 
-  // Step 2: items inside those drafts that match the term. ilike on
-  // raw stored strings — "STA22" finds "STA222779" naturally; codes
-  // with whitespace (e.g. "317 330") match when the user types the
-  // same whitespace. Normalization fallback below handles the
-  // collapsed-whitespace edge case.
-  const { data, error } = await supabase
-    .from("purchase_items")
-    .select(
-      "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id",
-    )
-    .in("purchase_id", draftIds)
-    .or(
-      `supplier_code.ilike.${term},internal_code.ilike.${term},description.ilike.${term}`,
-    )
-    .limit(20);
-  if (error) {
-    console.warn("[searchDraftPurchaseItems] items fetch failed:", error.message);
-    return [];
+  // Step 2: items inside those drafts that match the term. Originally
+  // a single `.or(supplier_code.ilike.X,internal_code.ilike.X,
+  // description.ilike.X)` call — that combination silently returned
+  // empty for the panel's authenticated session even though the raw
+  // SQL works (verified via service-role probes). Bug seems to be in
+  // how Supabase JS encodes a multi-field OR clause with ilike
+  // wildcards under PostgREST + RLS.
+  //
+  // Workaround: three independent .ilike queries in parallel, then
+  // de-dup by id. Each query is a plain RLS-safe filter — works
+  // reliably across both contexts.
+  const baseSelect =
+    "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id";
+  const [bySupplier, byInternal, byDescription] = await Promise.all([
+    supabase
+      .from("purchase_items")
+      .select(baseSelect)
+      .in("purchase_id", draftIds)
+      .ilike("supplier_code", term)
+      .limit(20),
+    supabase
+      .from("purchase_items")
+      .select(baseSelect)
+      .in("purchase_id", draftIds)
+      .ilike("internal_code", term)
+      .limit(20),
+    supabase
+      .from("purchase_items")
+      .select(baseSelect)
+      .in("purchase_id", draftIds)
+      .ilike("description", term)
+      .limit(20),
+  ]);
+  if (bySupplier.error) {
+    console.warn("[searchDraftPurchaseItems] supplier_code lookup failed:", bySupplier.error.message);
+  }
+  if (byInternal.error) {
+    console.warn("[searchDraftPurchaseItems] internal_code lookup failed:", byInternal.error.message);
+  }
+  if (byDescription.error) {
+    console.warn("[searchDraftPurchaseItems] description lookup failed:", byDescription.error.message);
   }
 
-  // Normalized-code fallback: pulls a wider batch and filters in JS
-  // when the raw ilike yields zero results — covers the case where
-  // the operator typed "317330" but the stored code is "317 330".
-  let rows = (data ?? []) as Array<{
+  type Row = {
     id: string;
     supplier_code: string | null;
     internal_code: string | null;
@@ -307,26 +327,39 @@ async function searchDraftPurchaseItems(
     quantity: number | string | null;
     unit_cost: number | string | null;
     purchase_id: string;
-  }>;
+  };
+  const dedup = new Map<string, Row>();
+  for (const r of [
+    ...((bySupplier.data ?? []) as Row[]),
+    ...((byInternal.data ?? []) as Row[]),
+    ...((byDescription.data ?? []) as Row[]),
+  ]) {
+    if (!dedup.has(r.id)) dedup.set(r.id, r);
+  }
+  let rows = Array.from(dedup.values());
+
+  // Normalized-code fallback: pulls a wider batch and filters in JS
+  // when raw ilike yields zero — covers "317330" typed vs "317 330"
+  // stored. Caps at 20 returned rows to keep the dropdown sane.
   if (rows.length === 0) {
     const normalizedTerm = trimmed.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (normalizedTerm.length >= 2) {
       const wide = await supabase
         .from("purchase_items")
-        .select(
-          "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id",
-        )
+        .select(baseSelect)
         .in("purchase_id", draftIds)
         .limit(500);
-      const wideRows = (wide.data ?? []) as typeof rows;
-      rows = wideRows.filter((it) => {
-        const codes = [it.supplier_code, it.internal_code]
-          .filter(Boolean)
-          .map((c) =>
-            String(c ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
-          );
-        return codes.some((c) => c.includes(normalizedTerm));
-      });
+      const wideRows = (wide.data ?? []) as Row[];
+      rows = wideRows
+        .filter((it) => {
+          const codes = [it.supplier_code, it.internal_code, it.description]
+            .filter(Boolean)
+            .map((c) =>
+              String(c ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""),
+            );
+          return codes.some((c) => c.includes(normalizedTerm));
+        })
+        .slice(0, 20);
     }
   }
 
