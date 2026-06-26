@@ -71,12 +71,22 @@ export default async function AdminOverviewPage({
         <StatCard
           icon={TrendingUp}
           label={t("stat_revenue_30d")}
-          value={<RevenueByCurrency totals={stats.revenueLast30} />}
+          value={
+            <RevenueKpi
+              totalMdl={stats.revenueLast30}
+              breakdown={stats.revenueByCurrencyLast30}
+            />
+          }
         />
         <StatCard
           icon={Wallet}
           label={t("stat_revenue_total")}
-          value={<RevenueByCurrency totals={stats.revenueTotal} />}
+          value={
+            <RevenueKpi
+              totalMdl={stats.revenueTotal}
+              breakdown={stats.revenueByCurrencyTotal}
+            />
+          }
         />
         <StatCard
           icon={AlertTriangle}
@@ -293,22 +303,38 @@ function Empty({ children }: { children: React.ReactNode }) {
  * empty record renders a single `0 lei` placeholder so the layout
  * doesn't collapse on a fresh shop.
  */
-function RevenueByCurrency({ totals }: { totals: Record<string, number> }) {
-  const entries = Object.entries(totals);
-  if (entries.length === 0) {
-    return <Price value={0} size="lg" accent={false} />;
-  }
+/**
+ * Primary KPI: a single MDL total (EUR / USD folded in via fixed FX so
+ * the dashboard doesn't pretend a 100 EUR sale and a 100 MDL sale are
+ * the same number). The per-currency breakdown is rendered below as a
+ * one-line summary so the operator can still see "X of which was EUR".
+ *
+ * Uses the same FX_TO_MDL table as lib/panel/reports/queries.ts —
+ * matches the panel reports.
+ */
+function RevenueKpi({
+  totalMdl,
+  breakdown,
+}: {
+  totalMdl: number;
+  breakdown: Record<string, number>;
+}) {
+  const entries = Object.entries(breakdown).filter(
+    ([, n]) => Math.abs(n) > 0.005,
+  );
+  const hasMultipleCurrencies =
+    entries.length > 1 ||
+    (entries.length === 1 && entries[0][0] !== "MDL");
   return (
-    <div className="flex flex-col gap-1">
-      {entries.map(([currency, sum]) => (
-        <Price
-          key={currency}
-          value={sum}
-          currency={currency}
-          size="lg"
-          accent={false}
-        />
-      ))}
+    <div className="flex flex-col gap-0.5">
+      <Price value={totalMdl} size="lg" accent={false} />
+      {hasMultipleCurrencies ? (
+        <div className="text-[10px] text-muted">
+          {entries
+            .map(([c, n]) => `${n.toFixed(2)} ${c}`)
+            .join(" + ")}
+        </div>
+      ) : null}
     </div>
   );
 }

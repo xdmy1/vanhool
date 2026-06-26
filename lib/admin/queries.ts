@@ -363,13 +363,19 @@ export type OverviewStats = {
   ordersTotal: number;
   ordersPending: number;
   /**
-   * Revenue grouped by currency. Panel sales happen in MDL / EUR /
-   * USD and summing them together as MDL ("lei") was actively
-   * misleading the operator. Empty record = no orders. Render one
-   * Price per entry on the dashboard.
+   * Revenue normalised to MDL using the same fixed FX table the panel
+   * reports use (EUR=20, USD=17, MDL=1). Single number per stat — easier
+   * to compare period-over-period than the per-currency breakdown that
+   * forced the operator to mentally add multiple lines.
+   *
+   * The legacy per-currency map is also kept (revenueByCurrencyTotal /
+   * revenueByCurrencyLast30) for callers that need the raw breakdown,
+   * e.g. drill-downs.
    */
-  revenueLast30: Record<string, number>;
-  revenueTotal: Record<string, number>;
+  revenueLast30: number;
+  revenueTotal: number;
+  revenueByCurrencyTotal: Record<string, number>;
+  revenueByCurrencyLast30: Record<string, number>;
   lowStockCount: number;
   productsActive: number;
   customersCount: number;
@@ -426,10 +432,11 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
       .limit(5),
   ]);
 
-  // Group revenue per currency so the overview doesn't pretend
-  // EUR sales are "lei". Default to MDL when the column is null
-  // (storefront orders predating the panel migration). Rounded to
-  // 2 dp after summing so floats don't leak ugly tails.
+  // Group revenue per currency for the drill-down breakdown, AND fold
+  // them all into MDL with fixed FX rates for the primary KPI tile —
+  // matches what reportSalesByDay does on the panel side so the two
+  // numbers don't disagree when compared.
+  const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
   const groupByCurrency = (
     rows: { total: number | null; currency?: string | null }[] | null,
   ): Record<string, number> => {
@@ -443,6 +450,20 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     }
     return out;
   };
+  const sumToMdl = (buckets: Record<string, number>): number => {
+    let total = 0;
+    for (const [code, sum] of Object.entries(buckets)) {
+      total += sum * (FX_TO_MDL[code] ?? 1);
+    }
+    return Number(total.toFixed(2));
+  };
+
+  const revenueTotalByCurrency = groupByCurrency(
+    revenueAllRes.data as { total: number | null; currency?: string | null }[] | null,
+  );
+  const revenueLast30ByCurrency = groupByCurrency(
+    revenue30Res.data as { total: number | null; currency?: string | null }[] | null,
+  );
 
   return {
     ordersTotal: ordersTotalRes.count ?? 0,
@@ -450,12 +471,10 @@ export async function adminOverviewStats(): Promise<OverviewStats> {
     productsActive: productsActiveRes.count ?? 0,
     lowStockCount: lowStockCountRes.count ?? 0,
     customersCount: customersRes.count ?? 0,
-    revenueTotal: groupByCurrency(
-      revenueAllRes.data as { total: number | null; currency?: string | null }[] | null,
-    ),
-    revenueLast30: groupByCurrency(
-      revenue30Res.data as { total: number | null; currency?: string | null }[] | null,
-    ),
+    revenueTotal: sumToMdl(revenueTotalByCurrency),
+    revenueLast30: sumToMdl(revenueLast30ByCurrency),
+    revenueByCurrencyTotal: revenueTotalByCurrency,
+    revenueByCurrencyLast30: revenueLast30ByCurrency,
     recentOrders: (recentOrdersRes.data ?? []) as AdminOrderRow[],
     lowStockProducts: (lowStockListRes.data ?? []) as AdminProductRow[],
   };
