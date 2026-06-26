@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Input } from "@/components/ui/input";
 import {
+  type ProductSearchMeta,
   type ProductSearchResult,
-  searchProducts,
+  searchProductsWithMeta,
 } from "@/lib/panel/sales/actions";
 import { cn } from "@/lib/utils/cn";
 
@@ -38,6 +39,7 @@ export function PartCodeAutocomplete({
   emptyHint?: string;
 }) {
   const [results, setResults] = useState<ProductSearchResult[]>([]);
+  const [meta, setMeta] = useState<ProductSearchMeta | null>(null);
   const [open, setOpen] = useState(false);
   const [pending, startSearch] = useTransition();
   const timer = useRef<number | null>(null);
@@ -48,12 +50,16 @@ export function PartCodeAutocomplete({
     if (timer.current) window.clearTimeout(timer.current);
     if (value.trim().length < 2) {
       setResults([]);
+      setMeta(null);
       return;
     }
     timer.current = window.setTimeout(() => {
       startSearch(async () => {
-        const r = await searchProducts(value.trim());
+        const { results: r, meta: m } = await searchProductsWithMeta(
+          value.trim(),
+        );
         setResults(r);
+        setMeta(m);
       });
     }, 250);
     return () => {
@@ -104,6 +110,13 @@ export function PartCodeAutocomplete({
           {results.length === 0 ? (
             <div className="px-3 py-2 text-[11px] text-muted">
               {pending ? "..." : (emptyHint ?? "—")}
+              {/* Server diagnostic — temporary, lets us see WHY 0 hits */}
+              {!pending && meta ? (
+                <div className="mt-1 font-mono text-[10px] text-warning">
+                  [debug] catalog={meta.catalog_count} · drafts={meta.draft_count} · draft_purchases_total={meta.draft_purchase_total}
+                  {meta.draft_error ? ` · err=${meta.draft_error}` : ""}
+                </div>
+              ) : null}
             </div>
           ) : (
             <ul className="divide-y divide-border">

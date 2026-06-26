@@ -114,6 +114,50 @@ export type ProductSearchResult = {
   draft_purchase_label?: string;
 };
 
+/**
+ * Diagnostic-friendly wrapper around the catalog + draft search.
+ * Returns the same result list as `searchProducts` plus side-channel
+ * metadata so the autocomplete can surface what actually happened
+ * server-side (catalog count, draft count, errors). Keeps the
+ * simpler `searchProducts` signature intact for callers that don't
+ * need the diagnostic. */
+export type ProductSearchMeta = {
+  catalog_count: number;
+  draft_count: number;
+  draft_error: string | null;
+  draft_purchase_total: number;
+};
+
+export async function searchProductsWithMeta(
+  q: string,
+): Promise<{ results: ProductSearchResult[]; meta: ProductSearchMeta }> {
+  const results = await searchProducts(q);
+  // Re-derive counts from the response — cheap, avoids restructuring
+  // the underlying searchProducts contract.
+  let catalog = 0;
+  let draft = 0;
+  for (const r of results) {
+    if (r.source === "draft_purchase") draft++;
+    else catalog++;
+  }
+  // Independent probe so we can tell "no draft purchases at all"
+  // apart from "drafts exist but nothing matched the term".
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "draft");
+  return {
+    results,
+    meta: {
+      catalog_count: catalog,
+      draft_count: draft,
+      draft_error: error?.message ?? null,
+      draft_purchase_total: count ?? 0,
+    },
+  };
+}
+
 export async function searchProducts(q: string): Promise<ProductSearchResult[]> {
   const user = await getPanelUser();
   if (!user) return [];
