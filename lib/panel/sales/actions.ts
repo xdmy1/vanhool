@@ -457,7 +457,17 @@ async function searchDraftPurchaseItems(
 // createManualSale — the main action
 
 const lineSchema = z.object({
-  product_id: z.string().uuid(),
+  /**
+   * Catalog product UUID. NULL when the line is sourced from a draft
+   * purchase line that hasn't been fiscally posted yet — operator
+   * sells the physical part anyway; freeform fields below carry the
+   * data the missing catalog row would have provided.
+   */
+  product_id: z.string().uuid().nullable().optional(),
+  /** Fallback fields used when product_id is null (draft sale). */
+  part_code: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  cost_price: z.number().nonnegative().nullable().optional(),
   qty: z.number().positive(),
   /** Normal "list" price per unit — what the line would cost without a discount. */
   unit_price: z.number().nonnegative(),
@@ -566,31 +576,51 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     customer_idno = c.idno;
   }
 
-  // Pull current product data: prices, cost_price snapshot, stock, name
-  const productIds = v.items.map((i) => i.product_id);
-  const { data: products, error: pErr } = await supabase
-    .from("products")
-    .select("id, part_code, name_ro, brand, price, cost_price, stock_quantity, storage_location")
-    .in("id", productIds);
-  if (pErr || !products) return { ok: false, reason: "product_fetch_failed" };
-  const byId = new Map(products.map((p) => [p.id, p]));
+  // Pull current product data only for lines that ARE backed by a
+  // catalog product. Draft-purchase lines (product_id == null) ride
+  // on the freeform fields the client supplied — they're physically
+  // in the shop but not fiscally received, so we don't validate
+  // stock against them.
+  const productIds = v.items
+    .map((i) => i.product_id)
+    .filter((s): s is string => !!s);
+  const byId = new Map<
+    string,
+    {
+      id: string;
+      part_code: string | null;
+      name_ro: string | null;
+      brand: string | null;
+      price: number | null;
+      cost_price: number | null;
+      stock_quantity: number | null;
+      storage_location: string | null;
+    }
+  >();
+  if (productIds.length > 0) {
+    const { data: products, error: pErr } = await supabase
+      .from("products")
+      .select("id, part_code, name_ro, brand, price, cost_price, stock_quantity, storage_location")
+      .in("id", productIds);
+    if (pErr || !products) return { ok: false, reason: "product_fetch_failed" };
+    for (const p of products) byId.set(p.id, p);
+  }
 
   // Validate stock + build items snapshot
   const items: Array<Record<string, unknown>> = [];
   let subtotal = 0;
   let subtotalBeforeDiscount = 0;
   for (const line of v.items) {
-    const p = byId.get(line.product_id);
-    if (!p) return { ok: false, reason: `product_missing:${line.product_id}` };
-    if ((p.stock_quantity ?? 0) < line.qty) {
+    const p = line.product_id ? byId.get(line.product_id) ?? null : null;
+    if (line.product_id && !p) {
+      return { ok: false, reason: `product_missing:${line.product_id}` };
+    }
+    if (p && (p.stock_quantity ?? 0) < line.qty) {
       return {
         ok: false,
         reason: `stock_insufficient:${p.part_code ?? p.id.slice(0, 8)} (disponibil ${p.stock_quantity ?? 0})`,
       };
     }
-    // Effective price = discounted_unit_price if set and lower than the list
-    // price; else the list price. Anything >= list price collapses to list
-    // (no negative or zero-saving discounts).
     const dp = line.discounted_unit_price;
     const effective =
       dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
@@ -599,25 +629,21 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     subtotal += lineTotalEff;
     subtotalBeforeDiscount += lineTotalGross;
     items.push({
-      productId: p.id,
-      partCode: p.part_code,
-      name: p.name_ro,
-      brand: p.brand,
-      storage_location: p.storage_location,
+      productId: p?.id ?? null,
+      partCode: p?.part_code ?? line.part_code ?? null,
+      name: p?.name_ro ?? line.name ?? "",
+      brand: p?.brand ?? null,
+      storage_location: p?.storage_location ?? null,
       quantity: line.qty,
-      // Unit of measure picked at sale time. Defaults to "buc" so
-      // legacy callers (Refrens conversion, delivery-note printer)
-      // that don't read this field still behave as before.
       unit: line.unit,
-      // `price` keeps backwards-compat with anything that read the old shape;
-      // it now reflects the EFFECTIVE per-unit price (what the customer pays).
       price: effective,
-      // Pre-discount per-unit price — only meaningful when > price. Older
-      // snapshots without this field render as no-discount.
       original_unit_price: line.unit_price,
       unit_discount: Number((line.unit_price - effective).toFixed(2)),
-      cost_price: Number(p.cost_price ?? 0),
+      cost_price: Number(p?.cost_price ?? line.cost_price ?? 0),
       total: lineTotalEff,
+      /** Marker so postPurchase / reports can tell which order lines
+       *  weren't backed by a real catalog product at sale time. */
+      from_draft_purchase: !line.product_id,
     });
   }
   subtotal = Number(subtotal.toFixed(2));
@@ -678,8 +704,13 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
 
   // Decrement stock — sequential. Race-safe enough for admin-only usage; can
   // be tightened with a Postgres function later if we get concurrent salespeople.
+  // Lines without product_id (draft-purchase sales) skip the decrement —
+  // there's no catalog row to point at, and the parent purchase will
+  // increment stock when it eventually gets posted.
   for (const line of v.items) {
-    const p = byId.get(line.product_id)!;
+    if (!line.product_id) continue;
+    const p = byId.get(line.product_id);
+    if (!p) continue;
     const newQty = Math.max(0, (p.stock_quantity ?? 0) - line.qty);
     await supabase.from("products").update({ stock_quantity: newQty }).eq("id", p.id);
   }
@@ -716,14 +747,14 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     // this the printable factură rendered an empty table because
     // items_snapshot stayed null.
     const invoiceItemsSnapshot = v.items.map((line) => {
-      const p = byId.get(line.product_id)!;
+      const p = line.product_id ? byId.get(line.product_id) ?? null : null;
       const dp = line.discounted_unit_price;
       const eff =
         dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
       return {
-        productId: p.id,
-        partCode: p.part_code,
-        name: p.name_ro,
+        productId: p?.id ?? null,
+        partCode: p?.part_code ?? line.part_code ?? null,
+        name: p?.name_ro ?? line.name ?? "",
         description: null,
         quantity: line.qty,
         unit: line.unit,
@@ -731,6 +762,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         discounted_unit_price: eff < line.unit_price ? eff : null,
         vat_rate: 0,
         total: Number((line.qty * eff).toFixed(2)),
+        cost_price: Number(p?.cost_price ?? line.cost_price ?? 0),
       };
     });
 

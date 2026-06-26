@@ -37,6 +37,7 @@ export function MarkupShortcuts({
   if (!Number.isFinite(cost) || cost <= 0) return null;
   const at30 = Number((cost * 1.3).toFixed(2));
   const at15 = Number((cost * 1.15).toFixed(2));
+  const bare = Number(cost.toFixed(2));
   const active30 = Math.abs(unitPrice - at30) < 0.01;
   const active15 = Math.abs(unitPrice - at15) < 0.01;
   return (
@@ -50,8 +51,15 @@ export function MarkupShortcuts({
     >
       <button
         type="button"
-        onClick={() => onPick(at30)}
-        title={`+30% pe cost (${cost.toFixed(2)} → ${at30.toFixed(2)})`}
+        // Click on the ACTIVE button reverts the price back to plain
+        // cost (toggles off). Click on the inactive button sets cost
+        // × 1.30. Lets the operator un-do a misclick without typing.
+        onClick={() => onPick(active30 ? bare : at30)}
+        title={
+          active30
+            ? `Deselectează — revino la cost (${bare.toFixed(2)})`
+            : `+30% pe cost (${cost.toFixed(2)} → ${at30.toFixed(2)})`
+        }
         aria-pressed={active30}
         className={cn(
           "px-1.5 py-0.5 text-[9px] font-semibold tabular-nums transition-colors",
@@ -64,8 +72,12 @@ export function MarkupShortcuts({
       </button>
       <button
         type="button"
-        onClick={() => onPick(at15)}
-        title={`-15% (înlocuiește cu +15% pe cost: ${cost.toFixed(2)} → ${at15.toFixed(2)})`}
+        onClick={() => onPick(active15 ? bare : at15)}
+        title={
+          active15
+            ? `Deselectează — revino la cost (${bare.toFixed(2)})`
+            : `-15% (înlocuiește cu +15% pe cost: ${cost.toFixed(2)} → ${at15.toFixed(2)})`
+        }
         aria-pressed={active15}
         className={cn(
           "border-l border-border px-1.5 py-0.5 text-[9px] font-semibold tabular-nums transition-colors",

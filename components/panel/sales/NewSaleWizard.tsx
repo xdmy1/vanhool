@@ -227,16 +227,26 @@ export function NewSaleWizard({ locale }: { locale: string }) {
               idno: walkin.idno || null,
               company_name: walkin.company_name || null,
             },
-        items: lines.map((l) => ({
-          product_id: l.product.id,
-          qty: l.qty,
-          unit_price: l.unit_price,
-          discounted_unit_price:
-            l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
-              ? l.discounted_unit_price
-              : null,
-          unit: l.unit,
-        })),
+        items: lines.map((l) => {
+          // Draft-purchase items don't have a real product UUID — send
+          // null product_id and pack name/part_code/cost as freeform
+          // fallback so createManualSale can build the snapshot without
+          // a catalog lookup.
+          const isDraft = l.product.source === "draft_purchase";
+          return {
+            product_id: isDraft ? null : l.product.id,
+            part_code: isDraft ? l.product.part_code ?? null : null,
+            name: isDraft ? l.product.name_ro ?? "" : null,
+            cost_price: isDraft ? l.product.cost_price ?? 0 : null,
+            qty: l.qty,
+            unit_price: l.unit_price,
+            discounted_unit_price:
+              l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+                ? l.discounted_unit_price
+                : null,
+            unit: l.unit,
+          };
+        }),
         payment_method: paymentMethod,
         currency,
         delivery_address: deliveryAddress.trim(),
@@ -901,18 +911,10 @@ function StepProducts({
               <li key={p.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (isDraft) {
-                      toast.error(
-                        "Piesa e încă în achiziție draft. Postează achiziția pentru a o putea vinde.",
-                      );
-                      return;
-                    }
-                    add(p);
-                  }}
+                  onClick={() => add(p)}
                   className={cn(
                     "flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-surface-elevated",
-                    isDraft && "cursor-not-allowed bg-warning/5 opacity-80 hover:bg-warning/5",
+                    isDraft && "bg-warning/5 hover:bg-warning/10",
                   )}
                 >
                   <span className="font-mono text-xs text-muted">{p.part_code}</span>
