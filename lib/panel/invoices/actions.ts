@@ -34,6 +34,14 @@ const lineSchema = z.object({
    */
   discounted_unit_price: z.number().nonnegative().nullable().optional(),
   vat_rate: z.number().nonnegative().default(0),
+  /**
+   * Internal cost per unit — captured at proforma/invoice creation
+   * so admin sees the realised margin on the digital detail view.
+   * NEVER rendered on the printable/customer-facing document.
+   * Source order: explicit value from the form (autocomplete pulls
+   * it from the catalog product or the draft purchase line) → null.
+   */
+  cost_price: z.number().nonnegative().nullable().optional(),
 });
 
 const customerSchema = z.object({
@@ -204,6 +212,13 @@ export async function issueProforma(
       discounted_unit_price: eff < i.unit_price ? eff : null,
       vat_rate: i.vat_rate,
       total: Number((i.quantity * eff).toFixed(2)),
+      // Admin-only metadata — never rendered on the printable / customer
+      // copy. Captures the catalog or draft-purchase cost so the digital
+      // detail view can show margin per line.
+      cost_price:
+        i.cost_price != null && i.cost_price >= 0
+          ? Number(i.cost_price)
+          : null,
     };
   });
 
@@ -539,6 +554,13 @@ export async function updateProforma(
       discounted_unit_price: eff < i.unit_price ? eff : null,
       vat_rate: i.vat_rate,
       total: Number((i.quantity * eff).toFixed(2)),
+      // Admin-only metadata — never rendered on the printable / customer
+      // copy. Captures the catalog or draft-purchase cost so the digital
+      // detail view can show margin per line.
+      cost_price:
+        i.cost_price != null && i.cost_price >= 0
+          ? Number(i.cost_price)
+          : null,
     };
   });
 
@@ -632,6 +654,13 @@ export async function updateInvoice(
       discounted_unit_price: eff < i.unit_price ? eff : null,
       vat_rate: i.vat_rate,
       total: Number((i.quantity * eff).toFixed(2)),
+      // Admin-only metadata — never rendered on the printable / customer
+      // copy. Captures the catalog or draft-purchase cost so the digital
+      // detail view can show margin per line.
+      cost_price:
+        i.cost_price != null && i.cost_price >= 0
+          ? Number(i.cost_price)
+          : null,
     };
   });
 

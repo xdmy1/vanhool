@@ -198,6 +198,9 @@ export default async function PanelInvoiceDetailPage({
         </section>
 
         <section className="overflow-x-auto rounded-md border border-border bg-surface lg:col-span-2">
+          <div className="border-b border-border bg-warning/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-warning">
+            Coloanele Cost / Marjă sunt vizibile DOAR aici (admin) — nu apar pe print sau pe documentul trimis clientului.
+          </div>
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-surface-elevated text-left text-xs uppercase tracking-wide text-muted">
               <tr>
@@ -206,6 +209,8 @@ export default async function PanelInvoiceDetailPage({
                 <th className="px-4 py-3 text-right">{t("delivery_col_qty")}</th>
                 <th className="px-4 py-3 text-right">{t("delivery_col_price")}</th>
                 <th className="px-4 py-3 text-right">{t("delivery_col_total")}</th>
+                <th className="px-4 py-3 text-right text-warning">Cost unit. (admin)</th>
+                <th className="px-4 py-3 text-right text-warning">Marjă (admin)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -218,6 +223,18 @@ export default async function PanelInvoiceDetailPage({
                 const pct = hasDiscount && list > 0
                   ? Math.max(0, (1 - eff / list) * 100)
                   : 0;
+                const qty = Number(it.quantity ?? 0);
+                const cost = it.cost_price != null ? Number(it.cost_price) : null;
+                const lineTotal = Number(it.total ?? 0);
+                const lineCostTotal = cost != null ? qty * cost : null;
+                const lineProfit =
+                  lineCostTotal != null
+                    ? Number((lineTotal - lineCostTotal).toFixed(2))
+                    : null;
+                const lineMarginPct =
+                  cost != null && cost > 0 && eff > 0
+                    ? Number((((eff - cost) / cost) * 100).toFixed(1))
+                    : null;
                 return (
                   <tr key={i}>
                     <td className="px-4 py-2 font-mono text-xs">{it.partCode ?? "—"}</td>
@@ -248,7 +265,32 @@ export default async function PanelInvoiceDetailPage({
                       )}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums font-semibold">
-                      {Number(it.total ?? 0).toFixed(2)} {invoice.currency}
+                      {lineTotal.toFixed(2)} {invoice.currency}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-warning">
+                      {cost != null
+                        ? `${cost.toFixed(2)} ${invoice.currency}`
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {lineProfit != null && lineMarginPct != null ? (
+                        <>
+                          <div
+                            className={cn(
+                              "font-semibold",
+                              lineProfit >= 0 ? "text-success" : "text-destructive",
+                            )}
+                          >
+                            {lineProfit >= 0 ? "+" : ""}
+                            {lineProfit.toFixed(2)} {invoice.currency}
+                          </div>
+                          <div className="text-[10px] text-muted">
+                            {lineMarginPct.toFixed(1)}%
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -282,6 +324,7 @@ export default async function PanelInvoiceDetailPage({
                       <td className="px-4 py-2 text-right tabular-nums text-muted line-through">
                         {before.toFixed(2)} {invoice.currency}
                       </td>
+                      <td colSpan={2} className="px-4 py-2" />
                     </tr>
                     <tr>
                       <td colSpan={4} className="px-4 py-2 text-right text-xs uppercase tracking-wide text-success">
@@ -290,6 +333,7 @@ export default async function PanelInvoiceDetailPage({
                       <td className="px-4 py-2 text-right tabular-nums text-success">
                         -{discountAmount.toFixed(2)} {invoice.currency}
                       </td>
+                      <td colSpan={2} className="px-4 py-2" />
                     </tr>
                   </>
                 );
@@ -301,6 +345,58 @@ export default async function PanelInvoiceDetailPage({
                 <td className="px-4 py-3 text-right text-base font-bold">
                   {invoice.total.toFixed(2)} {invoice.currency}
                 </td>
+                {(() => {
+                  // Admin-only roll-up — total cost + total profit +
+                  // margin %. Mirrors the per-line cells; missing cost
+                  // on any line shows "(parțial)" so the operator knows
+                  // the number doesn't cover everything.
+                  let totalCost = 0;
+                  let totalSell = 0;
+                  let anyMissing = false;
+                  for (const it of invoice.items_snapshot) {
+                    const qty = Number(it.quantity ?? 0);
+                    const list = Number(it.unit_price ?? 0);
+                    const dp = it.discounted_unit_price != null
+                      ? Number(it.discounted_unit_price) : null;
+                    const eff = dp != null && dp >= 0 && dp < list ? dp : list;
+                    totalSell += qty * eff;
+                    if (it.cost_price == null) anyMissing = true;
+                    else totalCost += qty * Number(it.cost_price);
+                  }
+                  if (anyMissing && totalCost === 0) {
+                    return (
+                      <>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted">—</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted">—</td>
+                      </>
+                    );
+                  }
+                  const profit = Number((totalSell - totalCost).toFixed(2));
+                  const marginPct = totalCost > 0
+                    ? Number((((totalSell - totalCost) / totalCost) * 100).toFixed(1))
+                    : 0;
+                  return (
+                    <>
+                      <td className="px-4 py-3 text-right tabular-nums text-warning">
+                        {totalCost.toFixed(2)} {invoice.currency}
+                        {anyMissing ? <div className="text-[9px] text-muted">(parțial)</div> : null}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        <div
+                          className={cn(
+                            "font-bold",
+                            profit >= 0 ? "text-success" : "text-destructive",
+                          )}
+                        >
+                          {profit >= 0 ? "+" : ""}{profit.toFixed(2)} {invoice.currency}
+                        </div>
+                        <div className="text-[10px] text-muted">
+                          {marginPct.toFixed(1)}%
+                        </div>
+                      </td>
+                    </>
+                  );
+                })()}
               </tr>
             </tfoot>
           </table>

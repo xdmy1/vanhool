@@ -72,7 +72,10 @@ export default async function EditInvoicePage({
                 ? Number(it.discounted_unit_price)
                 : null,
             vat_rate: Number(it.vat_rate ?? 20),
-            cost_price: 0,
+            // Preserve admin-only cost across edits so margin stays
+            // visible. Legacy snapshots before the cost_price field
+            // existed default to 0.
+            cost_price: Number(it.cost_price ?? 0),
           }))
         : [
             {

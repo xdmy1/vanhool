@@ -107,41 +107,80 @@ export function PartCodeAutocomplete({
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {results.map((p) => {
-                const isDraft = p.source === "draft_purchase";
-                return (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => pick(p)}
-                      className={cn(
-                        "flex w-full items-center gap-3 px-3 py-2 text-left text-xs hover:bg-surface-elevated",
-                        isDraft && "bg-warning/5",
-                      )}
-                    >
-                      <span className="font-mono text-[11px] text-muted">
-                        {p.part_code ?? "—"}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{p.name_ro ?? "—"}</span>
-                        {isDraft ? (
-                          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-warning">
-                            <span className="rounded bg-warning/15 px-1 py-px font-semibold uppercase tracking-wide">
-                              draft
-                            </span>
-                            <span className="text-muted">
+              {(() => {
+                // Group by source so the operator sees a clear divider
+                // between "Catalog" (live stock) and "Achiziții draft"
+                // (in the shop but not yet fiscally posted). Drafts go
+                // last but always render — there's no "limit hides
+                // them" problem because both lists have their own
+                // limit on the server.
+                const catalog = results.filter(
+                  (p) => p.source !== "draft_purchase",
+                );
+                const drafts = results.filter(
+                  (p) => p.source === "draft_purchase",
+                );
+                const rows: Array<
+                  | { kind: "header"; label: string; tone: "muted" | "warning" }
+                  | { kind: "item"; p: ProductSearchResult }
+                > = [];
+                if (catalog.length > 0) {
+                  rows.push({ kind: "header", label: "Din catalog", tone: "muted" });
+                  for (const p of catalog) rows.push({ kind: "item", p });
+                }
+                if (drafts.length > 0) {
+                  rows.push({
+                    kind: "header",
+                    label: "Din achiziții draft",
+                    tone: "warning",
+                  });
+                  for (const p of drafts) rows.push({ kind: "item", p });
+                }
+                return rows.map((row, idx) => {
+                  if (row.kind === "header") {
+                    return (
+                      <li
+                        key={`h-${idx}`}
+                        className={cn(
+                          "sticky top-0 z-10 border-b border-border bg-surface px-3 py-1 text-[9px] font-semibold uppercase tracking-wider",
+                          row.tone === "warning" ? "text-warning" : "text-muted",
+                        )}
+                      >
+                        {row.label}
+                      </li>
+                    );
+                  }
+                  const p = row.p;
+                  const isDraft = p.source === "draft_purchase";
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => pick(p)}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-3 py-2 text-left text-xs hover:bg-surface-elevated",
+                          isDraft && "bg-warning/5",
+                        )}
+                      >
+                        <span className="font-mono text-[11px] text-muted">
+                          {p.part_code ?? "—"}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{p.name_ro ?? "—"}</span>
+                          {isDraft ? (
+                            <span className="mt-0.5 block text-[10px] text-muted">
                               {p.draft_purchase_label}
                             </span>
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-muted">
-                        {p.price.toFixed(2)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
+                          ) : null}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted">
+                          {p.price.toFixed(2)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                });
+              })()}
             </ul>
           )}
         </div>

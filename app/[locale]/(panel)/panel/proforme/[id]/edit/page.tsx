@@ -61,10 +61,11 @@ export default async function EditProformaPage({
                 ? Number(it.discounted_unit_price)
                 : null,
             vat_rate: Number(it.vat_rate ?? 20),
-            // Snapshot doesn't carry cost — set 0 so the Marja pill stays
-            // hidden until the operator re-picks the product or types a
-            // value manually.
-            cost_price: 0,
+            // Carry the captured cost forward on edit so the digital
+            // detail keeps showing margin after a small tweak.
+            // Falls back to 0 for legacy snapshots that pre-date the
+            // cost_price field.
+            cost_price: Number(it.cost_price ?? 0),
           }))
         : [
             {

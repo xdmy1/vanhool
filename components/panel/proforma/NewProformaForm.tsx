@@ -274,6 +274,11 @@ export function NewProformaForm({
             ? l.discounted_unit_price
             : null,
         vat_rate: l.vat_rate,
+        // Carry the cost forward so the digital detail page shows
+        // margin. Form gets cost_price from PartCodeAutocomplete on
+        // selection — both for catalog rows and for draft-purchase
+        // matches. Manual entries pass 0; null = unknown source.
+        cost_price: l.cost_price > 0 ? l.cost_price : null,
       })),
       due_days: dueDays,
       currency,

@@ -127,6 +127,13 @@ export type InvoiceItemSnapshot = {
   discounted_unit_price?: number | null;
   vat_rate?: number;
   total?: number;
+  /**
+   * Admin-only cost per unit, captured when the proforma / invoice was
+   * issued. Rendered only on the digital detail page for the operator —
+   * NEVER on the printed / customer-facing render. Null for legacy rows
+   * or freeform lines where no catalog / draft purchase backed the entry.
+   */
+  cost_price?: number | null;
 };
 
 export type CustomerSnapshot = {
