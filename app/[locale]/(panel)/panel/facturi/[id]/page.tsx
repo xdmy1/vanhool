@@ -11,6 +11,10 @@ import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
+import {
+  applyCostFallback,
+  buildCostFallbackByCode,
+} from "@/lib/panel/invoices/cost-fallback";
 import { cn } from "@/lib/utils/cn";
 
 const STATUS_TONE: Record<string, string> = {
@@ -39,6 +43,15 @@ export default async function PanelInvoiceDetailPage({
 
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
+
+  // Legacy snapshots predate the cost_price field. Fall back to the
+  // most recent unit_cost on a matching purchase_item (normalized
+  // part_code match) so the admin-only margin columns still light up.
+  const costFallback = await buildCostFallbackByCode(invoice.items_snapshot);
+  invoice.items_snapshot = applyCostFallback(
+    invoice.items_snapshot,
+    costFallback,
+  );
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const overdue = isOverdue(invoice);

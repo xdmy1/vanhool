@@ -9,6 +9,10 @@ import { ConvertProformaButton } from "@/components/panel/documents/ConvertProfo
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
+import {
+  applyCostFallback,
+  buildCostFallbackByCode,
+} from "@/lib/panel/invoices/cost-fallback";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -30,6 +34,16 @@ export default async function PanelProformaDetailPage({
 
   const proforma = await getInvoice(id);
   if (!proforma || proforma.type !== "proforma") notFound();
+
+  // Fill in cost_price for legacy snapshot lines by looking up part
+  // codes in historical purchase_items. Lines that already carry a
+  // cost on the snapshot keep theirs; this only covers the older
+  // proformas that pre-date the field.
+  const costFallback = await buildCostFallbackByCode(proforma.items_snapshot);
+  proforma.items_snapshot = applyCostFallback(
+    proforma.items_snapshot,
+    costFallback,
+  );
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel =
