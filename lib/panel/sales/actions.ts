@@ -132,6 +132,11 @@ export type ProductSearchMeta = {
   items_match_total: number;
   /** sample row from the first match to confirm columns flow through */
   sample: string | null;
+  /** first 8 chars of each draft purchase id the session sees — to
+   *  compare against the purchase_id of the global ilike match. */
+  draft_ids_seen: string[];
+  /** first 8 chars of every purchase_id that has a global ilike match. */
+  match_purchase_ids: string[];
 };
 
 export async function searchProductsWithMeta(
@@ -162,8 +167,9 @@ export async function searchProductsWithMeta(
       Promise.resolve(null),
       supabase
         .from("purchase_items")
-        .select("id, supplier_code", { count: "exact", head: true })
-        .ilike("supplier_code", term),
+        .select("id, supplier_code, purchase_id", { count: "exact" })
+        .ilike("supplier_code", term)
+        .limit(50),
     ]);
   const ids = (draftIdsRes.data ?? []).map((d) => d.id as string);
   let itemsCount = 0;
@@ -178,6 +184,10 @@ export async function searchProductsWithMeta(
     sample = (r.data?.[0]?.supplier_code as string | null) ?? null;
   }
 
+  const matchRows = ((matchAcrossAll.data ?? []) as Array<{
+    purchase_id: string;
+  }>).map((r) => r.purchase_id);
+
   return {
     results,
     meta: {
@@ -188,6 +198,10 @@ export async function searchProductsWithMeta(
       draft_items_total: itemsCount,
       items_match_total: matchAcrossAll.count ?? 0,
       sample,
+      draft_ids_seen: ids.map((s) => s.slice(0, 8)),
+      match_purchase_ids: Array.from(new Set(matchRows)).map((s) =>
+        s.slice(0, 8),
+      ),
     },
   };
 }

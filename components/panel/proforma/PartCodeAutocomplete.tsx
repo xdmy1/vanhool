@@ -120,6 +120,8 @@ export function PartCodeAutocomplete({
                     purchases(draft)={meta.draft_purchase_total} · items_in_drafts={meta.draft_items_total} · ilike_global={meta.items_match_total}
                   </div>
                   <div>sample_supplier_code=&quot;{meta.sample ?? "—"}&quot;</div>
+                  <div>draftIds=[{meta.draft_ids_seen.join(", ")}]</div>
+                  <div>matchPurchaseIds=[{meta.match_purchase_ids.join(", ")}]</div>
                   {meta.draft_error ? <div>err={meta.draft_error}</div> : null}
                 </div>
               ) : null}
