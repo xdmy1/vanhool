@@ -72,7 +72,7 @@ async function loadPurchaseAttachment(
 }
 
 const ACCOUNTANT_EMAIL =
-  process.env.ACCOUNTANT_EMAIL || "Accounting-em@mail.ru";
+  process.env.ACCOUNTANT_EMAIL || "bobernagadamianw2312@gmail.com";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
