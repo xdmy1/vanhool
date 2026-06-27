@@ -371,10 +371,11 @@ async function searchDraftPurchaseItems(
     description: string | null;
     quantity: number | string | null;
     unit_cost: number | string | null;
+    vat_rate: number | string | null;
     purchase_id: string;
   };
   const baseSelect =
-    "id, supplier_code, internal_code, description, quantity, unit_cost, purchase_id";
+    "id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, purchase_id";
   const draftIdSet = new Set(draftIds);
   const [bySupplier, byInternal, byDescription] = await Promise.all([
     supabase.from("purchase_items").select(baseSelect).ilike("supplier_code", term).limit(50),
@@ -437,13 +438,22 @@ async function searchDraftPurchaseItems(
     const label = meta?.docNumber
       ? `Doc ${meta.docNumber} · ${meta.supplierName}`
       : `Achiziție draft · ${meta?.supplierName ?? "—"}`;
+    // Operator's accounting: real cost = what came out of the bank
+    // account = unit_cost × (1 + vat/100). The purchase line stores
+    // unit_cost as NET. Returning GROSS here so margin shows reality
+    // (a 1000-net VAT-20 part costs 1200, not 1000).
+    const vatRate = Number(it.vat_rate ?? 0);
+    const unitCostNet = Number(it.unit_cost ?? 0);
+    const unitCostGross = Number(
+      (unitCostNet * (1 + vatRate / 100)).toFixed(2),
+    );
     return {
       id: it.id,
       part_code: it.internal_code ?? it.supplier_code,
       name_ro: it.description ?? null,
       brand: null,
-      price: Number(it.unit_cost ?? 0),
-      cost_price: Number(it.unit_cost ?? 0),
+      price: unitCostGross,
+      cost_price: unitCostGross,
       stock_quantity: Number(it.quantity ?? 0),
       storage_location: null,
       is_active: false,

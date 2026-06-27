@@ -106,6 +106,16 @@ export function PriceWithVatHelper({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
+  // TVA toggle buttons removed per operator request — they confused
+  // everyone and double-counted VAT downstream. unit_price is now the
+  // GROSS amount (what the customer pays), and the document's
+  // account_scope sets the implicit VAT rate (conta1 = 20%, conta2 =
+  // 0%). pickMode + activeMode references stay so external callers
+  // that still pass `vatRate` / `onVatChange` don't break, but the
+  // UI never surfaces them.
+  void pickMode;
+  void activeMode;
+  void btnBase;
   return (
     <div className={cn("flex items-center gap-1.5", className)}>
       <Input
@@ -143,40 +153,6 @@ export function PriceWithVatHelper({
         disabled={disabled}
         className={cn("min-w-0 flex-1", inputClassName)}
       />
-      <div className="flex shrink-0 overflow-hidden rounded-md border border-border">
-        <button
-          type="button"
-          onClick={() => pickMode(0)}
-          disabled={disabled || value <= 0}
-          aria-pressed={activeMode === 0}
-          title="Marchează ca TVA 0%"
-          className={cn(
-            "font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-            btnBase,
-            activeMode === 0
-              ? "bg-foreground text-background"
-              : "bg-surface text-muted-strong hover:bg-surface-elevated",
-          )}
-        >
-          TVA 0%
-        </button>
-        <button
-          type="button"
-          onClick={() => pickMode(20)}
-          disabled={disabled || value <= 0}
-          aria-pressed={activeMode === 20}
-          title={external ? "Marchează ca TVA 20%" : "Adaugă 20% TVA (× 1.20)"}
-          className={cn(
-            "border-l border-border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-            btnBase,
-            activeMode === 20
-              ? "bg-primary text-primary-foreground"
-              : "bg-surface text-primary hover:bg-primary/10",
-          )}
-        >
-          {external ? "TVA 20%" : "+TVA 20%"}
-        </button>
-      </div>
     </div>
   );
 }

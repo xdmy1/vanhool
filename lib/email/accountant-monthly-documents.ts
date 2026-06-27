@@ -67,13 +67,20 @@ export function accountantMonthlyDocumentsEmail(args: {
       const items = d.items_snapshot as InvoiceItemSnapshot[];
       const number = `${d.series ?? ""}${d.number ?? ""}`;
 
-      // Revised per bookkeeper feedback: split per-line totals into
-      // Net + TVA + Gross columns and surface the unit of measure
-      // (buc / litri / metru) when the sale was tagged with one.
-      // Older invoice rows that don't have items_snapshot.unit fall
-      // back to "buc".
+      // Per-line breakdown that's guaranteed consistent with the
+      // footer regardless of whether `unit_price` on the snapshot is
+      // NET (sale wizard convention) or GROSS (proforma convention).
+      // Heuristic: sum of line.total compared to invoice.total vs
+      // invoice.subtotal — the closer match wins.
       const vatRate =
         Number(d.subtotal) > 0 ? Number(d.vat_amount) / Number(d.subtotal) : 0;
+      const sumLineTotals = items.reduce(
+        (s, it) => s + Number(it.total ?? 0),
+        0,
+      );
+      const linesAreGross =
+        Math.abs(sumLineTotals - Number(d.total)) <=
+        Math.abs(sumLineTotals - Number(d.subtotal));
       const rowsHtml = items
         .map((it) => {
           const qty = Number(it.quantity ?? 0);
@@ -85,14 +92,25 @@ export function accountantMonthlyDocumentsEmail(args: {
           const linePct = hasDiscount && list > 0
             ? Math.round((1 - eff / list) * 100)
             : 0;
-          const lineNet = Number((it.total ?? qty * eff).toFixed(2));
-          const lineVat = Number((lineNet * vatRate).toFixed(2));
-          const lineGross = Number((lineNet + lineVat).toFixed(2));
+          const lineRaw = Number((it.total ?? qty * eff).toFixed(2));
+          const lineGross = linesAreGross
+            ? lineRaw
+            : Number((lineRaw * (1 + vatRate)).toFixed(2));
+          const lineNet = linesAreGross
+            ? Number((lineRaw / (1 + vatRate)).toFixed(2))
+            : lineRaw;
+          const lineVat = Number((lineGross - lineNet).toFixed(2));
+          const effPerUnitNet = qty > 0
+            ? Number((lineNet / qty).toFixed(2))
+            : 0;
+          const listPerUnitNet = linesAreGross
+            ? Number((list / (1 + vatRate)).toFixed(2))
+            : list;
           const priceCell = hasDiscount
-            ? `<div style="font-size:10px;color:#6b6358;text-decoration:line-through">${fmtMoney(list, d.currency)}</div>
-               <div style="color:#15803d;font-weight:600">${fmtMoney(eff, d.currency)}</div>
+            ? `<div style="font-size:10px;color:#6b6358;text-decoration:line-through">${fmtMoney(listPerUnitNet, d.currency)}</div>
+               <div style="color:#15803d;font-weight:600">${fmtMoney(effPerUnitNet, d.currency)}</div>
                <div style="font-size:10px;color:#15803d;font-weight:600">-${linePct}%</div>`
-            : fmtMoney(eff, d.currency);
+            : fmtMoney(effPerUnitNet, d.currency);
           const unit = ((it as { unit?: string }).unit ?? "buc").toString();
           return `<tr style="border-bottom:1px solid #eee5d2">
             <td style="padding:4px 8px;font-size:11px;color:#2a2622;vertical-align:top">

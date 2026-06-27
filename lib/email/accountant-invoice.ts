@@ -75,14 +75,24 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
       ? Math.round((discountAmount / beforeDiscount) * 100)
       : 0;
 
-  // Revised per bookkeeper feedback: split per-line totals into
-  // Net + TVA + Gross columns and surface the unit of measure
-  // (buc / litri / metru) on each row. VAT rate is invoice-level —
-  // derive once from the header (subtotal + vat = total).
+  // Per-line breakdown — Net + TVA + Gross columns so the bookkeeper
+  // sees each axis directly. Two-line forms send data with different
+  // conventions (proforma stores `unit_price` as GROSS, sale wizard as
+  // NET), so we detect which one this invoice follows by comparing
+  // sum(line.total) to invoice.subtotal vs invoice.total. The smaller
+  // delta wins. Either way, per-line + footer are guaranteed to match
+  // because we derive the missing axis from the chosen one.
   const headerVatRate =
     Number(invoice.subtotal) > 0
       ? Number(invoice.vat_amount) / Number(invoice.subtotal)
       : 0;
+  const sumLineTotals = items.reduce(
+    (s, it) => s + Number(it.total ?? 0),
+    0,
+  );
+  const linesAreGross =
+    Math.abs(sumLineTotals - Number(invoice.total)) <=
+    Math.abs(sumLineTotals - Number(invoice.subtotal));
   const ROW_BORDER = "border-bottom:1px solid #e5e1d8";
   const rowsHtml = items
     .map((it) => {
@@ -95,18 +105,30 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
       const linePct = hasDiscount && list > 0
         ? Math.round((1 - eff / list) * 100)
         : 0;
-      const netLineTotal = Number((it.total ?? qty * eff).toFixed(2));
+      const lineRaw = Number((it.total ?? qty * eff).toFixed(2));
+      const grossLineTotal = linesAreGross
+        ? lineRaw
+        : Number((lineRaw * (1 + headerVatRate)).toFixed(2));
+      const netLineTotal = linesAreGross
+        ? Number((lineRaw / (1 + headerVatRate)).toFixed(2))
+        : lineRaw;
       const vatLineAmount = Number(
-        (netLineTotal * headerVatRate).toFixed(2),
+        (grossLineTotal - netLineTotal).toFixed(2),
       );
-      const grossLineTotal = Number(
-        (netLineTotal + vatLineAmount).toFixed(2),
-      );
+      // Per-unit NET for the "Preț unit. net" column — derived from
+      // the chosen-axis net line total so it always matches the row's
+      // own net column.
+      const effPerUnitNet = qty > 0
+        ? Number((netLineTotal / qty).toFixed(2))
+        : 0;
+      const listPerUnitNet = linesAreGross
+        ? Number((list / (1 + headerVatRate)).toFixed(2))
+        : list;
       const priceCell = hasDiscount
-        ? `<div style="font-size:11px;color:#6b6358;text-decoration:line-through">${fmtMoney(list, invoice.currency)}</div>
-           <div style="color:#15803d;font-weight:600">${fmtMoney(eff, invoice.currency)}</div>
+        ? `<div style="font-size:11px;color:#6b6358;text-decoration:line-through">${fmtMoney(listPerUnitNet, invoice.currency)}</div>
+           <div style="color:#15803d;font-weight:600">${fmtMoney(effPerUnitNet, invoice.currency)}</div>
            <div style="font-size:11px;color:#15803d;font-weight:600">-${linePct}%</div>`
-        : fmtMoney(eff, invoice.currency);
+        : fmtMoney(effPerUnitNet, invoice.currency);
       const unit = ((it as { unit?: string }).unit ?? "buc").toString();
       return `<tr style="${ROW_BORDER}">
         <td style="padding:6px 8px;font-size:13px;color:#2a2622">

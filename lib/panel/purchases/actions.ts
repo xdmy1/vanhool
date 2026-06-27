@@ -236,20 +236,21 @@ export async function postPurchase(
     description: string;
     quantity: number;
     unit_cost: number;
+    vat_rate: number;
     add_to_catalog?: boolean;
   };
   let itemsRes = await supabase
     .from("purchase_items")
     .select(
-      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, add_to_catalog" as
-        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost",
+      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, add_to_catalog" as
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
     )
     .eq("purchase_id", purchaseId);
   if (itemsRes.error && /add_to_catalog/i.test(itemsRes.error.message)) {
     itemsRes = await supabase
       .from("purchase_items")
       .select(
-        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost",
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
       )
       .eq("purchase_id", purchaseId);
   }
@@ -281,7 +282,18 @@ export async function postPurchase(
 
     let productId = it.product_id;
 
-    const costMdl = Number((Number(it.unit_cost) * toMdl).toFixed(2));
+    // CORE math fix (operator complaint: "piesa cu TVA ne-a costat 1200
+    // nu 1000"). unit_cost on purchase_items is NET (before TVA). The
+    // amount that actually came out of the bank account is GROSS:
+    //   gross_per_unit = unit_cost × (1 + vat_rate / 100)
+    // That's the cost margin calculations must work against — otherwise
+    // a 20%-TVA part bought at 1000 net (1200 paid) gets sold at 1200
+    // and the system reports a +20% margin when reality is 0.
+    const vatRate = Number((it as { vat_rate?: number | string }).vat_rate ?? 20);
+    const grossPerUnitMdl = Number(
+      (Number(it.unit_cost) * (1 + vatRate / 100) * toMdl).toFixed(2),
+    );
+    const costMdl = grossPerUnitMdl;
 
     if (!productId) {
       const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;

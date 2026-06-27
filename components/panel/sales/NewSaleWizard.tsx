@@ -160,6 +160,20 @@ export function NewSaleWizard({ locale }: { locale: string }) {
     setVatAmount((prev) => (prev === next ? prev : next));
   }, [derivedVatAmount, vatTouched, scope]);
 
+  // Re-sync every line's vat_rate when the scope flips so a switch
+  // back to step 1 → conta2 zeroes VAT on already-added lines, and a
+  // switch back to conta1 re-tags them at 20. Skipped on first render
+  // when scope is still null.
+  useEffect(() => {
+    if (!scope) return;
+    const expected: 0 | 20 = scope === "conta1" ? 20 : 0;
+    setLines((prev) =>
+      prev.some((l) => l.vat_rate !== expected)
+        ? prev.map((l) => ({ ...l, vat_rate: expected }))
+        : prev,
+    );
+  }, [scope]);
+
   const vatNum =
     scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
   const grandTotal = Number((subtotal + vatNum).toFixed(2));
@@ -303,6 +317,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
 
       {step === 3 ? (
         <StepProducts
+          scope={scope!}
           lines={lines}
           setLines={setLines}
           clientDiscount={client?.discount_percent ?? null}
@@ -710,6 +725,7 @@ function convertPrice(
 }
 
 function StepProducts({
+  scope,
   lines,
   setLines,
   clientDiscount,
@@ -718,6 +734,7 @@ function StepProducts({
   currency,
   setCurrency,
 }: {
+  scope: Scope;
   lines: Line[];
   setLines: (l: Line[]) => void;
   clientDiscount: number | null;
@@ -772,6 +789,11 @@ function StepProducts({
         ? priceFromMarkup(p.cost_price)! * RATES_TO_MDL[currency]
         : p.price;
     const unitPrice = convertPrice(baseMdl, "MDL", currency);
+    // VAT rate per line is no longer something the operator toggles —
+    // the TVA buttons inside PriceWithVatHelper were removed. Default
+    // straight from the document's account scope: conta1 = 20 (fiscal,
+    // with VAT) and conta2 = 0 (cash, no VAT).
+    const scopeVatRate: 0 | 20 = scope === "conta1" ? 20 : 0;
     setLines([
       ...lines,
       {
@@ -779,7 +801,7 @@ function StepProducts({
         qty: 1,
         unit_price: unitPrice,
         discounted_unit_price: null,
-        vat_rate: 0,
+        vat_rate: scopeVatRate,
         unit: "buc",
       },
     ]);
