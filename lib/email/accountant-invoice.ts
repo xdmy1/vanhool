@@ -242,13 +242,32 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
     const dp =
       it.discounted_unit_price != null ? Number(it.discounted_unit_price) : null;
     const eff = dp != null && dp >= 0 && dp < list ? dp : list;
-    const netLineTotal = Number((it.total ?? qty * eff).toFixed(2));
-    const vatLineAmount = Number((netLineTotal * headerVatRate).toFixed(2));
-    const grossLineTotal = Number((netLineTotal + vatLineAmount).toFixed(2));
-    const discNote = eff < list ? `  [Reducere de la ${list.toFixed(2)}]` : "";
+    // Same gross/net heuristic the HTML body uses — text/plain was
+    // computing as if `it.total` is always NET (legacy convention),
+    // so for proforma-sourced invoices the bookkeeper got DIFFERENT
+    // numbers in HTML vs text view of the same email.
+    const lineRaw = Number((it.total ?? qty * eff).toFixed(2));
+    const grossLineTotal = linesAreGross
+      ? lineRaw
+      : Number((lineRaw * (1 + headerVatRate)).toFixed(2));
+    const netLineTotal = linesAreGross
+      ? Number((lineRaw / (1 + headerVatRate)).toFixed(2))
+      : lineRaw;
+    const vatLineAmount = Number(
+      (grossLineTotal - netLineTotal).toFixed(2),
+    );
+    const effPerUnitNet = qty > 0
+      ? Number((netLineTotal / qty).toFixed(2))
+      : 0;
+    const listPerUnitNet = linesAreGross
+      ? Number((list / (1 + headerVatRate)).toFixed(2))
+      : list;
+    const discNote = eff < list
+      ? `  [Reducere de la ${listPerUnitNet.toFixed(2)}]`
+      : "";
     const unit = ((it as { unit?: string }).unit ?? "buc").toString();
     textLines.push(
-      `  ${it.partCode ? it.partCode + " " : ""}${it.name ?? ""}: ${qty} ${unit} × ${eff.toFixed(2)} = net ${netLineTotal.toFixed(2)} + TVA ${vatLineAmount.toFixed(2)} = total ${grossLineTotal.toFixed(2)} ${invoice.currency}${discNote}`,
+      `  ${it.partCode ? it.partCode + " " : ""}${it.name ?? ""}: ${qty} ${unit} × ${effPerUnitNet.toFixed(2)} = net ${netLineTotal.toFixed(2)} + TVA ${vatLineAmount.toFixed(2)} = total ${grossLineTotal.toFixed(2)} ${invoice.currency}${discNote}`,
     );
   }
   if (discountAmount > 0) {

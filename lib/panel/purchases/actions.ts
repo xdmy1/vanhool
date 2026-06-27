@@ -471,6 +471,47 @@ export async function cancelPurchase(
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   const supabase = await createClient();
+
+  // Read the current state — if the purchase was already POSTED, its
+  // items have been added to stock. Cancelling must roll that back or
+  // the catalog stays permanently inflated by the cancelled receipt.
+  const { data: cur } = await supabase
+    .from("purchases")
+    .select("status")
+    .eq("id", purchaseId)
+    .maybeSingle();
+  const wasPosted = cur?.status === "posted";
+
+  if (wasPosted) {
+    // Pull every line that pushed stock and reverse it. Mirrors the
+    // increment loop in postPurchase. Idempotency safe: status flips
+    // to "cancelled" below and a re-call short-circuits because we
+    // only restore when wasPosted=true on the FIRST cancel.
+    const { data: items } = await supabase
+      .from("purchase_items")
+      .select("product_id, quantity")
+      .eq("purchase_id", purchaseId);
+    for (const it of (items ?? []) as Array<{
+      product_id: string | null;
+      quantity: number | string | null;
+    }>) {
+      if (!it.product_id) continue;
+      const qty = Number(it.quantity ?? 0);
+      if (qty <= 0) continue;
+      const { data: prod } = await supabase
+        .from("products")
+        .select("stock_quantity")
+        .eq("id", it.product_id)
+        .maybeSingle();
+      if (!prod) continue;
+      const next = Math.max(0, Number(prod.stock_quantity ?? 0) - qty);
+      await supabase
+        .from("products")
+        .update({ stock_quantity: next })
+        .eq("id", it.product_id);
+    }
+  }
+
   const { error } = await supabase
     .from("purchases")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })

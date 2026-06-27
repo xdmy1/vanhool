@@ -245,6 +245,10 @@ export type PurchaseLinePrefill = {
   internal_code: string | null;
   description: string;
   unit_cost: number;
+  /** Per-line VAT rate from the purchase. Needed by the product
+   *  create page so the prefilled cost is GROSS (what was actually
+   *  paid), not NET. */
+  vat_rate: number;
   quantity: number;
   product_id: string | null;
   currency: string;
@@ -258,7 +262,7 @@ export async function getPurchaseItemPrefill(
   const { data } = await supabase
     .from("purchase_items")
     .select(
-      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, product_id, purchases(supplier_id, document_number, currency, fx_rate, suppliers(name))",
+      "id, purchase_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, product_id, purchases(supplier_id, document_number, currency, fx_rate, suppliers(name))",
     )
     .eq("id", lineId)
     .maybeSingle();
@@ -282,6 +286,9 @@ export async function getPurchaseItemPrefill(
     internal_code: data.internal_code,
     description: data.description,
     unit_cost: Number(data.unit_cost),
+    vat_rate: Number(
+      (data as { vat_rate?: number | string | null }).vat_rate ?? 0,
+    ),
     quantity: Number(data.quantity),
     product_id: data.product_id,
     currency: purchase?.currency ?? "MDL",

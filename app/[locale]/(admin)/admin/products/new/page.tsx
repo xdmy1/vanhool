@@ -79,7 +79,15 @@ export default async function NewProductPage({
     const cur = (usablePrefill.currency || "MDL").toUpperCase();
     const rate =
       cur === "MDL" ? 1 : (usablePrefill.fx_rate ?? DEFAULT_FX_TO_MDL[cur] ?? 1);
-    const costMdl = Number((usablePrefill.unit_cost * rate).toFixed(2));
+    // Cost stored on products is GROSS (what the operator actually
+    // paid out of pocket). purchase_items.unit_cost is NET (pre-VAT),
+    // so apply the vat factor before converting to MDL. Matches the
+    // postPurchase write path and the searchDraftPurchaseItems read
+    // path.
+    const vatFactor = 1 + Number(usablePrefill.vat_rate ?? 0) / 100;
+    const costMdl = Number(
+      (usablePrefill.unit_cost * vatFactor * rate).toFixed(2),
+    );
     const markupFactor = 1 + (Number.isFinite(markup) ? markup : 30) / 100;
     initial = {
       partCode: usablePrefill.internal_code ?? usablePrefill.supplier_code ?? "",

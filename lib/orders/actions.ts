@@ -97,6 +97,28 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     };
   }
 
+  // Decrement stock for each catalog-linked line — storefront orders
+  // were silently leaving products.stock_quantity untouched, so the
+  // catalog reported "in stock" for parts already shipped. Sequential
+  // updates with read-modify-write — race-safe enough at the shop's
+  // traffic. Fire and don't block on failure (the order is already
+  // created; the operator can reconcile manually if a single update
+  // fails).
+  for (const it of data.items) {
+    if (!it.productId || it.quantity <= 0) continue;
+    const { data: prod } = await supabase
+      .from("products")
+      .select("stock_quantity")
+      .eq("id", it.productId)
+      .maybeSingle();
+    if (!prod) continue;
+    const next = Math.max(0, Number(prod.stock_quantity ?? 0) - it.quantity);
+    await supabase
+      .from("products")
+      .update({ stock_quantity: next })
+      .eq("id", it.productId);
+  }
+
   if (promoCodeApplied) {
     try {
       await supabase.rpc("increment_promo_usage_by_code", {
