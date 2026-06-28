@@ -1016,7 +1016,7 @@
     "sale_client_search_placeholder": "Search name, email, IDNO, phone...",
     "sale_client_filter_placeholder": "Filter list...",
     "sale_client_loading": "Loading...",
-    "sale_client_discount_applied": "{percent}% discount applied automatically",
+    "sale_client_discount_applied": "Client has a {percent}% discount — apply it manually to each line's discounted price",
     "sale_client_no_results": "No customer found. Click \"Walk-in customer\" for an ad-hoc sale.",
     "sale_products_section": "Add products",
     "sale_markup_label": "Sale markup",

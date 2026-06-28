@@ -1016,7 +1016,7 @@
     "sale_client_search_placeholder": "Поиск имя, email, IDNO, телефон...",
     "sale_client_filter_placeholder": "Фильтр списка...",
     "sale_client_loading": "Загрузка...",
-    "sale_client_discount_applied": "Скидка {percent}% применена автоматически",
+    "sale_client_discount_applied": "У клиента скидка {percent}% — примените её вручную к цене со скидкой в каждой строке",
     "sale_client_no_results": "Клиент не найден. Нажмите «Walk-in клиент» для разовой продажи.",
     "sale_products_section": "Добавить товары",
     "sale_markup_label": "Наценка продажи",

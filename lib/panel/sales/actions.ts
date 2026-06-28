@@ -517,8 +517,6 @@ const saleSchema = z
     driver_name: z.string().nullable().optional(),
     vehicle_plate: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
-    /** Optional VAT amount the owner types in manually. Default 0. */
-    vat_amount: z.number().nonnegative().optional(),
     /** Optional commercial discount in percent (0..100). Default 0. */
     discount_percent: z.number().min(0).max(100).optional(),
   })
@@ -551,11 +549,14 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   const v = parsed.data;
   const supabase = await createClient();
 
-  // Resolve customer fields
-  let customer_name = v.walkin?.name ?? "";
+  // Resolve customer fields. For a business walk-in the COMPANY name is the
+  // fiscal party that belongs on the invoice — fall back to the contact name
+  // only when no company was given (so walkin.company_name is never dropped).
+  let customer_name = v.walkin?.company_name || v.walkin?.name || "";
   let customer_email: string | null = v.walkin?.email ?? null;
   let customer_phone: string | null = v.walkin?.phone ?? null;
   let customer_idno: string | null = v.walkin?.idno ?? null;
+  let customer_vat: string | null = null;
   const customer_address: string | null = v.delivery_address;
   let user_id: string | null = null;
 
@@ -563,7 +564,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const { data: c } = await supabase
       .from("profiles")
       .select(
-        "id, email, full_name, phone, company_name, idno, account_type, billing_street, billing_city",
+        "id, email, full_name, phone, company_name, idno, vat_code, vat_number, account_type, billing_street, billing_city",
       )
       .eq("id", v.client_id)
       .maybeSingle();
@@ -584,6 +585,13 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       : c.email;
     customer_phone = c.phone;
     customer_idno = c.idno;
+    // Panel clients store VAT registration in `vat_code`; auth-signup business
+    // accounts use `vat_number`. Coalesce so the buyer nr.TVA reaches the
+    // fiscal invoice regardless of which path created the client.
+    customer_vat =
+      (c as { vat_code?: string | null }).vat_code ??
+      (c as { vat_number?: string | null }).vat_number ??
+      null;
   }
 
   // Pull current product data only for lines that ARE backed by a
@@ -659,7 +667,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   subtotal = Number(subtotal.toFixed(2));
   subtotalBeforeDiscount = Number(subtotalBeforeDiscount.toFixed(2));
 
-  const vatAmount = Number(((v.vat_amount ?? 0)).toFixed(2));
+  // NOTE: TVA is NOT computed here from v.account_scope. The fiscal invoice
+  // can land in a different book than the sale (a paid conta2 sale becomes a
+  // conta1 factură — see invoiceAccountScope below), so net/TVA are derived
+  // from the INVOICE's book inside the invoice block. The order row only ever
+  // needs the GROSS subtotal + total.
   // Document-level discount = sum of per-line reductions. We keep
   // `discount_percent` derived from that so historical reports continue to
   // group invoices by discount magnitude. The client-side passes the same
@@ -674,7 +686,10 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
           Number(((discountAmount / subtotalBeforeDiscount) * 100).toFixed(2)),
         )
       : 0;
-  const total = Number((subtotal + vatAmount).toFixed(2));
+  // Customer pays the GROSS. For the order row we keep the gross subtotal
+  // (storefront convention: goods shown VAT-inclusive); the fiscal invoice
+  // below stores the NET subtotal + extracted TVA. net + TVA === gross.
+  const total = subtotal;
 
   // Insert order
   const { data: order, error: oErr } = await supabase
@@ -752,6 +767,17 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const invoiceAccountScope =
       isPaidNow && v.account_scope === "conta2" ? "conta1" : v.account_scope;
 
+    // TVA follows the INVOICE's book, not the sale's. Line prices are GROSS,
+    // so conta1 extracts 20% out of the gross subtotal (net + TVA = gross),
+    // conta2 is 0%. A paid conta2 sale → conta1 factură therefore correctly
+    // carries 20% TVA instead of shipping a 0-TVA official invoice.
+    const invoiceVatRate = invoiceAccountScope === "conta1" ? 20 : 0;
+    const invoiceNet =
+      invoiceVatRate > 0
+        ? Number((subtotal / (1 + invoiceVatRate / 100)).toFixed(2))
+        : subtotal;
+    const invoiceVat = Number((subtotal - invoiceNet).toFixed(2));
+
     // Items snapshot in INVOICE shape — InvoicePrintContent expects
     // `unit_price` (list) + `discounted_unit_price` (effective). Without
     // this the printable factură rendered an empty table because
@@ -770,7 +796,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         unit: line.unit,
         unit_price: line.unit_price,
         discounted_unit_price: eff < line.unit_price ? eff : null,
-        vat_rate: 0,
+        // Scope-driven from the INVOICE's book: conta1 lines are 20% TVA,
+        // conta2 lines 0%. Never hardcoded — the per-line TVA column must
+        // reconcile with the document vat_amount and stay recoverable for
+        // e-Factura export.
+        vat_rate: invoiceVatRate,
         total: Number((line.qty * eff).toFixed(2)),
         cost_price: Number(p?.cost_price ?? line.cost_price ?? 0),
       };
@@ -791,11 +821,14 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
           email: customer_email,
           phone: customer_phone,
           idno: customer_idno,
+          vat_number: customer_vat,
           address: customer_address,
         } as unknown as Json,
         items_snapshot: invoiceItemsSnapshot as unknown as Json,
-        subtotal,
-        vat_amount: vatAmount,
+        // Fiscal invoice stores the NET subtotal + extracted TVA (from the
+        // invoice's book); `total` (gross) below = invoiceNet + invoiceVat.
+        subtotal: invoiceNet,
+        vat_amount: invoiceVat,
         // Mirror of an over-the-counter sale (vs. a directly-issued invoice
         // or a proforma conversion). Lets the facturi list filter / badge
         // these so the operator can still find them by origin.

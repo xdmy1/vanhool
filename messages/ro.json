@@ -1016,7 +1016,7 @@
     "sale_client_search_placeholder": "Caută nume, email, IDNO, telefon...",
     "sale_client_filter_placeholder": "Filtrează lista...",
     "sale_client_loading": "Se încarcă...",
-    "sale_client_discount_applied": "Discount {percent}% aplicat automat",
+    "sale_client_discount_applied": "Client cu reducere {percent}% — aplic-o manual la prețul redus pe fiecare linie",
     "sale_client_no_results": "Niciun client găsit. Apasă „Client walk-in\" pentru o vânzare ad-hoc.",
     "sale_products_section": "Adaugă produse",
     "sale_markup_label": "Markup vânzare",

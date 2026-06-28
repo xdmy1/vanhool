@@ -107,8 +107,6 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [driverName, setDriverName] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [notes, setNotes] = useState("");
-  // Optional VAT typed in manually by the owner. Empty = no VAT applied.
-  const [vatAmount, setVatAmount] = useState<string>("");
 
   const [submitting, startSubmit] = useTransition();
 
@@ -137,28 +135,21 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           Number(((lineDiscountAmount / subtotalBeforeDiscount) * 100).toFixed(2)),
         )
       : 0;
-  // Auto-derived VAT from the per-line +TVA 20% pills the operator
-  // toggled at step 3. Used as the source of truth on conta1 unless the
-  // operator types something else into the VAT field at step 4.
-  const derivedVatAmount = useMemo(() => {
-    const sum = lines.reduce(
-      (acc, l) => acc + l.qty * effectiveOf(l) * (l.vat_rate / 100),
-      0,
-    );
+  // Line prices are GROSS (VAT-inclusive, matching the cost-is-gross rule).
+  // TVA is driven purely by the book — conta1 extracts 20% out of the gross,
+  // conta2 is 0%. There is NO manual VAT field: the operator can never type a
+  // wrong figure, and net + TVA always reconcile to the gross the customer
+  // pays. The per-line vat_rate (synced from scope just below) decides the
+  // extraction factor.
+  const vatAmount = useMemo(() => {
+    const sum = lines.reduce((acc, l) => {
+      const lineGross = l.qty * effectiveOf(l);
+      const factor = 1 + l.vat_rate / 100;
+      return acc + (factor > 1 ? lineGross - lineGross / factor : 0);
+    }, 0);
     return Number(sum.toFixed(2));
   }, [lines]);
-
-  // Keep `vatAmount` in sync with derivedVatAmount until the operator
-  // overrides it manually. `vatTouched` flips to true on any onChange of
-  // the input — after that, the auto-derived value stops overwriting
-  // their typed figure.
-  const [vatTouched, setVatTouched] = useState(false);
-  useEffect(() => {
-    if (vatTouched) return;
-    if (scope === "conta2") return;
-    const next = derivedVatAmount > 0 ? derivedVatAmount.toFixed(2) : "";
-    setVatAmount((prev) => (prev === next ? prev : next));
-  }, [derivedVatAmount, vatTouched, scope]);
+  const netSubtotal = Number((subtotal - vatAmount).toFixed(2));
 
   // Re-sync every line's vat_rate when the scope flips so a switch
   // back to step 1 → conta2 zeroes VAT on already-added lines, and a
@@ -167,6 +158,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   useEffect(() => {
     if (!scope) return;
     const expected: 0 | 20 = scope === "conta1" ? 20 : 0;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLines((prev) =>
       prev.some((l) => l.vat_rate !== expected)
         ? prev.map((l) => ({ ...l, vat_rate: expected }))
@@ -174,9 +166,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
     );
   }, [scope]);
 
-  const vatNum =
-    scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const grandTotal = Number((subtotal + vatNum).toFixed(2));
+  // Customer pays the GROSS subtotal — TVA is already inside it.
+  const grandTotal = Number(subtotal.toFixed(2));
 
   const customerSet = client !== null || (walkinMode && walkin.name.trim().length > 0);
   const STEPS = [
@@ -267,7 +258,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         driver_name: driverName || null,
         vehicle_plate: vehiclePlate || null,
         notes: notes || null,
-        vat_amount: vatNum,
+        // No vat_amount sent: the server derives TVA from account_scope
+        // (conta1 → 20% extracted from the gross lines, conta2 → 0%).
         // Document-level discount_percent is derived from the line reductions
         // (single source of truth = per-line). Keep it so historical reporting
         // continues to work.
@@ -343,10 +335,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           notes={notes}
           setNotes={setNotes}
           vatAmount={vatAmount}
-          setVatAmount={setVatAmount}
-          derivedVatAmount={derivedVatAmount}
-          vatTouched={vatTouched}
-          setVatTouched={setVatTouched}
+          netSubtotal={netSubtotal}
+          grandTotal={grandTotal}
           subtotal={subtotal}
           subtotalBeforeDiscount={subtotalBeforeDiscount}
           lineDiscountAmount={lineDiscountAmount}
@@ -370,7 +360,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           subtotalBeforeDiscount={subtotalBeforeDiscount}
           lineDiscountAmount={lineDiscountAmount}
           lineDiscountPct={lineDiscountPct}
-          vatAmount={vatNum}
+          vatAmount={vatAmount}
+          netSubtotal={netSubtotal}
           grandTotal={grandTotal}
           currency={currency}
         />
@@ -566,7 +557,7 @@ function StepClient({
               {client.idno ? ` · IDNO ${client.idno}` : ""}
             </div>
             {client.discount_percent ? (
-              <div className="mt-1 text-xs text-primary">
+              <div className="mt-1 rounded bg-warning/10 px-2 py-1 text-xs font-medium text-warning">
                 {t("sale_client_discount_applied", { percent: client.discount_percent })}
               </div>
             ) : null}
@@ -1004,6 +995,20 @@ function StepProducts({
                 const linePct = hasDiscount
                   ? Math.max(0, (1 - effective / l.unit_price) * 100)
                   : 0;
+                const isDraft = l.product.source === "draft_purchase";
+                // cost_price is stored in MDL and is GROSS. Convert it into the
+                // wizard's currency so the margin badge + markup shortcuts are
+                // comparable to the (already-converted) gross line prices.
+                const costInCurrency = convertPrice(
+                  l.product.cost_price ?? 0,
+                  "MDL",
+                  currency,
+                );
+                // Money-loss tripwire: the effective price the customer pays
+                // dropped below what the part cost us (or hit 0). Both gross →
+                // directly comparable.
+                const belowCost =
+                  costInCurrency > 0 && effective < costInCurrency - 0.01;
                 return (
                   <tr key={l.product.id}>
                     <td className="px-4 py-2 font-mono text-xs">{l.product.part_code}</td>
@@ -1027,10 +1032,19 @@ function StepProducts({
                           value={l.qty}
                           onChange={(e) => {
                             const raw = Number(e.target.value || 0);
-                            const next =
+                            let next =
                               l.unit === "buc"
                                 ? Math.max(1, Math.trunc(raw))
                                 : Math.max(0.001, raw);
+                            // Can't sell more than we physically have. Real
+                            // catalog parts are clamped to stock here so the
+                            // operator never gets a late server reject; draft
+                            // (not-yet-received) lines have no stock row, so
+                            // they're left uncapped by design.
+                            const stock = l.product.stock_quantity;
+                            if (!isDraft && typeof stock === "number" && stock > 0) {
+                              next = Math.min(next, stock);
+                            }
                             update(idx, { qty: next });
                           }}
                           className="h-8 w-20 text-right"
@@ -1066,16 +1080,16 @@ function StepProducts({
                       />
                       <div className="mt-0.5 flex items-center justify-end gap-1.5">
                         <MarkupShortcuts
-                          cost={l.product.cost_price}
+                          cost={costInCurrency}
                           unitPrice={l.unit_price}
                           onPick={(v) => update(idx, { unit_price: v })}
                         />
-                        {l.product.cost_price > 0 ? (
+                        {costInCurrency > 0 ? (
                           <div className="text-[10px] text-muted">
                             {t("sale_line_margin", {
                               pct: (
-                                ((l.unit_price - l.product.cost_price) /
-                                  l.product.cost_price) *
+                                ((l.unit_price - costInCurrency) /
+                                  costInCurrency) *
                                 100
                               ).toFixed(0),
                             })}
@@ -1112,6 +1126,11 @@ function StepProducts({
                         </div>
                       ) : null}
                       <Price value={l.qty * effective} currency={currency} size="sm" accent={false} />
+                      {belowCost ? (
+                        <div className="mt-0.5 text-[10px] font-bold uppercase text-destructive">
+                          ⚠ Sub cost ({costInCurrency.toFixed(2)} {currency})
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-2 text-right">
                       <button
@@ -1151,10 +1170,8 @@ function StepPayment({
   notes,
   setNotes,
   vatAmount,
-  setVatAmount,
-  derivedVatAmount,
-  vatTouched,
-  setVatTouched,
+  netSubtotal,
+  grandTotal,
   subtotal,
   subtotalBeforeDiscount,
   lineDiscountAmount,
@@ -1173,14 +1190,12 @@ function StepPayment({
   setVehiclePlate: (v: string) => void;
   notes: string;
   setNotes: (v: string) => void;
-  vatAmount: string;
-  setVatAmount: (v: string) => void;
-  /** VAT auto-computed from per-line `vat_rate` flags. The parent keeps
-   * the auto-sync logic so the value stays right even if the operator
-   * jumps back to step 3 and tweaks line VAT. */
-  derivedVatAmount: number;
-  vatTouched: boolean;
-  setVatTouched: (v: boolean) => void;
+  /** TVA extracted from the gross lines (read-only, scope-driven). */
+  vatAmount: number;
+  /** Gross subtotal minus the extracted TVA. */
+  netSubtotal: number;
+  /** What the customer pays = gross subtotal. */
+  grandTotal: number;
   subtotal: number;
   subtotalBeforeDiscount: number;
   lineDiscountAmount: number;
@@ -1194,12 +1209,6 @@ function StepPayment({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // VAT is reactive to the typed amount; the line discount values come from
-  // the parent (single source of truth = the lines themselves).
-  const liveVat =
-    scope === "conta2" || vatAmount.trim() === "" ? 0 : Math.max(0, Number(vatAmount) || 0);
-  const liveTotal = Number((subtotal + liveVat).toFixed(2));
 
   const methods: Array<{ v: "cash" | "transfer" | "already_paid"; label: string }> = [
     { v: "cash", label: t("sale_pay_cash") },
@@ -1280,65 +1289,37 @@ function StepPayment({
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
           {t("sale_totals_section")}
         </h3>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <Field
-            label={t("sale_vat_label")}
-            hint={
-              scope === "conta2"
-                ? t("sale_vat_locked_conta2")
-                : derivedVatAmount > 0 && !vatTouched
-                  ? `Auto-completat din +TVA 20% pe linii (${derivedVatAmount.toFixed(2)} ${currency}). Modifică pentru a suprascrie.`
-                  : t("sale_vat_hint")
-            }
-          >
-            <Input
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min={0}
-              value={scope === "conta2" ? "0" : vatAmount}
-              onChange={(e) => {
-                setVatTouched(true);
-                setVatAmount(e.target.value);
-              }}
-              disabled={scope === "conta2"}
-              placeholder="0.00"
-              className="md:max-w-xs disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
-            />
-          </Field>
-          <dl className="grid gap-1 text-sm md:justify-self-end md:text-right">
-            {lineDiscountPct > 0 ? (
-              <>
-                <div className="flex justify-between gap-6">
-                  <dt className="text-muted">{t("sale_review_subtotal_before_discount")}</dt>
-                  <dd className="tabular-nums text-muted line-through">
-                    {subtotalBeforeDiscount.toFixed(2)} {currency}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-6 text-success">
-                  <dt>{t("sale_discount_line_label", { percent: Math.round(lineDiscountPct) })}</dt>
-                  <dd className="tabular-nums">-{lineDiscountAmount.toFixed(2)} {currency}</dd>
-                </div>
-              </>
-            ) : null}
-            <div className="flex justify-between gap-6">
-              <dt className="text-muted">{t("sale_review_total")}</dt>
-              <dd className="tabular-nums">{subtotal.toFixed(2)} {currency}</dd>
-            </div>
-            <div className="flex justify-between gap-6">
-              <dt className="text-muted">{t("sale_vat_label")}</dt>
-              <dd className="tabular-nums">
-                {liveVat.toFixed(2)} {currency}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
-              <dt>{t("sale_total_label")}</dt>
-              <dd className="tabular-nums">
-                {liveTotal.toFixed(2)} {currency}
-              </dd>
-            </div>
-          </dl>
-        </div>
+        {/* TVA is driven by the book, not typed: conta1 extracts 20% out of
+            the gross line prices, conta2 is 0%. No input — nothing to get
+            wrong. */}
+        <dl className="grid gap-1 text-sm md:max-w-md md:justify-self-end md:text-right">
+          {lineDiscountPct > 0 ? (
+            <>
+              <div className="flex justify-between gap-6">
+                <dt className="text-muted">{t("sale_review_subtotal_before_discount")}</dt>
+                <dd className="tabular-nums text-muted line-through">
+                  {subtotalBeforeDiscount.toFixed(2)} {currency}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-6 text-success">
+                <dt>{t("sale_discount_line_label", { percent: Math.round(lineDiscountPct) })}</dt>
+                <dd className="tabular-nums">-{lineDiscountAmount.toFixed(2)} {currency}</dd>
+              </div>
+            </>
+          ) : null}
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted">Valoare fără TVA</dt>
+            <dd className="tabular-nums">{netSubtotal.toFixed(2)} {currency}</dd>
+          </div>
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted">TVA {scope === "conta1" ? "20%" : "0%"}</dt>
+            <dd className="tabular-nums">{vatAmount.toFixed(2)} {currency}</dd>
+          </div>
+          <div className="flex justify-between gap-6 border-t border-border pt-1 font-semibold">
+            <dt>{t("sale_total_label")}</dt>
+            <dd className="tabular-nums">{grandTotal.toFixed(2)} {currency}</dd>
+          </div>
+        </dl>
       </div>
     </section>
   );
@@ -1362,6 +1343,7 @@ function StepReview({
   lineDiscountAmount,
   lineDiscountPct,
   vatAmount,
+  netSubtotal,
   grandTotal,
   currency,
 }: {
@@ -1379,6 +1361,7 @@ function StepReview({
   lineDiscountAmount: number;
   lineDiscountPct: number;
   vatAmount: number;
+  netSubtotal: number;
   grandTotal: number;
   currency: "MDL" | "EUR" | "USD";
 }) {
@@ -1491,16 +1474,16 @@ function StepReview({
             ) : null}
             <tr>
               <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
-                {t("sale_review_total")}
+                Valoare fără TVA
               </td>
               <td className="px-4 py-2 text-right text-sm tabular-nums">
-                {subtotal.toFixed(2)} {currency}
+                {netSubtotal.toFixed(2)} {currency}
               </td>
             </tr>
-            {vatAmount > 0 ? (
+            {scope === "conta1" ? (
               <tr>
                 <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted">
-                  {t("sale_vat_label")}
+                  TVA 20%
                 </td>
                 <td className="px-4 py-2 text-right text-sm tabular-nums">
                   {vatAmount.toFixed(2)} {currency}

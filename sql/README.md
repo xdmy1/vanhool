@@ -57,6 +57,7 @@ flota de autobuze e suficient `supabase-bus-makes-seed.sql`.
 
 - `supabase-vehicles-cleanup.sql` — curățare modele/types orfane sau de test
 - `supabase-make-admin.sql` — promovează un user la admin
+- `backfill-conta1-invoice-vat-extract.sql` — corectează facturile conta1 istorice scrise cu subtotal=BRUT/TVA=0 (recalculează subtotal=NET + TVA 20% extras). Idempotent. De rulat o dată după unificarea TVA-din-scope.
 
 ## Rollback
 

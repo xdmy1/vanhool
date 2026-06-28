@@ -86,7 +86,6 @@ function totals(
   // net + VAT so the printed document still itemizes TVA. Per-line discount
   // uses the discounted price when it's set AND lower than the list price.
   let net = 0;
-  let vat = 0;
   let gross = 0;
   let grossBeforeDiscount = 0;
   for (const i of items) {
@@ -103,9 +102,9 @@ function totals(
     gross += lineGross;
     grossBeforeDiscount += lineGrossBefore;
     net += lineNet;
-    vat += lineGross - lineNet;
   }
   const finalTotal = Number(gross.toFixed(2));
+  const roundedNet = Number(net.toFixed(2));
   const grossBeforeRounded = Number(grossBeforeDiscount.toFixed(2));
   const discountAmount = Number((grossBeforeRounded - finalTotal).toFixed(2));
   const pct =
@@ -116,8 +115,12 @@ function totals(
         )
       : 0;
   return {
-    subtotal: Number(net.toFixed(2)),
-    vat_amount: Number(vat.toFixed(2)),
+    subtotal: roundedNet,
+    // Derive VAT as the residual (total − net) so subtotal + vat_amount ALWAYS
+    // equals total. Rounding net and VAT independently drifts by a cent on
+    // ~5.7% of amounts, which would make the printed fiscal footer not
+    // reconcile (e-Factura-invalid). Mirrors createManualSale's residual math.
+    vat_amount: Number((finalTotal - roundedNet).toFixed(2)),
     total: finalTotal,
     discount_percent: pct,
     discount_amount: discountAmount,
@@ -180,11 +183,14 @@ export async function issueProforma(
   const v = parsed.data;
   const supabase = await createClient();
 
-  // Conta 2 = no-fiscal book → TVA is forced to 0 regardless of what the
-  // form sent. The price the operator typed is the price.
+  // VAT is driven purely by the book (account_scope), never by the form:
+  //   conta1 → every line 20%, conta2 → every line 0%.
+  // Forcing both directions (not just zeroing conta2) closes the hole where
+  // a conta1 line could ship 0% TVA if the form sent 0.
+  const lineVatRate = v.account_scope === "conta1" ? 20 : 0;
   const items = v.items.map((i) => ({
     ...i,
-    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+    vat_rate: lineVatRate,
   }));
 
   const itemsForTotals = items.map((i) => ({
@@ -384,7 +390,9 @@ export async function convertProformaToInvoice(
         customer_phone: cs.phone ?? null,
         customer_address: cs.address ?? null,
         items: items as unknown as Json,
-        subtotal: Number(pf.subtotal ?? 0),
+        // orders.subtotal is GROSS by storefront convention (the net/TVA split
+        // lives on the invoice row). pf.subtotal is NET, so use the gross total.
+        subtotal: Number(pf.total ?? 0),
         discount_amount: 0,
         shipping_cost: 0,
         total: Number(pf.total ?? 0),
@@ -405,6 +413,31 @@ export async function convertProformaToInvoice(
       ? new Date(now.getTime() + dueInDays * 86_400_000).toISOString().slice(0, 10)
       : null;
 
+  // The fiscal invoice may land in a DIFFERENT book than the proforma — a
+  // paid conta2 proforma becomes a conta1 factură. TVA must follow the
+  // INVOICE's book, not the proforma's, or a conta1 factură could ship with
+  // 0% TVA. Recompute net/TVA/total + per-line vat_rate from invoiceScope off
+  // the proforma's GROSS line snapshot. Gross total is unchanged (gross is
+  // gross); only the net/TVA split moves.
+  const convLineVat = invoiceScope === "conta1" ? 20 : 0;
+  const pfSnapshot = Array.isArray(pf.items_snapshot)
+    ? (pf.items_snapshot as Array<Record<string, unknown>>)
+    : [];
+  const convItemsSnapshot = pfSnapshot.map((it) => ({
+    ...it,
+    vat_rate: convLineVat,
+  }));
+  const convTotals = totals(
+    pfSnapshot.map((it) => ({
+      quantity: Number((it as { quantity?: number }).quantity ?? 0),
+      unit_price: Number((it as { unit_price?: number }).unit_price ?? 0),
+      discounted_unit_price:
+        (it as { discounted_unit_price?: number | null }).discounted_unit_price ??
+        null,
+      vat_rate: convLineVat,
+    })),
+  );
+
   const { data: inv, error: insErr } = await supabase
     .from("invoices")
     .insert({
@@ -420,10 +453,10 @@ export async function convertProformaToInvoice(
       due_date: deferredDue,
       currency: pf.currency,
       customer_snapshot: pf.customer_snapshot,
-      items_snapshot: pf.items_snapshot,
-      subtotal: pf.subtotal,
-      vat_amount: pf.vat_amount,
-      total: pf.total,
+      items_snapshot: convItemsSnapshot as unknown as Json,
+      subtotal: convTotals.subtotal,
+      vat_amount: convTotals.vat_amount,
+      total: convTotals.total,
       notes: pf.notes,
       status: paymentStatus === "paid" ? "paid" : "issued",
       proforma_id: pf.id,
@@ -515,10 +548,12 @@ export async function updateProforma(
     return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
   }
   const v = parsed.data;
-  // Same conta2 → 0% TVA rule as the create path.
+  // Same scope-driven TVA rule as the create path: conta1 → 20% every line,
+  // conta2 → 0% every line. Forced both ways; the form cannot override it.
+  const updProformaVatRate = v.account_scope === "conta1" ? 20 : 0;
   const itemsNormalized = v.items.map((i) => ({
     ...i,
-    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+    vat_rate: updProformaVatRate,
   }));
   const supabase = await createClient();
 
@@ -614,9 +649,12 @@ export async function updateInvoice(
     return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid_input" };
   }
   const v = parsed.data;
+  // Scope-driven TVA, forced both ways (conta1 → 20%, conta2 → 0%). An edited
+  // fiscal invoice can never be flipped to a wrong per-line rate by the form.
+  const updInvoiceVatRate = v.account_scope === "conta1" ? 20 : 0;
   const itemsNormalized = v.items.map((i) => ({
     ...i,
-    vat_rate: v.account_scope === "conta2" ? 0 : (i.vat_rate ?? 0),
+    vat_rate: updInvoiceVatRate,
   }));
   const supabase = await createClient();
 
@@ -1200,11 +1238,18 @@ export async function issueProformaFromOrder(
   if (order.user_id) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("idno, vat_number")
+      .select("idno, vat_code, vat_number")
       .eq("id", order.user_id)
       .maybeSingle();
     idno = profile?.idno ?? null;
-    vat_number = profile?.vat_number ?? null;
+    // Panel-created clients store their VAT registration in `vat_code`;
+    // auth-signup business accounts use `vat_number`. Coalesce so the buyer
+    // nr.TVA lands on the fiscal document regardless of which path created
+    // the client.
+    vat_number =
+      (profile as { vat_code?: string | null } | null)?.vat_code ??
+      profile?.vat_number ??
+      null;
   }
 
   const items = (Array.isArray(order.items) ? order.items : []) as Array<{

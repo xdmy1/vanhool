@@ -78,6 +78,36 @@ export async function triageOrder(
       }
       const numberStr = String(nextNumber).padStart(5, "0");
 
+      // conta1 = fiscal book → the factura MUST carry 20% TVA extracted from
+      // the order's GROSS total (storefront prices are VAT-inclusive). net +
+      // TVA = gross, using residual rounding like createManualSale so the
+      // printed document reconciles.
+      const gross = Number(order.total ?? 0);
+      const net = Number((gross / 1.2).toFixed(2));
+      const vat = Number((gross - net).toFixed(2));
+      // Per-line snapshot so the factura table + e-Factura export show 20% TVA
+      // per line (was previously null → empty printed table). Storefront order
+      // items carry a GROSS unit price in `price`.
+      const orderItems = Array.isArray(order.items)
+        ? (order.items as Array<Record<string, unknown>>)
+        : [];
+      const invoiceItemsSnapshot = orderItems.map((it) => {
+        const qty = Number((it as { quantity?: number }).quantity ?? 0);
+        const unitPrice = Number((it as { price?: number }).price ?? 0);
+        return {
+          productId: (it as { productId?: string | null }).productId ?? null,
+          partCode: (it as { partCode?: string | null }).partCode ?? null,
+          name: (it as { name?: string }).name ?? "",
+          description: null,
+          quantity: qty,
+          unit_price: unitPrice,
+          discounted_unit_price: null,
+          vat_rate: 20,
+          total: Number((it as { total?: number }).total ?? qty * unitPrice),
+          cost_price: Number((it as { cost_price?: number }).cost_price ?? 0),
+        };
+      });
+
       const { error: invErr } = await supabase.from("invoices").insert({
         order_id: orderId,
         account_scope: "conta1",
@@ -90,9 +120,10 @@ export async function triageOrder(
           phone: order.customer_phone,
           address: order.customer_address,
         } as unknown as Json,
-        subtotal: Number(order.subtotal ?? order.total ?? 0),
-        vat_amount: 0,
-        total: Number(order.total ?? 0),
+        items_snapshot: invoiceItemsSnapshot as unknown as Json,
+        subtotal: net,
+        vat_amount: vat,
+        total: gross,
         refrens_invoice_id: order.invoice_id,
         refrens_url: order.invoice_url,
         status: "issued",
