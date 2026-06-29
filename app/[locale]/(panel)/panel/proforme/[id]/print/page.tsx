@@ -55,6 +55,7 @@ export default async function ProformaPrintPage({
           phone: t("invoice_print_phone"),
           itemHeader: t("invoice_print_col_item"),
           vatRate: t("invoice_print_col_vat_rate"),
+          unit: t("invoice_print_col_unit"),
           quantity: t("invoice_print_col_qty"),
           rate: t("invoice_print_col_rate"),
           amount: t("invoice_print_col_amount"),

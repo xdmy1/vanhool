@@ -1473,6 +1473,7 @@
     "invoice_print_col_item": "Наименование",
     "invoice_print_col_vat_rate": "Ставка НДС",
     "invoice_print_col_qty": "Кол-во",
+    "invoice_print_col_unit": "Ед.",
     "invoice_print_col_rate": "Цена",
     "invoice_print_col_amount": "Сумма",
     "invoice_print_col_vat": "НДС",

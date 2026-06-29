@@ -39,6 +39,7 @@ type Labels = {
   phone: string;
   itemHeader: string;
   vatRate: string;
+  unit: string;
   quantity: string;
   rate: string;
   amount: string;
@@ -230,6 +231,7 @@ export function InvoicePrintContent({
             <th style={{ width: "32px" }}>#</th>
             <th>{labels.itemHeader}</th>
             <th className="num" style={{ width: "60px" }}>{labels.vatRate}</th>
+            <th className="num" style={{ width: "44px" }}>{labels.unit}</th>
             <th className="num" style={{ width: "70px" }}>{labels.quantity}</th>
             <th className="num" style={{ width: "80px" }}>{labels.rate}</th>
             <th className="num" style={{ width: "90px" }}>{labels.amount}</th>
@@ -278,6 +280,7 @@ export function InvoicePrintContent({
                   ) : null}
                 </td>
                 <td className="num">{Number(it.vat_rate ?? 0)}%</td>
+                <td className="num">{(it as { unit?: string }).unit ?? "buc"}</td>
                 <td className="num">{qty}</td>
                 <td className="num">
                   {hasDiscount ? (

@@ -17,6 +17,9 @@ export type ProformaPartMatch = {
   /** Catalog cost — passed through so the line can show the realised
    * markup % once the operator edits the selling price. */
   cost_price: number;
+  /** Catalog list price (products.price) — kept as a stable yellow reference
+   * on the line even after the operator overrides the selling price. */
+  catalog_price: number;
 };
 
 /**
@@ -49,6 +52,7 @@ export function PartCodeAutocomplete({
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current);
     if (value.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setMeta(null);
       return;
@@ -83,6 +87,7 @@ export function PartCodeAutocomplete({
       name: p.name_ro ?? "",
       unit_price: p.price,
       cost_price: p.cost_price ?? 0,
+      catalog_price: p.price,
     });
     setOpen(false);
   }

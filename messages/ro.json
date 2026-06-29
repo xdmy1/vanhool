@@ -1473,6 +1473,7 @@
     "invoice_print_col_item": "Denumire",
     "invoice_print_col_vat_rate": "Cota TVA",
     "invoice_print_col_qty": "Cantitate",
+    "invoice_print_col_unit": "U.M.",
     "invoice_print_col_rate": "Preț unitar",
     "invoice_print_col_amount": "Valoare",
     "invoice_print_col_vat": "TVA",

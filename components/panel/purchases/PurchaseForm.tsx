@@ -98,8 +98,23 @@ export function PurchaseForm({
   const [lines, setLines] = useState<Line[]>(
     initial?.lines && initial.lines.length > 0
       ? initial.lines
-      : [{ ...EMPTY_LINE }],
+      : [{ ...EMPTY_LINE, vat_rate: 20 }],
   );
+  // Document-level VAT switch — replaces the removed per-line TVA toggle that
+  // left purchases with NO way to set VAT (so every purchase silently recorded
+  // 0% input VAT). A purchase is either fully with TVA 20% or fully without,
+  // matching how a supplier invoice arrives. Drives every line's vat_rate; new
+  // purchases default to "cu TVA" so input VAT is recorded by default.
+  const [vatEnabled, setVatEnabled] = useState<boolean>(
+    initial?.lines && initial.lines.length > 0
+      ? initial.lines.some((l) => (l.vat_rate ?? 0) > 0)
+      : true,
+  );
+  function setVat(enabled: boolean) {
+    setVatEnabled(enabled);
+    const rate = enabled ? 20 : 0;
+    setLines((prev) => prev.map((l) => ({ ...l, vat_rate: rate })));
+  }
   const [pending, startSave] = useTransition();
 
   const totals = useMemo(() => {
@@ -121,7 +136,7 @@ export function PurchaseForm({
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   }
   function addLine() {
-    setLines([...lines, { ...EMPTY_LINE }]);
+    setLines([...lines, { ...EMPTY_LINE, vat_rate: vatEnabled ? 20 : 0 }]);
   }
   function removeLine(idx: number) {
     if (lines.length === 1) return;
@@ -191,6 +206,34 @@ export function PurchaseForm({
               <option value="conta2">{t("achizitii_doc_book_conta2")}</option>
             </select>
           </Field>
+          <Field label="TVA">
+            <div className="inline-flex h-10 w-full rounded-md border border-border bg-surface p-0.5">
+              <button
+                type="button"
+                onClick={() => setVat(true)}
+                className={cn(
+                  "flex-1 rounded text-xs font-semibold transition-colors",
+                  vatEnabled
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-strong hover:text-foreground",
+                )}
+              >
+                TVA 20%
+              </button>
+              <button
+                type="button"
+                onClick={() => setVat(false)}
+                className={cn(
+                  "flex-1 rounded text-xs font-semibold transition-colors",
+                  !vatEnabled
+                    ? "bg-foreground text-background"
+                    : "text-muted-strong hover:text-foreground",
+                )}
+              >
+                Fără TVA
+              </button>
+            </div>
+          </Field>
           <Field label={t("achizitii_doc_number")}>
             <Input
               value={documentNumber}
@@ -248,7 +291,9 @@ export function PurchaseForm({
                 <th className="px-2 py-2">{t("achizitii_line_internal_code")}</th>
                 <th className="px-2 py-2">{t("achizitii_line_description")}</th>
                 <th className="px-2 py-2 text-right">{t("achizitii_line_qty")}</th>
-                <th className="px-2 py-2 text-right" colSpan={2}>{t("achizitii_line_cost")}</th>
+                <th className="px-2 py-2 text-right">Cost fără TVA</th>
+                <th className="px-2 py-2 text-right">TVA</th>
+                <th className="px-2 py-2 text-right">Cost cu TVA</th>
                 <th className="px-2 py-2 text-right">{t("achizitii_line_total")}</th>
                 <th className="px-2 py-2 text-center" title={t("achizitii_line_catalog_hint")}>
                   {t("achizitii_line_catalog")}
@@ -325,16 +370,20 @@ export function PurchaseForm({
                       className="h-9 w-20 text-right"
                     />
                   </td>
-                  <td className="px-2 py-2 text-right" colSpan={2}>
+                  <td className="px-2 py-2 text-right">
                     <PriceWithVatHelper
                       value={l.unit_cost}
                       onChange={(v) => setLine(idx, { unit_cost: v })}
-                      vatRate={l.vat_rate ?? 0}
-                      onVatChange={(v) => setLine(idx, { vat_rate: v })}
                       step="0.01"
                       size="sm"
                       inputClassName="h-9 w-24 text-right"
                     />
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted">
+                    {l.vat_rate || 0}%
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums text-muted">
+                    {(l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {(l.quantity * l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
@@ -364,7 +413,7 @@ export function PurchaseForm({
             </tbody>
             <tfoot>
               <tr className="bg-surface-elevated text-xs">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={7} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_subtotal")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -372,7 +421,7 @@ export function PurchaseForm({
                 </td>
               </tr>
               <tr className="text-xs">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={7} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_vat_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -380,7 +429,7 @@ export function PurchaseForm({
                 </td>
               </tr>
               <tr className="bg-surface-elevated text-sm font-bold">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={7} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -638,6 +687,7 @@ function InternalCodeAutocomplete({
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     if (linkedProductId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       setOpen(false);
       return;

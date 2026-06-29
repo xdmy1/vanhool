@@ -34,6 +34,8 @@ const lineSchema = z.object({
    */
   discounted_unit_price: z.number().nonnegative().nullable().optional(),
   vat_rate: z.number().nonnegative().default(0),
+  /** Unit of measure shown on the fiscal line (buc / l / m). Default "buc". */
+  unit: z.enum(["buc", "l", "m"]).default("buc"),
   /**
    * Internal cost per unit — captured at proforma/invoice creation
    * so admin sees the realised margin on the digital detail view.
@@ -211,6 +213,7 @@ export async function issueProforma(
       name: i.name,
       description: i.description ?? null,
       quantity: i.quantity,
+      unit: i.unit,
       // Snapshot the LIST price as `unit_price`. The effective price the
       // customer actually pays lives in `discounted_unit_price`. Older
       // snapshots without `discounted_unit_price` render unchanged.
@@ -585,6 +588,7 @@ export async function updateProforma(
       name: i.name,
       description: i.description ?? null,
       quantity: i.quantity,
+      unit: i.unit,
       unit_price: i.unit_price,
       discounted_unit_price: eff < i.unit_price ? eff : null,
       vat_rate: i.vat_rate,
@@ -688,6 +692,7 @@ export async function updateInvoice(
       name: i.name,
       description: i.description ?? null,
       quantity: i.quantity,
+      unit: i.unit,
       unit_price: i.unit_price,
       discounted_unit_price: eff < i.unit_price ? eff : null,
       vat_rate: i.vat_rate,

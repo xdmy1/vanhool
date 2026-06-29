@@ -34,6 +34,8 @@ type Line = {
   name: string;
   description: string;
   quantity: number;
+  /** Unit of measure shown on the fiscal line (buc / l / m). */
+  unit: "buc" | "l" | "m";
   /** Normal "list" price per unit, VAT-inclusive (conta1) or net (conta2). */
   unit_price: number;
   /**
@@ -48,6 +50,9 @@ type Line = {
    * unit price so the operator sees the realised margin while pricing.
    */
   cost_price: number;
+  /** Catalog list price (products.price). Shown small + yellow next to the
+   * part as a stable reference, even after the operator overrides the price. */
+  catalog_price: number;
 };
 
 type WalkIn = {
@@ -71,12 +76,14 @@ const EMPTY_LINE: Line = {
   name: "",
   description: "",
   quantity: 1,
+  unit: "buc",
   unit_price: 0,
   discounted_unit_price: null,
   // Prices are entered VAT-inclusive (Moldova: standard 20% TVA on conta1).
   // The totals computation extracts the net + VAT components from the gross.
   vat_rate: 20,
   cost_price: 0,
+  catalog_price: 0,
 };
 
 // Synthetic placeholder used when a client is created without a real email.
@@ -148,9 +155,9 @@ export function NewProformaForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
 
-  // Switching books flips every line's VAT to the new default — conta 2 is
-  // always 0%, conta 1 defaults back to 20%. Operator can still tweak per
-  // line afterwards in the TVA column.
+  // Switching books flips every line's VAT — conta 2 is always 0%, conta 1
+  // always 20%. The per-line TVA column is read-only (scope-driven); the
+  // operator cannot tweak it.
   function setScope(next: "conta1" | "conta2") {
     setScopeState(next);
     const vat = defaultVatFor(next);
@@ -164,9 +171,12 @@ export function NewProformaForm({
     // "before discount" gross uses the list price so the print stack can
     // surface both numbers.
     let net = 0;
-    let vat = 0;
     let gross = 0;
     let grossBeforeDiscount = 0;
+    // TVA is driven purely by the book, never per line — keeps the footer in
+    // sync with the read-only per-line breakdown and with the server (which
+    // forces the same rate). conta1 → 20%, conta2 → 0%.
+    const docVatRate = scope === "conta1" ? 20 : 0;
     for (const l of lines) {
       const eff =
         l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
@@ -174,14 +184,14 @@ export function NewProformaForm({
           : l.unit_price;
       const lineGross = l.quantity * eff;
       const lineGrossBefore = l.quantity * l.unit_price;
-      const factor = 1 + l.vat_rate / 100;
+      const factor = 1 + docVatRate / 100;
       const lineNet = factor > 0 ? lineGross / factor : lineGross;
       gross += lineGross;
       grossBeforeDiscount += lineGrossBefore;
       net += lineNet;
-      vat += lineGross - lineNet;
     }
     const grossRounded = Number(gross.toFixed(2));
+    const subtotalRounded = Number(net.toFixed(2));
     const grossBeforeRounded = Number(grossBeforeDiscount.toFixed(2));
     const discountAmount = Number((grossBeforeRounded - grossRounded).toFixed(2));
     const pct =
@@ -192,14 +202,15 @@ export function NewProformaForm({
           )
         : 0;
     return {
-      subtotal: Number(net.toFixed(2)),
-      vat: Number(vat.toFixed(2)),
+      subtotal: subtotalRounded,
+      // Residual so subtotal + vat === total (matches the server's totals()).
+      vat: Number((grossRounded - subtotalRounded).toFixed(2)),
       grossBeforeDiscount: grossBeforeRounded,
       discountPercent: pct,
       discountAmount,
       total: grossRounded,
     };
-  }, [lines]);
+  }, [lines, scope]);
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
@@ -269,6 +280,7 @@ export function NewProformaForm({
         name: l.name.trim(),
         description: l.description || null,
         quantity: l.quantity,
+        unit: l.unit,
         unit_price: l.unit_price,
         discounted_unit_price:
           l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
@@ -354,10 +366,12 @@ export function NewProformaForm({
               <tr>
                 <th className="px-2 py-2">{t("proforma_form_line_partcode")}</th>
                 <th className="px-2 py-2">{t("proforma_form_line_name")}</th>
+                <th className="px-2 py-2">U.M.</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_qty")}</th>
-                <th className="px-2 py-2 text-right">{t("proforma_form_line_price")}</th>
-                <th className="px-2 py-2 text-right">{t("sale_line_col_discount_price")}</th>
+                <th className="px-2 py-2 text-right">Preț fără TVA</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_vat")}</th>
+                <th className="px-2 py-2 text-right">Preț cu TVA</th>
+                <th className="px-2 py-2 text-right">{t("sale_line_col_discount_price")}</th>
                 <th className="px-2 py-2 text-right">{t("proforma_form_line_total")}</th>
                 <th className="px-2 py-2" />
               </tr>
@@ -373,6 +387,12 @@ export function NewProformaForm({
                 const linePct = hasDiscount
                   ? Math.max(0, (1 - eff / l.unit_price) * 100)
                   : 0;
+                // Fiscal breakdown is driven purely by the book (scope), shown
+                // read-only: conta1 extracts 20% out of the gross unit price,
+                // conta2 is 0%. The operator only ever sets the gross price.
+                const vatRate = scope === "conta1" ? 20 : 0;
+                const netUnit =
+                  vatRate > 0 ? l.unit_price / (1 + vatRate / 100) : l.unit_price;
                 return (
                   <tr key={idx}>
                     <td className="px-2 py-2">
@@ -387,6 +407,7 @@ export function NewProformaForm({
                             name: l.name.trim() ? l.name : m.name,
                             unit_price: m.unit_price,
                             cost_price: m.cost_price,
+                            catalog_price: m.catalog_price,
                           })
                         }
                         placeholder={t("proforma_form_line_partcode_placeholder")}
@@ -406,20 +427,48 @@ export function NewProformaForm({
                         placeholder={t("proforma_form_line_desc_placeholder")}
                         className="mt-1 h-8 text-[11px]"
                       />
+                      {l.catalog_price > 0 ? (
+                        <div className="mt-0.5 text-[10px] font-semibold text-yellow-500">
+                          Preț piesă: {l.catalog_price.toFixed(2)} lei
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={l.unit}
+                        onChange={(e) =>
+                          setLine(idx, { unit: e.target.value as "buc" | "l" | "m" })
+                        }
+                        className="h-9 rounded-md border border-border bg-surface px-2 text-xs"
+                      >
+                        <option value="buc">buc</option>
+                        <option value="l">l</option>
+                        <option value="m">m</option>
+                      </select>
                     </td>
                     <td className="px-2 py-2 text-right">
                       <Input
                         type="number"
-                        step={1}
-                        min={1}
+                        step={l.unit === "buc" ? 1 : 0.001}
+                        min={l.unit === "buc" ? 1 : 0.001}
                         value={l.quantity}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const raw = Number(e.target.value || 0);
                           setLine(idx, {
-                            quantity: Math.max(0, Math.trunc(Number(e.target.value || 0))),
-                          })
-                        }
+                            quantity:
+                              l.unit === "buc"
+                                ? Math.max(0, Math.trunc(raw))
+                                : Math.max(0, raw),
+                          });
+                        }}
                         className="h-9 w-20 text-right"
                       />
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums text-muted">
+                      {netUnit.toFixed(2)}
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums text-muted">
+                      {vatRate}%
                     </td>
                     <td className="px-2 py-2 text-right">
                       <PriceWithVatHelper
@@ -481,26 +530,6 @@ export function NewProformaForm({
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-2 py-2 text-right">
-                      <Input
-                        type="number"
-                        step={1}
-                        min={0}
-                        value={l.vat_rate}
-                        onChange={(e) =>
-                          setLine(idx, {
-                            vat_rate: Math.max(0, Math.trunc(Number(e.target.value || 0))),
-                          })
-                        }
-                        disabled={scope === "conta2"}
-                        title={
-                          scope === "conta2"
-                            ? "Conta 2 — TVA forțată la 0%"
-                            : undefined
-                        }
-                        className="h-9 w-16 text-right disabled:cursor-not-allowed disabled:bg-surface-elevated disabled:text-muted"
-                      />
-                    </td>
                     <td className="px-2 py-2 text-right tabular-nums font-semibold">
                       {hasDiscount ? (
                         <div className="text-[10px] text-muted line-through">
@@ -527,7 +556,7 @@ export function NewProformaForm({
               {totals.discountPercent > 0 ? (
                 <>
                   <tr className="text-xs">
-                    <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                    <td colSpan={8} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                       {t("sale_review_subtotal_before_discount")}
                     </td>
                     <td colSpan={2} className="px-2 py-2 text-right tabular-nums text-muted line-through">
@@ -535,7 +564,7 @@ export function NewProformaForm({
                     </td>
                   </tr>
                   <tr className="text-xs text-success">
-                    <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide">
+                    <td colSpan={8} className="px-2 py-2 text-right uppercase tracking-wide">
                       {t("sale_discount_line_label", { percent: Math.round(totals.discountPercent) })}
                     </td>
                     <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -545,7 +574,7 @@ export function NewProformaForm({
                 </>
               ) : null}
               <tr className="bg-surface-elevated text-xs">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={8} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_subtotal")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -553,7 +582,7 @@ export function NewProformaForm({
                 </td>
               </tr>
               <tr className="text-xs">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={8} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_vat_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -561,7 +590,7 @@ export function NewProformaForm({
                 </td>
               </tr>
               <tr className="bg-surface-elevated text-sm font-bold">
-                <td colSpan={6} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
+                <td colSpan={8} className="px-2 py-2 text-right uppercase tracking-wide text-muted">
                   {t("achizitii_total")}
                 </td>
                 <td colSpan={2} className="px-2 py-2 text-right tabular-nums">
@@ -596,7 +625,14 @@ export function NewProformaForm({
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-[11px] text-muted">
+            <p className="mt-1 text-[11px] font-semibold">
+              {scope === "conta1" ? (
+                <span className="text-primary">= cu TVA 20%</span>
+              ) : (
+                <span className="text-warning">= fără TVA (0%)</span>
+              )}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted">
               {scope === "conta2"
                 ? t("proforma_form_scope_hint_conta2")
                 : t("proforma_form_scope_hint_conta1")}

@@ -424,6 +424,7 @@ function StepScope({
         subtitle={t("sale_scope_conta1_subtitle")}
         body={t("sale_scope_conta1_body")}
         accent="primary"
+        vat="cu TVA 20%"
       />
       <ScopeCard
         active={scope === "conta2"}
@@ -432,6 +433,7 @@ function StepScope({
         subtitle={t("sale_scope_conta2_subtitle")}
         body={t("sale_scope_conta2_body")}
         accent="warning"
+        vat="fără TVA"
       />
     </section>
   );
@@ -444,6 +446,7 @@ function ScopeCard({
   subtitle,
   body,
   accent,
+  vat,
 }: {
   active: boolean;
   onClick: () => void;
@@ -451,6 +454,7 @@ function ScopeCard({
   subtitle: string;
   body: string;
   accent: "primary" | "warning";
+  vat: string;
 }) {
   return (
     <button
@@ -467,6 +471,16 @@ function ScopeCard({
     >
       <div className="mb-2 flex items-center gap-2">
         <h3 className="text-xl font-semibold">{title}</h3>
+        <span
+          className={cn(
+            "rounded px-2 py-0.5 text-xs font-bold",
+            accent === "primary"
+              ? "bg-primary/15 text-primary"
+              : "bg-warning/15 text-warning",
+          )}
+        >
+          {vat}
+        </span>
         {active ? <Check className="size-5 text-primary" /> : null}
       </div>
       <p className="mb-3 text-sm font-medium text-muted-strong">{subtitle}</p>
@@ -978,7 +992,9 @@ function StepProducts({
                 <th className="px-4 py-3">{t("sale_line_col_name")}</th>
                 <th className="px-4 py-3">{t("sale_line_col_location")}</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_qty")}</th>
-                <th className="px-4 py-3 text-right">{t("sale_line_col_price")}</th>
+                <th className="px-4 py-3 text-right">Preț fără TVA</th>
+                <th className="px-4 py-3 text-right">TVA</th>
+                <th className="px-4 py-3 text-right">Preț cu TVA</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_discount_price")}</th>
                 <th className="px-4 py-3 text-right">{t("sale_line_col_total")}</th>
                 <th className="px-4 py-3" />
@@ -1009,6 +1025,11 @@ function StepProducts({
                 // directly comparable.
                 const belowCost =
                   costInCurrency > 0 && effective < costInCurrency - 0.01;
+                // Fiscal breakdown shown read-only, scope-driven: conta1
+                // extracts 20% out of the gross unit price, conta2 is 0%.
+                const vatRate = scope === "conta1" ? 20 : 0;
+                const netUnit =
+                  vatRate > 0 ? l.unit_price / (1 + vatRate / 100) : l.unit_price;
                 return (
                   <tr key={l.product.id}>
                     <td className="px-4 py-2 font-mono text-xs">{l.product.part_code}</td>
@@ -1067,6 +1088,12 @@ function StepProducts({
                       <div className="text-[10px] text-muted">
                         {t("sale_products_stock_label", { qty: l.product.stock_quantity })}
                       </div>
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted">
+                      {netUnit.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums text-muted">
+                      {vatRate}%
                     </td>
                     <td className="px-4 py-2 text-right">
                       <PriceWithVatHelper

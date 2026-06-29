@@ -66,6 +66,10 @@ export default async function EditInvoicePage({
             name: it.name ?? "",
             description: it.description ?? "",
             quantity: Number(it.quantity ?? 1),
+            unit: ((it as { unit?: "buc" | "l" | "m" }).unit ?? "buc") as
+              | "buc"
+              | "l"
+              | "m",
             unit_price: Number(it.unit_price ?? 0),
             discounted_unit_price:
               it.discounted_unit_price != null
@@ -76,6 +80,9 @@ export default async function EditInvoicePage({
             // visible. Legacy snapshots before the cost_price field
             // existed default to 0.
             cost_price: Number(it.cost_price ?? 0),
+            // Catalog price isn't snapshotted on the doc, so no yellow
+            // reference for already-saved lines (only fresh picks show it).
+            catalog_price: 0,
           }))
         : [
             {
@@ -83,10 +90,12 @@ export default async function EditInvoicePage({
               name: "",
               description: "",
               quantity: 1,
+              unit: "buc" as const,
               unit_price: 0,
               discounted_unit_price: null,
               vat_rate: 20,
               cost_price: 0,
+              catalog_price: 0,
             },
           ],
     scope: invoice.account_scope,

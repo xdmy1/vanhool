@@ -1473,6 +1473,7 @@
     "invoice_print_col_item": "Item",
     "invoice_print_col_vat_rate": "VAT Rate",
     "invoice_print_col_qty": "Quantity",
+    "invoice_print_col_unit": "UoM",
     "invoice_print_col_rate": "Rate",
     "invoice_print_col_amount": "Amount",
     "invoice_print_col_vat": "VAT",
