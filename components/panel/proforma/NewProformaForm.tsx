@@ -71,6 +71,25 @@ function defaultVatFor(scope: "conta1" | "conta2"): number {
   return scope === "conta2" ? 0 : 20;
 }
 
+// Fixed conversion rates (owner uses a predictable 20/17, not the live rate).
+// Catalog prices are stored in MDL; when the proforma runs in EUR/USD every
+// price is converted so the document totals are REAL EUR/USD — not MDL numbers
+// wearing a EUR label (which billed a 4000-lei part as 4000 €).
+const RATES_TO_MDL: Record<"MDL" | "EUR" | "USD", number> = {
+  MDL: 1,
+  EUR: 20,
+  USD: 17,
+};
+function convertPrice(
+  value: number,
+  from: "MDL" | "EUR" | "USD",
+  to: "MDL" | "EUR" | "USD",
+): number {
+  if (from === to) return value;
+  const inMdl = value * RATES_TO_MDL[from];
+  return Math.round((inMdl / RATES_TO_MDL[to]) * 100) / 100;
+}
+
 const EMPTY_LINE: Line = {
   part_code: "",
   name: "",
@@ -162,6 +181,24 @@ export function NewProformaForm({
     setScopeState(next);
     const vat = defaultVatFor(next);
     setLines((prev) => prev.map((l) => ({ ...l, vat_rate: vat })));
+  }
+
+  // Flipping the document currency rescales every already-entered price so the
+  // operator doesn't re-type them — and so the totals stay in the real
+  // currency instead of MDL numbers labelled EUR.
+  function changeCurrency(next: "MDL" | "EUR" | "USD") {
+    if (next === currency) return;
+    setLines((prev) =>
+      prev.map((l) => ({
+        ...l,
+        unit_price: convertPrice(l.unit_price, currency, next),
+        discounted_unit_price:
+          l.discounted_unit_price != null
+            ? convertPrice(l.discounted_unit_price, currency, next)
+            : null,
+      })),
+    );
+    setCurrency(next);
   }
 
   const totals = useMemo(() => {
@@ -405,7 +442,9 @@ export function NewProformaForm({
                             // Only overwrite name when the operator hasn't typed
                             // a custom one yet — keeps manual edits intact.
                             name: l.name.trim() ? l.name : m.name,
-                            unit_price: m.unit_price,
+                            // Catalog price is MDL — convert into the document
+                            // currency so a 4000-lei part isn't seeded as 4000 €.
+                            unit_price: convertPrice(m.unit_price, "MDL", currency),
                             cost_price: m.cost_price,
                             catalog_price: m.catalog_price,
                           })
@@ -480,15 +519,17 @@ export function NewProformaForm({
                       />
                       <div className="mt-0.5 flex items-center justify-end gap-1.5">
                         <MarkupShortcuts
-                          cost={l.cost_price}
+                          cost={convertPrice(l.cost_price, "MDL", currency)}
                           unitPrice={l.unit_price}
                           onPick={(v) => setLine(idx, { unit_price: v })}
                         />
                         {l.cost_price > 0 ? (() => {
                           // Margin badge derived from the typed price — kept
                           // next to the shortcuts so the operator can
-                          // double-check the figure they landed on.
-                          const markup = ((l.unit_price - l.cost_price) / l.cost_price) * 100;
+                          // double-check the figure. Cost is MDL, price is in
+                          // the doc currency → convert before comparing.
+                          const costInCur = convertPrice(l.cost_price, "MDL", currency);
+                          const markup = ((l.unit_price - costInCur) / costInCur) * 100;
                           const sign = markup >= 0 ? "+" : "";
                           return (
                             <div
@@ -500,7 +541,7 @@ export function NewProformaForm({
                                     ? "text-warning"
                                     : "text-success",
                               )}
-                              title={`Cost: ${l.cost_price.toFixed(2)}`}
+                              title={`Cost: ${costInCur.toFixed(2)} ${currency}`}
                             >
                               {sign}{markup.toFixed(0)}%
                             </div>
@@ -641,7 +682,7 @@ export function NewProformaForm({
           <Field label={t("proforma_form_currency")}>
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value as "MDL" | "EUR" | "USD")}
+              onChange={(e) => changeCurrency(e.target.value as "MDL" | "EUR" | "USD")}
               className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
             >
               <option value="MDL">MDL</option>
