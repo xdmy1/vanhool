@@ -461,7 +461,7 @@ export function NewProformaForm({
                                 : Math.max(0, raw),
                           });
                         }}
-                        className="h-9 w-20 text-right"
+                        className="ml-auto h-9 w-20 text-right"
                       />
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums text-muted">
@@ -476,7 +476,7 @@ export function NewProformaForm({
                         onChange={(v) => setLine(idx, { unit_price: v })}
                         step="0.01"
                         size="sm"
-                        inputClassName="h-9 w-24 text-right"
+                        inputClassName="ml-auto h-9 w-24 text-right"
                       />
                       <div className="mt-0.5 flex items-center justify-end gap-1.5">
                         <MarkupShortcuts
@@ -522,7 +522,7 @@ export function NewProformaForm({
                           });
                         }}
                         placeholder={l.unit_price > 0 ? l.unit_price.toFixed(2) : "—"}
-                        className="h-9 w-24 text-right"
+                        className="ml-auto h-9 w-24 text-right"
                       />
                       {hasDiscount ? (
                         <div className="mt-0.5 text-[10px] font-semibold text-success">

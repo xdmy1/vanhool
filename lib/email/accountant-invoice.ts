@@ -150,17 +150,17 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
   const totalsRows: string[] = [];
   if (discountAmount > 0) {
     totalsRows.push(
-      `<tr><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d">Reducere aplicată (-${discountPct}%)</td><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d;font-weight:600">-${fmtMoney(discountAmount, invoice.currency)}</td></tr>`,
+      `<tr><td style="padding:4px 8px;font-size:12px;text-align:left;color:#15803d">Reducere aplicată (-${discountPct}%)</td><td style="padding:4px 8px;font-size:12px;text-align:right;color:#15803d;font-weight:600">-${fmtMoney(discountAmount, invoice.currency)}</td></tr>`,
     );
   }
   totalsRows.push(
-    `<tr><td style="padding:4px 8px;font-size:13px;text-align:right;color:#6b6358">Subtotal net</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.subtotal, invoice.currency)}</td></tr>`,
+    `<tr><td style="padding:4px 8px;font-size:13px;text-align:left;color:#6b6358">Subtotal net</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.subtotal, invoice.currency)}</td></tr>`,
   );
   totalsRows.push(
-    `<tr><td style="padding:4px 8px;font-size:13px;text-align:right;color:#6b6358">TVA</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.vat_amount, invoice.currency)}</td></tr>`,
+    `<tr><td style="padding:4px 8px;font-size:13px;text-align:left;color:#6b6358">TVA</td><td style="padding:4px 8px;font-size:13px;text-align:right;color:#2a2622">${fmtMoney(invoice.vat_amount, invoice.currency)}</td></tr>`,
   );
   totalsRows.push(
-    `<tr style="border-top:2px solid #2a2622"><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">Total cu TVA (${invoice.currency})</td><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(invoice.total, invoice.currency)}</td></tr>`,
+    `<tr style="border-top:2px solid #2a2622"><td style="padding:8px;font-size:15px;text-align:left;font-weight:700;color:#2a2622">Total cu TVA (${invoice.currency})</td><td style="padding:8px;font-size:15px;text-align:right;font-weight:700;color:#2a2622">${fmtMoney(invoice.total, invoice.currency)}</td></tr>`,
   );
 
   const scopeLabel = invoice.account_scope === "conta1" ? "Conta 1 — fiscal" : "Conta 2 — cash";
@@ -210,7 +210,7 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
         </td></tr>
 
         <tr><td style="padding:0 24px 24px" align="right">
-          <table cellpadding="0" cellspacing="0" border="0" style="min-width:280px">
+          <table cellpadding="0" cellspacing="0" border="0" width="280" style="width:280px">
             ${totalsRows.join("")}
           </table>
         </td></tr>

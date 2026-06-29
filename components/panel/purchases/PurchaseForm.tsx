@@ -367,7 +367,7 @@ export function PurchaseForm({
                         })
                       }
                       placeholder="1"
-                      className="h-9 w-20 text-right"
+                      className="ml-auto h-9 w-20 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
@@ -376,7 +376,7 @@ export function PurchaseForm({
                       onChange={(v) => setLine(idx, { unit_cost: v })}
                       step="0.01"
                       size="sm"
-                      inputClassName="h-9 w-24 text-right"
+                      inputClassName="ml-auto h-9 w-24 text-right"
                     />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-muted">
