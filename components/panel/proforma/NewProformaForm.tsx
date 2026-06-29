@@ -503,8 +503,23 @@ export function NewProformaForm({
                         className="ml-auto h-9 w-20 text-right"
                       />
                     </td>
-                    <td className="px-2 py-2 text-right tabular-nums text-muted">
-                      {netUnit.toFixed(2)}
+                    <td className="px-2 py-2 text-right">
+                      {/* Editable NET price — typing here sets the GROSS source
+                          of truth (net x VAT factor). The "Preț cu TVA" field
+                          below edits the same value the other way. */}
+                      <PriceWithVatHelper
+                        value={Number(netUnit.toFixed(2))}
+                        onChange={(net) =>
+                          setLine(idx, {
+                            unit_price: Number(
+                              (net * (1 + vatRate / 100)).toFixed(2),
+                            ),
+                          })
+                        }
+                        step="0.01"
+                        size="sm"
+                        inputClassName="ml-auto h-9 w-24 text-right"
+                      />
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums text-muted">
                       {vatRate}%
