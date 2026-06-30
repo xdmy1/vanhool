@@ -58,6 +58,7 @@ flota de autobuze e suficient `supabase-bus-makes-seed.sql`.
 - `supabase-vehicles-cleanup.sql` — curățare modele/types orfane sau de test
 - `supabase-make-admin.sql` — promovează un user la admin
 - `backfill-conta1-invoice-vat-extract.sql` — corectează facturile conta1 istorice scrise cu subtotal=BRUT/TVA=0 (recalculează subtotal=NET + TVA 20% extras). Idempotent. De rulat o dată după unificarea TVA-din-scope.
+- `invoices-allow-partial-status.sql` — permite `status='partial'` pe facturi (CHECK constraint) + re-clasifică facturile marcate greșit „full" deși au plată parțială. **OBLIGATORIU** pentru ca plățile parțiale să funcționeze pe site.
 
 ## Rollback
 
