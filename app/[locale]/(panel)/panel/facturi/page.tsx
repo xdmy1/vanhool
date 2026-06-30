@@ -53,6 +53,7 @@ const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
   issued: "bg-primary/10 text-primary",
   overdue: "bg-destructive/10 text-destructive",
+  partial: "bg-warning/10 text-warning",
   paid: "bg-success/10 text-success",
   void: "bg-destructive/10 text-destructive",
 };
@@ -84,7 +85,7 @@ export default async function PanelFacturiPage({
   const fromParam = typeof sp.from === "string" && sp.from ? sp.from : undefined;
   const toParam = typeof sp.to === "string" && sp.to ? sp.to : undefined;
   const overdueOnly = sp.overdue === "1";
-  const STATUS_FILTERS = ["draft", "issued", "paid", "void"] as const;
+  const STATUS_FILTERS = ["draft", "issued", "partial", "paid", "void"] as const;
   type StatusFilter = (typeof STATUS_FILTERS)[number];
   const statusParam: StatusFilter | undefined =
     typeof sp.status === "string" &&
@@ -99,7 +100,15 @@ export default async function PanelFacturiPage({
     from: fromParam,
     to: toParam,
     overdueOnly,
-    status: statusParam,
+    // "partial" is a valid runtime status the generated union doesn't list yet.
+    status: statusParam as
+      | "void"
+      | "draft"
+      | "issued"
+      | "sent"
+      | "paid"
+      | "converted"
+      | undefined,
   });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel = (s: string) =>
@@ -177,6 +186,7 @@ export default async function PanelFacturiPage({
   const statusChips: Array<{ id: StatusFilter; label: string }> = [
     { id: "draft", label: t("facturi_status_draft") },
     { id: "issued", label: t("facturi_status_issued") },
+    { id: "partial", label: t("facturi_status_partial") },
     { id: "paid", label: t("facturi_status_paid") },
     { id: "void", label: t("facturi_status_void") },
   ];
@@ -448,10 +458,15 @@ export default async function PanelFacturiPage({
                           entityId={r.id}
                           compact
                         />
-                        {r.status === "issued" ? (
+                        {r.status === "issued" || (r.status as string) === "partial" ? (
                           <MarkInvoicePaidButton
                             invoiceId={r.id}
-                            defaultAmount={r.total}
+                            defaultAmount={Number(
+                              (
+                                Number(r.total) -
+                                Number((r as { paid_amount?: number | null }).paid_amount ?? 0)
+                              ).toFixed(2),
+                            )}
                             defaultCurrency={r.currency}
                             variant="compact"
                           />

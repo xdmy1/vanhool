@@ -21,6 +21,7 @@ const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
   issued: "bg-primary/10 text-primary",
   overdue: "bg-destructive/10 text-destructive",
+  partial: "bg-warning/10 text-warning",
   paid: "bg-success/10 text-success",
   void: "bg-destructive/10 text-destructive",
 };
@@ -163,6 +164,15 @@ export default async function PanelInvoiceDetailPage({
                 </dd>
               </>
             ) : null}
+            {(invoice.status as string) === "partial" ? (
+              <>
+                <dt className="text-muted">{t("invoice_balance_due")}</dt>
+                <dd className="font-semibold text-warning">
+                  {(Number(invoice.total) - Number(invoice.paid_amount ?? 0)).toFixed(2)}{" "}
+                  {invoice.currency}
+                </dd>
+              </>
+            ) : null}
             {invoice.paid_method ? (
               <>
                 <dt className="text-muted">{t("invoice_paid_method")}</dt>
@@ -199,11 +209,16 @@ export default async function PanelInvoiceDetailPage({
             ) : null}
           </dl>
 
-          {invoice.status === "issued" ? (
+          {invoice.status === "issued" || (invoice.status as string) === "partial" ? (
             <div className="mt-5 border-t border-border pt-5">
+              {/* Prefill with the REMAINING balance so recording the next
+                  installment is one click — on a partial that's total minus
+                  what's already in. */}
               <MarkInvoicePaidButton
                 invoiceId={invoice.id}
-                defaultAmount={invoice.total}
+                defaultAmount={Number(
+                  (Number(invoice.total) - Number(invoice.paid_amount ?? 0)).toFixed(2),
+                )}
                 defaultCurrency={invoice.currency}
               />
             </div>

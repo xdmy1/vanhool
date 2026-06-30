@@ -765,11 +765,24 @@ export async function markInvoicePaid(
   const v = parsed.data;
   const supabase = await createClient();
 
-  const { data: inv } = await supabase
+  // `paid_amount` isn't in the generated types yet, so the typed select would
+  // collapse to an error type — cast the row to the shape we actually read.
+  const invQuery = await supabase
     .from("invoices")
-    .select("id, type, status, account_scope, order_id, total, series, number")
+    .select("id, type, status, account_scope, order_id, total, currency, paid_amount, series, number")
     .eq("id", invoiceId)
     .maybeSingle();
+  const inv = invQuery.data as unknown as {
+    type: string | null;
+    status: string | null;
+    account_scope: string | null;
+    order_id: string | null;
+    total: number | null;
+    currency: "MDL" | "EUR" | "USD" | null;
+    paid_amount: number | null;
+    series: string | null;
+    number: string | null;
+  } | null;
   if (!inv) return { ok: false, reason: "invoice_not_found" };
   if (inv.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
   if (inv.status === "paid") return { ok: false, reason: "already_paid" };
@@ -778,6 +791,20 @@ export async function markInvoicePaid(
   const nowIso = new Date().toISOString();
   // Treat the user-supplied date as the actual payment moment.
   const paidAt = new Date(`${v.paid_at}T12:00:00Z`).toISOString();
+
+  // Partial payments: accumulate every payment in the INVOICE's currency. The
+  // invoice stays "partial" (with a running paid_amount) until the total is
+  // covered, then flips to "paid". The customer who pays 600 € of a 1200 €
+  // invoice now leaves it half-paid instead of fully settled.
+  const invCurrency = (inv.currency ?? "MDL") as "MDL" | "EUR" | "USD";
+  const rateOf = (c: string) => (c === "EUR" ? 20 : c === "USD" ? 17 : 1);
+  const paymentInInvCur =
+    invCurrency === v.currency
+      ? v.amount
+      : Number(((v.amount * rateOf(v.currency)) / rateOf(invCurrency)).toFixed(2));
+  const alreadyPaid = Number(inv.paid_amount ?? 0);
+  const runningPaid = Number((alreadyPaid + paymentInInvCur).toFixed(2));
+  const isFullyPaid = runningPaid >= Number(inv.total ?? 0) - 0.01;
 
   // Operator's rule: once payment hits, the fiscal record moves to the
   // official book. A conta2 invoice that gets paid (cash, transfer, card —
@@ -788,11 +815,17 @@ export async function markInvoicePaid(
   const { error } = await supabase
     .from("invoices")
     .update({
-      status: "paid",
-      paid_at: paidAt,
+      // paid_at marks FULL settlement; a partial leaves it open.
+      paid_at: isFullyPaid ? paidAt : null,
       updated_at: nowIso,
       account_scope: "conta1",
-      ...({ paid_amount: v.amount, paid_currency: v.currency, paid_method: v.method } as object),
+      // status "partial" + paid_* aren't in the generated types yet.
+      ...({
+        status: isFullyPaid ? "paid" : "partial",
+        paid_amount: runningPaid,
+        paid_currency: invCurrency,
+        paid_method: v.method,
+      } as object),
     })
     .eq("id", invoiceId);
   if (error) return { ok: false, reason: error.message };
