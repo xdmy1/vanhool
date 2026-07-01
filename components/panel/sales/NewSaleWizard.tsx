@@ -1033,7 +1033,14 @@ function StepProducts({
                 return (
                   <tr key={l.product.id}>
                     <td className="px-4 py-2 font-mono text-xs">{l.product.part_code}</td>
-                    <td className="px-4 py-2">{l.product.name_ro}</td>
+                    <td className="px-4 py-2">
+                      {l.product.name_ro}
+                      {costInCurrency > 0 ? (
+                        <div className="text-[10px] font-semibold text-yellow-500">
+                          Sinecost: {costInCurrency.toFixed(2)} {currency}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-2 text-xs text-muted">
                       {l.product.storage_location ?? "—"}
                     </td>
