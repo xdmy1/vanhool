@@ -98,6 +98,28 @@ export async function updateCategory(
 }
 
 /**
+ * Persist a new order for a group of SIBLING categories (drag-and-drop on the
+ * admin categories page). `orderedIds` is the sibling group in its new order;
+ * each row's sort_order is set to its position. The storefront reads
+ * categories ordered by sort_order, so this controls the on-site order.
+ */
+export async function reorderCategories(
+  orderedIds: string[],
+): Promise<{ ok: boolean }> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false };
+  if (orderedIds.length === 0) return { ok: true };
+  const results = await Promise.all(
+    orderedIds.map((id, index) =>
+      auth.supabase.from("categories").update({ sort_order: index }).eq("id", id),
+    ),
+  );
+  if (results.some((r) => r.error)) return { ok: false };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
  * Quick-create used by the inline "+ add" button on the ProductForm. Takes
  * the name in ONE language (whatever the admin is currently on) + optional
  * parent. The server auto-translates into the other 2 locales so a single
