@@ -43,7 +43,8 @@ async function fetchCategoryCounts(): Promise<Map<string, number>> {
   const { data } = await supabase
     .from("products")
     .select("category_id, subcategory_id")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .gt("stock_quantity", 0);
   const counts = new Map<string, number>();
   for (const row of data ?? []) {
     const leafId = row.subcategory_id ?? row.category_id;
@@ -145,16 +146,14 @@ export async function getCategoryTree(locale: Locale): Promise<CategoryTreeNode[
   // Prune any branch with zero products — keeps soft-archived roots ("Lighting"
   // with no parts yet) out of the filter sidebar while still letting an
   // inactive root that still holds active descendants render normally.
-  // Root categories stay in the menu even with 0 products — they are the store's
-  // top navigation (e.g. "Anvelope", "Acumulatori") and should always show while
-  // active. Retired/inactive roots drop out. Sub-categories are still pruned when
-  // empty so 0-part leaves stay hidden from the public.
-  function prune(nodes: CategoryTreeNode[], isRoot: boolean): CategoryTreeNode[] {
+  // Hide every category with nothing in stock — roots AND leaves. Only what is
+  // actually in stock shows to customers.
+  function prune(nodes: CategoryTreeNode[]): CategoryTreeNode[] {
     return nodes
-      .map((n) => ({ ...n, children: prune(n.children, false) }))
-      .filter((n) => (isRoot ? n.isActive !== false : n.productCount > 0));
+      .map((n) => ({ ...n, children: prune(n.children) }))
+      .filter((n) => n.productCount > 0);
   }
-  const pruned = prune(roots, true);
+  const pruned = prune(roots);
 
   pruned.sort(bySortOrder);
   for (const r of pruned) r.children.sort(bySortOrder);
