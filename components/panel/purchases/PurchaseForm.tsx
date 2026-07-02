@@ -305,11 +305,29 @@ export function PurchaseForm({
               {lines.map((l, idx) => (
                 <tr key={idx}>
                   <td className="px-2 py-2">
-                    <Input
+                    {/* Supplier code also autocompletes from parts the system
+                        already knows (purchased/sold/on-site), so typing the
+                        code on the supplier's invoice recognizes the part and
+                        fills the internal code + name + link. */}
+                    <InternalCodeAutocomplete
                       value={l.supplier_code}
-                      onChange={(e) => setLine(idx, { supplier_code: e.target.value })}
-                      className="h-9 font-mono text-xs"
+                      linkedProductId={l.product_id}
                       placeholder={t("achizitii_line_supplier_code_placeholder")}
+                      onChange={(code) =>
+                        setLine(idx, { supplier_code: code, product_id: null })
+                      }
+                      onPickProduct={(p) =>
+                        setLine(idx, {
+                          // Keep the typed supplier code; fill the rest from the
+                          // recognized part.
+                          internal_code: (p.part_code ?? "").toUpperCase(),
+                          description: l.description.trim()
+                            ? l.description
+                            : p.name_ro ?? "",
+                          product_id: p.id,
+                          add_to_catalog: true,
+                        })
+                      }
                     />
                   </td>
                   <td className="px-2 py-2">
@@ -671,11 +689,13 @@ function InternalCodeAutocomplete({
   linkedProductId,
   onChange,
   onPickProduct,
+  placeholder = "Cod intern…",
 }: {
   value: string;
   linkedProductId: string | null;
   onChange: (next: string) => void;
   onPickProduct: (product: ProductSearchResult) => void;
+  placeholder?: string;
 }) {
   const [results, setResults] = useState<ProductSearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -736,7 +756,7 @@ function InternalCodeAutocomplete({
           "h-9 font-mono text-xs",
           linkedProductId ? "border-success/50 bg-success/5" : "",
         )}
-        placeholder="Cod intern…"
+        placeholder={placeholder}
       />
       {linkedProductId ? (
         <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
