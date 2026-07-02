@@ -65,6 +65,8 @@ export type Category = {
   iconKey: PartIllustration | "brakes" | "engine" | "chassis" | "electro" | "air" | "clutch" | "steering" | "cooling" | "body" | "interior" | "hoses" | "couplings";
   /** Optional banner image URL (set per root category from admin / seed). */
   imageUrl?: string | null;
+  /** Active flag — retired categories are is_active=false and stay out of nav. */
+  isActive?: boolean | null;
 };
 
 /** Name aliases per locale — used to select the right DB column */

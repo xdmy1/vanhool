@@ -89,6 +89,7 @@ export async function getCategories(locale: Locale): Promise<Category[]> {
     productCount: counts.get(row.id) ?? 0,
     iconKey: illustrationFor(row.slug ?? ""),
     imageUrl: row.image_url ?? null,
+    isActive: row.is_active,
   }));
 }
 
@@ -144,12 +145,16 @@ export async function getCategoryTree(locale: Locale): Promise<CategoryTreeNode[
   // Prune any branch with zero products — keeps soft-archived roots ("Lighting"
   // with no parts yet) out of the filter sidebar while still letting an
   // inactive root that still holds active descendants render normally.
-  function prune(nodes: CategoryTreeNode[]): CategoryTreeNode[] {
+  // Root categories stay in the menu even with 0 products — they are the store's
+  // top navigation (e.g. "Anvelope", "Acumulatori") and should always show while
+  // active. Retired/inactive roots drop out. Sub-categories are still pruned when
+  // empty so 0-part leaves stay hidden from the public.
+  function prune(nodes: CategoryTreeNode[], isRoot: boolean): CategoryTreeNode[] {
     return nodes
-      .map((n) => ({ ...n, children: prune(n.children) }))
-      .filter((n) => n.productCount > 0);
+      .map((n) => ({ ...n, children: prune(n.children, false) }))
+      .filter((n) => (isRoot ? n.isActive !== false : n.productCount > 0));
   }
-  const pruned = prune(roots);
+  const pruned = prune(roots, true);
 
   pruned.sort(bySortOrder);
   for (const r of pruned) r.children.sort(bySortOrder);
