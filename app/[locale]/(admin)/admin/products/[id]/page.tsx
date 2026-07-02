@@ -48,11 +48,13 @@ export default async function EditProductPage({
 
   const initialVehicleMakeIds = await adminGetProductVehicleMakeIds(product.id);
 
-  const categoryOptions = cats.map((c) => ({
-    id: c.id,
-    name: nameFor(c, locale as Locale),
-    parentId: c.parent_id,
-  }));
+  const categoryOptions = cats
+    .filter((c) => c.is_active !== false)
+    .map((c) => ({
+      id: c.id,
+      name: nameFor(c, locale as Locale),
+      parentId: c.parent_id,
+    }));
 
   const initial = {
     partCode: product.part_code ?? "",

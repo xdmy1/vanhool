@@ -59,11 +59,13 @@ export default async function NewProductPage({
       fromLineId ? getDefaultMarkupPercent() : Promise.resolve(30),
     ]);
 
-  const categoryOptions = cats.map((c) => ({
-    id: c.id,
-    name: nameFor(c, locale as Locale),
-    parentId: c.parent_id,
-  }));
+  const categoryOptions = cats
+    .filter((c) => c.is_active !== false)
+    .map((c) => ({
+      id: c.id,
+      name: nameFor(c, locale as Locale),
+      parentId: c.parent_id,
+    }));
 
   // If the line is already linked to a product, don't prefill — bounce the
   // user to that product's edit page.

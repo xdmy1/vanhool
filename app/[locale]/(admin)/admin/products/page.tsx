@@ -60,7 +60,9 @@ export default async function AdminProductsPage({
   for (const c of categories) {
     const name = nameFor(c, locale as Locale);
     categoriesMap.set(c.id, { name, slug: c.slug });
-    categoryOptions.push({ id: c.id, name });
+    // Only the active (canonical) tree in the filter dropdown; retired
+    // categories stay resolvable by name via categoriesMap but aren't offered.
+    if (c.is_active !== false) categoryOptions.push({ id: c.id, name });
   }
 
   const tecdocAvailable = isApifyConfigured();

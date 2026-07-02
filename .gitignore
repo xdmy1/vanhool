@@ -44,3 +44,6 @@ next-env.d.ts
 .env*.local
 .env
 .claude/
+
+# TecDoc import operational artifacts (snapshots/scripts for undo)
+tecdoc-import/
