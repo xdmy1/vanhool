@@ -31,10 +31,11 @@ function nameFor(cat: TreeCategory, locale: Locale): string {
 }
 
 /**
- * Draggable category tree. Rows can be dragged to reorder them AMONG THEIR
- * SIBLINGS (same parent) — dropping persists the new sort_order, which drives
- * the on-site order. Dragging a parent carries its whole subtree. Cross-parent
- * moves are ignored (edit the category to change its parent).
+ * Category tree with an explicit "Reordonează" mode. Normal view shows the full
+ * tree, static (no drag handles) so it's clean to read. Reorder mode HIDES the
+ * subcategories and shows only the root categories as draggable rows, so the
+ * operator can arrange the on-site order without the subtree getting in the way.
+ * Dropping persists sort_order (storefront lists categories by sort_order).
  */
 export function CategoryTree({
   categories,
@@ -49,6 +50,7 @@ export function CategoryTree({
   const [items, setItems] = useState<TreeCategory[]>(categories);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
   const [, startSave] = useTransition();
 
   const byParent = useMemo(() => {
@@ -82,7 +84,6 @@ export function CategoryTree({
     siblings.splice(to, 0, moved);
     const orderedIds = siblings.map((c) => c.id);
     const orderMap = new Map(orderedIds.map((id, i) => [id, i] as const));
-    // Optimistic: apply the new sort_order locally so the tree re-sorts.
     setItems((prev) =>
       prev.map((c) =>
         orderMap.has(c.id) ? { ...c, sort_order: orderMap.get(c.id)! } : c,
@@ -97,9 +98,28 @@ export function CategoryTree({
 
   return (
     <div className="overflow-hidden rounded-md border border-border bg-surface">
-      <div className="border-b border-border bg-background/40 px-4 py-2 text-[11px] text-muted">
-        Trage rândurile de mânerul ⠿ ca să schimbi ordinea pe site (în cadrul
-        aceleiași categorii-părinte).
+      <div className="flex items-center justify-between gap-3 border-b border-border bg-background/40 px-4 py-2">
+        <span className="text-[11px] text-muted">
+          {reorderMode
+            ? "Mod reordonare — trage categoriile-rădăcină în ordinea dorită. Subcategoriile sunt ascunse temporar; ordinea se salvează pe loc."
+            : "Apasă „Reordonează” ca să aranjezi ordinea categoriilor pe site."}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setReorderMode((v) => !v);
+            setDraggingId(null);
+            setOverId(null);
+          }}
+          className={cn(
+            "shrink-0 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors",
+            reorderMode
+              ? "border-primary bg-primary/10 text-primary hover:bg-primary/20"
+              : "border-border bg-surface text-muted-strong hover:border-primary/40 hover:text-primary",
+          )}
+        >
+          {reorderMode ? "Gata" : "Reordonează"}
+        </button>
       </div>
       <header className="grid grid-cols-[24px_1fr_140px_120px_80px_44px] items-center gap-3 border-b border-border bg-background/40 px-4 py-3 text-xs text-muted">
         <span />
@@ -110,25 +130,44 @@ export function CategoryTree({
         <span />
       </header>
       <ul className="divide-y divide-border">
-        {roots.map((root) => (
-          <TreeRow
-            key={root.id}
-            category={root}
-            byParent={byParent}
-            counts={counts}
-            depth={0}
-            locale={locale}
-            draggingId={draggingId}
-            overId={overId}
-            onDragStart={setDraggingId}
-            onDragEnterRow={setOverId}
-            onDropRow={handleDrop}
-            onDragEnd={() => {
-              setDraggingId(null);
-              setOverId(null);
-            }}
-          />
-        ))}
+        {reorderMode
+          ? roots.map((root) => (
+              <TreeRow
+                key={root.id}
+                category={root}
+                byParent={byParent}
+                counts={counts}
+                depth={0}
+                locale={locale}
+                reorderMode
+                draggingId={draggingId}
+                overId={overId}
+                onDragStart={setDraggingId}
+                onDragEnterRow={setOverId}
+                onDropRow={handleDrop}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setOverId(null);
+                }}
+              />
+            ))
+          : roots.map((root) => (
+              <TreeRow
+                key={root.id}
+                category={root}
+                byParent={byParent}
+                counts={counts}
+                depth={0}
+                locale={locale}
+                reorderMode={false}
+                draggingId={null}
+                overId={null}
+                onDragStart={() => {}}
+                onDragEnterRow={() => {}}
+                onDropRow={() => {}}
+                onDragEnd={() => {}}
+              />
+            ))}
       </ul>
     </div>
   );
@@ -140,6 +179,7 @@ function TreeRow({
   counts,
   depth,
   locale,
+  reorderMode,
   draggingId,
   overId,
   onDragStart,
@@ -152,6 +192,7 @@ function TreeRow({
   counts: Record<string, number>;
   depth: number;
   locale: Locale;
+  reorderMode: boolean;
   draggingId: string | null;
   overId: string | null;
   onDragStart: (id: string) => void;
@@ -161,31 +202,41 @@ function TreeRow({
 }) {
   const children = byParent.get(category.id) ?? [];
   const isDragging = draggingId === category.id;
-  const isOver = overId === category.id && draggingId !== null && draggingId !== category.id;
+  const isOver =
+    overId === category.id && draggingId !== null && draggingId !== category.id;
 
   return (
     <>
       <li
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.effectAllowed = "move";
-          onDragStart(category.id);
-        }}
-        onDragEnter={() => onDragEnterRow(category.id)}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          onDropRow(category.id);
-        }}
-        onDragEnd={onDragEnd}
+        draggable={reorderMode}
+        onDragStart={
+          reorderMode
+            ? (e) => {
+                e.dataTransfer.effectAllowed = "move";
+                onDragStart(category.id);
+              }
+            : undefined
+        }
+        onDragEnter={reorderMode ? () => onDragEnterRow(category.id) : undefined}
+        onDragOver={reorderMode ? (e) => e.preventDefault() : undefined}
+        onDrop={
+          reorderMode
+            ? (e) => {
+                e.preventDefault();
+                onDropRow(category.id);
+              }
+            : undefined
+        }
+        onDragEnd={reorderMode ? onDragEnd : undefined}
         className={cn(
           "grid grid-cols-[24px_1fr_140px_120px_80px_44px] items-center gap-3 px-4 py-3 transition-colors",
-          isDragging ? "opacity-40" : "hover:bg-background/30",
-          isOver ? "border-t-2 border-primary" : "border-t-2 border-transparent",
+          reorderMode && isDragging ? "opacity-40" : "hover:bg-background/30",
+          reorderMode ? "cursor-grab border-t-2 active:cursor-grabbing" : "",
+          reorderMode && isOver ? "border-primary" : "border-transparent",
         )}
       >
-        <span className="cursor-grab text-muted active:cursor-grabbing" aria-label="drag">
-          <GripVertical className="size-4" />
+        <span className="text-muted">
+          {reorderMode ? <GripVertical className="size-4" /> : null}
         </span>
         <div
           className={cn("flex items-center gap-2", depth > 0 && "pl-6")}
@@ -222,22 +273,24 @@ function TreeRow({
           <Edit className="size-3.5" />
         </Link>
       </li>
-      {children.map((child) => (
-        <TreeRow
-          key={child.id}
-          category={child}
-          byParent={byParent}
-          counts={counts}
-          depth={depth + 1}
-          locale={locale}
-          draggingId={draggingId}
-          overId={overId}
-          onDragStart={onDragStart}
-          onDragEnterRow={onDragEnterRow}
-          onDropRow={onDropRow}
-          onDragEnd={onDragEnd}
-        />
-      ))}
+      {!reorderMode &&
+        children.map((child) => (
+          <TreeRow
+            key={child.id}
+            category={child}
+            byParent={byParent}
+            counts={counts}
+            depth={depth + 1}
+            locale={locale}
+            reorderMode={false}
+            draggingId={null}
+            overId={null}
+            onDragStart={() => {}}
+            onDragEnterRow={() => {}}
+            onDropRow={() => {}}
+            onDragEnd={() => {}}
+          />
+        ))}
     </>
   );
 }
