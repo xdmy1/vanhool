@@ -21,7 +21,10 @@ export const orderItemSchema = z.object({
   partCode: z.string(),
   brand: z.string(),
   price: z.number().nonnegative(),
-  quantity: z.number().int().positive(),
+  // Divisible units (litru/metru/kg) allow fractional qty; the cart UI still
+  // forces integers for "buc" products.
+  quantity: z.number().positive(),
+  unit: z.string().optional(),
 });
 
 export const checkoutSchema = z.object({

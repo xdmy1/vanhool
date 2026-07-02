@@ -47,7 +47,10 @@ const productSchema = z.object({
   slug: z.string().max(160).optional().or(z.literal("")),
   price: z.number().nonnegative().max(1_000_000),
   costPrice: z.number().nonnegative().max(1_000_000).nullable().optional(),
-  stockQuantity: z.number().int().nonnegative(),
+  // numeric(12,3) — divisible units keep decimals.
+  stockQuantity: z.number().nonnegative(),
+  /** Unit of measure (buc/litru/metru/kg/...). App-level vocabulary. */
+  unit: z.string().default("buc"),
   storageLocation: z.string().max(120).optional().or(z.literal("")),
   condition: z.enum(["new", "refurbished", "used"]).optional(),
   categoryId: z.string().uuid().nullable().optional(),
@@ -286,7 +289,8 @@ export async function createProduct(values: unknown): Promise<ProductActionResul
   const payload = buildPayload(parsed.data, manufacturerName);
   const { data, error } = await auth.supabase
     .from("products")
-    .insert(payload)
+    // `unit` isn't in the generated types yet — cast so it still persists.
+    .insert({ ...payload, ...({ unit: parsed.data.unit ?? "buc" } as object) })
     .select("id")
     .single();
   if (error || !data) {
@@ -328,7 +332,7 @@ export async function updateProduct(
   const payload = buildPayload(parsed.data, manufacturerName);
   const { error } = await auth.supabase
     .from("products")
-    .update(payload)
+    .update({ ...payload, ...({ unit: parsed.data.unit ?? "buc" } as object) })
     .eq("id", id);
   if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
   await syncVehicleMakes(auth.supabase, id, parsed.data.vehicleMakeIds ?? []);

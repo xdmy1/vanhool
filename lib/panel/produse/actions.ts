@@ -18,7 +18,11 @@ const productSchema = z.object({
   subcategory_id: z.string().uuid().nullable().optional(),
   price: z.number().nonnegative(),
   cost_price: z.number().nonnegative().nullable().optional(),
-  stock_quantity: z.number().int().min(0).default(0),
+  // Stock is numeric(12,3) — divisible units (litru/metru/kg) keep decimals.
+  stock_quantity: z.number().min(0).default(0),
+  /** Unit of measure the product is stocked + sold in. Vocabulary lives in the
+   *  app (PRODUCT_UNITS); DB accepts any text so a new unit never blocks a save. */
+  unit: z.string().default("buc"),
   storage_location: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
   supplier_id: z.string().uuid().nullable().optional(),
@@ -49,11 +53,15 @@ export async function createPanelProduct(
 
   const supabase = await createClient();
   const slug = slugify(`${parsed.data.name_ro}-${parsed.data.part_code}`);
+  // `unit` isn't in the generated types yet — add it via cast so the insert
+  // still writes it (products.unit exists at runtime after the UoM migration).
+  const { unit: newUnit, ...newRest } = parsed.data;
   const { data, error } = await supabase
     .from("products")
     .insert({
-      ...parsed.data,
+      ...newRest,
       slug,
+      ...({ unit: newUnit } as object),
     })
     .select("id")
     .single();
@@ -89,9 +97,13 @@ export async function updatePanelProduct(
   }
 
   const supabase = await createClient();
+  const { unit: updUnit, ...updRest } = parsed.data;
   const { error } = await supabase
     .from("products")
-    .update(parsed.data)
+    .update({
+      ...updRest,
+      ...(updUnit !== undefined ? ({ unit: updUnit } as object) : {}),
+    })
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };
 

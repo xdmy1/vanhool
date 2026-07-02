@@ -487,12 +487,12 @@ const lineSchema = z.object({
    */
   discounted_unit_price: z.number().nonnegative().nullable().optional(),
   /**
-   * Unit of measure. Default "buc" (pieces — integer qty). Lines tagged
-   * "l" or "m" allow decimal qty (e.g. 1.5 litri AdBlue, 2.3 m furtun).
-   * Stored on the items snapshot so the bookkeeper / driver / invoice
-   * print all show the same unit the operator picked.
+   * Unit of measure, sourced from the product (buc/litru/metru/kg/...).
+   * Non-"buc" units allow decimal qty (e.g. 1.5 litri AdBlue, 2.3 m furtun).
+   * Stored on the items snapshot so the bookkeeper / driver / invoice print
+   * all show the same unit. Free text — app-level vocabulary (PRODUCT_UNITS).
    */
-  unit: z.enum(["buc", "l", "m"]).default("buc"),
+  unit: z.string().default("buc"),
 });
 
 const walkinSchema = z.object({

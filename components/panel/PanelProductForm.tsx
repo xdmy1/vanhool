@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PRODUCT_UNITS, isDivisibleUnit } from "@/lib/stock";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import {
   createPanelProduct,
@@ -75,6 +76,7 @@ const EMPTY: PanelProductInput = {
   price: 0,
   cost_price: 0,
   stock_quantity: 0,
+  unit: "buc",
   storage_location: "",
   is_active: true,
   supplier_id: null,
@@ -111,6 +113,7 @@ export function PanelProductForm({
           price: Number(initial.price ?? 0),
           cost_price: Number(initial.cost_price ?? 0),
           stock_quantity: Number(initial.stock_quantity ?? 0),
+          unit: (initial as { unit?: string }).unit ?? "buc",
           storage_location: initial.storage_location ?? "",
           is_active: initial.is_active ?? true,
           supplier_id: initial.supplier_id,
@@ -288,15 +291,32 @@ export function PanelProductForm({
             />
             <p className="mt-1 text-xs text-muted">{t("product_form_cost_helper")}</p>
           </Field>
+          <Field label="Unitate de măsură">
+            <select
+              value={state.unit}
+              onChange={(e) => set("unit", e.target.value)}
+              className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            >
+              {PRODUCT_UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label={t("product_form_stock")}>
             <Input
               type="number"
-              step={1}
+              step={isDivisibleUnit(state.unit) ? 0.001 : 1}
               min={0}
               value={state.stock_quantity}
-              onChange={(e) =>
-                set("stock_quantity", Math.max(0, Math.trunc(Number(e.target.value || 0))))
-              }
+              onChange={(e) => {
+                const raw = Number(e.target.value || 0);
+                set(
+                  "stock_quantity",
+                  isDivisibleUnit(state.unit) ? Math.max(0, raw) : Math.max(0, Math.trunc(raw)),
+                );
+              }}
             />
           </Field>
           <Field label={t("product_form_location")}>

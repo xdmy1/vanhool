@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PRODUCT_UNITS } from "@/lib/stock";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { MultiImageUpload } from "@/components/admin/products/MultiImageUpload";
 import { CategoryComboboxAdd } from "@/components/admin/products/CategoryComboboxAdd";
@@ -270,6 +271,7 @@ export function ProductForm({
       price: priceValue,
       costPrice: costPriceValue > 0 ? costPriceValue : null,
       stockQuantity: num("stockQuantity") ?? 0,
+      unit: String(fd.get("unit") || "buc"),
       storageLocation: String(fd.get("storageLocation") ?? ""),
       condition,
       categoryId: categoryId || null,
@@ -669,6 +671,21 @@ export function ProductForm({
               min={0}
             />
           </Field>
+          <Field label="Unitate de măsură (U.M.)">
+            <select
+              name="unit"
+              defaultValue={
+                (initial as { unit?: string } | null | undefined)?.unit ?? "buc"
+              }
+              className="flex h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
+            >
+              {PRODUCT_UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label={labels.field_stock} error={errors.stockQuantity}>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
@@ -676,7 +693,7 @@ export function ProductForm({
                   name="stockQuantity"
                   type="number"
                   min={0}
-                  step={1}
+                  step="any"
                   defaultValue={initial?.stockQuantity ?? 0}
                   required
                   className="flex-1"
