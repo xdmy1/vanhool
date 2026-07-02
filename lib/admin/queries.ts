@@ -177,11 +177,27 @@ export async function adminGetCategory(
 
 export async function adminCategoryProductCounts(): Promise<Map<string, number>> {
   const supabase = await createClient();
-  const { data } = await supabase.from("products").select("category_id");
+  // Products carry BOTH a parent `category_id` and a leaf `subcategory_id`.
+  // The storefront lists a product under either, so the tree count must too —
+  // otherwise leaf subcategories (e.g. "plăcuțe de frână", tagged only on
+  // subcategory_id) show 0 in the panel while the site shows the parts.
+  const { data } = await supabase
+    .from("products")
+    .select("category_id, subcategory_id");
   const out = new Map<string, number>();
-  for (const row of (data ?? []) as { category_id: string | null }[]) {
-    if (!row.category_id) continue;
-    out.set(row.category_id, (out.get(row.category_id) ?? 0) + 1);
+  const bump = (id: string | null) => {
+    if (!id) return;
+    out.set(id, (out.get(id) ?? 0) + 1);
+  };
+  for (const row of (data ?? []) as {
+    category_id: string | null;
+    subcategory_id: string | null;
+  }[]) {
+    bump(row.category_id);
+    // Avoid double-counting if both point at the same node.
+    if (row.subcategory_id && row.subcategory_id !== row.category_id) {
+      bump(row.subcategory_id);
+    }
   }
   return out;
 }
