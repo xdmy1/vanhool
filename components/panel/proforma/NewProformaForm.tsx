@@ -445,6 +445,28 @@ export function NewProformaForm({
               />
               <span className="text-xs text-muted">%</span>
             </label>
+            <div
+              className="inline-flex overflow-hidden rounded-md border border-border"
+              role="group"
+              aria-label="Markup rapid pe toate liniile"
+            >
+              <button
+                type="button"
+                onClick={() => applyMarkupToAll("30")}
+                title="Prețuiește toate liniile la cost × 1.30"
+                className="px-2 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+              >
+                +30%
+              </button>
+              <button
+                type="button"
+                onClick={() => applyMarkupToAll("15")}
+                title="Prețuiește toate liniile la cost × 1.15 (marja mai mică)"
+                className="border-l border-border px-2 py-1 text-[11px] font-semibold text-muted-strong transition-colors hover:bg-surface-elevated"
+              >
+                -15%
+              </button>
+            </div>
             <Button type="button" variant="ghost" size="sm" onClick={addLine}>
               <Plus className="size-4" />
               {t("proforma_form_line_add")}
