@@ -179,6 +179,7 @@ export function NewProformaForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
   const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
+  const [markupPercent, setMarkupPercent] = useState<string>("");
 
   // Switching books flips every line's VAT — conta 2 is always 0%, conta 1
   // always 20%. The per-line TVA column is read-only (scope-driven); the
@@ -260,6 +261,25 @@ export function NewProformaForm({
   }
   function addLine() {
     setLines([...lines, { ...EMPTY_LINE, vat_rate: defaultVatFor(scope) }]);
+  }
+
+  // Document-level markup (mirrors the sale wizard): price every line that has
+  // a known cost as cost × (1 + markup%). cost_price is stored in MDL → convert
+  // the marked-up price into the document currency. Lines without a cost
+  // (freeform / manual) keep their current price.
+  function applyMarkupToAll(percent: string) {
+    setMarkupPercent(percent);
+    const trimmed = percent.trim();
+    if (trimmed === "") return;
+    const m = Number(trimmed);
+    if (!Number.isFinite(m) || m < 0) return;
+    setLines(
+      lines.map((l) => {
+        if (!(l.cost_price > 0)) return l;
+        const mdl = l.cost_price * (1 + m / 100);
+        return { ...l, unit_price: convertPrice(mdl, "MDL", currency) };
+      }),
+    );
   }
   function removeLine(idx: number) {
     if (lines.length === 1) return;
@@ -396,14 +416,40 @@ export function NewProformaForm({
       />
 
       <section className="rounded-md border border-border bg-surface p-5">
-        <header className="mb-4 flex items-center justify-between">
+        <header className="mb-4 flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
             {t("proforma_form_lines_section")}
           </h3>
-          <Button type="button" variant="ghost" size="sm" onClick={addLine}>
-            <Plus className="size-4" />
-            {t("proforma_form_line_add")}
-          </Button>
+          <div className="flex items-center gap-3">
+            <label
+              className="flex items-center gap-1.5"
+              title={t("sale_markup_hint")}
+            >
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                {t("sale_markup_label")}
+              </span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                step={1}
+                min={0}
+                value={markupPercent}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  applyMarkupToAll(
+                    v === "" ? "" : String(Math.max(0, Math.trunc(Number(v) || 0))),
+                  );
+                }}
+                placeholder="—"
+                className="h-8 w-20 text-right"
+              />
+              <span className="text-xs text-muted">%</span>
+            </label>
+            <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+              <Plus className="size-4" />
+              {t("proforma_form_line_add")}
+            </Button>
+          </div>
         </header>
 
         <p className="mb-3 text-xs text-muted-strong">
