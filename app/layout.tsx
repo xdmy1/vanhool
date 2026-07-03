@@ -4,6 +4,7 @@ import { getLocale } from "next-intl/server";
 import { Toaster } from "sonner";
 
 import { CartBootstrap } from "@/components/cart/CartBootstrap";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import "./globals.css";
 
 const inter = Inter({
@@ -13,8 +14,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  // Must match the sitemap's host (www) — a bare-domain metadataBase makes
+  // every canonical point at URLs that 307 to www, which Google won't index.
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://inter-bus.md",
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.inter-bus.md",
   ),
   title: {
     default: "Inter Bus — Piese auto pentru autobuze",
@@ -32,6 +35,13 @@ export const metadata: Metadata = {
     title: "Inter Bus",
     statusBarStyle: "default",
   },
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? {
+        verification: {
+          google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+        },
+      }
+    : {}),
 };
 
 export const viewport: Viewport = {
@@ -59,6 +69,7 @@ export default async function RootLayout({
       >
         {children}
         <CartBootstrap />
+        <GoogleAnalytics />
         <Toaster
           theme="light"
           position="bottom-right"

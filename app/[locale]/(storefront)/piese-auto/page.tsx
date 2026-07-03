@@ -5,9 +5,35 @@ import { BrandTile } from "@/components/vehicles/BrandTile";
 import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { listMakes } from "@/lib/db/vehicles";
 import { routing } from "@/lib/i18n/routing";
+import { staticPageMeta } from "@/lib/seo";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return staticPageMeta("/piese-auto", locale, {
+    ro: {
+      title: "Piese auto după marcă — Mercedes, MAN, Iveco, Volvo, Setra",
+      description:
+        "Alege marca și modelul vehiculului și găsește piesele compatibile: Mercedes-Benz, MAN, Iveco, Volvo, Setra, Neoplan și altele.",
+    },
+    en: {
+      title: "Auto parts by vehicle make — Mercedes, MAN, Iveco, Volvo, Setra",
+      description:
+        "Pick your vehicle make and model to find compatible parts: Mercedes-Benz, MAN, Iveco, Volvo, Setra, Neoplan and more.",
+    },
+    ru: {
+      title: "Автозапчасти по марке — Mercedes, MAN, Iveco, Volvo, Setra",
+      description:
+        "Выберите марку и модель, чтобы найти совместимые запчасти: Mercedes-Benz, MAN, Iveco, Volvo, Setra, Neoplan и другие.",
+    },
+  });
 }
 
 export default async function PieseAutoPage({

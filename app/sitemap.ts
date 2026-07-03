@@ -24,6 +24,7 @@ const STATIC_PATHS = [
   "/informatii/livrare",
   "/informatii/termeni-si-conditii",
   "/informatii/garantie-si-retur",
+  "/informatii/confidentialitate",
 ] as const;
 
 function siteUrl(): string {
@@ -44,13 +45,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Pull every active product. Supabase caps `select` at 1000 rows per call,
   // so paginate. The site won't be in 50k territory for a while; if it gets
   // there, switch to `generateSitemaps()` to split into multiple files.
-  type Row = { slug: string | null; created_at: string | null };
+  type Row = {
+    slug: string | null;
+    created_at: string | null;
+    image_url: string | null;
+  };
   const rows: Row[] = [];
   const pageSize = 1000;
   for (let page = 0; ; page++) {
     const { data, error } = await supabase
       .from("products")
-      .select("slug, created_at")
+      .select("slug, created_at, image_url")
       .eq("is_active", true)
       .not("slug", "is", null)
       .order("created_at", { ascending: false })
@@ -59,6 +64,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     rows.push(...(data as Row[]));
     if (data.length < pageSize) break;
   }
+
+  // Vehicle landing pages (/piese-auto/{make} and /piese-auto/{make}/{model})
+  // are the brand+model query magnets — surface them all to crawlers.
+  const [{ data: makes }, { data: models }] = await Promise.all([
+    supabase.from("vehicle_makes").select("id, slug"),
+    supabase.from("vehicle_models").select("slug, make_id"),
+  ]);
+  const makeSlugById = new Map(
+    (makes ?? []).map((m) => [m.id as string, m.slug as string]),
+  );
 
   const now = new Date();
 
@@ -74,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   });
 
   const productEntries: MetadataRoute.Sitemap = rows
-    .filter((r): r is { slug: string; created_at: string | null } => !!r.slug)
+    .filter((r): r is Row & { slug: string } => !!r.slug)
     .map((r) => {
       const langs = localized(`/product/${r.slug}`);
       return {
@@ -83,8 +98,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly",
         priority: 0.8,
         alternates: { languages: langs },
+        ...(r.image_url ? { images: [r.image_url] } : {}),
       };
     });
 
-  return [...staticEntries, ...productEntries];
+  const vehiclePaths: string[] = [
+    ...(makes ?? []).map((m) => `/piese-auto/${m.slug}`),
+    ...(models ?? []).flatMap((m) => {
+      const makeSlug = makeSlugById.get(m.make_id as string);
+      return makeSlug ? [`/piese-auto/${makeSlug}/${m.slug}`] : [];
+    }),
+  ];
+
+  const vehicleEntries: MetadataRoute.Sitemap = vehiclePaths.map((p) => {
+    const langs = localized(p);
+    return {
+      url: langs.ro,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+      alternates: { languages: langs },
+    };
+  });
+
+  return [...staticEntries, ...vehicleEntries, ...productEntries];
 }

@@ -5,8 +5,35 @@ import { Container } from "@/components/layout/Container";
 import { ModelTile } from "@/components/vehicles/ModelTile";
 import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { listModelsByMake } from "@/lib/db/vehicles";
+import { localeAlternates } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; brand: string }>;
+}) {
+  const { locale, brand } = await params;
+  const result = await listModelsByMake(brand);
+  if (!result) return {};
+  const name = result.make.name;
+  const titles: Record<string, string> = {
+    ro: `Piese auto ${name} — toate modelele`,
+    en: `${name} parts — all models`,
+    ru: `Запчасти ${name} — все модели`,
+  };
+  const descriptions: Record<string, string> = {
+    ro: `Piese pentru autobuze și microbuze ${name}: alege modelul și motorizarea ca să vezi piesele compatibile din stoc.`,
+    en: `Parts for ${name} buses and minibuses: pick the model and engine to see compatible parts in stock.`,
+    ru: `Запчасти для автобусов и микроавтобусов ${name}: выберите модель и двигатель, чтобы увидеть совместимые детали.`,
+  };
+  return {
+    title: titles[locale] ?? titles.ro,
+    description: descriptions[locale] ?? descriptions.ro,
+    alternates: localeAlternates(`/piese-auto/${brand}`, locale),
+  };
+}
 
 export default async function BrandPage({
   params,

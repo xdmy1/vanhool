@@ -5,8 +5,35 @@ import { Container } from "@/components/layout/Container";
 import { EngineRow } from "@/components/vehicles/EngineRow";
 import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { listTypesByModel } from "@/lib/db/vehicles";
+import { localeAlternates } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; brand: string; model: string }>;
+}) {
+  const { locale, brand, model } = await params;
+  const result = await listTypesByModel(brand, model);
+  if (!result) return {};
+  const full = `${result.make.name} ${result.model.name}`;
+  const titles: Record<string, string> = {
+    ro: `Piese ${full} — alege motorizarea`,
+    en: `${full} parts — choose the engine`,
+    ru: `Запчасти ${full} — выберите двигатель`,
+  };
+  const descriptions: Record<string, string> = {
+    ro: `Piese compatibile pentru ${full}: frâne, motor, suspensie, electrice. Selectează motorizarea pentru lista exactă.`,
+    en: `Compatible parts for ${full}: brakes, engine, suspension, electrics. Select the engine variant for the exact list.`,
+    ru: `Совместимые запчасти для ${full}: тормоза, двигатель, подвеска, электрика. Выберите двигатель для точного списка.`,
+  };
+  return {
+    title: titles[locale] ?? titles.ro,
+    description: descriptions[locale] ?? descriptions.ro,
+    alternates: localeAlternates(`/piese-auto/${brand}/${model}`, locale),
+  };
+}
 
 export default async function ModelPage({
   params,

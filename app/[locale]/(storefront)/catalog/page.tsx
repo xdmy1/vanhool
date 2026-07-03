@@ -11,11 +11,32 @@ import { getCatalog, type CatalogFilters as Filters } from "@/lib/db/products";
 import { getCategoryTree } from "@/lib/db/categories";
 import { listVehicleMakesForFilter } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
+import { localeAlternates } from "@/lib/seo";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+const CATALOG_TITLES: Record<string, string> = {
+  ro: "Catalog piese auto — autobuze, microbuze, camioane",
+  en: "Auto parts catalog — buses, minibuses, trucks",
+  ru: "Каталог автозапчастей — автобусы, микроавтобусы, грузовики",
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return {
+    title: CATALOG_TITLES[locale] ?? CATALOG_TITLES.ro,
+    // Filters/search/pagination all render under /catalog — one canonical
+    // stops Google from treating every ?q=/?page= combination as duplicates.
+    alternates: localeAlternates("/catalog", locale),
+  };
 }
 
 // searchParams (q, category, sort, page, ...) drive every render — Next.js

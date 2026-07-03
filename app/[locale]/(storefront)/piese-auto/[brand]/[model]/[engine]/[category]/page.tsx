@@ -10,9 +10,43 @@ import {
 } from "@/lib/db/vehicles";
 import { getCategoryBySlug } from "@/lib/db/categories";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
+import { localeAlternates } from "@/lib/seo";
 import type { Locale } from "@/lib/db/types";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{
+    locale: string;
+    brand: string;
+    model: string;
+    engine: string;
+    category: string;
+  }>;
+}) {
+  const { locale, brand, model, engine, category } = await params;
+  const [ctx, categoryData] = await Promise.all([
+    getTypeBySlug(brand, model, engine),
+    getCategoryBySlug(category, locale as Locale),
+  ]);
+  if (!ctx) return {};
+  const catName = categoryData?.name ?? category;
+  const vehicle = `${ctx.make.name} ${ctx.model.name} ${ctx.type.name}`;
+  const titles: Record<string, string> = {
+    ro: `${catName} ${vehicle} — piese compatibile`,
+    en: `${catName} for ${vehicle} — compatible parts`,
+    ru: `${catName} ${vehicle} — совместимые запчасти`,
+  };
+  return {
+    title: titles[locale] ?? titles.ro,
+    alternates: localeAlternates(
+      `/piese-auto/${brand}/${model}/${engine}/${category}`,
+      locale,
+    ),
+  };
+}
 
 export default async function PartsPage({
   params,

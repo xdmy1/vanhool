@@ -6,6 +6,7 @@ import { Container } from "@/components/layout/Container";
 import { ProductCard } from "@/components/catalog/ProductCard";
 import { getActivePromotions } from "@/lib/db/products";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
+import { localeAlternates } from "@/lib/seo";
 import type { Locale } from "@/lib/db/types";
 import { routing } from "@/lib/i18n/routing";
 
@@ -27,6 +28,7 @@ export async function generateMetadata({
   return {
     title: t("page_title"),
     description: t("page_subtitle"),
+    alternates: localeAlternates("/promotions", locale),
   };
 }
 

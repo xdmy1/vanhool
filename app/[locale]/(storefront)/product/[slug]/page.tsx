@@ -18,6 +18,13 @@ import {
 import { getCategories, getCategoryBySlug } from "@/lib/db/categories";
 import { getVehicleMakesForProduct } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
+import {
+  JsonLd,
+  SITE_URL,
+  breadcrumbJsonLd,
+  localeAlternates,
+  productJsonLd,
+} from "@/lib/seo";
 import type { Locale } from "@/lib/db/types";
 
 export async function generateMetadata({
@@ -28,9 +35,22 @@ export async function generateMetadata({
   const { locale, slug } = await params;
   const product = await getProductBySlug(slug, locale as Locale);
   if (!product) return {};
+  const title = `${product.name} — ${product.partCode || product.brand}`;
+  const description =
+    product.description?.slice(0, 300) ||
+    `${product.name} · ${product.partCode} · ${product.brand}`;
+  const alternates = localeAlternates(`/product/${slug}`, locale);
   return {
-    title: `${product.name} — ${product.partCode || product.brand}`,
-    description: product.description,
+    title,
+    description,
+    alternates,
+    openGraph: {
+      title,
+      description,
+      url: alternates.canonical as string,
+      siteName: "Inter Bus",
+      ...(product.imageUrl ? { images: [{ url: product.imageUrl }] } : {}),
+    },
   };
 }
 
@@ -124,8 +144,19 @@ export default async function ProductDetailPage({
     vatExcluded: tCard("vat_excluded"),
   };
 
+  const crumbs = [
+    { name: tNav("home"), url: `${SITE_URL}/${loc}` },
+    { name: tNav("catalog"), url: `${SITE_URL}/${loc}/catalog` },
+    ...(category
+      ? [{ name: category.name, url: `${SITE_URL}/${loc}/catalog?category=${category.slug}` }]
+      : []),
+    { name: product.name, url: `${SITE_URL}/${loc}/product/${product.slug}` },
+  ];
+
   return (
     <div className="bg-background">
+      <JsonLd data={productJsonLd(product, loc)} />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
       {/* Breadcrumbs */}
       <div className="border-b border-border bg-surface/40">
         <Container className="flex items-center gap-2 py-4 text-xs text-muted">

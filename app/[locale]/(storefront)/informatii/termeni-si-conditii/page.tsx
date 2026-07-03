@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { LegalPage, type LegalSection } from "@/components/legal/LegalPage";
 import { routing } from "@/lib/i18n/routing";
+import { localeAlternates } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
@@ -17,7 +18,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "legal_terms" });
-  return { title: t("title"), description: t("intro") };
+  return {
+    title: t("title"),
+    description: t("intro"),
+    alternates: localeAlternates("/informatii/termeni-si-conditii", locale),
+  };
 }
 
 const CONTENT: Record<string, { intro: string; sections: LegalSection[] }> = {

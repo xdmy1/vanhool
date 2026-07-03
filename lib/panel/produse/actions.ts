@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
+import { pingIndexNow } from "@/lib/indexnow";
 
 const productSchema = z.object({
   part_code: z.string().min(1, "Cod obligatoriu"),
@@ -81,6 +82,7 @@ export async function createPanelProduct(
   }
 
   revalidatePath("/[locale]/panel/produse", "page");
+  if (parsed.data.is_active) await pingIndexNow([`/product/${slug}`]);
   return { ok: true, id: data.id };
 }
 
@@ -98,17 +100,20 @@ export async function updatePanelProduct(
 
   const supabase = await createClient();
   const { unit: updUnit, ...updRest } = parsed.data;
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("products")
     .update({
       ...updRest,
       ...(updUnit !== undefined ? ({ unit: updUnit } as object) : {}),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("slug")
+    .maybeSingle();
   if (error) return { ok: false, reason: error.message };
 
   revalidatePath(`/[locale]/panel/produse/${id}`, "page");
   revalidatePath("/[locale]/panel/produse", "page");
+  if (updated?.slug) await pingIndexNow([`/product/${updated.slug}`]);
   return { ok: true };
 }
 

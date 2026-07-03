@@ -20,9 +20,33 @@ import { Container } from "@/components/layout/Container";
 import { VehicleBreadcrumb } from "@/components/vehicles/VehicleBreadcrumb";
 import { VehicleCategoryTile } from "@/components/vehicles/VehicleCategoryTile";
 import { getTypeBySlug, listCategoriesForType } from "@/lib/db/vehicles";
+import { localeAlternates } from "@/lib/seo";
 import type { Locale } from "@/lib/db/types";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; brand: string; model: string; engine: string }>;
+}) {
+  const { locale, brand, model, engine } = await params;
+  const ctx = await getTypeBySlug(brand, model, engine);
+  if (!ctx) return {};
+  const full = `${ctx.make.name} ${ctx.model.name} ${ctx.type.name}`;
+  const titles: Record<string, string> = {
+    ro: `Piese ${full} — pe categorii`,
+    en: `${full} parts — by category`,
+    ru: `Запчасти ${full} — по категориям`,
+  };
+  return {
+    title: titles[locale] ?? titles.ro,
+    alternates: localeAlternates(
+      `/piese-auto/${brand}/${model}/${engine}`,
+      locale,
+    ),
+  };
+}
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement>>;
 

@@ -5,9 +5,35 @@ import { Container } from "@/components/layout/Container";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { createClient } from "@/lib/supabase/server";
 import { routing } from "@/lib/i18n/routing";
+import { staticPageMeta } from "@/lib/seo";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return staticPageMeta("/contact", locale, {
+    ro: {
+      title: "Contact Inter Bus — comenzi și consultanță piese auto",
+      description:
+        "Sună la +373 60 319 000 sau scrie la sales@inter-bus.md. Program Lun-Vin 09:00-18:00, str. Dimo 9, Durlești, Chișinău.",
+    },
+    en: {
+      title: "Contact Inter Bus — orders and parts advice",
+      description:
+        "Call +373 60 319 000 or email sales@inter-bus.md. Open Mon-Fri 09:00-18:00, Dimo 9 St., Durlești, Chișinău, Moldova.",
+    },
+    ru: {
+      title: "Контакты Inter Bus — заказы и консультации",
+      description:
+        "Звоните +373 60 319 000 или пишите на sales@inter-bus.md. Пн-Пт 09:00-18:00, ул. Димо 9, Дурлешты, Кишинёв.",
+    },
+  });
 }
 
 export default async function ContactPage({

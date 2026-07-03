@@ -18,9 +18,35 @@ import { Container } from "@/components/layout/Container";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
+import { staticPageMeta } from "@/lib/seo";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return staticPageMeta("/about", locale, {
+    ro: {
+      title: "Despre Inter Bus — furnizor piese pentru autobuze și microbuze",
+      description:
+        "Furnizor specializat de piese pentru autobuze, microbuze și vehicule comerciale. Stoc propriu în Chișinău, livrare în Moldova și Europa.",
+    },
+    en: {
+      title: "About Inter Bus — bus and minibus parts supplier",
+      description:
+        "Specialist supplier of parts for buses, minibuses and commercial vehicles. Own stock in Chișinău, delivery across Moldova and Europe.",
+    },
+    ru: {
+      title: "Об Inter Bus — поставщик запчастей для автобусов",
+      description:
+        "Специализированный поставщик запчастей для автобусов, микроавтобусов и коммерческого транспорта. Склад в Кишинёве, доставка по Молдове и Европе.",
+    },
+  });
 }
 
 export default async function AboutPage({

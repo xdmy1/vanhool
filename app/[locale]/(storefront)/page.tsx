@@ -27,6 +27,7 @@ import { getCategoryTree } from "@/lib/db/categories";
 import { getFeaturedProducts } from "@/lib/db/products";
 import { listVehicleMakesForFilter } from "@/lib/db/vehicles";
 import { getEurToMdlRate } from "@/lib/exchange-rate";
+import { localeAlternates } from "@/lib/seo";
 import type { Category, Locale } from "@/lib/db/types";
 
 type IconComp = ComponentType<SVGProps<SVGSVGElement>>;
@@ -61,6 +62,38 @@ function iconFor(category: Category): IconComp {
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
+}
+
+const HOME_META: Record<string, { title: string; description: string }> = {
+  ro: {
+    title: "Inter Bus — Piese auto pentru autobuze, microbuze și camioane",
+    description:
+      "Magazin online de piese pentru autobuze, microbuze și vehicule comerciale. Căutare după cod piesă OEM, livrare rapidă în Moldova și Europa.",
+  },
+  en: {
+    title: "Inter Bus — Auto parts for buses, minibuses and trucks",
+    description:
+      "Online store for bus, minibus and commercial vehicle parts. Search by OEM part number, fast delivery across Moldova and Europe.",
+  },
+  ru: {
+    title: "Inter Bus — Автозапчасти для автобусов, микроавтобусов и грузовиков",
+    description:
+      "Интернет-магазин запчастей для автобусов и коммерческого транспорта. Поиск по OEM-коду, быстрая доставка по Молдове и Европе.",
+  },
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const meta = HOME_META[locale] ?? HOME_META.ro;
+  return {
+    title: { absolute: meta.title },
+    description: meta.description,
+    alternates: localeAlternates("", locale),
+  };
 }
 
 export default async function HomePage({
