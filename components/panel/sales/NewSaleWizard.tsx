@@ -14,6 +14,11 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import {
+  ForceSellModal,
+  type BelowCostLine,
+} from "@/components/panel/ForceSellModal";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -109,6 +114,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
   const [notes, setNotes] = useState("");
 
   const [submitting, startSubmit] = useTransition();
+  const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
 
   // Subtotal numbers are derived from per-line discounts (the operator types
   // a lower unit price on individual lines, never a global percent). Lines
@@ -217,7 +223,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
 
-  function submit() {
+  function submit(forceSellPin?: string) {
     if (!scope || lines.length === 0 || !deliveryAddress.trim()) return;
     startSubmit(async () => {
       const payload = {
@@ -264,9 +270,11 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         // (single source of truth = per-line). Keep it so historical reporting
         // continues to work.
         discount_percent: lineDiscountPct,
+        force_sell_pin: forceSellPin,
       };
       const res = await createManualSale(payload);
       if (res.ok) {
+        setForceSell(null);
         const suffix = res.invoiceId ? t("sale_success_invoice") : "";
         toast.success(t("sale_success", { total: res.total.toFixed(2) }) + suffix);
         if (res.deliveryNoteId) {
@@ -284,6 +292,8 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         } else {
           router.push(`/${locale}/panel`);
         }
+      } else if (res.reason === "below_cost") {
+        setForceSell(res.belowCost ?? []);
       } else {
         toast.error(t("sale_error", { reason: res.reason }));
       }
@@ -391,7 +401,7 @@ export function NewSaleWizard({ locale }: { locale: string }) {
         ) : (
           <Button
             type="button"
-            onClick={submit}
+            onClick={() => submit()}
             disabled={submitting || lines.length === 0}
             className="gap-1.5"
           >
@@ -400,6 +410,15 @@ export function NewSaleWizard({ locale }: { locale: string }) {
           </Button>
         )}
       </footer>
+
+      {forceSell !== null && (
+        <ForceSellModal
+          lines={forceSell}
+          pending={submitting}
+          onCancel={() => setForceSell(null)}
+          onConfirm={(pin) => submit(pin)}
+        />
+      )}
     </div>
   );
 }

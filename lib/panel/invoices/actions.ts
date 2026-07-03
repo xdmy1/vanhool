@@ -6,6 +6,11 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
+import {
+  isBelowCost,
+  blockedBelowCost,
+  type BelowCostLine,
+} from "@/lib/panel/margin-guard";
 import { sendResendEmail } from "@/lib/email/resend";
 import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import type { Json } from "@/lib/supabase/database.types";
@@ -70,6 +75,8 @@ const proformaInputSchema = z.object({
   notes: z.string().nullable().optional(),
   /** Commercial discount in percent (0..100) applied on the gross total. */
   discount_percent: z.number().min(0).max(100).optional(),
+  /** Admin PIN authorising line(s) at/below cost ("FORCE SELL"). */
+  force_sell_pin: z.string().optional(),
 });
 
 export type ProformaInput = z.infer<typeof proformaInputSchema>;
@@ -172,9 +179,57 @@ async function takeNextNumber(
  * Issue a proforma invoice. Either from an existing order (storefront/panel)
  * or ad-hoc (no order_id). Returns the new proforma id.
  */
+/**
+ * Fetch authoritative product costs (products.cost_price is GROSS) and return
+ * the below-cost lines that must BLOCK unless a valid FORCE-SELL PIN is given.
+ * `unit_price` is GROSS; freeform lines (no product_id) fall back to the cost
+ * captured on the line.
+ */
+async function collectBelowCost(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  items: ProformaInput["items"],
+  currency: "MDL" | "EUR" | "USD",
+  forceSellPin: unknown,
+): Promise<BelowCostLine[]> {
+  // cost_price is stored in MDL; convert to the document currency to compare.
+  const rate =
+    ({ MDL: 1, EUR: 20, USD: 17 } as Record<string, number>)[currency] ?? 1;
+  const ids = items
+    .map((i) => i.product_id)
+    .filter((s): s is string => !!s);
+  const costById = new Map<string, number>();
+  if (ids.length > 0) {
+    const { data } = await supabase
+      .from("products")
+      .select("id, cost_price")
+      .in("id", ids);
+    for (const p of data ?? [])
+      costById.set(
+        p.id as string,
+        Number((p as { cost_price: number | null }).cost_price ?? 0),
+      );
+  }
+  const below: BelowCostLine[] = [];
+  for (const i of items) {
+    const dp = i.discounted_unit_price;
+    const eff = dp != null && dp >= 0 && dp < i.unit_price ? dp : i.unit_price;
+    const costMdl = i.product_id
+      ? costById.get(i.product_id) ?? Number(i.cost_price ?? 0)
+      : Number(i.cost_price ?? 0);
+    const cost = rate === 1 ? costMdl : Number((costMdl / rate).toFixed(2));
+    if (isBelowCost(eff, cost)) {
+      below.push({ label: i.part_code ?? i.name ?? "linie", sell: eff, cost });
+    }
+  }
+  return blockedBelowCost(below, forceSellPin);
+}
+
 export async function issueProforma(
   raw: unknown,
-): Promise<{ ok: true; id: string; number: string } | { ok: false; reason: string }> {
+): Promise<
+  | { ok: true; id: string; number: string }
+  | { ok: false; reason: string; belowCost?: BelowCostLine[] }
+> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
 
@@ -184,6 +239,11 @@ export async function issueProforma(
   }
   const v = parsed.data;
   const supabase = await createClient();
+
+  const proformaBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
+  if (proformaBlocked.length > 0) {
+    return { ok: false, reason: "below_cost", belowCost: proformaBlocked };
+  }
 
   // VAT is driven purely by the book (account_scope), never by the form:
   //   conta1 → every line 20%, conta2 → every line 0%.
@@ -542,7 +602,9 @@ export async function convertProformaToInvoice(
 export async function updateProforma(
   id: string,
   raw: unknown,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<
+  { ok: true } | { ok: false; reason: string; belowCost?: BelowCostLine[] }
+> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
 
@@ -569,6 +631,11 @@ export async function updateProforma(
   if (existing.type !== "proforma") return { ok: false, reason: "not_a_proforma" };
   if (existing.converted_to_invoice_id) return { ok: false, reason: "already_converted" };
   if (existing.status === "void") return { ok: false, reason: "voided" };
+
+  const updProformaBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
+  if (updProformaBlocked.length > 0) {
+    return { ok: false, reason: "below_cost", belowCost: updProformaBlocked };
+  }
 
   const { subtotal, vat_amount, total, discount_percent } = totals(
     itemsNormalized.map((i) => ({
@@ -644,7 +711,9 @@ export async function updateProforma(
 export async function updateInvoice(
   id: string,
   raw: unknown,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<
+  { ok: true } | { ok: false; reason: string; belowCost?: BelowCostLine[] }
+> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
 
@@ -673,6 +742,11 @@ export async function updateInvoice(
   // still editable — typos in customer details, fixing a wrong item.
   if (existing.status === "paid") return { ok: false, reason: "already_paid" };
   if (existing.status === "void") return { ok: false, reason: "voided" };
+
+  const updInvoiceBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
+  if (updInvoiceBlocked.length > 0) {
+    return { ok: false, reason: "below_cost", belowCost: updInvoiceBlocked };
+  }
 
   const { subtotal, vat_amount, total, discount_percent } = totals(
     itemsNormalized.map((i) => ({

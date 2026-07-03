@@ -11,6 +11,11 @@ import {
   User,
 } from "lucide-react";
 import { toast } from "sonner";
+
+import {
+  ForceSellModal,
+  type BelowCostLine,
+} from "@/components/panel/ForceSellModal";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -173,6 +178,7 @@ export function NewProformaForm({
   const [dueDays, setDueDays] = useState(initial?.dueDays ?? 7);
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
+  const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
 
   // Switching books flips every line's VAT — conta 2 is always 0%, conta 1
   // always 20%. The per-line TVA column is read-only (scope-driven); the
@@ -260,7 +266,7 @@ export function NewProformaForm({
     setLines(lines.filter((_, i) => i !== idx));
   }
 
-  function submit() {
+  function submit(forceSellPin?: string) {
     const validLines = lines.filter(
       (l) => l.name.trim().length > 0 && l.quantity > 0,
     );
@@ -335,6 +341,7 @@ export function NewProformaForm({
       account_scope: scope,
       output_locale: outputLocale,
       notes: notes || null,
+      force_sell_pin: forceSellPin,
     };
 
     startSubmit(async () => {
@@ -344,12 +351,15 @@ export function NewProformaForm({
             ? await updateInvoice(initial.id, payload)
             : await updateProforma(initial.id, payload);
         if (res.ok) {
+          setForceSell(null);
           toast.success(t("proforma_updated_success"));
           const base =
             documentType === "invoice"
               ? `/${locale}/panel/facturi`
               : `/${locale}/panel/proforme`;
           router.push(`${base}/${initial.id}`);
+        } else if (res.reason === "below_cost") {
+          setForceSell(res.belowCost ?? []);
         } else {
           toast.error(t("sale_error", { reason: res.reason }));
         }
@@ -357,8 +367,11 @@ export function NewProformaForm({
       }
       const res = await issueProforma(payload);
       if (res.ok) {
+        setForceSell(null);
         toast.success(t("proforma_created_success", { number: res.number }));
         router.push(`/${locale}/panel/proforme/${res.id}`);
+      } else if (res.reason === "below_cost") {
+        setForceSell(res.belowCost ?? []);
       } else {
         toast.error(t("sale_error", { reason: res.reason }));
       }
@@ -740,7 +753,7 @@ export function NewProformaForm({
       </section>
 
       <div className="flex justify-end">
-        <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
+        <Button type="button" onClick={() => submit()} disabled={pending} className="gap-1.5">
           <Save className="size-4" />
           {pending
             ? t("sale_processing")
@@ -749,6 +762,15 @@ export function NewProformaForm({
               : t("proforma_form_submit")}
         </Button>
       </div>
+
+      {forceSell !== null && (
+        <ForceSellModal
+          lines={forceSell}
+          pending={pending}
+          onCancel={() => setForceSell(null)}
+          onConfirm={(pin) => submit(pin)}
+        />
+      )}
     </div>
   );
 }

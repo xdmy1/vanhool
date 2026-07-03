@@ -9,6 +9,11 @@ import { createInvoiceForOrder } from "@/lib/refrens/invoice";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeCode } from "@/lib/utils/normalize-code";
+import {
+  isBelowCost,
+  blockedBelowCost,
+  type BelowCostLine,
+} from "@/lib/panel/margin-guard";
 
 // -----------------------------------------------------------------------------
 // Search helpers (used by the wizard's autocompletes)
@@ -519,6 +524,8 @@ const saleSchema = z
     notes: z.string().nullable().optional(),
     /** Optional commercial discount in percent (0..100). Default 0. */
     discount_percent: z.number().min(0).max(100).optional(),
+    /** Admin PIN authorising a sale at/below cost ("FORCE SELL"). */
+    force_sell_pin: z.string().optional(),
   })
   .refine(
     (d) => (d.client_id && !d.walkin) || (!d.client_id && d.walkin),
@@ -536,7 +543,7 @@ export type ManualSaleResult =
       invoiceUrl: string | null;
       total: number;
     }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; belowCost?: BelowCostLine[] };
 
 export async function createManualSale(raw: unknown): Promise<ManualSaleResult> {
   const user = await getPanelUser();
@@ -626,6 +633,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
 
   // Validate stock + build items snapshot
   const items: Array<Record<string, unknown>> = [];
+  const belowCost: BelowCostLine[] = [];
+  // cost_price is stored in MDL; convert it to the sale currency before the
+  // below-cost comparison (fixed reference rates, same as elsewhere).
+  const saleFx: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const saleRate = saleFx[v.currency] ?? 1;
   let subtotal = 0;
   let subtotalBeforeDiscount = 0;
   for (const line of v.items) {
@@ -642,6 +654,16 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const dp = line.discounted_unit_price;
     const effective =
       dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
+    const lineCost = Number(p?.cost_price ?? line.cost_price ?? 0);
+    const lineCostInCur =
+      saleRate === 1 ? lineCost : Number((lineCost / saleRate).toFixed(2));
+    if (isBelowCost(effective, lineCostInCur)) {
+      belowCost.push({
+        label: p?.part_code ?? line.part_code ?? p?.name_ro ?? line.name ?? "linie",
+        sell: effective,
+        cost: lineCostInCur,
+      });
+    }
     const lineTotalEff = Number((line.qty * effective).toFixed(2));
     const lineTotalGross = Number((line.qty * line.unit_price).toFixed(2));
     subtotal += lineTotalEff;
@@ -657,7 +679,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       price: effective,
       original_unit_price: line.unit_price,
       unit_discount: Number((line.unit_price - effective).toFixed(2)),
-      cost_price: Number(p?.cost_price ?? line.cost_price ?? 0),
+      cost_price: lineCost,
       total: lineTotalEff,
       /** Marker so postPurchase / reports can tell which order lines
        *  weren't backed by a real catalog product at sale time. */
@@ -666,6 +688,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   }
   subtotal = Number(subtotal.toFixed(2));
   subtotalBeforeDiscount = Number(subtotalBeforeDiscount.toFixed(2));
+
+  // Block zero-or-negative-margin lines unless a valid FORCE-SELL PIN is given.
+  const blocked = blockedBelowCost(belowCost, v.force_sell_pin);
+  if (blocked.length > 0) {
+    return { ok: false, reason: "below_cost", belowCost: blocked };
+  }
 
   // NOTE: TVA is NOT computed here from v.account_scope. The fiscal invoice
   // can land in a different book than the sale (a paid conta2 sale becomes a
