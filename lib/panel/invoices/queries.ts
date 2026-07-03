@@ -59,6 +59,11 @@ export async function listInvoices(args: {
           ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, notes, customer_snapshot, account_scope"
           : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
+      // Order strictly by document number, highest first. Numbers are
+      // zero-padded fixed width (e.g. "0475"), so a string sort matches the
+      // numeric order. issued_date is a fallback tiebreaker for legacy rows
+      // that never got a number. Nulls (unnumbered drafts) sink to the bottom.
+      .order("number", { ascending: false, nullsFirst: false })
       .order("issued_date", { ascending: false })
       .limit(300);
     if (args.type) q = q.eq("type", args.type);
