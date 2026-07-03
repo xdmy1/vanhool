@@ -77,6 +77,9 @@ const proformaInputSchema = z.object({
   discount_percent: z.number().min(0).max(100).optional(),
   /** Admin PIN authorising line(s) at/below cost ("FORCE SELL"). */
   force_sell_pin: z.string().optional(),
+  /** conta2 documents are 0% TVA by default; set true to bill a conta2
+   *  document WITH 20% TVA (conta1 is always 20% regardless of this). */
+  conta2_with_vat: z.boolean().optional().default(false),
 });
 
 export type ProformaInput = z.infer<typeof proformaInputSchema>;
@@ -249,7 +252,7 @@ export async function issueProforma(
   //   conta1 → every line 20%, conta2 → every line 0%.
   // Forcing both directions (not just zeroing conta2) closes the hole where
   // a conta1 line could ship 0% TVA if the form sent 0.
-  const lineVatRate = v.account_scope === "conta1" ? 20 : 0;
+  const lineVatRate = v.account_scope === "conta1" || v.conta2_with_vat ? 20 : 0;
   const items = v.items.map((i) => ({
     ...i,
     vat_rate: lineVatRate,
@@ -482,10 +485,16 @@ export async function convertProformaToInvoice(
   // 0% TVA. Recompute net/TVA/total + per-line vat_rate from invoiceScope off
   // the proforma's GROSS line snapshot. Gross total is unchanged (gross is
   // gross); only the net/TVA split moves.
-  const convLineVat = invoiceScope === "conta1" ? 20 : 0;
   const pfSnapshot = Array.isArray(pf.items_snapshot)
     ? (pf.items_snapshot as Array<Record<string, unknown>>)
     : [];
+  // conta2 proformas can carry 20% TVA (explicit conta2-with-vat) — keep it on
+  // conversion to a conta2 invoice. A paid conta2 → conta1 still gets 20% via
+  // invoiceScope. Detect the proforma's VAT from its stored line snapshot.
+  const pfHadVat = pfSnapshot.some(
+    (it) => Number((it as { vat_rate?: number }).vat_rate ?? 0) > 0,
+  );
+  const convLineVat = invoiceScope === "conta1" || pfHadVat ? 20 : 0;
   const convItemsSnapshot = pfSnapshot.map((it) => ({
     ...it,
     vat_rate: convLineVat,
@@ -615,7 +624,8 @@ export async function updateProforma(
   const v = parsed.data;
   // Same scope-driven TVA rule as the create path: conta1 → 20% every line,
   // conta2 → 0% every line. Forced both ways; the form cannot override it.
-  const updProformaVatRate = v.account_scope === "conta1" ? 20 : 0;
+  const updProformaVatRate =
+    v.account_scope === "conta1" || v.conta2_with_vat ? 20 : 0;
   const itemsNormalized = v.items.map((i) => ({
     ...i,
     vat_rate: updProformaVatRate,
@@ -724,7 +734,8 @@ export async function updateInvoice(
   const v = parsed.data;
   // Scope-driven TVA, forced both ways (conta1 → 20%, conta2 → 0%). An edited
   // fiscal invoice can never be flipped to a wrong per-line rate by the form.
-  const updInvoiceVatRate = v.account_scope === "conta1" ? 20 : 0;
+  const updInvoiceVatRate =
+    v.account_scope === "conta1" || v.conta2_with_vat ? 20 : 0;
   const itemsNormalized = v.items.map((i) => ({
     ...i,
     vat_rate: updInvoiceVatRate,

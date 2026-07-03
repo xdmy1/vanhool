@@ -180,13 +180,27 @@ export function NewProformaForm({
   const [pending, startSubmit] = useTransition();
   const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
   const [markupPercent, setMarkupPercent] = useState<string>("");
+  // conta2 is 0% TVA by default; this opt-in bills a conta2 document WITH 20%.
+  const [conta2WithVat, setConta2WithVat] = useState<boolean>(
+    () =>
+      (initial?.scope ?? "conta1") === "conta2" &&
+      (initial?.lines?.some((l) => (l.vat_rate ?? 0) > 0) ?? false),
+  );
 
   // Switching books flips every line's VAT — conta 2 is always 0%, conta 1
   // always 20%. The per-line TVA column is read-only (scope-driven); the
   // operator cannot tweak it.
   function setScope(next: "conta1" | "conta2") {
     setScopeState(next);
-    const vat = defaultVatFor(next);
+    const vat = next === "conta1" || (next === "conta2" && conta2WithVat) ? 20 : 0;
+    setLines((prev) => prev.map((l) => ({ ...l, vat_rate: vat })));
+  }
+
+  // Opt conta2 in/out of 20% TVA (conta1 is always 20%, button hidden there).
+  function toggleConta2Vat() {
+    const next = !conta2WithVat;
+    setConta2WithVat(next);
+    const vat = scope === "conta1" || next ? 20 : 0;
     setLines((prev) => prev.map((l) => ({ ...l, vat_rate: vat })));
   }
 
@@ -217,10 +231,9 @@ export function NewProformaForm({
     let net = 0;
     let gross = 0;
     let grossBeforeDiscount = 0;
-    // TVA is driven purely by the book, never per line — keeps the footer in
-    // sync with the read-only per-line breakdown and with the server (which
-    // forces the same rate). conta1 → 20%, conta2 → 0%.
-    const docVatRate = scope === "conta1" ? 20 : 0;
+    // TVA is driven by the book: conta1 → always 20%, conta2 → 0% unless the
+    // operator opted the document in via conta2WithVat.
+    const docVatRate = scope === "conta1" || conta2WithVat ? 20 : 0;
     for (const l of lines) {
       const eff =
         l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
@@ -254,13 +267,16 @@ export function NewProformaForm({
       discountAmount,
       total: grossRounded,
     };
-  }, [lines, scope]);
+  }, [lines, scope, conta2WithVat]);
 
   function setLine(idx: number, patch: Partial<Line>) {
     setLines(lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
   }
   function addLine() {
-    setLines([...lines, { ...EMPTY_LINE, vat_rate: defaultVatFor(scope) }]);
+    setLines([
+      ...lines,
+      { ...EMPTY_LINE, vat_rate: scope === "conta1" || conta2WithVat ? 20 : 0 },
+    ]);
   }
 
   // Document-level markup (mirrors the sale wizard): price every line that has
@@ -359,6 +375,7 @@ export function NewProformaForm({
       due_days: dueDays,
       currency,
       account_scope: scope,
+      conta2_with_vat: conta2WithVat,
       output_locale: outputLocale,
       notes: notes || null,
       force_sell_pin: forceSellPin,
@@ -507,8 +524,8 @@ export function NewProformaForm({
                   : 0;
                 // Fiscal breakdown is driven purely by the book (scope), shown
                 // read-only: conta1 extracts 20% out of the gross unit price,
-                // conta2 is 0%. The operator only ever sets the gross price.
-                const vatRate = scope === "conta1" ? 20 : 0;
+                // conta2 is 0% unless opted-in. The operator only sets gross.
+                const vatRate = scope === "conta1" || conta2WithVat ? 20 : 0;
                 const netUnit =
                   vatRate > 0 ? l.unit_price / (1 + vatRate / 100) : l.unit_price;
                 return (
@@ -762,13 +779,29 @@ export function NewProformaForm({
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-[11px] font-semibold">
-              {scope === "conta1" ? (
-                <span className="text-primary">= cu TVA 20%</span>
-              ) : (
-                <span className="text-warning">= fără TVA (0%)</span>
-              )}
-            </p>
+            <div className="mt-1 flex items-center gap-2">
+              <p className="text-[11px] font-semibold">
+                {scope === "conta1" || conta2WithVat ? (
+                  <span className="text-primary">= cu TVA 20%</span>
+                ) : (
+                  <span className="text-warning">= fără TVA (0%)</span>
+                )}
+              </p>
+              {scope === "conta2" ? (
+                <button
+                  type="button"
+                  onClick={toggleConta2Vat}
+                  className={cn(
+                    "rounded-md border px-2 py-0.5 text-[10px] font-semibold transition-colors",
+                    conta2WithVat
+                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/20"
+                      : "border-border bg-surface text-muted-strong hover:border-primary/40 hover:text-primary",
+                  )}
+                >
+                  {conta2WithVat ? "Scoate TVA" : "+ TVA 20%"}
+                </button>
+              ) : null}
+            </div>
             <p className="mt-0.5 text-[11px] text-muted">
               {scope === "conta2"
                 ? t("proforma_form_scope_hint_conta2")
