@@ -4,8 +4,8 @@ const SITE = "https://www.inter-bus.md";
 const KEY = "b13a626494d7753a193b696248c03071";
 
 const xml = await (await fetch(`${SITE}/sitemap.xml`)).text();
-const urls = [...xml.matchAll(/<(?:loc|xhtml:link[^>]*href=")([^<"]+)/g)]
-  .map((m) => m[1])
+const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>|href="([^"]+)"/g)]
+  .map((m) => m[1] ?? m[2])
   .filter((u) => u.startsWith(SITE));
 const unique = [...new Set(urls)];
 console.log(`Submitting ${unique.length} URLs to IndexNow...`);
