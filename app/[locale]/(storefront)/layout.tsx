@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 import { JsonLd, autoPartsStoreJsonLd, webSiteJsonLd } from "@/lib/seo";
 
 // Navbar/Footer read the user's auth cookie via Supabase, but Next.js 16's
@@ -20,6 +21,7 @@ export default function StorefrontLayout({
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <FloatingWhatsApp />
     </div>
   );
 }
