@@ -164,9 +164,22 @@ function toProduct(
     listPrice: finalListPrice,
     promoPrice: finalPromoPrice,
     isPromo: promoActive,
-    stock: deriveStock(row.stock_quantity, row.lead_time_days),
+    // Out-of-stock parts are always back-orderable ("La comandă"): default the
+    // lead time to 7 days when none was set, so the storefront shows
+    // "La comandă · 7 zile" instead of a dead "stoc 0". Every stock label +
+    // status keys off leadTimeDays, so setting it here fixes all surfaces at
+    // once. In-stock parts keep their raw lead time (null → "Livrare 24h").
+    stock: deriveStock(
+      row.stock_quantity,
+      (row.stock_quantity ?? 0) <= 0
+        ? row.lead_time_days ?? 7
+        : row.lead_time_days,
+    ),
     stockQuantity: row.stock_quantity ?? 0,
-    leadTimeDays: row.lead_time_days,
+    leadTimeDays:
+      (row.stock_quantity ?? 0) <= 0
+        ? row.lead_time_days ?? 7
+        : row.lead_time_days,
     categoryId: leafCategoryId,
     categorySlug,
     imageUrl: row.image_url,

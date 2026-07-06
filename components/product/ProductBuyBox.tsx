@@ -109,7 +109,7 @@ export function ProductBuyBox({
         </div>
         <div className="flex flex-col items-end gap-1">
           <StockBadge status={product.stock} label={stockLabel} />
-          {!unavailable ? (
+          {!unavailable && !onOrder ? (
             <span className="font-mono text-[11px] tabular-nums text-muted">
               {labels.stockAvailable}
             </span>

@@ -122,6 +122,7 @@ export default async function ProductDetailPage({
     inStock: tCard("in_stock"),
     lowStock: tCard("low_stock"),
     outOfStock: tCard("out_of_stock"),
+    onOrder: tCard("on_order", { days: product.leadTimeDays ?? 7 }),
     // Match the trust line to the actual product lead time — a 7-day part
     // shouldn't still claim "Livrare 24h".
     trustDelivery:
