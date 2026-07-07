@@ -20,6 +20,7 @@ export type InvoiceRow = {
   proforma_id: string | null;
   converted_to_invoice_id: string | null;
   accountant_sent_at: string | null;
+  accountant_entered_at: string | null;
   /** Short freeform note operators attach for fast scanning on the
    * list — typically a vehicle plate / bus identifier so a row of
    * Davo Group proformas can be told apart at a glance. */
@@ -56,7 +57,7 @@ export async function listInvoices(args: {
       .from("invoices")
       .select(
         includeAccountant
-          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, notes, customer_snapshot, account_scope"
+          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, customer_snapshot, account_scope"
           : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
       // Order strictly by document number, highest first. Numbers are
@@ -92,7 +93,7 @@ export async function listInvoices(args: {
   };
 
   let { data, error } = await buildQuery(true);
-  if (error && /accountant_sent_at/i.test(error.message)) {
+  if (error && /accountant_(sent|entered)_at/i.test(error.message)) {
     const retry = await buildQuery(false);
     data = retry.data;
     error = retry.error;
@@ -115,6 +116,7 @@ export async function listInvoices(args: {
     proforma_id: r.proforma_id as string | null,
     converted_to_invoice_id: r.converted_to_invoice_id as string | null,
     accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
+    accountant_entered_at: (r.accountant_entered_at as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
     customer_snapshot: r.customer_snapshot as InvoiceRow["customer_snapshot"],
   }));
@@ -180,6 +182,7 @@ export type InvoiceDetail = {
   /** ISO timestamp set the first time this document was emailed to the
    * accountant. Null while it's still pending. */
   accountant_sent_at: string | null;
+  accountant_entered_at: string | null;
   notes: string | null;
   refrens_invoice_id: string | null;
   refrens_url: string | null;
@@ -199,12 +202,12 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   let { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, accountant_sent_at, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, accountant_sent_at, accountant_entered_at, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
     .maybeSingle();
-  if (error && /(discount_percent|accountant_sent_at)/i.test(error.message)) {
+  if (error && /(discount_percent|accountant_sent_at|accountant_entered_at)/i.test(error.message)) {
     const retry = await supabase
       .from("invoices")
       .select(
@@ -312,6 +315,9 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     ),
     accountant_sent_at:
       (data as { accountant_sent_at?: string | null }).accountant_sent_at ?? null,
+    accountant_entered_at:
+      (data as { accountant_entered_at?: string | null }).accountant_entered_at ??
+      null,
     notes: data.notes,
     refrens_invoice_id: data.refrens_invoice_id,
     refrens_url: data.refrens_url,
@@ -389,6 +395,7 @@ export async function getDocumentsForRange(args: {
       total,
       discount_percent: 0,
       accountant_sent_at: null,
+      accountant_entered_at: null,
       notes: d.notes as string | null,
       refrens_invoice_id: d.refrens_invoice_id as string | null,
       refrens_url: d.refrens_url as string | null,

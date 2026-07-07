@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Plus } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { SearchInput } from "@/components/admin/SearchInput";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
@@ -34,7 +35,8 @@ export default async function PanelAchizitiiPage({
   setRequestLocale(locale);
 
   const scope = await getActiveBook(sp);
-  const rows = await listPurchases({ scope });
+  const q = typeof sp.q === "string" ? sp.q : undefined;
+  const rows = await listPurchases({ scope, q });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const bookLabel = scope === "conta1" ? t("conta1") : t("conta2");
   const statusLabel = (s: string) =>
@@ -59,10 +61,19 @@ export default async function PanelAchizitiiPage({
         }
       />
 
-      <div className="mt-8">
+      <div className="mt-6">
+        <SearchInput
+          placeholder={t("achizitii_search_placeholder")}
+          className="w-full max-w-md"
+        />
+      </div>
+
+      <div className="mt-6">
         {rows.length === 0 ? (
           <div className="rounded-md border border-dashed border-border bg-surface p-10 text-center text-sm text-muted">
-            {t("achizitii_empty", { book: bookLabel })}
+            {q
+              ? t("achizitii_empty_no_results")
+              : t("achizitii_empty", { book: bookLabel })}
           </div>
         ) : (
           <div className="overflow-x-auto rounded-md border border-border">
@@ -111,6 +122,7 @@ export default async function PanelAchizitiiPage({
                           <SendPurchaseButton
                             purchaseId={r.id}
                             initialSentAt={r.accountant_sent_at}
+                            enteredAt={r.accountant_entered_at}
                           />
                         ) : null}
                         <PinDeleteButton

@@ -151,6 +151,7 @@ export default async function PanelProformePage({
                         <SendToAccountantButton
                           invoiceId={r.id}
                           initialSentAt={r.accountant_sent_at}
+                          enteredAt={r.accountant_entered_at}
                           compact
                         />
                         <PinDeleteButton

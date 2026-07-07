@@ -14,10 +14,13 @@ const STORAGE_PREFIX = "panel.accountant_sent.";
 export function SendToAccountantButton({
   invoiceId,
   initialSentAt,
+  enteredAt = null,
   compact = false,
 }: {
   invoiceId: string;
   initialSentAt: string | null;
+  /** Set once the accountant clicks "Marchează ca INTRODUS" in the email. */
+  enteredAt?: string | null;
   compact?: boolean;
 }) {
   const t = useTranslations("panel");
@@ -56,6 +59,7 @@ export function SendToAccountantButton({
   }, [open]);
 
   const wasSent = !!sentAt;
+  const entered = !!enteredAt;
 
   function submit() {
     if (pin.trim().length === 0) {
@@ -94,6 +98,7 @@ export function SendToAccountantButton({
 
   return (
     <>
+      <span className="inline-flex items-center gap-2">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -113,6 +118,25 @@ export function SendToAccountantButton({
             : t("accountant_send_compact")
           : label}
       </button>
+      {wasSent ? (
+        entered ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-md border border-success bg-success/10 px-2 py-1 text-[11px] font-semibold text-success"
+            title={
+              enteredAt
+                ? `Introdus de contabil: ${new Date(enteredAt).toLocaleString("ro-RO")}`
+                : undefined
+            }
+          >
+            <Check className="size-3" /> Introdus
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted-strong">
+            Neintrodus
+          </span>
+        )
+      ) : null}
+      </span>
 
       {open ? (
         <div

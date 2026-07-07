@@ -24,10 +24,13 @@ const STORAGE_PREFIX = "panel.purchase_accountant_sent.";
 export function SendPurchaseButton({
   purchaseId,
   initialSentAt = null,
+  enteredAt = null,
   size = "compact",
 }: {
   purchaseId: string;
   initialSentAt?: string | null;
+  /** Set once the accountant clicks "Marchează ca INTRODUS" in the email. */
+  enteredAt?: string | null;
   size?: "compact" | "default";
 }) {
   const t = useTranslations("panel");
@@ -69,6 +72,7 @@ export function SendPurchaseButton({
   }, [open]);
 
   const wasSent = !!sentAt;
+  const entered = !!enteredAt;
 
   function submit() {
     if (pin.trim().length === 0) {
@@ -113,6 +117,7 @@ export function SendPurchaseButton({
 
   return (
     <>
+      <span className="inline-flex items-center gap-2">
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -128,6 +133,25 @@ export function SendPurchaseButton({
         {wasSent ? <Check className="size-3.5" /> : <Mail className="size-3.5" />}
         {label}
       </button>
+      {wasSent ? (
+        entered ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-md border border-success bg-success/10 px-2 py-1 text-[11px] font-semibold text-success"
+            title={
+              enteredAt
+                ? `Introdus de contabil: ${new Date(enteredAt).toLocaleString("ro-RO")}`
+                : undefined
+            }
+          >
+            <Check className="size-3" /> Introdus
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-muted-strong">
+            Neintrodus
+          </span>
+        )
+      ) : null}
+      </span>
 
       {open ? (
         <div

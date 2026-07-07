@@ -73,6 +73,7 @@ export default async function PanelAchizitieDetailPage({
               <SendPurchaseButton
                 purchaseId={purchase.id}
                 initialSentAt={purchase.accountant_sent_at}
+                enteredAt={purchase.accountant_entered_at}
                 size="default"
               />
             ) : null}

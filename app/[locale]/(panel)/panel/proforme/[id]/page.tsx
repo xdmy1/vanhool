@@ -90,6 +90,7 @@ export default async function PanelProformaDetailPage({
             <SendToAccountantButton
               invoiceId={proforma.id}
               initialSentAt={proforma.accountant_sent_at}
+              enteredAt={proforma.accountant_entered_at}
             />
             <PinDeleteButton
               action={deleteInvoiceWithPin}

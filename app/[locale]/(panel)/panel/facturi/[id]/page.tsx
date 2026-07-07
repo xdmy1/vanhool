@@ -102,6 +102,7 @@ export default async function PanelInvoiceDetailPage({
             <SendToAccountantButton
               invoiceId={invoice.id}
               initialSentAt={invoice.accountant_sent_at}
+              enteredAt={invoice.accountant_entered_at}
             />
             {invoice.status !== "void" ? (
               <VoidInvoiceButton invoiceId={invoice.id} />

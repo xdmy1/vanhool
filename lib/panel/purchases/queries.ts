@@ -12,6 +12,7 @@ export type PurchaseListRow = {
   currency: string;
   created_at: string;
   accountant_sent_at: string | null;
+  accountant_entered_at: string | null;
 };
 
 export async function listPurchases(args: {
@@ -20,26 +21,61 @@ export async function listPurchases(args: {
 }): Promise<PurchaseListRow[]> {
   const supabase = await createClient();
 
+  // If the operator typed a code (or partial doc number) into the top
+  // search bar, gather matching purchase ids from BOTH sources:
+  //   • purchase_items — internal_code / supplier_code ILIKE
+  //   • purchases      — document_number ILIKE (kept so the existing
+  //                      "search by IB0052 doc number" behaviour still works)
+  // Then constrain the main select to that id set. Two-hop is needed
+  // because PostgREST filters on embedded resources shrink the child rows
+  // but don't restrict the parent selection.
+  let allowedIds: string[] | null = null;
+  if (args.q && args.q.trim().length > 0) {
+    const raw = args.q.trim().replace(/[%_]/g, "");
+    const term = `%${raw}%`;
+    const [byItem, byDoc] = await Promise.all([
+      supabase
+        .from("purchase_items")
+        .select("purchase_id")
+        .or(`internal_code.ilike.${term},supplier_code.ilike.${term}`)
+        .limit(500),
+      supabase
+        .from("purchases")
+        .select("id")
+        .eq("account_scope", args.scope)
+        .ilike("document_number", term)
+        .limit(500),
+    ]);
+    const ids = new Set<string>();
+    for (const r of (byItem.data ?? []) as Array<{ purchase_id: string | null }>) {
+      if (r.purchase_id) ids.add(r.purchase_id);
+    }
+    for (const r of (byDoc.data ?? []) as Array<{ id: string }>) {
+      ids.add(r.id);
+    }
+    allowedIds = [...ids];
+    if (allowedIds.length === 0) return [];
+  }
+
   const buildQuery = (includeSent: boolean) => {
     let q = supabase
       .from("purchases")
       .select(
         includeSent
-          ? "id, document_number, document_date, account_scope, status, total, currency, created_at, accountant_sent_at, suppliers(name)"
+          ? "id, document_number, document_date, account_scope, status, total, currency, created_at, accountant_sent_at, accountant_entered_at, suppliers(name)"
           : "id, document_number, document_date, account_scope, status, total, currency, created_at, suppliers(name)",
       )
       .eq("account_scope", args.scope)
       .order("document_date", { ascending: false })
       .limit(100);
-    if (args.q) {
-      const term = `%${args.q.replace(/[%_]/g, "")}%`;
-      q = q.ilike("document_number", term);
+    if (allowedIds) {
+      q = q.in("id", allowedIds);
     }
     return q;
   };
 
   let { data, error } = await buildQuery(true);
-  if (error && /accountant_sent_at/i.test(error.message)) {
+  if (error && /accountant_(sent|entered)_at/i.test(error.message)) {
     const retry = await buildQuery(false);
     data = retry.data;
     error = retry.error;
@@ -57,6 +93,7 @@ export async function listPurchases(args: {
       currency: (r.currency as string | null) ?? "MDL",
       created_at: r.created_at as string,
       accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
+      accountant_entered_at: (r.accountant_entered_at as string | null) ?? null,
     };
   });
 }
@@ -218,6 +255,7 @@ export type PurchaseDetail = {
   expected_delivery_date: string | null;
   notes: string | null;
   accountant_sent_at: string | null;
+  accountant_entered_at: string | null;
   /** Storage path or URL of the supplier's original invoice (PDF / image).
    * Null = no attachment uploaded. */
   file_url: string | null;
@@ -302,12 +340,12 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   let headerRes = await supabase
     .from("purchases")
     .select(
-      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, suppliers(name)" as
+      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, accountant_entered_at, suppliers(name)" as
         "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
     )
     .eq("id", id)
     .maybeSingle();
-  if (headerRes.error && /accountant_sent_at/i.test(headerRes.error.message)) {
+  if (headerRes.error && /accountant_(sent|entered)_at/i.test(headerRes.error.message)) {
     headerRes = await supabase
       .from("purchases")
       .select(
@@ -359,6 +397,9 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
     accountant_sent_at:
       (header as { accountant_sent_at?: string | null }).accountant_sent_at ??
       null,
+    accountant_entered_at:
+      (header as { accountant_entered_at?: string | null })
+        .accountant_entered_at ?? null,
     file_url:
       (header as { file_url?: string | null }).file_url ?? null,
     items: (items ?? []).map((it) => ({

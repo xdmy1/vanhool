@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { sendResendEmail, type ResendAttachment } from "@/lib/email/resend";
+import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
@@ -655,7 +656,10 @@ export async function sendPurchaseToAccountant(
       ],
       purchases: [purchase],
     },
-    { mode: "single" },
+    {
+      mode: "single",
+      markEnteredUrl: accountantMarkEnteredUrl("purchase", purchaseId),
+    },
   );
 
   // If the operator attached the supplier's original document on the

@@ -45,7 +45,10 @@ function fmtDate(d: string | null | undefined): string {
   }).format(dt);
 }
 
-export function accountantInvoiceEmail(invoice: InvoiceDetail): {
+export function accountantInvoiceEmail(
+  invoice: InvoiceDetail,
+  markEnteredUrl?: string,
+): {
   subject: string;
   html: string;
   text: string;
@@ -179,6 +182,11 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
           <div style="font-size:12px;color:#6b6358;margin-top:2px">${escapeHtml(scopeLabel)} · Emisă: ${fmtDate(invoice.issued_date)}${invoice.due_date ? ` · Scadență: ${fmtDate(invoice.due_date)}` : ""}</div>
         </td></tr>
 
+        ${markEnteredUrl ? `<tr><td style="padding:16px 24px 0">
+          <a href="${markEnteredUrl}" style="display:block;text-align:center;background:#15803d;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 20px;border-radius:8px">✅ Marchează ca INTRODUS</a>
+          <div style="font-size:11px;color:#6b6358;text-align:center;margin-top:6px">Apasă după ce ai introdus documentul în contabilitate — se salvează automat în panelul Inter Bus.</div>
+        </td></tr>` : ""}
+
         <tr><td style="padding:16px 24px;background:#fffbe6;border-bottom:1px solid #f3e8aa">
           <div style="font-size:13px;color:#5a4906;line-height:1.5">
             <strong>Solicitare e-factură</strong> — vă rugăm să procesați emiterea facturii fiscale electronice pentru documentul de mai jos.
@@ -278,6 +286,10 @@ export function accountantInvoiceEmail(invoice: InvoiceDetail): {
   textLines.push(`Subtotal net: ${invoice.subtotal.toFixed(2)} ${invoice.currency}`);
   textLines.push(`TVA: ${invoice.vat_amount.toFixed(2)} ${invoice.currency}`);
   textLines.push(`TOTAL cu TVA: ${invoice.total.toFixed(2)} ${invoice.currency}`);
+  if (markEnteredUrl) {
+    textLines.push("");
+    textLines.push(`Marchează ca INTRODUS (după introducerea în contabilitate): ${markEnteredUrl}`);
+  }
 
   const subject = `Solicitare e-factură · ${docLabel} ${number} — ${customer?.name ?? "Client"} — ${invoice.total.toFixed(2)} ${invoice.currency}`;
 

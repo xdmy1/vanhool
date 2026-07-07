@@ -13,6 +13,7 @@ import {
 } from "@/lib/panel/margin-guard";
 import { sendResendEmail } from "@/lib/email/resend";
 import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
+import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
 
 // Bookkeeper inbox — single recipient for the "send to accountant" button
@@ -1301,7 +1302,10 @@ export async function sendInvoiceToAccountant(
   const invoice = await getInvoice(invoiceId);
   if (!invoice) return { ok: false, reason: "invoice_not_found" };
 
-  const { subject, html, text } = accountantInvoiceEmail(invoice);
+  const { subject, html, text } = accountantInvoiceEmail(
+    invoice,
+    accountantMarkEnteredUrl("invoice", invoiceId),
+  );
 
   const result = await sendResendEmail({
     to: ACCOUNTANT_EMAIL,

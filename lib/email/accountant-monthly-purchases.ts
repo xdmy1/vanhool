@@ -44,7 +44,7 @@ function fmtRange(from: string, to: string): string {
 
 export function accountantMonthlyPurchasesEmail(
   data: PurchasesForMonth,
-  options?: { mode?: "monthly" | "single" },
+  options?: { mode?: "monthly" | "single"; markEnteredUrl?: string },
 ): {
   subject: string;
   html: string;
@@ -53,6 +53,7 @@ export function accountantMonthlyPurchasesEmail(
   const { from, to, count, purchases, totalsByCurrency } = data;
   const rangeStr = fmtRange(from, to);
   const singleMode = options?.mode === "single";
+  const markEnteredUrl = singleMode ? options?.markEnteredUrl : undefined;
   const eyebrow = singleMode
     ? "Achiziție · raport complet"
     : "Raport achiziții lunare";
@@ -183,6 +184,11 @@ export function accountantMonthlyPurchasesEmail(
           <div style="font-size:22px;font-weight:700;color:#2a2622;margin-top:4px">${escapeHtml(singleMode ? (purchases[0]?.supplier_name ?? "Achiziție") : rangeStr)}</div>
           <div style="font-size:12px;color:#6b6358;margin-top:2px">${singleMode ? (purchases[0]?.document_number ? `Doc ${escapeHtml(purchases[0].document_number)} · ${fmtDate(purchases[0].document_date)}` : fmtDate(purchases[0]?.document_date ?? "")) : `${count} document${count === 1 ? "" : "e"}`}</div>
         </td></tr>
+
+        ${markEnteredUrl ? `<tr><td style="padding:16px 24px 0">
+          <a href="${markEnteredUrl}" style="display:block;text-align:center;background:#15803d;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 20px;border-radius:8px">✅ Marchează ca INTRODUS</a>
+          <div style="font-size:11px;color:#6b6358;text-align:center;margin-top:6px">Apasă după ce ai introdus achiziția în contabilitate — se salvează automat în panelul Inter Bus.</div>
+        </td></tr>` : ""}
 
         <tr><td style="padding:16px 24px;background:#fffbe6;border-bottom:1px solid #f3e8aa">
           <div style="font-size:13px;color:#5a4906;line-height:1.5">

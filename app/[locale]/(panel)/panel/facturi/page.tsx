@@ -451,6 +451,7 @@ export default async function PanelFacturiPage({
                         <SendToAccountantButton
                           invoiceId={r.id}
                           initialSentAt={r.accountant_sent_at}
+                          enteredAt={r.accountant_entered_at}
                           compact
                         />
                         <PinDeleteButton
