@@ -324,6 +324,8 @@ export type InvoiceExportRow = {
   customer_name: string | null;
   customer_idno: string | null;
   total: number;
+  /** Document's own currency — invoices.total is NOT normalised to MDL. */
+  currency: string;
   refrens_url: string | null;
 };
 
@@ -331,7 +333,7 @@ export async function listInvoicesForExport(range: DateRange): Promise<InvoiceEx
   const supabase = await createClient();
   const { data } = await supabase
     .from("invoices")
-    .select("id, series, number, issued_date, customer_snapshot, total, refrens_url")
+    .select("id, series, number, issued_date, customer_snapshot, total, currency, refrens_url")
     .gte("issued_date", range.from)
     .lte("issued_date", range.to)
     .order("issued_date");
@@ -345,6 +347,7 @@ export async function listInvoicesForExport(range: DateRange): Promise<InvoiceEx
       customer_name: snap?.name ?? null,
       customer_idno: snap?.idno ?? null,
       total: Number(r.total ?? 0),
+      currency: ((r as { currency?: string | null }).currency ?? "MDL").toUpperCase(),
       refrens_url: r.refrens_url,
     };
   });

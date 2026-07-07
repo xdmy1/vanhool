@@ -466,6 +466,10 @@ export async function convertProformaToInvoice(
         status: paidNow ? "confirmed" : "pending",
         payment_method: pm,
         account_scope: scope,
+        // pf.total is in the proforma's OWN currency — persist it so reports +
+        // the void/delete cash reversal convert EUR/USD → MDL correctly instead
+        // of the NOT NULL 'MDL' default silently understating it 20x/17x.
+        currency: pf.currency ?? "MDL",
         source: "panel",
         notes: `Generat din pro-formă ${pf.series ?? ""}${pf.number ?? ""}`,
       })

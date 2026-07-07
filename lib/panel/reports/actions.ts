@@ -76,6 +76,9 @@ export async function downloadReportCsv(args: {
         client: r.customer_name ?? "",
         idno: r.customer_idno ?? "",
         total: r.total.toFixed(2),
+        // total is in the document's own currency — label it so an EUR/USD
+        // invoice isn't booked as lei (a 20x/17x understatement).
+        valuta: r.currency,
         refrens_url: r.refrens_url ?? "",
       }));
       filename = `facturi_${args.from}_${args.to}.csv`;

@@ -808,10 +808,11 @@ function StepProducts({
     // Catalog price + cost are stored in MDL. Convert to the active wizard
     // currency before seeding the line so the operator sees consistent
     // numbers regardless of which book/currency they're billing in.
-    const baseMdl =
-      priceFromMarkup(p.cost_price) !== null
-        ? priceFromMarkup(p.cost_price)! * RATES_TO_MDL[currency]
-        : p.price;
+    // priceFromMarkup already returns MDL (cost_price is MDL), so it must NOT
+    // be pre-scaled by the FX rate — convertPrice does the single MDL→currency
+    // conversion. Pre-multiplying cancelled the divide inside convertPrice and
+    // billed EUR/USD lines 20x/17x too high. Mirrors applyMarkupToAll.
+    const baseMdl = priceFromMarkup(p.cost_price) ?? p.price;
     const unitPrice = convertPrice(baseMdl, "MDL", currency);
     // VAT rate per line is no longer something the operator toggles —
     // the TVA buttons inside PriceWithVatHelper were removed. Default
