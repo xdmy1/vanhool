@@ -320,7 +320,7 @@ async function searchDraftPurchaseItems(
   // already returns those, so we avoid a duplicate row.
   const { data: drafts, error: dErr } = await supabase
     .from("purchases")
-    .select("id, document_number, supplier_id")
+    .select("id, document_number, supplier_id, currency, fx_rate")
     .limit(5000);
   if (dErr) {
     console.warn("[searchDraftPurchaseItems] draft fetch failed:", dErr.message);
@@ -345,19 +345,28 @@ async function searchDraftPurchaseItems(
       supplierNames.set(s.id, s.name);
     }
   }
+  // Fixed reference FX (MDL per unit), identical to postPurchase — no live
+  // lookups. A purchase's explicit fx_rate wins; else fall back by currency.
+  const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
   const draftMeta = new Map<
     string,
-    { docNumber: string | null; supplierName: string }
+    { docNumber: string | null; supplierName: string; toMdl: number }
   >();
   for (const d of (drafts ?? []) as Array<{
     id: string;
     document_number: string | null;
     supplier_id: string | null;
+    currency: string | null;
+    fx_rate: number | string | null;
   }>) {
+    const cur = (d.currency ?? "MDL").toUpperCase();
+    const toMdl =
+      cur === "MDL" ? 1 : Number(d.fx_rate) || DEFAULT_FX_TO_MDL[cur] || 1;
     draftMeta.set(d.id, {
       docNumber: d.document_number,
       supplierName:
         (d.supplier_id ? supplierNames.get(d.supplier_id) : null) ?? "—",
+      toMdl,
     });
   }
 
@@ -450,22 +459,25 @@ async function searchDraftPurchaseItems(
     const label = meta?.docNumber
       ? `Doc ${meta.docNumber} · ${meta.supplierName}`
       : `Achiziție · ${meta?.supplierName ?? "—"}`;
-    // Operator's accounting: real cost = what came out of the bank
-    // account = unit_cost × (1 + vat/100). The purchase line stores
-    // unit_cost as NET. Returning GROSS here so margin shows reality
-    // (a 1000-net VAT-20 part costs 1200, not 1000).
+    // Real cost = cash out of the bank = unit_cost × (1 + vat/100), converted
+    // from the PURCHASE's currency into GROSS MDL. cost_price/price are ALWAYS
+    // MDL in this app (catalog rows are MDL; the sale/proforma converts to the
+    // doc currency). A 1200 EUR line is 24000 MDL — NOT "1200 lei" / "60 EUR".
+    // The purchase line stores unit_cost NET in the purchase currency; toMdl
+    // carries that purchase's fx (explicit fx_rate or the fixed reference).
+    const toMdl = meta?.toMdl ?? 1;
     const vatRate = Number(it.vat_rate ?? 0);
     const unitCostNet = Number(it.unit_cost ?? 0);
-    const unitCostGross = Number(
-      (unitCostNet * (1 + vatRate / 100)).toFixed(2),
+    const unitCostGrossMdl = Number(
+      (unitCostNet * (1 + vatRate / 100) * toMdl).toFixed(2),
     );
     return {
       id: it.id,
       part_code: it.internal_code ?? it.supplier_code,
       name_ro: it.description ?? null,
       brand: null,
-      price: unitCostGross,
-      cost_price: unitCostGross,
+      price: unitCostGrossMdl,
+      cost_price: unitCostGrossMdl,
       stock_quantity: Number(it.quantity ?? 0),
       storage_location: null,
       is_active: false,
