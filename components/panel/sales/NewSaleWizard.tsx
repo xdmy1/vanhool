@@ -976,7 +976,7 @@ function StepProducts({
                     {isDraft ? (
                       <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-warning">
                         <span className="rounded bg-warning/15 px-1 py-px font-semibold uppercase tracking-wide">
-                          draft
+                          achiziție
                         </span>
                         <span className="text-muted">{p.draft_purchase_label}</span>
                       </span>

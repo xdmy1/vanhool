@@ -310,16 +310,18 @@ async function searchDraftPurchaseItems(
 ): Promise<ProductSearchResult[]> {
   const supabase = await createClient();
 
-  // Step 1: which purchases are currently in draft? Two-pass —
-  // first pull the draft ids + document_number with NO embedded
-  // join (embedded `suppliers(name)` was returning empty drafts in
-  // the panel session even though the parent rows are visible),
-  // then resolve supplier names with a separate IN-lookup.
+  // Step 1: pull EVERY purchase's id + document_number — draft AND posted.
+  // The operator wants to sell/proforma from ANY purchased part, not only
+  // drafts: posted purchases whose lines never became catalog products
+  // (add_to_catalog off) would otherwise be invisible everywhere. No embedded
+  // join (embedded `suppliers(name)` returned empty rows in the panel session);
+  // supplier names come from a separate IN-lookup. Lines already linked to a
+  // catalog product (product_id set) are dropped below — the catalog pass
+  // already returns those, so we avoid a duplicate row.
   const { data: drafts, error: dErr } = await supabase
     .from("purchases")
     .select("id, document_number, supplier_id")
-    .eq("status", "draft")
-    .limit(500);
+    .limit(5000);
   if (dErr) {
     console.warn("[searchDraftPurchaseItems] draft fetch failed:", dErr.message);
     return [];
@@ -378,9 +380,10 @@ async function searchDraftPurchaseItems(
     unit_cost: number | string | null;
     vat_rate: number | string | null;
     purchase_id: string;
+    product_id: string | null;
   };
   const baseSelect =
-    "id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, purchase_id";
+    "id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, purchase_id, product_id";
   const draftIdSet = new Set(draftIds);
   const [bySupplier, byInternal, byDescription] = await Promise.all([
     supabase.from("purchase_items").select(baseSelect).ilike("supplier_code", term).limit(50),
@@ -402,7 +405,10 @@ async function searchDraftPurchaseItems(
     ...((byInternal.data ?? []) as Row[]),
     ...((byDescription.data ?? []) as Row[]),
   ]) {
-    if (!dedup.has(r.id) && draftIdSet.has(r.purchase_id)) dedup.set(r.id, r);
+    // Drop lines already linked to a catalog product — the catalog pass
+    // returns those; a second "purchase" row would be a confusing duplicate.
+    if (!dedup.has(r.id) && draftIdSet.has(r.purchase_id) && !r.product_id)
+      dedup.set(r.id, r);
   }
   let rows = Array.from(dedup.values()).slice(0, 20);
 
@@ -427,6 +433,7 @@ async function searchDraftPurchaseItems(
       const allRows = perDraft.flatMap((r) => (r.data ?? []) as Row[]);
       rows = allRows
         .filter((it) => {
+          if (it.product_id) return false; // already a catalog product
           const codes = [it.supplier_code, it.internal_code, it.description]
             .filter(Boolean)
             .map((c) =>
@@ -442,7 +449,7 @@ async function searchDraftPurchaseItems(
     const meta = draftMeta.get(it.purchase_id);
     const label = meta?.docNumber
       ? `Doc ${meta.docNumber} · ${meta.supplierName}`
-      : `Achiziție draft · ${meta?.supplierName ?? "—"}`;
+      : `Achiziție · ${meta?.supplierName ?? "—"}`;
     // Operator's accounting: real cost = what came out of the bank
     // account = unit_cost × (1 + vat/100). The purchase line stores
     // unit_cost as NET. Returning GROSS here so margin shows reality

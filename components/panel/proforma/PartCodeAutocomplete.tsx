@@ -157,7 +157,7 @@ export function PartCodeAutocomplete({
                 if (drafts.length > 0) {
                   rows.push({
                     kind: "header",
-                    label: "Din achiziții draft",
+                    label: "Din achiziții",
                     tone: "warning",
                   });
                   for (const p of drafts) rows.push({ kind: "item", p });
