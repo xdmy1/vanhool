@@ -139,6 +139,7 @@ export type OrderEmailData = {
 
 const PAYMENT_LABELS: Record<string, string> = {
   paynet: "Card online (Paynet)",
+  card: "Card bancar (Visa / Mastercard) — achitat online",
   cash: "Numerar la livrare",
   transfer: "Transfer bancar",
 };

@@ -11,7 +11,7 @@ export const PHONE_PREFIXES = [
   { code: "+34", country: "ES", iso: "ES", flag: "🇪🇸", label: "España" },
 ] as const;
 
-export const PAYMENT_METHODS = ["paynet", "cash", "transfer"] as const;
+export const PAYMENT_METHODS = ["card", "cash", "transfer"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const orderItemSchema = z.object({

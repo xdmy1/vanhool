@@ -1,6 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { createClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { calcDiscount, calcShipping, calcSubtotal } from "@/lib/cart/pricing";
 import { applyPromoCode } from "@/lib/cart/actions";
 import { checkoutSchema, type CheckoutValues } from "@/lib/validation/checkout";
@@ -12,10 +15,24 @@ import {
   orderCustomerEmail,
   type OrderEmailData,
 } from "@/lib/email/templates";
+import { createPayment, maibConfigured } from "@/lib/payments/maib/client";
 
 export type CreateOrderResult =
-  | { ok: true; orderId: string }
-  | { ok: false; code: "validation" | "server" | "empty_cart"; message?: string };
+  | { ok: true; orderId: string; redirectUrl?: string }
+  | {
+      ok: false;
+      code: "validation" | "server" | "empty_cart" | "payment";
+      message?: string;
+    };
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ?? "https://inter-bus.md";
+
+/** Locale from the checkout page's Referer, so maib redirects back in-language. */
+function localeFromReferer(referer: string | null): string {
+  const m = referer?.match(/\/(ro|en|ru)(\/|$)/);
+  return m?.[1] ?? "ro";
+}
 
 export async function createOrder(values: unknown): Promise<CreateOrderResult> {
   const parsed = checkoutSchema.safeParse(values);
@@ -58,6 +75,12 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
   const shipping = calcShipping(afterDiscount, cartItems.length > 0);
   const total = afterDiscount + shipping;
 
+  // Card payment must be configured to be offered; guard defensively.
+  const isCard = data.paymentMethod === "card";
+  if (isCard && !maibConfigured()) {
+    return { ok: false, code: "payment", message: "Card payments unavailable" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -85,7 +108,11 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
       status: "pending",
       payment_method: data.paymentMethod,
       notes: data.notes || null,
-    })
+      // Card orders stay unpaid until maib confirms on the callback; only then
+      // do we decrement stock / send emails / bump promo usage.
+      ...(isCard ? { payment_status: "pending" } : {}),
+      ...(promoCodeApplied ? { promo_code: promoCodeApplied } : {}),
+    } as never)
     .select("id")
     .single();
 
@@ -97,46 +124,140 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     };
   }
 
-  // Decrement stock for each catalog-linked line — storefront orders
-  // were silently leaving products.stock_quantity untouched, so the
-  // catalog reported "in stock" for parts already shipped. Sequential
-  // updates with read-modify-write — race-safe enough at the shop's
-  // traffic. Fire and don't block on failure (the order is already
-  // created; the operator can reconcile manually if a single update
-  // fails).
-  for (const it of data.items) {
-    if (!it.productId || it.quantity <= 0) continue;
-    const { data: prod } = await supabase
+  // ---- Card: hand off to maib, do NOT finalize yet ----
+  if (isCard) {
+    const h = await headers();
+    const clientIp =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      h.get("x-real-ip") ||
+      "0.0.0.0";
+    const locale = localeFromReferer(h.get("referer"));
+    const shortId = insertData.id.slice(0, 8).toUpperCase();
+    try {
+      const pay = await createPayment({
+        amount: total,
+        currency: "MDL",
+        clientIp,
+        language: locale === "en" || locale === "ru" ? locale : "ro",
+        description: `Comanda #${shortId} — Inter Bus`,
+        clientName: fullName,
+        email: data.email,
+        phone: fullPhone,
+        orderId: insertData.id,
+        delivery: shipping || undefined,
+        items: data.items.map((i) => ({
+          id: i.productId ?? undefined,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+        })),
+        callbackUrl: `${SITE_URL}/api/payments/maib/callback`,
+        okUrl: `${SITE_URL}/${locale}/checkout/success`,
+        failUrl: `${SITE_URL}/${locale}/checkout/failed`,
+      });
+      if (!pay.payUrl) throw new Error("maib returned no payUrl");
+      await supabase
+        .from("orders")
+        .update({ maib_pay_id: pay.payId } as never)
+        .eq("id", insertData.id);
+      return { ok: true, orderId: insertData.id, redirectUrl: pay.payUrl };
+    } catch (e) {
+      await supabase
+        .from("orders")
+        .update({ payment_status: "failed" } as never)
+        .eq("id", insertData.id);
+      console.error("[maib] createPayment failed:", e);
+      return { ok: false, code: "payment", message: "Payment could not start" };
+    }
+  }
+
+  // ---- Cash / transfer: finalize immediately (unchanged behaviour) ----
+  await finalizeOrder(insertData.id);
+  return { ok: true, orderId: insertData.id };
+}
+
+type StoredItem = {
+  productId?: string;
+  name?: string;
+  brand?: string | null;
+  partCode?: string | null;
+  price?: number;
+  quantity?: number;
+};
+
+/**
+ * Fulfil a placed order: decrement stock, bump promo usage, create the Refrens
+ * invoice, and send the confirmation + admin emails. Runs inline for
+ * cash/transfer orders, and from the maib callback once a card order is paid.
+ * Loads everything from the stored order row so it works without a user
+ * session (uses the service-role client). Idempotency is the caller's job
+ * (cash/transfer call it once; the callback guards on payment_status).
+ */
+export async function finalizeOrder(orderId: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { data: order } = await admin
+    .from("orders")
+    .select(
+      "id, items, customer_name, customer_email, customer_phone, customer_address, subtotal, discount_amount, shipping_cost, total, currency, payment_method, notes, promo_code",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return;
+
+  const o = order as unknown as {
+    items: StoredItem[] | null;
+    customer_name: string | null;
+    customer_email: string | null;
+    customer_phone: string | null;
+    customer_address: string | null;
+    subtotal: number | null;
+    discount_amount: number | null;
+    shipping_cost: number | null;
+    total: number | null;
+    currency: string | null;
+    payment_method: string | null;
+    notes: string | null;
+    promo_code: string | null;
+  };
+  const items = Array.isArray(o.items) ? o.items : [];
+
+  // Decrement stock for each catalog-linked line (read-modify-write).
+  for (const it of items) {
+    if (!it.productId || !it.quantity || it.quantity <= 0) continue;
+    const { data: prod } = await admin
       .from("products")
       .select("stock_quantity")
       .eq("id", it.productId)
       .maybeSingle();
     if (!prod) continue;
-    const next = Math.max(0, Number(prod.stock_quantity ?? 0) - it.quantity);
-    await supabase
+    const next = Math.max(
+      0,
+      Number((prod as { stock_quantity: number | null }).stock_quantity ?? 0) -
+        it.quantity,
+    );
+    await admin
       .from("products")
-      .update({ stock_quantity: next })
+      .update({ stock_quantity: next } as never)
       .eq("id", it.productId);
   }
 
-  if (promoCodeApplied) {
+  if (o.promo_code) {
     try {
-      await supabase.rpc("increment_promo_usage_by_code", {
-        promo_code: promoCodeApplied,
+      await admin.rpc("increment_promo_usage_by_code", {
+        promo_code: o.promo_code,
       });
     } catch {
-      // ignore — order is already created
+      // ignore — order is already placed
     }
   }
 
-  // Refrens generates the invoice PDF and emails it directly to the customer.
-  // Fire-and-forget — failure is logged but does not affect checkout success.
+  // Refrens invoice — fire-and-forget.
   try {
     const { isRefrensConfigured, createInvoiceForOrder } = await import(
       "@/lib/refrens/invoice"
     );
     if (isRefrensConfigured()) {
-      await createInvoiceForOrder(insertData.id).catch((e) => {
+      await createInvoiceForOrder(orderId).catch((e) => {
         console.error("[refrens] invoice creation failed:", e);
       });
     }
@@ -144,38 +265,38 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     console.error("[refrens] import failed:", e);
   }
 
-  // Resend notifications: confirmation to customer + alert to admin.
-  // Fire-and-forget; never blocks checkout success.
   const emailData: OrderEmailData = {
-    orderId: insertData.id,
-    customerName: fullName,
-    customerEmail: data.email,
-    customerPhone: fullPhone,
-    customerAddress: fullAddress,
-    items: data.items.map((i) => ({
-      name: i.name,
-      partCode: i.partCode,
-      brand: i.brand,
-      price: i.price,
-      quantity: i.quantity,
+    orderId,
+    customerName: o.customer_name ?? "",
+    customerEmail: o.customer_email ?? "",
+    customerPhone: o.customer_phone ?? "",
+    customerAddress: o.customer_address ?? "",
+    items: items.map((i) => ({
+      name: i.name ?? "",
+      partCode: i.partCode ?? null,
+      brand: i.brand ?? null,
+      price: Number(i.price ?? 0),
+      quantity: Number(i.quantity ?? 0),
     })),
-    subtotal,
-    discountAmount: discount,
-    shippingCost: shipping,
-    total,
-    paymentMethod: data.paymentMethod,
-    notes: data.notes || null,
-    promoCode: promoCodeApplied,
+    subtotal: Number(o.subtotal ?? 0),
+    discountAmount: Number(o.discount_amount ?? 0),
+    shippingCost: Number(o.shipping_cost ?? 0),
+    total: Number(o.total ?? 0),
+    paymentMethod: (o.payment_method ?? "cash") as OrderEmailData["paymentMethod"],
+    notes: o.notes ?? null,
+    promoCode: o.promo_code ?? null,
   };
 
-  const customerMail = orderCustomerEmail(emailData);
-  void sendResendEmail({
-    to: { email: data.email, name: fullName },
-    subject: customerMail.subject,
-    html: customerMail.html,
-    text: customerMail.text,
-    replyTo: { email: getAdminEmail(), name: "Inter Bus" },
-  }).catch((e) => console.error("[resend] customer email failed:", e));
+  if (emailData.customerEmail) {
+    const customerMail = orderCustomerEmail(emailData);
+    void sendResendEmail({
+      to: { email: emailData.customerEmail, name: emailData.customerName },
+      subject: customerMail.subject,
+      html: customerMail.html,
+      text: customerMail.text,
+      replyTo: { email: getAdminEmail(), name: "Inter Bus" },
+    }).catch((e) => console.error("[resend] customer email failed:", e));
+  }
 
   const adminMail = orderAdminEmail(emailData);
   void sendResendEmail({
@@ -183,8 +304,8 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     subject: adminMail.subject,
     html: adminMail.html,
     text: adminMail.text,
-    replyTo: { email: data.email, name: fullName },
+    replyTo: emailData.customerEmail
+      ? { email: emailData.customerEmail, name: emailData.customerName }
+      : undefined,
   }).catch((e) => console.error("[resend] admin email failed:", e));
-
-  return { ok: true, orderId: insertData.id };
 }

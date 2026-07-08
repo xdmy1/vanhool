@@ -19,16 +19,18 @@ import { createOrder } from "@/lib/orders/actions";
 import { cn } from "@/lib/utils/cn";
 
 const PAYMENT_ICONS = {
-  paynet: CreditCard,
+  card: CreditCard,
   cash: Banknote,
   transfer: FileText,
 } as const;
 
 export function CheckoutContent({
   locale,
+  cardEnabled,
   user,
 }: {
   locale: string;
+  cardEnabled: boolean;
   user: {
     email: string | null;
     fullName: string | null;
@@ -62,7 +64,14 @@ export function CheckoutContent({
 
   const [phoneCountry, setPhoneCountry] = useState(initialPhone.code);
   const [phoneNumber, setPhoneNumber] = useState(initialPhone.number);
-  const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENT_METHODS)[number]>("cash");
+  // Card is only offered when maib is configured server-side; otherwise fall
+  // back to cash/transfer so checkout still works before credentials are set.
+  const paymentMethods = cardEnabled
+    ? PAYMENT_METHODS
+    : PAYMENT_METHODS.filter((m) => m !== "card");
+  const [paymentMethod, setPaymentMethod] = useState<
+    (typeof PAYMENT_METHODS)[number]
+  >(cardEnabled ? "card" : "cash");
 
   // Pre-fill from user profile
   const initialName = (user.fullName ?? "").split(" ");
@@ -142,6 +151,12 @@ export function CheckoutContent({
       // Order notifications (customer + admin) are sent server-side via Resend
       // inside the createOrder action.
       setSubmitted(true);
+      if (result.redirectUrl) {
+        // Card: hand off to maib's hosted checkout page. The cart is cleared
+        // on the success return page once payment is confirmed.
+        window.location.href = result.redirectUrl;
+        return;
+      }
       router.replace(`/${locale}/thank-you?order=${result.orderId}`);
       clear();
     });
@@ -213,10 +228,10 @@ export function CheckoutContent({
         {/* PAYMENT */}
         <Section step="03" title={t("section_payment")}>
           <div className="flex flex-col gap-2">
-            {PAYMENT_METHODS.map((m) => {
+            {paymentMethods.map((m) => {
               const Icon = PAYMENT_ICONS[m];
-              const labelKey = `payment_${m}` as "payment_paynet";
-              const descKey = `payment_${m}_desc` as "payment_paynet_desc";
+              const labelKey = `payment_${m}` as "payment_card";
+              const descKey = `payment_${m}_desc` as "payment_card_desc";
               const checked = paymentMethod === m;
               return (
                 <label

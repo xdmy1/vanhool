@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Container } from "@/components/layout/Container";
 import { CheckoutContent } from "@/components/checkout/CheckoutContent";
 import { createClient } from "@/lib/supabase/server";
+import { maibConfigured } from "@/lib/payments/maib/client";
 import { routing } from "@/lib/i18n/routing";
 
 export async function generateStaticParams() {
@@ -49,6 +50,7 @@ export default async function CheckoutPage({
       <Container className="py-10">
         <CheckoutContent
           locale={locale}
+          cardEnabled={maibConfigured()}
           user={{
             email: profile?.email ?? user.email ?? null,
             fullName: profile?.full_name ?? null,

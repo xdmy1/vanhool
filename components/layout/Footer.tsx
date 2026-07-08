@@ -93,22 +93,41 @@ export async function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted md:flex-row md:items-center md:justify-between">
-          <div>
-            © {year} {t("brand")}. {t("rights")}
+        <div className="mt-10 border-t border-border pt-6">
+          {/* Accepted card schemes — maib e-commerce requires the maib +
+              international payment system logos to be displayed. Replace the
+              placeholder SVGs in /public/payment with the official brand kit. */}
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-xs text-muted">{t("secure_payment")}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/payment/visa.svg" alt="Visa" width={40} height={26} className="h-6 w-auto rounded" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/payment/mastercard.svg" alt="Mastercard" width={40} height={26} className="h-6 w-auto rounded" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/payment/maib.svg" alt="maib" width={40} height={26} className="h-6 w-auto rounded" />
           </div>
-          <div className="flex items-center gap-4">
-            {legalLinks.map((l, i) => (
-              <Link
-                key={`${l.href}-${i}`}
-                href={l.href}
-                locale={locale}
-                className="transition-colors hover:text-foreground"
-              >
-                {l.label}
-              </Link>
-            ))}
-            <span className="text-muted">inter-bus.md</span>
+          <div className="flex flex-col gap-3 text-xs text-muted md:flex-row md:items-center md:justify-between">
+            <div>
+              <div>
+                © {year} {t("brand")}. {t("rights")}
+              </div>
+              <div className="mt-1">
+                {t("legal_name")} · {t("idno")} · {t("contact_address")}
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {legalLinks.map((l, i) => (
+                <Link
+                  key={`${l.href}-${i}`}
+                  href={l.href}
+                  locale={locale}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {l.label}
+                </Link>
+              ))}
+              <span className="text-muted">inter-bus.md</span>
+            </div>
           </div>
         </div>
       </Container>
