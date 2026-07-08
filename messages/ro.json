@@ -389,6 +389,8 @@
     "postal": "Cod poștal",
     "notes": "Observații (opțional)",
     "notes_placeholder": "Detalii suplimentare pentru curier...",
+    "payment_paynet": "Card online (Paynet)",
+    "payment_paynet_desc": "Plată securizată cu cardul",
     "payment_card": "Card bancar (Visa / Mastercard)",
     "payment_card_desc": "Plată securizată online prin maib",
     "pay_ok_title": "Plată reușită!",

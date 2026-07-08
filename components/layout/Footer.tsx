@@ -4,8 +4,12 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { Container } from "@/components/layout/Container";
 import { Logo } from "@/components/layout/Logo";
 import { Link } from "@/lib/i18n/routing";
+import { maibConfigured } from "@/lib/payments/maib/client";
 
 export async function Footer() {
+  // Card scheme logos + legal line appear only once maib is live — until then
+  // the footer is unchanged. (maib requires these displayed when accepting cards.)
+  const showPayment = maibConfigured();
   const t = await getTranslations("footer");
   const tn = await getTranslations("nav");
   const tv = await getTranslations("vehicles");
@@ -94,26 +98,33 @@ export async function Footer() {
         </div>
 
         <div className="mt-10 border-t border-border pt-6">
-          {/* Accepted card schemes — maib e-commerce requires the maib +
-              international payment system logos to be displayed. Replace the
+          {/* Accepted card schemes + legal line — shown only once maib is live.
+              maib requires the maib + international payment system logos + the
+              legal identity (IDNO / legal name) to be displayed. Replace the
               placeholder SVGs in /public/payment with the official brand kit. */}
-          <div className="mb-5 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs text-muted">{t("secure_payment")}</span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/payment/visa.svg" alt="Visa" width={40} height={26} className="h-6 w-auto rounded" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/payment/mastercard.svg" alt="Mastercard" width={40} height={26} className="h-6 w-auto rounded" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/payment/maib.svg" alt="maib" width={40} height={26} className="h-6 w-auto rounded" />
-          </div>
+          {showPayment ? (
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs text-muted">
+                {t("secure_payment")}
+              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/payment/visa.svg" alt="Visa" width={40} height={26} className="h-6 w-auto rounded" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/payment/mastercard.svg" alt="Mastercard" width={40} height={26} className="h-6 w-auto rounded" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/payment/maib.svg" alt="maib" width={40} height={26} className="h-6 w-auto rounded" />
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3 text-xs text-muted md:flex-row md:items-center md:justify-between">
             <div>
               <div>
                 © {year} {t("brand")}. {t("rights")}
               </div>
-              <div className="mt-1">
-                {t("legal_name")} · {t("idno")} · {t("contact_address")}
-              </div>
+              {showPayment ? (
+                <div className="mt-1">
+                  {t("legal_name")} · {t("idno")} · {t("contact_address")}
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-4">
               {legalLinks.map((l, i) => (

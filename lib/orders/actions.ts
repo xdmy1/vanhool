@@ -191,7 +191,7 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
   }
 
   // ---- Cash / transfer: finalize immediately (unchanged behaviour) ----
-  await finalizeOrder(insertData.id);
+  await finalizeOrder(insertData.id, promoCodeApplied);
   return { ok: true, orderId: insertData.id };
 }
 
@@ -212,7 +212,10 @@ type StoredItem = {
  * session (uses the service-role client). Idempotency is the caller's job
  * (cash/transfer call it once; the callback guards on payment_status).
  */
-export async function finalizeOrder(orderId: string): Promise<void> {
+export async function finalizeOrder(
+  orderId: string,
+  promoCodeOverride?: string | null,
+): Promise<void> {
   const admin = getSupabaseAdmin();
   const baseCols =
     "id, items, customer_name, customer_email, customer_phone, customer_address, subtotal, discount_amount, shipping_cost, total, currency, payment_method, notes";
@@ -270,11 +273,13 @@ export async function finalizeOrder(orderId: string): Promise<void> {
       .eq("id", it.productId);
   }
 
-  if (o.promo_code) {
+  // Inline (cash/transfer) callers pass the applied code directly so promo
+  // usage is bumped exactly as before, independent of the new promo_code
+  // column. The card callback has no in-scope code and reads it from the row.
+  const promoCode = promoCodeOverride ?? o.promo_code ?? null;
+  if (promoCode) {
     try {
-      await admin.rpc("increment_promo_usage_by_code", {
-        promo_code: o.promo_code,
-      });
+      await admin.rpc("increment_promo_usage_by_code", { promo_code: promoCode });
     } catch {
       // ignore — order is already placed
     }
@@ -313,7 +318,7 @@ export async function finalizeOrder(orderId: string): Promise<void> {
     total: Number(o.total ?? 0),
     paymentMethod: (o.payment_method ?? "cash") as OrderEmailData["paymentMethod"],
     notes: o.notes ?? null,
-    promoCode: o.promo_code ?? null,
+    promoCode,
   };
 
   if (emailData.customerEmail) {

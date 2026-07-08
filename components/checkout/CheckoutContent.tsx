@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils/cn";
 
 const PAYMENT_ICONS = {
   card: CreditCard,
+  paynet: CreditCard,
   cash: Banknote,
   transfer: FileText,
 } as const;
@@ -64,10 +65,11 @@ export function CheckoutContent({
 
   const [phoneCountry, setPhoneCountry] = useState(initialPhone.code);
   const [phoneNumber, setPhoneNumber] = useState(initialPhone.number);
-  // Card is only offered when maib is configured server-side; otherwise fall
-  // back to cash/transfer so checkout still works before credentials are set.
+  // Card (real maib) shows only when configured, replacing the legacy `paynet`
+  // option. Until then the checkout is byte-for-byte the original (paynet
+  // /cash/transfer, default cash) — zero change for customers.
   const paymentMethods = cardEnabled
-    ? PAYMENT_METHODS
+    ? PAYMENT_METHODS.filter((m) => m !== "paynet")
     : PAYMENT_METHODS.filter((m) => m !== "card");
   const [paymentMethod, setPaymentMethod] = useState<
     (typeof PAYMENT_METHODS)[number]

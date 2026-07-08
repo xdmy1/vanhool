@@ -27,3 +27,9 @@ alter table public.orders
 --    default (was 'EUR'; this shop charges MDL).
 alter table public.payments
   alter column currency set default 'MDL';
+
+-- 4. Phase 2 — card pay-link on proformas/invoices (invoices table).
+alter table public.invoices
+  add column if not exists maib_pay_id text,
+  add column if not exists payment_status text
+    check (payment_status in ('pending', 'paid', 'failed', 'refunded'));

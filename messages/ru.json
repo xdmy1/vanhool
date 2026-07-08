@@ -389,6 +389,8 @@
     "postal": "Почтовый индекс",
     "notes": "Комментарии (опционально)",
     "notes_placeholder": "Дополнительная информация для курьера...",
+    "payment_paynet": "Картой онлайн (Paynet)",
+    "payment_paynet_desc": "Безопасная оплата картой",
     "payment_card": "Банковская карта (Visa / Mastercard)",
     "payment_card_desc": "Безопасная онлайн-оплата через maib",
     "pay_ok_title": "Оплата прошла успешно!",

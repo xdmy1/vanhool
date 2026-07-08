@@ -389,6 +389,8 @@
     "postal": "Postal code",
     "notes": "Notes (optional)",
     "notes_placeholder": "Extra details for the courier...",
+    "payment_paynet": "Card online (Paynet)",
+    "payment_paynet_desc": "Secure card payment",
     "payment_card": "Bank card (Visa / Mastercard)",
     "payment_card_desc": "Secure online payment via maib",
     "pay_ok_title": "Payment successful!",
