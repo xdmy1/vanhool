@@ -5,76 +5,116 @@ import { normalizeCode } from "@/lib/utils/normalize-code";
 
 import type { InvoiceItemSnapshot } from "./queries";
 
+const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+
 /**
- * Look up the REAL (gross, cash-out) cost per part_code from
- * historical purchase_items so the admin-only "Cost / Marjă" columns
- * always reflect what the operator actually paid.
+ * Look up the REAL (gross, cash-out) cost per part_code so the admin-only
+ * "Cost / Marjă" columns reflect what the operator actually paid.
  *
- * IMPORTANT: returns GROSS = unit_cost × (1 + vat_rate / 100).
- * Operator's rule: "piesa cu TVA ne-a costat 1200 nu 1000". The
- * purchase line stores unit_cost as NET; we apply VAT here so margin
- * calculations downstream see the real cash figure.
+ * ALWAYS returns GROSS **MDL** (the app's canonical cost currency). The detail
+ * views convert MDL → the document's currency for display; returning MDL here
+ * keeps the two sources below on the same axis. Historically this returned the
+ * purchase's NATIVE currency, so an MDL purchase shown on an EUR proforma was
+ * mislabelled 20x (a 1200-EUR "-10000" phantom margin).
  *
- * Lookup is normalized — "317 330" on the snapshot matches "317330"
- * / "317 330" / "317-330" in any purchase_item field. Uses the MOST
- * RECENT row (by created_at) when the same code appears on multiple
- * purchases.
+ * Two sources, product cost wins:
+ *  1. products.cost_price — the authoritative GROSS MDL cost the operator
+ *     maintains (matched by normalized code via products.search_codes).
+ *  2. Historical purchase_items — GROSS = unit_cost × (1 + vat/100), converted
+ *     to MDL via the purchase's OWN currency/fx (newest row wins).
  *
- * Always runs against EVERY snapshot item, not just the ones with a
- * null cost_price. Stored snapshot cost_price predates the gross
- * convention and would otherwise leak the old NET number into the
- * digital admin view; the fallback overrides it whenever a matching
- * purchase row exists.
+ * Lookup is normalized — "317 330" matches "317330" / "317-330".
+ * Runs against EVERY snapshot item so the digital admin view never leaks a
+ * stale NET / wrong-currency number.
  */
 export async function buildCostFallbackByCode(
   items: InvoiceItemSnapshot[],
 ): Promise<Map<string, number>> {
-  // Every item with a part_code is in scope — we want the fallback
-  // to win over the (potentially stale / NET) snapshot value.
   const wantedRaw: string[] = [];
   for (const it of items) {
-    const code = it.partCode ?? "";
-    const norm = normalizeCode(code);
+    const norm = normalizeCode(it.partCode ?? "");
     if (norm) wantedRaw.push(norm);
   }
   const wanted = new Set(wantedRaw);
   if (wanted.size === 0) return new Map();
 
   const supabase = await createClient();
-  // Pull the latest 2000 purchase_items. Filtering by normalized
-  // equality has to happen client-side because Postgres ilike can't
-  // strip non-alphanumeric on a stored column without an index /
-  // function we don't expose to PostgREST. 2000 rows is safe at this
-  // shop's scale.
-  const { data } = await supabase
-    .from("purchase_items")
-    .select("internal_code, supplier_code, unit_cost, vat_rate")
-    .order("created_at", { ascending: false })
-    .limit(2000);
-
-  // "Newest first" map — first match wins because rows are ordered
-  // by created_at desc.
   const result = new Map<string, number>();
-  for (const row of (data ?? []) as Array<{
-    internal_code: string | null;
-    supplier_code: string | null;
-    unit_cost: number | string | null;
-    vat_rate: number | string | null;
+
+  // Source 1 (preferred): the catalog product's own cost_price — authoritative
+  // GROSS MDL. Matched by normalized code via the search_codes array.
+  const { data: prods } = await supabase
+    .from("products")
+    .select("cost_price, search_codes")
+    .overlaps("search_codes", wantedRaw)
+    .limit(500);
+  for (const p of (prods ?? []) as Array<{
+    cost_price: number | string | null;
+    search_codes: string[] | null;
   }>) {
-    const candidates = [
-      normalizeCode(row.internal_code),
-      normalizeCode(row.supplier_code),
-    ].filter(Boolean);
-    for (const c of candidates) {
-      if (!wanted.has(c) || result.has(c)) continue;
-      const net = Number(row.unit_cost ?? 0);
-      if (net <= 0) continue;
-      const vat = Number(row.vat_rate ?? 0);
-      const gross = Number((net * (1 + vat / 100)).toFixed(2));
-      result.set(c, gross);
+    const cost = Number(p.cost_price ?? 0);
+    if (cost <= 0) continue;
+    for (const c of p.search_codes ?? []) {
+      if (wanted.has(c) && !result.has(c)) result.set(c, cost);
     }
-    if (result.size === wanted.size) break;
   }
+
+  // Source 2 (fallback for codes with no catalog product): historical
+  // purchase_items, GROSS and converted to MDL via the purchase's currency/fx.
+  if (result.size < wanted.size) {
+    const { data } = await supabase
+      .from("purchase_items")
+      .select("internal_code, supplier_code, unit_cost, vat_rate, purchase_id")
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    const rows = (data ?? []) as Array<{
+      internal_code: string | null;
+      supplier_code: string | null;
+      unit_cost: number | string | null;
+      vat_rate: number | string | null;
+      purchase_id: string;
+    }>;
+    // Resolve each purchase's currency/fx with a separate IN-lookup (embedded
+    // joins have returned empty rows in the panel session before).
+    const purchaseIds = Array.from(
+      new Set(rows.map((r) => r.purchase_id).filter(Boolean)),
+    );
+    const toMdlByPurchase = new Map<string, number>();
+    if (purchaseIds.length > 0) {
+      const { data: purs } = await supabase
+        .from("purchases")
+        .select("id, currency, fx_rate")
+        .in("id", purchaseIds);
+      for (const pu of (purs ?? []) as Array<{
+        id: string;
+        currency: string | null;
+        fx_rate: number | string | null;
+      }>) {
+        const cur = (pu.currency ?? "MDL").toUpperCase();
+        toMdlByPurchase.set(
+          pu.id,
+          cur === "MDL" ? 1 : Number(pu.fx_rate) || FX_TO_MDL[cur] || 1,
+        );
+      }
+    }
+    for (const row of rows) {
+      const candidates = [
+        normalizeCode(row.internal_code),
+        normalizeCode(row.supplier_code),
+      ].filter(Boolean);
+      const toMdl = toMdlByPurchase.get(row.purchase_id) ?? 1;
+      for (const c of candidates) {
+        if (!wanted.has(c) || result.has(c)) continue;
+        const net = Number(row.unit_cost ?? 0);
+        if (net <= 0) continue;
+        const vat = Number(row.vat_rate ?? 0);
+        const grossMdl = Number((net * (1 + vat / 100) * toMdl).toFixed(2));
+        result.set(c, grossMdl);
+      }
+      if (result.size === wanted.size) break;
+    }
+  }
+
   return result;
 }
 

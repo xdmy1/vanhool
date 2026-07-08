@@ -44,6 +44,12 @@ export default async function PanelProformaDetailPage({
     proforma.items_snapshot,
     costFallback,
   );
+  // Snapshot cost_price is GROSS MDL (both the form and the fallback store MDL).
+  // Convert to the document currency so the admin Cost/Marjă columns sit on the
+  // same axis as the doc-currency prices — otherwise an MDL cost on an EUR
+  // proforma reads 20x too high (the "-10000 EUR" phantom margin).
+  const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const docRate = FX_TO_MDL[proforma.currency] ?? 1;
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const statusLabel =
@@ -192,7 +198,8 @@ export default async function PanelProformaDetailPage({
                   ? Math.max(0, (1 - eff / list) * 100)
                   : 0;
                 const qty = Number(it.quantity ?? 0);
-                const cost = it.cost_price != null ? Number(it.cost_price) : null;
+                const cost =
+                  it.cost_price != null ? Number(it.cost_price) / docRate : null;
                 const lineTotal = Number(it.total ?? 0);
                 const lineCostTotal = cost != null ? qty * cost : null;
                 const lineProfit =
@@ -328,7 +335,7 @@ export default async function PanelProformaDetailPage({
                     const eff = dp != null && dp >= 0 && dp < list ? dp : list;
                     totalSell += qty * eff;
                     if (it.cost_price == null) anyMissing = true;
-                    else totalCost += qty * Number(it.cost_price);
+                    else totalCost += qty * (Number(it.cost_price) / docRate);
                   }
                   if (anyMissing && totalCost === 0) {
                     return (

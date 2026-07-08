@@ -53,6 +53,11 @@ export default async function PanelInvoiceDetailPage({
     invoice.items_snapshot,
     costFallback,
   );
+  // Snapshot cost_price is GROSS MDL; convert to the doc currency so the admin
+  // Cost/Marjă columns match the doc-currency prices (an MDL cost on an EUR
+  // invoice would otherwise read 20x too high).
+  const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const docRate = FX_TO_MDL[invoice.currency] ?? 1;
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const overdue = isOverdue(invoice);
@@ -253,7 +258,8 @@ export default async function PanelInvoiceDetailPage({
                   ? Math.max(0, (1 - eff / list) * 100)
                   : 0;
                 const qty = Number(it.quantity ?? 0);
-                const cost = it.cost_price != null ? Number(it.cost_price) : null;
+                const cost =
+                  it.cost_price != null ? Number(it.cost_price) / docRate : null;
                 const lineTotal = Number(it.total ?? 0);
                 const lineCostTotal = cost != null ? qty * cost : null;
                 const lineProfit =
@@ -390,7 +396,7 @@ export default async function PanelInvoiceDetailPage({
                     const eff = dp != null && dp >= 0 && dp < list ? dp : list;
                     totalSell += qty * eff;
                     if (it.cost_price == null) anyMissing = true;
-                    else totalCost += qty * Number(it.cost_price);
+                    else totalCost += qty * (Number(it.cost_price) / docRate);
                   }
                   if (anyMissing && totalCost === 0) {
                     return (
