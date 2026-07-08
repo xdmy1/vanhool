@@ -92,29 +92,48 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
     ? `${data.address}, ${data.city} ${data.postal}`
     : `${data.address}, ${data.city}`;
 
-  const { data: insertData, error: insertError } = await supabase
+  const orderRow: Record<string, unknown> = {
+    user_id: user?.id ?? null,
+    customer_name: fullName,
+    customer_email: data.email,
+    customer_phone: fullPhone,
+    customer_address: fullAddress,
+    items: data.items as unknown as Json,
+    subtotal,
+    discount_amount: discount,
+    shipping_cost: shipping,
+    total,
+    status: "pending",
+    payment_method: data.paymentMethod,
+    notes: data.notes || null,
+    // Card orders stay unpaid until maib confirms on the callback; only then
+    // do we decrement stock / send emails / bump promo usage.
+    ...(isCard ? { payment_status: "pending" } : {}),
+    ...(promoCodeApplied ? { promo_code: promoCodeApplied } : {}),
+  };
+
+  let insertRes = await supabase
     .from("orders")
-    .insert({
-      user_id: user?.id ?? null,
-      customer_name: fullName,
-      customer_email: data.email,
-      customer_phone: fullPhone,
-      customer_address: fullAddress,
-      items: data.items as unknown as Json,
-      subtotal,
-      discount_amount: discount,
-      shipping_cost: shipping,
-      total,
-      status: "pending",
-      payment_method: data.paymentMethod,
-      notes: data.notes || null,
-      // Card orders stay unpaid until maib confirms on the callback; only then
-      // do we decrement stock / send emails / bump promo usage.
-      ...(isCard ? { payment_status: "pending" } : {}),
-      ...(promoCodeApplied ? { promo_code: promoCodeApplied } : {}),
-    } as never)
+    .insert(orderRow as never)
     .select("id")
     .single();
+  // Resilient to sql/maib-payments.sql not being applied yet: retry without the
+  // new columns so cash/transfer + promo orders keep working pre-migration.
+  if (
+    insertRes.error &&
+    /(promo_code|payment_status)/i.test(insertRes.error.message)
+  ) {
+    const safeRow = { ...orderRow };
+    delete safeRow.promo_code;
+    delete safeRow.payment_status;
+    insertRes = await supabase
+      .from("orders")
+      .insert(safeRow as never)
+      .select("id")
+      .single();
+  }
+  const insertData = insertRes.data;
+  const insertError = insertRes.error;
 
   if (insertError || !insertData) {
     return {
@@ -195,13 +214,23 @@ type StoredItem = {
  */
 export async function finalizeOrder(orderId: string): Promise<void> {
   const admin = getSupabaseAdmin();
-  const { data: order } = await admin
+  const baseCols =
+    "id, items, customer_name, customer_email, customer_phone, customer_address, subtotal, discount_amount, shipping_cost, total, currency, payment_method, notes";
+  // Resilient to sql/maib-payments.sql not being applied yet: promo_code is a
+  // new column, so fall back to the base select if it isn't there.
+  let loaded = await admin
     .from("orders")
-    .select(
-      "id, items, customer_name, customer_email, customer_phone, customer_address, subtotal, discount_amount, shipping_cost, total, currency, payment_method, notes, promo_code",
-    )
+    .select(`${baseCols}, promo_code`)
     .eq("id", orderId)
     .maybeSingle();
+  if (loaded.error && /promo_code/i.test(loaded.error.message)) {
+    loaded = await admin
+      .from("orders")
+      .select(baseCols)
+      .eq("id", orderId)
+      .maybeSingle();
+  }
+  const order = loaded.data;
   if (!order) return;
 
   const o = order as unknown as {
