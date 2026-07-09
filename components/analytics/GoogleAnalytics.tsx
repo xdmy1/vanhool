@@ -1,12 +1,15 @@
 import Script from "next/script";
 
 /**
- * GA4 — dormant until NEXT_PUBLIC_GA_ID is set (e.g. G-XXXXXXXXXX).
- * No consent banner needed for basic config in MD; revisit if EU
- * traffic becomes significant.
+ * GA4 for inter-bus.md. Measurement ID is public (it ships in the client
+ * gtag anyway), so it's hardcoded as the default; NEXT_PUBLIC_GA_ID can still
+ * override it. No consent banner for basic config in MD; revisit if EU traffic
+ * becomes significant.
  */
+const DEFAULT_GA_ID = "G-63CKTXGHXK";
+
 export function GoogleAnalytics() {
-  const id = process.env.NEXT_PUBLIC_GA_ID;
+  const id = process.env.NEXT_PUBLIC_GA_ID || DEFAULT_GA_ID;
   if (!id) return null;
   return (
     <>
