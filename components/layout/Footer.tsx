@@ -20,6 +20,8 @@ export async function Footer() {
   const shopLinks = [
     { href: "/catalog" as const, label: tn("catalog") },
     { href: "/categories" as const, label: tn("categories") },
+    // Flattens the 9-page catalog into one hop for crawlers. Keep it linked.
+    { href: "/produse" as const, label: tn("all_products") },
     { href: "/promotions" as const, label: tn("promotions") },
     { href: "/piese-auto" as const, label: tv("nav_link") },
     { href: "/cart" as const, label: tn("cart") },
@@ -188,6 +190,7 @@ function FooterColumn({
       | "/contact"
       | "/login"
       | "/piese-auto"
+      | "/produse"
       | "/promotions"
       | "/informatii/confidentialitate"
       | "/informatii/termeni-si-conditii"

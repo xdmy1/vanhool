@@ -109,7 +109,10 @@ function pageRange(current: number, total: number): (number | "…")[] {
   const push = (v: number | "…") => {
     if (pages[pages.length - 1] !== v) pages.push(v);
   };
-  const around = 1;
+  // Wide enough that a ~9-page catalog renders every page as a real anchor,
+  // so a crawler reaches the last product in two hops instead of walking the
+  // pager one page at a time.
+  const around = 4;
   push(1);
   if (current - around > 2) push("…");
   for (let p = Math.max(2, current - around); p <= Math.min(total - 1, current + around); p++) {

@@ -516,6 +516,61 @@ export type CatalogResult = {
   totalPages: number;
 };
 
+export type ProductIndexEntry = {
+  slug: string;
+  partCode: string;
+  brand: string;
+  name: string;
+};
+
+/**
+ * Every active product as a bare {slug, code, name} row, for the HTML index at
+ * /produse. Carries no price, so it needs no per-customer discount lookup.
+ *
+ * Its reason to exist is crawl depth: the catalog paginates, so a product on
+ * page 7 sits seven hops from the homepage and Google will not walk that far on
+ * a young domain. The index page puts every product one hop from the footer.
+ */
+export async function listAllProductsForIndex(
+  locale: Locale,
+): Promise<ProductIndexEntry[]> {
+  if (USE_DEMO_DATA) {
+    return demo.products(locale).map((p) => ({
+      slug: p.slug,
+      partCode: p.partCode,
+      brand: p.brand,
+      name: p.name,
+    }));
+  }
+  const supabase = await createClient();
+  const rows: ProductIndexEntry[] = [];
+  const pageSize = 1000;
+  for (let page = 0; ; page++) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("slug,part_code,brand,name_ro,name_en,name_ru")
+      .eq("is_active", true)
+      .not("slug", "is", null)
+      .order("part_code", { ascending: true })
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (error || !data || data.length === 0) break;
+    for (const r of data) {
+      const name =
+        (locale === "ro" ? r.name_ro : locale === "en" ? r.name_en : r.name_ru) ??
+        r.name_ro ??
+        "";
+      rows.push({
+        slug: r.slug as string,
+        partCode: r.part_code ?? "",
+        brand: r.brand ?? "",
+        name,
+      });
+    }
+    if (data.length < pageSize) break;
+  }
+  return rows;
+}
+
 export async function getCatalog(
   locale: Locale,
   filters: CatalogFilters = {},

@@ -52,6 +52,11 @@ export function productJsonLd(product: Product, locale: string) {
   const images = [product.imageUrl, ...product.images].filter(
     (x, i, arr): x is string => !!x && arr.indexOf(x) === i,
   );
+  // Merchant Center warns on an Offer with no `priceValidUntil`. Nothing here
+  // expires on a schedule, so roll it a year forward on every render.
+  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -67,6 +72,7 @@ export function productJsonLd(product: Product, locale: string) {
       url,
       price: product.price.toFixed(2),
       priceCurrency: "MDL",
+      priceValidUntil,
       availability,
       itemCondition: "https://schema.org/NewCondition",
       seller: { "@type": "Organization", name: "Inter Bus" },

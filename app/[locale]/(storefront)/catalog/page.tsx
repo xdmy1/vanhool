@@ -88,7 +88,9 @@ function parseFilters(
     featured,
     sort,
     page,
-    perPage: 12,
+    // 48/page keeps the whole catalog within ~9 pages, so the pager can expose
+    // every page as a link and no product sits more than two hops from /catalog.
+    perPage: 48,
   };
 }
 

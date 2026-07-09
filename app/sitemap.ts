@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 // Re-fetch the sitemap once an hour. Long enough not to hammer Supabase on
 // every crawl, short enough that newly-published products show up the same day.
+// Reads go through the cookie-less client — `lib/supabase/server.ts` would call
+// `cookies()` and force this route dynamic, making the revalidate below dead.
 export const revalidate = 3600;
 
 const LOCALES = ["ro", "en", "ru"] as const;
@@ -19,6 +21,7 @@ const STATIC_PATHS = [
   "/contact",
   "/catalog",
   "/categories",
+  "/produse",
   "/promotions",
   "/piese-auto",
   "/informatii/livrare",
@@ -40,7 +43,7 @@ function localized(path: string): Record<(typeof LOCALES)[number], string> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   // Pull every active product. Supabase caps `select` at 1000 rows per call,
   // so paginate. The site won't be in 50k territory for a while; if it gets
@@ -65,14 +68,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (data.length < pageSize) break;
   }
 
-  // Vehicle landing pages (/piese-auto/{make} and /piese-auto/{make}/{model})
-  // are the brand+model query magnets — surface them all to crawlers.
-  const [{ data: makes }, { data: models }] = await Promise.all([
-    supabase.from("vehicle_makes").select("id, slug"),
-    supabase.from("vehicle_models").select("slug, make_id"),
+  // Vehicle landing pages. Only makes that actually carry a product are
+  // listed. `/piese-auto/{make}/{model}` is deliberately excluded: those are
+  // steps 2-3 of the "find my part" wizard, they link to zero products, and
+  // their copy is near-identical across all 985 of them. Advertising ~1100
+  // such pages in a 1515-URL sitemap told Google the site was mostly thin
+  // templated content, and it responded by leaving the real product pages at
+  // "Discovered - currently not indexed". They stay crawlable via the nav;
+  // they just no longer drown out the catalog.
+  const [{ data: makes }, { data: makeLinks }] = await Promise.all([
+    supabase.from("vehicle_makes").select("id, slug").eq("is_active", true),
+    supabase.from("product_vehicle_makes").select("vehicle_make_id"),
   ]);
-  const makeSlugById = new Map(
-    (makes ?? []).map((m) => [m.id as string, m.slug as string]),
+  const makesWithProducts = new Set(
+    (makeLinks ?? []).map((l) => l.vehicle_make_id as string),
   );
 
   const now = new Date();
@@ -102,13 +111,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       };
     });
 
-  const vehiclePaths: string[] = [
-    ...(makes ?? []).map((m) => `/piese-auto/${m.slug}`),
-    ...(models ?? []).flatMap((m) => {
-      const makeSlug = makeSlugById.get(m.make_id as string);
-      return makeSlug ? [`/piese-auto/${makeSlug}/${m.slug}`] : [];
-    }),
-  ];
+  const vehiclePaths: string[] = (makes ?? [])
+    .filter((m) => makesWithProducts.has(m.id as string))
+    .map((m) => `/piese-auto/${m.slug}`);
 
   const vehicleEntries: MetadataRoute.Sitemap = vehiclePaths.map((p) => {
     const langs = localized(p);
