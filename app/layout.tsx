@@ -4,7 +4,6 @@ import { getLocale } from "next-intl/server";
 import { Toaster } from "sonner";
 
 import { CartBootstrap } from "@/components/cart/CartBootstrap";
-import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import "./globals.css";
 
 const inter = Inter({
@@ -69,7 +68,6 @@ export default async function RootLayout({
       >
         {children}
         <CartBootstrap />
-        <GoogleAnalytics />
         <Toaster
           theme="light"
           position="bottom-right"
