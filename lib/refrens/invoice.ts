@@ -13,6 +13,7 @@
 import crypto from "node:crypto";
 
 import { createClient } from "@/lib/supabase/server";
+import { dateISO, todayISO } from "@/lib/datetime";
 
 export type RefrensConfig = {
   appId: string;
@@ -182,10 +183,8 @@ export async function createInvoiceForOrder(
     };
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-  const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const today = todayISO();
+  const due = dateISO(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
 
   const customerName = o.customer_name ?? o.customer_email;
 

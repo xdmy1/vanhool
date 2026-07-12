@@ -1,4 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+
+import { dateISO, todayISO } from "@/lib/datetime";
 import { AlertTriangle, ShoppingBag, TrendingUp, Wallet } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -23,12 +25,9 @@ export default async function PanelStatisticiPage({
   const [{ locale }, t] = await Promise.all([params, getTranslations("panel")]);
   setRequestLocale(locale);
 
+  const today = todayISO();
   // eslint-disable-next-line react-hooks/purity
-  const today = new Date().toISOString().slice(0, 10);
-  // eslint-disable-next-line react-hooks/purity
-  const thirtyAgo = new Date(Date.now() - 30 * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const thirtyAgo = dateISO(new Date(Date.now() - 30 * 86_400_000));
 
   const supabase = await createClient();
   const [

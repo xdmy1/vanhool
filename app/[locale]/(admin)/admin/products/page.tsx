@@ -13,9 +13,16 @@ import { adminListCategories, adminListProducts } from "@/lib/admin/queries";
 import { isApifyConfigured } from "@/lib/apify/config";
 import type { Locale } from "@/lib/db/types";
 
-type Status = "all" | "active" | "inactive" | "featured" | "low_stock";
+type Status = "all" | "active" | "inactive" | "featured" | "low_stock" | "internal";
 
-const STATUS_VALUES: readonly Status[] = ["all", "active", "inactive", "featured", "low_stock"] as const;
+const STATUS_VALUES: readonly Status[] = [
+  "all",
+  "active",
+  "inactive",
+  "featured",
+  "low_stock",
+  "internal",
+] as const;
 
 function nameFor(
   cat: { name_ro: string | null; name_en: string | null; name_ru: string | null; slug: string | null },
@@ -129,6 +136,7 @@ export default async function AdminProductsPage({
             { value: "inactive", label: t("products_filter_inactive") },
             { value: "low_stock", label: t("products_filter_low_stock") },
             { value: "featured", label: t("products_filter_featured") },
+            { value: "internal", label: t("products_filter_internal") },
           ]}
         />
       </div>

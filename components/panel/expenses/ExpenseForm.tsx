@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
+import { todayISO } from "@/lib/datetime";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -31,7 +33,7 @@ export function ExpenseForm({ scope, forceCash = false }: Props) {
   const [category, setCategory] = useState<ExpenseCategory>("supplies");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState(0);
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().slice(0, 10));
+  const [paidAt, setPaidAt] = useState(todayISO());
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer" | "card">(
     forceCash ? "cash" : "transfer",
   );

@@ -44,37 +44,33 @@ export type AdminProductRow = {
   created_at: string | null;
 };
 
+const BASE_PRODUCT_COLUMNS =
+  "id, slug, part_code, brand, manufacturer_id, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, cost_price, stock_quantity, storage_location, condition, image_url, images, weight, width, height, length, rib_count, custom_specs, warranty_months, is_active, is_featured, category_id, subcategory_id, oem_codes, cross_references, is_promo, promo_price, promo_starts_at, promo_ends_at, lead_time_days, created_at" as const;
+
+// `unit` is on the table but absent from the generated types (manual SQL, like
+// every other migrated column) — cast back to the typed literal so row
+// inference keeps working. Without `unit` in this list adminGetProduct returns
+// no unit, the edit form's <select> falls back to "buc", and the next save
+// writes "buc" over whatever the operator had picked.
 const PRODUCT_COLUMNS =
-  "id, slug, part_code, brand, manufacturer_id, name_ro, name_en, name_ru, description_ro, description_en, description_ru, price, cost_price, stock_quantity, storage_location, condition, image_url, images, weight, width, height, length, rib_count, custom_specs, warranty_months, is_active, is_featured, category_id, subcategory_id, oem_codes, cross_references, is_promo, promo_price, promo_starts_at, promo_ends_at, lead_time_days, created_at";
+  `${BASE_PRODUCT_COLUMNS}, unit` as unknown as typeof BASE_PRODUCT_COLUMNS;
 
 export type AdminProductFilter = {
   q?: string;
-  status?: "all" | "active" | "inactive" | "featured" | "low_stock";
+  status?: "all" | "active" | "inactive" | "featured" | "low_stock" | "internal";
   page?: number;
   perPage?: number;
 };
 
 export async function adminListProducts(filter: AdminProductFilter = {}) {
   const supabase = await createClient();
-  let query = supabase
-    .from("products")
-    .select(PRODUCT_COLUMNS, { count: "exact" });
 
-  switch (filter.status) {
-    case "active":
-      query = query.eq("is_active", true);
-      break;
-    case "inactive":
-      query = query.eq("is_active", false);
-      break;
-    case "featured":
-      query = query.eq("is_featured", true);
-      break;
-    case "low_stock":
-      query = query.lte("stock_quantity", 5);
-      break;
-  }
+  const page = filter.page ?? 1;
+  const perPage = filter.perPage ?? 25;
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
 
+  let matchedIds: string[] | null = null;
   if (filter.q && filter.q.trim()) {
     const trimmed = filter.q.trim();
     const term = `%${trimmed}%`;
@@ -105,23 +101,68 @@ export async function adminListProducts(filter: AdminProductFilter = {}) {
     ]);
     const codeIds = ((codeRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
     const textIds = ((textRowsRes.data ?? []) as { id: string }[]).map((r) => r.id);
-    const matchedIds = Array.from(new Set([...codeIds, ...textIds]));
-
-    if (matchedIds.length === 0) {
-      // Force no-match so the count is 0 and pagination works.
-      query = query.eq("id", "00000000-0000-0000-0000-000000000000");
-    } else {
-      query = query.in("id", matchedIds);
-    }
+    matchedIds = Array.from(new Set([...codeIds, ...textIds]));
   }
 
-  const page = filter.page ?? 1;
-  const perPage = filter.perPage ?? 25;
-  const from = (page - 1) * perPage;
-  const to = from + perPage - 1;
-  query = query.order("created_at", { ascending: false }).range(from, to);
+  /**
+   * `internal_only` products are auto-created by postPurchase for purchase
+   * lines the operator did not tick into the catalog. They exist so the
+   * warehouse quantity is real and the invoice can take it back out — they are
+   * not catalog entries. Every view hides them except the explicit "internal"
+   * filter, which is the only way to reach one for editing.
+   *
+   * `withInternal: false` drops the predicate entirely, for the window where
+   * sql/products-internal-only.sql hasn't been applied yet.
+   */
+  const buildQuery = (withInternal: boolean) => {
+    let query = supabase.from("products").select(PRODUCT_COLUMNS, { count: "exact" });
 
-  const { data, count, error } = await query;
+    if (withInternal) {
+      // `internal_only` lives on the table at runtime (sql/products-internal-only.sql)
+      // but not in the generated types — same as every manually-migrated column.
+      const loose = query as unknown as {
+        eq(column: string, value: unknown): typeof query;
+        neq(column: string, value: unknown): typeof query;
+      };
+      query =
+        filter.status === "internal"
+          ? loose.eq("internal_only", true)
+          : loose.neq("internal_only", true);
+    }
+
+    switch (filter.status) {
+      case "active":
+        query = query.eq("is_active", true);
+        break;
+      case "inactive":
+        query = query.eq("is_active", false);
+        break;
+      case "featured":
+        query = query.eq("is_featured", true);
+        break;
+      case "low_stock":
+        query = query.lte("stock_quantity", 5);
+        break;
+    }
+
+    if (matchedIds !== null) {
+      query =
+        matchedIds.length === 0
+          ? // Force no-match so the count is 0 and pagination works.
+            query.eq("id", "00000000-0000-0000-0000-000000000000")
+          : query.in("id", matchedIds);
+    }
+
+    return query.order("created_at", { ascending: false }).range(from, to);
+  };
+
+  let { data, count, error } = await buildQuery(true);
+  if (error && /internal_only/i.test(error.message)) {
+    const retry = await buildQuery(false);
+    data = retry.data;
+    count = retry.count;
+    error = retry.error;
+  }
   if (error) {
     return { rows: [] as AdminProductRow[], total: 0, page, perPage };
   }

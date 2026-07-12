@@ -21,6 +21,7 @@ import { listInvoices } from "@/lib/panel/invoices/queries";
 import { reportSalesByDay } from "@/lib/panel/reports/queries";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE, dateISO, todayISO } from "@/lib/datetime";
 
 export default async function PanelDashboardPage({
   params,
@@ -31,10 +32,9 @@ export default async function PanelDashboardPage({
   setRequestLocale(locale);
 
   const supabase = await createClient();
+  const today = todayISO();
   // eslint-disable-next-line react-hooks/purity
-  const today = new Date().toISOString().slice(0, 10);
-  // eslint-disable-next-line react-hooks/purity
-  const sevenAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+  const sevenAgo = dateISO(new Date(Date.now() - 6 * 86_400_000));
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
 
   const [
@@ -80,7 +80,7 @@ export default async function PanelDashboardPage({
     supabase
       .from("orders")
       .select(
-        "id, customer_name, customer_email, total, status, source, account_scope, triaged_at, created_at",
+        "id, customer_name, customer_email, total, currency, status, source, account_scope, triaged_at, created_at",
       )
       .neq("status", "cancelled")
       .order("created_at", { ascending: false })
@@ -139,7 +139,7 @@ export default async function PanelDashboardPage({
   );
 
   const fmtDateTime = (d: string | null) =>
-    d ? new Date(d).toLocaleString(dateLocale, { dateStyle: "short", timeStyle: "short" }) : "—";
+    d ? new Date(d).toLocaleString(dateLocale, { timeZone: TIMEZONE, dateStyle: "short", timeStyle: "short" }) : "—";
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -150,7 +150,7 @@ export default async function PanelDashboardPage({
           </h1>
           <p className="text-sm text-muted-strong md:text-base">
             {t("dashboard_today_subtitle", {
-              date: new Date(today).toLocaleDateString(dateLocale, {
+              date: new Date(today).toLocaleDateString(dateLocale, { timeZone: TIMEZONE,
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -320,7 +320,12 @@ export default async function PanelDashboardPage({
                     </span>
                   ) : null}
                   <span className="w-24 text-right tabular-nums">
-                    <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
+                    <Price
+                      value={Number(o.total ?? 0)}
+                      currency={o.currency ?? "MDL"}
+                      size="sm"
+                      accent={false}
+                    />
                   </span>
                 </li>
               ))}
@@ -549,6 +554,7 @@ function QuickAction({
 type TodayOrderRow = {
   id: string;
   total: number | null;
+  currency: string | null;
   account_scope: string | null;
   customer_name: string | null;
   customer_email: string | null;
@@ -599,7 +605,7 @@ function TodayBreakdownColumn({
         <ul className="divide-y divide-border">
           {orders.map((o) => {
             const time = o.created_at
-              ? new Date(o.created_at).toLocaleTimeString(dateLocale, {
+              ? new Date(o.created_at).toLocaleTimeString(dateLocale, { timeZone: TIMEZONE,
                   hour: "2-digit",
                   minute: "2-digit",
                 })
@@ -629,7 +635,12 @@ function TodayBreakdownColumn({
                     {o.source ?? "—"}
                   </span>
                   <span className="w-24 text-right tabular-nums">
-                    <Price value={Number(o.total ?? 0)} size="sm" accent={false} />
+                    <Price
+                      value={Number(o.total ?? 0)}
+                      currency={o.currency ?? "MDL"}
+                      size="sm"
+                      accent={false}
+                    />
                   </span>
                 </Link>
               </li>

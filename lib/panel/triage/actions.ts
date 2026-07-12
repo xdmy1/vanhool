@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { todayISO } from "@/lib/datetime";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
@@ -113,7 +115,7 @@ export async function triageOrder(
         account_scope: "conta1",
         series,
         number: numberStr,
-        issued_date: new Date().toISOString().slice(0, 10),
+        issued_date: todayISO(),
         customer_snapshot: {
           name: order.customer_name,
           email: order.customer_email,

@@ -9,6 +9,7 @@ import { deleteDeliveryNote } from "@/lib/panel/delivery_notes/actions";
 import { listDeliveryNotes } from "@/lib/panel/delivery_notes/queries";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -77,7 +78,7 @@ export default async function PanelFiseLivrarePage({
                       {r.series}-{r.number ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-muted-strong">
-                      {new Date(r.issued_at).toLocaleDateString(dateLocale)}
+                      {new Date(r.issued_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm">{r.customer_name}</div>

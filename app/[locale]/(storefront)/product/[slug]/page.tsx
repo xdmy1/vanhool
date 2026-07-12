@@ -10,6 +10,7 @@ import { ProductGallery } from "@/components/product/ProductGallery";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 import { ProductBuyBox } from "@/components/product/ProductBuyBox";
 import { Link } from "@/lib/i18n/routing";
+import { PRODUCT_UNITS } from "@/lib/stock";
 import {
   getCrossCompatibleProducts,
   getProductBySlug,
@@ -115,6 +116,20 @@ export default async function ProductDetailPage({
     warrantyMonths: (count: number) => tProd("warranty_months", { count }),
   };
 
+  // "buc" keeps the pluralised phrase ("2 bucăți disponibile"). Any other unit
+  // renders its own symbol ("2.5 L în stoc") instead of silently claiming
+  // pieces for oil sold by the litre. An unrecognised unit falls back to the
+  // pluralised phrase rather than blowing up on a missing translation key.
+  const productUnit = product.unit ?? "buc";
+  const hasUnitLabel =
+    productUnit !== "buc" && (PRODUCT_UNITS as readonly string[]).includes(productUnit);
+  const stockAvailableLabel = hasUnitLabel
+    ? tProd("stock_available_unit", {
+        count: product.stockQuantity,
+        unit: tProd(`unit_${productUnit}` as "unit_litru"),
+      })
+    : tProd("stock_available", { count: product.stockQuantity });
+
   const buyBoxLabels = {
     quantity: tProd("quantity"),
     addToCart: tProd("add_to_cart"),
@@ -130,7 +145,7 @@ export default async function ProductDetailPage({
         ? tProd("trust_delivery_in_days", { days: product.leadTimeDays })
         : tHome("trust_fast"),
     trustWarranty: tHome("trust_warranty"),
-    stockAvailable: tProd("stock_available", { count: product.stockQuantity }),
+    stockAvailable: stockAvailableLabel,
     vatIncluded: tCard("vat_included"),
     vatExcluded: tCard("vat_excluded"),
   };

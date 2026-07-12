@@ -74,6 +74,7 @@ export async function listPanelClients(args: ListClientsArgs): Promise<{
     { count: number; byCurrency: Record<string, number> }
   >();
   if (ids.length > 0) {
+    // eslint-disable-next-line prefer-const
     let { data: ordersAgg, error: aggErr } = await supabase
       .from("orders")
       .select("user_id, total, currency")
@@ -263,4 +264,100 @@ export async function getPanelClient(
       created_at: r.created_at,
     })),
   };
+}
+
+export type ClientDocument = {
+  id: string;
+  type: "invoice" | "proforma";
+  series: string | null;
+  number: string | null;
+  issued_date: string;
+  due_date: string | null;
+  paid_at: string | null;
+  status: string;
+  currency: string;
+  total: number;
+};
+
+/**
+ * Every invoice + proforma that belongs to one client, newest first — the
+ * client's document "folder".
+ *
+ * A document is tied to a client three ways, because the link was recorded
+ * differently depending on how the document was raised (see the real-data
+ * split: ~60% carry an order, ~⅓ a snapshot user_id, ~¼ only an IDNO):
+ *   1. it belongs to an order placed by this user, or
+ *   2. its customer snapshot froze this user's id, or
+ *   3. (business) its snapshot froze this client's IDNO.
+ * Ad-hoc documents typed with only a free-text name and no registered client
+ * cannot be attributed to a profile and are intentionally left out — matching
+ * on name alone would collide across similarly-named walk-ins.
+ *
+ * Scoped to the active book so it lines up with the page's Conta1/Conta2
+ * toggle. Runs a few narrow queries and merges by id rather than one giant OR,
+ * which keeps each filter trivially indexable and dodges PostgREST's quoting
+ * rules for jsonb paths inside `.or()`.
+ */
+export async function getClientDocuments(
+  clientId: string,
+  idno: string | null,
+  scope: AccountScope,
+): Promise<ClientDocument[]> {
+  const supabase = await createClient();
+
+  const cols =
+    "id, type, series, number, issued_date, due_date, paid_at, status, currency, total, order_id, customer_snapshot, account_scope";
+
+  const orderRows = await supabase
+    .from("orders")
+    .select("id")
+    .eq("user_id", clientId);
+  const orderIds = (orderRows.data ?? []).map((o) => o.id);
+
+  const queries = [
+    supabase.from("invoices").select(cols).eq("account_scope", scope).eq("customer_snapshot->>user_id", clientId),
+  ];
+  if (orderIds.length > 0) {
+    queries.push(
+      supabase.from("invoices").select(cols).eq("account_scope", scope).in("order_id", orderIds),
+    );
+  }
+  if (idno && idno.trim()) {
+    queries.push(
+      supabase.from("invoices").select(cols).eq("account_scope", scope).eq("customer_snapshot->>idno", idno.trim()),
+    );
+  }
+
+  const results = await Promise.all(queries);
+  const byId = new Map<string, ClientDocument>();
+  for (const res of results) {
+    for (const r of (res.data ?? []) as Array<Record<string, unknown>>) {
+      const id = r.id as string;
+      if (byId.has(id)) continue;
+      byId.set(id, {
+        id,
+        type: r.type as "invoice" | "proforma",
+        series: (r.series as string | null) ?? null,
+        number: (r.number as string | null) ?? null,
+        issued_date: r.issued_date as string,
+        due_date: (r.due_date as string | null) ?? null,
+        paid_at: (r.paid_at as string | null) ?? null,
+        status: r.status as string,
+        currency: ((r.currency as string | null) ?? "MDL").toUpperCase(),
+        total: Number(r.total ?? 0),
+      });
+    }
+  }
+
+  return Array.from(byId.values()).sort((a, b) => {
+    // Newest issue date first; then document number descending, digits-only so
+    // mixed zero-pad widths ("0068" vs "00069") compare as 68 vs 69.
+    const dateCmp = String(b.issued_date ?? "").localeCompare(String(a.issued_date ?? ""));
+    if (dateCmp !== 0) return dateCmp;
+    const seq = (s: string | null) => {
+      const d = String(s ?? "").replace(/\D/g, "");
+      return d ? Number(d) : -1;
+    };
+    return seq(b.number) - seq(a.number);
+  });
 }

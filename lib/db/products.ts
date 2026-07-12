@@ -52,8 +52,13 @@ type CategorySlugRow = { id: string; slug: string | null };
 
 // One-line select string — PostgREST rejects newlines in the `select` query
 // param (PGRST100 "failed to parse select parameter").
-const SELECT_COLUMNS =
+const BASE_COLUMNS =
   "id,slug,part_code,brand,price,stock_quantity,image_url,images,weight,width,height,length,rib_count,custom_specs,warranty_months,lead_time_days,is_featured,is_active,category_id,subcategory_id,name_ro,name_en,name_ru,description_ro,description_en,description_ru,is_promo,promo_price,promo_starts_at,promo_ends_at" as const;
+
+// `unit` exists on the table but not in the generated types (added by manual
+// SQL, like every other migrated column) — cast back to the typed literal so
+// row inference keeps working. Read it off the row with a local cast.
+const SELECT_COLUMNS = `${BASE_COLUMNS},unit` as unknown as typeof BASE_COLUMNS;
 
 function parseCustomSpecs(
   raw: unknown,
@@ -176,6 +181,7 @@ function toProduct(
         : row.lead_time_days,
     ),
     stockQuantity: row.stock_quantity ?? 0,
+    unit: (row as { unit?: string | null }).unit ?? "buc",
     leadTimeDays:
       (row.stock_quantity ?? 0) <= 0
         ? row.lead_time_days ?? 7

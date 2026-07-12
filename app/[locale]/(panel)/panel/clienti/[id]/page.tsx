@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Building2, Edit3, User } from "lucide-react";
+import { Building2, Edit3, FileText, Receipt, User } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,11 @@ import { Link } from "@/lib/i18n/routing";
 import { Price } from "@/components/common/Price";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
-import { getPanelClient } from "@/lib/panel/clienti/queries";
+import { getClientDocuments, getPanelClient } from "@/lib/panel/clienti/queries";
+import type { ClientDocument } from "@/lib/panel/clienti/queries";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 export default async function PanelClientDetailPage({
   params,
@@ -30,10 +32,12 @@ export default async function PanelClientDetailPage({
   const client = await getPanelClient(id, scope);
   if (!client) notFound();
 
+  const documents = await getClientDocuments(id, client.idno, scope);
+
   const isBusiness = client.account_type === "business";
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString(dateLocale) : "—";
+    d ? new Date(d).toLocaleDateString(dateLocale, { timeZone: TIMEZONE }) : "—";
   const bookLabel = scope === "conta1" ? t("conta1") : t("conta2");
 
   return (
@@ -203,7 +207,110 @@ export default async function PanelClientDetailPage({
           </div>
         </section>
       </div>
+
+      {/* The client "folder": every invoice + proforma tied to them, in the
+          active book, newest first — with paid / unpaid status at a glance. */}
+      <section className="mt-6 rounded-md border border-border bg-surface p-5">
+        <header className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">
+            {t("clienti_detail_documents", { book: bookLabel })}
+          </h2>
+          {documents.length > 0 ? (
+            <span className="text-xs text-muted">
+              {t("clienti_detail_documents_count", { count: documents.length })}
+            </span>
+          ) : null}
+        </header>
+
+        {documents.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
+            {t("clienti_detail_no_documents", { book: bookLabel })}
+          </p>
+        ) : (
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {documents.map((d) => (
+              <DocumentRow key={d.id} doc={d} locale={locale} fmtDate={fmtDate} t={t} />
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
+  );
+}
+
+function DocumentRow({
+  doc,
+  locale,
+  fmtDate,
+  t,
+}: {
+  doc: ClientDocument;
+  locale: string;
+  fmtDate: (d: string | null) => string;
+  t: (key: string, values?: Record<string, string | number>) => string;
+}) {
+  const isInvoice = doc.type === "invoice";
+  const href = (isInvoice
+    ? `/panel/facturi/${doc.id}`
+    : `/panel/proforme/${doc.id}`) as "/panel";
+
+  const statusTone: Record<string, string> = {
+    paid: "bg-success/15 text-success",
+    issued: "bg-warning/15 text-warning",
+    sent: "bg-primary/10 text-primary",
+    partial: "bg-warning/15 text-warning",
+    draft: "bg-surface-elevated text-muted",
+    void: "bg-danger/15 text-danger",
+    converted: "bg-surface-elevated text-muted",
+  };
+  const statusLabel =
+    isInvoice
+      ? t(`facturi_status_${doc.status}`)
+      : t(`proforma_status_${doc.status}`);
+
+  // Deferred/unpaid invoices are the ones the operator chases — surface the
+  // paid date when settled, or an explicit "unpaid" cue when not.
+  const paymentHint = isInvoice
+    ? doc.paid_at
+      ? t("clienti_detail_doc_paid_on", { date: fmtDate(doc.paid_at) })
+      : doc.status === "issued" || doc.status === "partial"
+        ? t("clienti_detail_doc_unpaid")
+        : null
+    : null;
+
+  return (
+    <li>
+      <Link
+        href={href}
+        locale={locale}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm transition-colors hover:bg-surface-elevated"
+      >
+        <span className="text-muted">
+          {isInvoice ? <Receipt className="size-4" /> : <FileText className="size-4" />}
+        </span>
+        <span className="rounded bg-surface-elevated px-1.5 text-[10px] uppercase tracking-wide text-muted-strong">
+          {isInvoice ? t("clienti_detail_doc_invoice") : t("clienti_detail_doc_proforma")}
+        </span>
+        <span className="font-mono text-xs font-semibold">
+          {(doc.series ?? "") + (doc.number ?? "")}
+        </span>
+        <span
+          className={cn(
+            "rounded px-1.5 text-[10px] uppercase tracking-wide",
+            statusTone[doc.status] ?? "bg-surface-elevated text-muted",
+          )}
+        >
+          {statusLabel}
+        </span>
+        {paymentHint ? (
+          <span className="text-[11px] text-muted">{paymentHint}</span>
+        ) : null}
+        <span className="ml-auto text-xs text-muted-strong">{fmtDate(doc.issued_date)}</span>
+        <span className="w-28 text-right tabular-nums">
+          <Price value={doc.total} currency={doc.currency} size="sm" accent={false} />
+        </span>
+      </Link>
+    </li>
   );
 }
 

@@ -15,6 +15,7 @@ import {
 } from "@/lib/panel/invoices/cost-fallback";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -68,7 +69,7 @@ export default async function PanelProformaDetailPage({
       <AdminPageHeader
         back={{ href: "/panel/proforme", label: t("clienti_detail_back"), locale }}
         title={`${t("proforma_title")} ${proforma.series ?? ""}${proforma.number ?? ""}`}
-        subtitle={`${proforma.customer_snapshot.name ?? "—"} · ${new Date(proforma.issued_date).toLocaleDateString(dateLocale)}`}
+        subtitle={`${proforma.customer_snapshot.name ?? "—"} · ${new Date(proforma.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}`}
         actions={
           <div className="flex items-center gap-2">
             <span
@@ -131,11 +132,11 @@ export default async function PanelProformaDetailPage({
 
           <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
             <dt className="text-muted">{t("proforma_issued_date")}</dt>
-            <dd>{new Date(proforma.issued_date).toLocaleDateString(dateLocale)}</dd>
+            <dd>{new Date(proforma.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}</dd>
             <dt className="text-muted">{t("proforma_due_date")}</dt>
             <dd>
               {proforma.due_date
-                ? new Date(proforma.due_date).toLocaleDateString(dateLocale)
+                ? new Date(proforma.due_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })
                 : "—"}
             </dd>
             <dt className="text-muted">{t("proforma_currency")}</dt>

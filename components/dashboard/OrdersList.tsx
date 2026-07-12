@@ -5,6 +5,7 @@ import { Price } from "@/components/common/Price";
 import { Link } from "@/lib/i18n/routing";
 import type { Order } from "@/lib/db/orders";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONES: Record<string, string> = {
   pending: "border-warning/40 bg-warning/10 text-warning",
@@ -87,7 +88,7 @@ export function OrdersList({
               <tr key={o.id} className="border-b border-border last:border-b-0">
                 <td className="px-4 py-3 text-xs">#{o.shortId}</td>
                 <td className="px-4 py-3 text-muted-strong">
-                  {new Date(o.createdAt).toLocaleDateString(dateLocale)}
+                  {new Date(o.createdAt).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                 </td>
                 <td className="px-4 py-3 text-muted-strong">
                   {o.items.reduce((acc, i) => acc + i.quantity, 0)}
@@ -144,7 +145,7 @@ export function OrdersList({
             </div>
             <div className="flex items-end justify-between gap-3">
               <div className="text-xs text-muted">
-                {new Date(o.createdAt).toLocaleDateString(dateLocale)} ·{" "}
+                {new Date(o.createdAt).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })} ·{" "}
                 {o.items.reduce((acc, i) => acc + i.quantity, 0)}× {labels.items}
               </div>
               <Price value={o.total} size="md" accent={false} />

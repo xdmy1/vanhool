@@ -33,6 +33,9 @@ export type Product = {
   oldPrice?: number;
   stock: StockStatus;
   stockQuantity: number;
+  /** Unit of measure the part is stocked and sold in ("buc", "litru", "kg", …).
+   * Optional so demo data and legacy rows fall back to "buc". */
+  unit?: string | null;
   /** Number of days until shipment when stock is 0. `null` means the product
    * is NOT available on order — out-of-stock means unbuyable. */
   leadTimeDays?: number | null;

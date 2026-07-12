@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+
+import { todayISO } from "@/lib/datetime";
 import { Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -89,7 +91,7 @@ export function PurchaseForm({
     initial?.documentNumber ?? "",
   );
   const [documentDate, setDocumentDate] = useState(
-    initial?.documentDate ?? new Date().toISOString().slice(0, 10),
+    initial?.documentDate ?? todayISO(),
   );
   const [currency, setCurrency] = useState(initial?.currency ?? "MDL");
   const [fxRate, setFxRate] = useState<number | null>(initial?.fxRate ?? null);

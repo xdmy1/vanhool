@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 
 import { sendPurchaseToAccountant } from "@/lib/panel/purchases/actions";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STORAGE_PREFIX = "panel.purchase_accountant_sent.";
 
@@ -111,7 +112,7 @@ export function SendPurchaseButton({
   const tooltip =
     wasSent && sentAt
       ? t("accountant_send_last", {
-          when: new Date(sentAt).toLocaleString("ro-RO"),
+          when: new Date(sentAt).toLocaleString("ro-RO", { timeZone: TIMEZONE }),
         })
       : t("achizitii_row_send_accountant");
 
@@ -139,7 +140,7 @@ export function SendPurchaseButton({
             className="inline-flex items-center gap-1 rounded-md border border-success bg-success/10 px-2 py-1 text-[11px] font-semibold text-success"
             title={
               enteredAt
-                ? `Introdus de contabil: ${new Date(enteredAt).toLocaleString("ro-RO")}`
+                ? `Introdus de contabil: ${new Date(enteredAt).toLocaleString("ro-RO", { timeZone: TIMEZONE })}`
                 : undefined
             }
           >

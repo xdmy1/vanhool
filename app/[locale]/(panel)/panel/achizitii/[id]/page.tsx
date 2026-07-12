@@ -13,6 +13,7 @@ import { IssuePOButton } from "@/components/panel/purchases/IssuePOButton";
 import { PostPurchaseButton } from "@/components/panel/purchases/PostPurchaseButton";
 import { getPurchase } from "@/lib/panel/purchases/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -55,7 +56,7 @@ export default async function PanelAchizitieDetailPage({
         title={`${t("achizitii_col_doc")} ${purchase.document_number ?? purchase.id.slice(0, 8).toUpperCase()}`}
         subtitle={t("achizitii_subtitle_detail", {
           supplier: purchase.supplier_name,
-          date: new Date(purchase.document_date).toLocaleDateString(dateLocale),
+          date: new Date(purchase.document_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE }),
           scope: scopeLabel,
         })}
         actions={

@@ -140,6 +140,14 @@ export async function Footer() {
                 </Link>
               ))}
               <span className="text-muted">inter-bus.md</span>
+              <a
+                href="https://landings.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted/70 transition-colors hover:text-foreground"
+              >
+                Powered by landings.md
+              </a>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { dateISO } from "@/lib/datetime";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import {
@@ -177,6 +178,76 @@ async function takeNextNumber(
   return { series, number: padded };
 }
 
+/**
+ * Resolve the catalog product behind a document line.
+ *
+ * A proforma freezes `productId` at issue time, but in the normal flow the
+ * part isn't in the catalog yet — the operator quotes it off a supplier list,
+ * and only once the client accepts does the purchase get entered under the
+ * SAME code, creating the product. So a line that quoted an uncatalogued part
+ * carries `productId: null` forever, and matching on it alone would silently
+ * skip the stock move. Fall back to the part code.
+ *
+ * Used by both the stock decrement (conversion) and the stock restore
+ * (void / delete) — they MUST resolve lines identically, or voiding an
+ * invoice would credit back stock that was never taken.
+ */
+async function resolveLineProductId(
+  client: Awaited<ReturnType<typeof createClient>>,
+  line: Record<string, unknown>,
+): Promise<string | null> {
+  const direct =
+    ((line as { productId?: string | null }).productId ??
+      (line as { product_id?: string | null }).product_id) ||
+    null;
+  if (direct) return direct;
+
+  const code = (
+    ((line as { partCode?: string | null }).partCode ??
+      (line as { part_code?: string | null }).part_code) ||
+    ""
+  ).trim();
+  if (!code) return null;
+
+  // Try both columns, because a line's code can be either kind:
+  //   • part_code     — set when the line was picked off the catalog, and it
+  //                     is the auto-generated INTERNAL code for products that
+  //                     `postPurchase` created (part_code = internal_code).
+  //   • supplier_code — what a proforma quoted off a supplier list, which is
+  //                     the code `postPurchase` copies onto the new product.
+  // The supplier-code path is the one that carries the common flow: quote an
+  // uncatalogued part, enter the purchase under the same code, invoice it.
+  const escaped = code.replace(/[\\%_]/g, "\\$&");
+  for (const column of ["part_code", "supplier_code"] as const) {
+    const { data } = await client
+      .from("products")
+      .select("id")
+      .ilike(column, escaped)
+      .limit(2);
+    // Ambiguous code → refuse to guess which product to move stock on.
+    if (data && data.length === 1) return data[0].id;
+  }
+  return null;
+}
+
+/** Shift `products.stock_quantity` by `delta` for one product. */
+async function adjustStock(
+  client: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+  delta: number,
+): Promise<void> {
+  const { data: p } = await client
+    .from("products")
+    .select("stock_quantity")
+    .eq("id", productId)
+    .maybeSingle();
+  if (!p) return;
+  await client
+    .from("products")
+    .update({ stock_quantity: Math.max(0, Number(p.stock_quantity ?? 0) + delta) })
+    .eq("id", productId);
+}
+
 // ---- Public actions --------------------------------------------------------
 
 /**
@@ -316,8 +387,8 @@ export async function issueProforma(
       type: "proforma",
       series,
       number,
-      issued_date: today.toISOString().slice(0, 10),
-      due_date: due.toISOString().slice(0, 10),
+      issued_date: dateISO(today),
+      due_date: dateISO(due),
       currency: v.currency,
       customer_snapshot: v.customer as unknown as Json,
       items_snapshot: itemsSnapshot as unknown as Json,
@@ -420,6 +491,12 @@ export async function convertProformaToInvoice(
   // out of its snapshot so the resulting sale flows into /admin/orders and
   // every report/stat that's keyed off `orders`. Status reflects whether
   // payment is in or pending.
+  //
+  // Captured BEFORE orderId is synthesized: an ad-hoc proforma is the sale
+  // itself, so the invoice is what takes the goods out of stock. A proforma
+  // raised FROM an existing order (storefront → triage) must NOT decrement —
+  // `finalizeOrder` already did it at checkout / on the maib paid callback.
+  const wasAdHoc = !pf.order_id;
   let orderId: string | null = pf.order_id;
   if (!orderId) {
     const cs = (pf.customer_snapshot ?? {}) as {
@@ -481,7 +558,7 @@ export async function convertProformaToInvoice(
   }
   const deferredDue =
     paymentStatus === "deferred"
-      ? new Date(now.getTime() + dueInDays * 86_400_000).toISOString().slice(0, 10)
+      ? dateISO(new Date(now.getTime() + dueInDays * 86_400_000))
       : null;
 
   // The fiscal invoice may land in a DIFFERENT book than the proforma — a
@@ -523,7 +600,7 @@ export async function convertProformaToInvoice(
       type: "invoice",
       series,
       number,
-      issued_date: now.toISOString().slice(0, 10),
+      issued_date: dateISO(now),
       // Only mark paid_at when the client actually paid. Deferred payments
       // get filled in later when the cash/transfer arrives.
       paid_at: paymentStatus === "paid" ? now.toISOString() : null,
@@ -549,6 +626,21 @@ export async function convertProformaToInvoice(
     .select("id")
     .single();
   if (insErr || !inv) return { ok: false, reason: insErr?.message ?? "insert_failed" };
+
+  // The goods leave stock on the INVOICE, not on the proforma and not on
+  // payment: the client takes the part when the factură is cut, whether he
+  // settles now or on the deferred due date. So this runs for both
+  // `paid` and `deferred`. Guarded by `already_converted` above, so it
+  // cannot double-decrement on a retry.
+  if (wasAdHoc) {
+    for (const it of pfSnapshot) {
+      const qty = Number((it as { quantity?: number }).quantity ?? 0);
+      if (qty <= 0) continue;
+      const productId = await resolveLineProductId(supabase, it);
+      if (!productId) continue;
+      await adjustStock(supabase, productId, -qty);
+    }
+  }
 
   await supabase
     .from("invoices")
@@ -1013,24 +1105,14 @@ export async function voidInvoice(
       const items = Array.isArray(ord.items)
         ? (ord.items as Array<Record<string, unknown>>)
         : [];
-      // Restore stock for each catalog-linked line.
+      // Restore stock for each line, resolving the product the same way the
+      // decrement did (productId, else part code) so the two stay symmetric.
       for (const it of items) {
-        const productId =
-          (it as { productId?: string | null }).productId ??
-          (it as { product_id?: string | null }).product_id ??
-          null;
         const qty = Number((it as { quantity?: number }).quantity ?? 0);
-        if (!productId || qty <= 0) continue;
-        const { data: p } = await supabase
-          .from("products")
-          .select("stock_quantity")
-          .eq("id", productId)
-          .maybeSingle();
-        if (!p) continue;
-        await supabase
-          .from("products")
-          .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
-          .eq("id", productId);
+        if (qty <= 0) continue;
+        const productId = await resolveLineProductId(supabase, it);
+        if (!productId) continue;
+        await adjustStock(supabase, productId, qty);
       }
 
       await supabase
@@ -1209,22 +1291,11 @@ export async function deleteInvoiceWithPin(
         ? (ord.items as Array<Record<string, unknown>>)
         : [];
       for (const it of items) {
-        const productId =
-          (it as { productId?: string | null }).productId ??
-          (it as { product_id?: string | null }).product_id ??
-          null;
         const qty = Number((it as { quantity?: number }).quantity ?? 0);
-        if (!productId || qty <= 0) continue;
-        const { data: p } = await supabase
-          .from("products")
-          .select("stock_quantity")
-          .eq("id", productId)
-          .maybeSingle();
-        if (!p) continue;
-        await supabase
-          .from("products")
-          .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
-          .eq("id", productId);
+        if (qty <= 0) continue;
+        const productId = await resolveLineProductId(supabase, it);
+        if (!productId) continue;
+        await adjustStock(supabase, productId, qty);
       }
 
       await supabase

@@ -1,5 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+import { dateISO, todayISO } from "@/lib/datetime";
+
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { ReportControls } from "@/components/panel/reports/ReportControls";
 import {
@@ -26,10 +28,9 @@ export default async function PanelRapoartePage({
   ]);
   setRequestLocale(locale);
 
+  const today = todayISO();
   // eslint-disable-next-line react-hooks/purity
-  const today = new Date().toISOString().slice(0, 10);
-  // eslint-disable-next-line react-hooks/purity
-  const thirtyAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const thirtyAgo = dateISO(new Date(Date.now() - 30 * 86_400_000));
   const from = typeof sp.from === "string" ? sp.from : thirtyAgo;
   const to = typeof sp.to === "string" ? sp.to : today;
 

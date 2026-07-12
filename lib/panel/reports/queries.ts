@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { dateISO, todayISO } from "@/lib/datetime";
 import type { AccountScope } from "@/lib/panel/scope";
 
 type DateRange = { from: string; to: string };
@@ -268,11 +269,9 @@ export type StockTurnoverRow = {
 
 export async function reportStockTurnover(limit = 30): Promise<StockTurnoverRow[]> {
   const supabase = await createClient();
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const since = dateISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
   const rows = await fetchOrdersInRange({
-    range: { from: since, to: new Date().toISOString().slice(0, 10) },
+    range: { from: since, to: todayISO() },
   });
   const soldByProduct = new Map<string, { qty: number; name: string | null; partCode: string | null }>();
   for (const o of rows) {

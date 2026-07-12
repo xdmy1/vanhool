@@ -15,6 +15,7 @@ import { adminGetOrder } from "@/lib/admin/queries";
 import type { OrderItem } from "@/lib/db/orders";
 import type { OrderStatus } from "@/lib/admin/orders/constants";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 function parseItems(raw: unknown): OrderItem[] {
   if (!Array.isArray(raw)) return [];
@@ -51,7 +52,7 @@ export default async function PanelComandaDetailPage({
   const items = parseItems(order.items);
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const formattedDate = order.created_at
-    ? new Date(order.created_at).toLocaleString(dateLocale, {
+    ? new Date(order.created_at).toLocaleString(dateLocale, { timeZone: TIMEZONE,
         day: "2-digit",
         month: "long",
         year: "numeric",

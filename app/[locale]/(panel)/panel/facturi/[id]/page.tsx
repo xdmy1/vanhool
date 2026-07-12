@@ -16,6 +16,7 @@ import {
   buildCostFallbackByCode,
 } from "@/lib/panel/invoices/cost-fallback";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE, todayISO } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -31,7 +32,7 @@ function isOverdue(invoice: {
   due_date: string | null;
 }): boolean {
   if (invoice.status !== "issued" || !invoice.due_date) return false;
-  return new Date(invoice.due_date) < new Date(new Date().toISOString().slice(0, 10));
+  return invoice.due_date < todayISO();
 }
 
 export default async function PanelInvoiceDetailPage({
@@ -70,7 +71,7 @@ export default async function PanelInvoiceDetailPage({
       <AdminPageHeader
         back={{ href: "/panel/facturi", label: t("clienti_detail_back"), locale }}
         title={`${t("facturi_title").replace(/i$/, "")} ${invoice.series ?? ""}${invoice.number ?? ""}`}
-        subtitle={`${invoice.customer_snapshot.name ?? "—"} · ${new Date(invoice.issued_date).toLocaleDateString(dateLocale)}`}
+        subtitle={`${invoice.customer_snapshot.name ?? "—"} · ${new Date(invoice.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}`}
         actions={
           <div className="flex items-center gap-2">
             <span
@@ -145,11 +146,11 @@ export default async function PanelInvoiceDetailPage({
 
           <dl className="mt-5 grid grid-cols-2 gap-2 text-xs">
             <dt className="text-muted">{t("proforma_issued_date")}</dt>
-            <dd>{new Date(invoice.issued_date).toLocaleDateString(dateLocale)}</dd>
+            <dd>{new Date(invoice.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}</dd>
             {invoice.paid_at ? (
               <>
                 <dt className="text-muted">{t("invoice_paid_at")}</dt>
-                <dd>{new Date(invoice.paid_at).toLocaleString(dateLocale)}</dd>
+                <dd>{new Date(invoice.paid_at).toLocaleString(dateLocale, { timeZone: TIMEZONE })}</dd>
               </>
             ) : null}
             <dt className="text-muted">{t("proforma_currency")}</dt>
@@ -158,7 +159,7 @@ export default async function PanelInvoiceDetailPage({
               <>
                 <dt className="text-muted">{t("invoice_due_date")}</dt>
                 <dd className={overdue ? "font-semibold text-destructive" : ""}>
-                  {new Date(invoice.due_date).toLocaleDateString(dateLocale)}
+                  {new Date(invoice.due_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                 </dd>
               </>
             ) : null}

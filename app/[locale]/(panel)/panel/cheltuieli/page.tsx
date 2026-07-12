@@ -6,6 +6,7 @@ import { ExpenseForm } from "@/components/panel/expenses/ExpenseForm";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteExpense } from "@/lib/panel/expenses/actions";
 import { listExpenses } from "@/lib/panel/expenses/queries";
+import { TIMEZONE } from "@/lib/datetime";
 import {
   EXPENSE_CATEGORIES,
   type ExpenseCategory,
@@ -115,7 +116,7 @@ export default async function PanelCheltuieliPage({
               rows.map((r) => (
                 <tr key={r.id} className="hover:bg-surface-elevated">
                   <td className="px-4 py-2 text-muted-strong">
-                    {new Date(r.paid_at).toLocaleDateString(dateLocale)}
+                    {new Date(r.paid_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                   </td>
                   <td className="px-4 py-2">
                     <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-primary">

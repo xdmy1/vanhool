@@ -13,6 +13,7 @@ import { Link } from "@/lib/i18n/routing";
 import { adminOverviewStats } from "@/lib/admin/queries";
 import { Price } from "@/components/common/Price";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONES: Record<string, string> = {
   pending: "border-warning/40 bg-warning/10 text-warning",
@@ -153,7 +154,7 @@ export default async function AdminOverviewPage({
                       />
                       <div className="text-xs text-muted">
                         {o.created_at
-                          ? new Date(o.created_at).toLocaleDateString(dateLocale)
+                          ? new Date(o.created_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })
                           : "—"}
                       </div>
                     </div>

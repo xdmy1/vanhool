@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Download } from "lucide-react";
+
+import { dateISO, todayISO } from "@/lib/datetime";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -32,9 +34,9 @@ export function ReportControls({
 }: Props) {
   const t = useTranslations("panel");
   // eslint-disable-next-line react-hooks/purity
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   // eslint-disable-next-line react-hooks/purity
-  const thirtyAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const thirtyAgo = dateISO(new Date(Date.now() - 30 * 86_400_000));
 
   const [from, setFrom] = useState(defaultFrom ?? thirtyAgo);
   const [to, setTo] = useState(defaultTo ?? today);

@@ -10,6 +10,7 @@ import {
 import { getPurchase } from "@/lib/panel/purchases/queries";
 import { getCompanyAndBank } from "@/lib/panel/settings/company";
 import { createClient } from "@/lib/supabase/server";
+import { TIMEZONE } from "@/lib/datetime";
 
 export default async function POPrintPage({
   params,
@@ -38,10 +39,10 @@ export default async function POPrintPage({
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const docDate = purchase.po_issued_at
-    ? new Date(purchase.po_issued_at).toLocaleDateString(dateLocale)
-    : new Date(purchase.document_date).toLocaleDateString(dateLocale);
+    ? new Date(purchase.po_issued_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })
+    : new Date(purchase.document_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE });
   const expected = purchase.expected_delivery_date
-    ? new Date(purchase.expected_delivery_date).toLocaleDateString(dateLocale)
+    ? new Date(purchase.expected_delivery_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })
     : null;
 
   return (

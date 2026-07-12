@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -42,6 +42,14 @@ export function ConvertProformaButton({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("transfer");
   const [accountScope, setAccountScope] = useState<Scope>("conta1");
 
+  /** Open the modal already set to the payment track the operator picked, so
+   * the two entry buttons say plainly what they do instead of hiding
+   * "achitare ulterioară" behind a toggle labelled "mark paid". */
+  function openWith(status: PaymentStatus) {
+    setPaymentStatus(status);
+    setConfirming(true);
+  }
+
   function submit() {
     startTransition(async () => {
       const res = await convertProformaToInvoice(proformaId, {
@@ -72,8 +80,6 @@ export function ConvertProformaButton({
     });
   }
 
-  if (alreadyConverted) return null;
-
   // Lock background scroll while the modal is open and close on Escape.
   useEffect(() => {
     if (!confirming) return;
@@ -89,12 +95,15 @@ export function ConvertProformaButton({
     };
   }, [confirming, pending]);
 
+  // After every hook — an early return above `useEffect` breaks hook order.
+  if (alreadyConverted) return null;
+
   return (
     <>
       <div className={cn("flex gap-2", variant === "compact" && "justify-end")}>
         <Button
           type="button"
-          onClick={() => setConfirming(true)}
+          onClick={() => openWith("paid")}
           disabled={pending}
           size={variant === "compact" ? "sm" : "md"}
           className="gap-1.5"
@@ -103,6 +112,19 @@ export function ConvertProformaButton({
           {variant === "compact"
             ? t("proforma_convert_button_short")
             : t("proforma_convert_button")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => openWith("deferred")}
+          disabled={pending}
+          size={variant === "compact" ? "sm" : "md"}
+          className="gap-1.5"
+        >
+          <CalendarClock className="size-4" />
+          {variant === "compact"
+            ? t("proforma_convert_button_deferred_short")
+            : t("proforma_convert_button_deferred")}
         </Button>
         {variant === "full" ? (
           <Button
@@ -184,17 +206,22 @@ export function ConvertProformaButton({
                 </Row>
               ) : null}
 
-              <Row label={t("proforma_convert_payment_method")}>
-                <Segmented
-                  value={paymentMethod}
-                  onChange={(v) => setPaymentMethod(v as PaymentMethod)}
-                  options={[
-                    { value: "cash", label: t("payment_cash") },
-                    { value: "transfer", label: t("payment_transfer") },
-                    { value: "card", label: t("payment_card") },
-                  ]}
-                />
-              </Row>
+              {/* No money moves on a deferred conversion — the server ignores
+                  the method and records no cash movement until the invoice is
+                  marked paid. Showing the picker here would imply otherwise. */}
+              {paymentStatus === "paid" ? (
+                <Row label={t("proforma_convert_payment_method")}>
+                  <Segmented
+                    value={paymentMethod}
+                    onChange={(v) => setPaymentMethod(v as PaymentMethod)}
+                    options={[
+                      { value: "cash", label: t("payment_cash") },
+                      { value: "transfer", label: t("payment_transfer") },
+                      { value: "card", label: t("payment_card") },
+                    ]}
+                  />
+                </Row>
+              ) : null}
 
               <Row label={t("proforma_convert_scope")}>
                 <Segmented

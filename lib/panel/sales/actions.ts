@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+
+import { todayISO } from "@/lib/datetime";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
@@ -237,7 +239,13 @@ export async function searchProducts(q: string): Promise<ProductSearchResult[]> 
     supabase
       .from("products")
       .select("id")
-      .or(`part_code.ilike.${term},name_ro.ilike.${term},name_en.ilike.${term},brand.ilike.${term}`)
+      // supplier_code is searched too: now that postPurchase links EVERY
+      // posted line to a product, the purchase-items pass below drops those
+      // lines (product_id set). Without this the operator would type the
+      // supplier code he quoted on the proforma and find nothing at all.
+      .or(
+        `part_code.ilike.${term},supplier_code.ilike.${term},name_ro.ilike.${term},name_en.ilike.${term},brand.ilike.${term}`,
+      )
       .limit(50),
   ]);
   const ids = new Set<string>();
@@ -860,7 +868,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         account_scope: invoiceAccountScope,
         series,
         number: numberStr,
-        issued_date: new Date().toISOString().slice(0, 10),
+        issued_date: todayISO(),
         paid_at: isPaidNow ? new Date().toISOString() : null,
         currency: v.currency,
         customer_snapshot: {

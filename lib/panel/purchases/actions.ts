@@ -267,19 +267,22 @@ export async function postPurchase(
   const supplierName = supplier?.name ?? "Furnizor";
 
   for (const it of items) {
-    // Skip catalog-related work for lines the operator marked off. The
-    // purchase line itself stays in the books — it's just decoupled
-    // from any product row.
+    // `add_to_catalog` gates the SITE listing only — never internal stock.
+    // Every posted line gets a product row and moves stock, because the
+    // warehouse holds the part whether or not we ever publish it. Unticked
+    // simply means the product stays `is_active: false`: invisible on the
+    // storefront, fully usable in the panel (sale, proforma, invoice).
     //
-    // Default is FALSE (safe) when the column is missing or the value
-    // is undefined: the operator already saw an UNCHECKED checkbox in
-    // the UI in that case, and we honour that. The earlier default of
-    // `true` was the catalog-flood bug — every line would be auto-
-    // created even after the operator explicitly unticked the box,
-    // because pre-migration rows came back with the field absent.
+    // This is what closes the hole where a purchase entered without the tick
+    // brought goods in that stock never knew about, so the invoice had
+    // nothing to take back out.
+    //
+    // New products stay `is_active: false` regardless of the tick — the owner
+    // reviews the auto-markup price before anything reaches the storefront.
+    // Unticked lines additionally get `internal_only`, which keeps them out of
+    // the admin product catalog while staying fully stock-tracked and sellable.
     const wantsCatalog =
       (it as { add_to_catalog?: boolean }).add_to_catalog ?? false;
-    if (!wantsCatalog && !it.product_id) continue;
 
     let productId = it.product_id;
 
@@ -302,31 +305,55 @@ export async function postPurchase(
       // Re-stocking an existing part is the common case once part_code is
       // unique — look the product up first and link instead of creating a
       // duplicate. Match is case-insensitive to mirror the unique index.
-      const escapedCode = code.replace(/[\\%_]/g, "\\$&");
+      //
+      // Also match on supplier_code: now that EVERY line creates a product,
+      // a part re-bought from the same supplier under the same supplier code
+      // must land on the existing product instead of flooding the catalog
+      // with a near-duplicate on each purchase.
+      const esc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
       const { data: existing } = await supabase
         .from("products")
         .select("id")
-        .ilike("part_code", escapedCode)
+        .ilike("part_code", esc(code))
         .limit(1);
-      if (existing && existing.length > 0) {
-        productId = existing[0].id;
+      let matchId = existing?.[0]?.id ?? null;
+      if (!matchId && it.supplier_code) {
+        const { data: bySupplier } = await supabase
+          .from("products")
+          .select("id")
+          .ilike("supplier_code", esc(it.supplier_code))
+          .limit(2);
+        // Ambiguous supplier code → create a fresh product rather than
+        // silently stocking the wrong one.
+        if (bySupplier && bySupplier.length === 1) matchId = bySupplier[0].id;
+      }
+      if (matchId) {
+        productId = matchId;
       } else {
         const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
-        const { data: newP, error: newErr } = await supabase
+        const base = {
+          part_code: code,
+          name_ro: it.description.slice(0, 200),
+          slug,
+          price: Number((costMdl * markupFactor).toFixed(2)),
+          cost_price: costMdl,
+          stock_quantity: 0,
+          is_active: false, // owner reviews before publishing
+          supplier_id: header.supplier_id,
+          supplier_code: it.supplier_code ?? null,
+        };
+        let { data: newP, error: newErr } = await supabase
           .from("products")
-          .insert({
-            part_code: code,
-            name_ro: it.description.slice(0, 200),
-            slug,
-            price: Number((costMdl * markupFactor).toFixed(2)),
-            cost_price: costMdl,
-            stock_quantity: 0,
-            is_active: false, // owner reviews before publishing
-            supplier_id: header.supplier_id,
-            supplier_code: it.supplier_code ?? null,
-          })
+          .insert({ ...base, internal_only: !wantsCatalog } as typeof base)
           .select("id")
           .single();
+        // sql/products-internal-only.sql not applied yet — keep posting rather
+        // than blocking the warehouse on a migration.
+        if (newErr && /internal_only/i.test(newErr.message)) {
+          const retry = await supabase.from("products").insert(base).select("id").single();
+          newP = retry.data;
+          newErr = retry.error;
+        }
         if (newErr || !newP) {
           return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
         }

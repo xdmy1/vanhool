@@ -6,6 +6,7 @@ import { DownloadPDFButton } from "@/components/panel/documents/AutoPrintGeneric
 import { Logo } from "@/components/layout/Logo";
 import { getDeliveryNote } from "@/lib/panel/delivery_notes/queries";
 import { getCompanyAndBank } from "@/lib/panel/settings/company";
+import { TIMEZONE } from "@/lib/datetime";
 
 export default async function DeliveryNotePrintPage({
   params,
@@ -24,7 +25,7 @@ export default async function DeliveryNotePrintPage({
   const auto = sp.auto === "1";
   const t = await getTranslations("panel");
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
-  const today = new Date(note.issued_at).toLocaleDateString(dateLocale);
+  const today = new Date(note.issued_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE });
   const PAY: Record<string, string> = {
     cash: t("delivery_pay_cash"),
     transfer: t("delivery_pay_transfer"),

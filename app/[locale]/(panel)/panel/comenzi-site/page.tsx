@@ -6,6 +6,7 @@ import { Price } from "@/components/common/Price";
 import { TriageButtons } from "@/components/panel/triage/TriageButtons";
 import { listStorefrontOrders } from "@/lib/panel/triage/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 export default async function PanelComenziSitePage({
   params,
@@ -93,7 +94,7 @@ export default async function PanelComenziSitePage({
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-strong">
                         {r.created_at
-                          ? new Date(r.created_at).toLocaleString(dateLocale)
+                          ? new Date(r.created_at).toLocaleString(dateLocale, { timeZone: TIMEZONE })
                           : "—"}
                       </td>
                       <td className="px-4 py-3">

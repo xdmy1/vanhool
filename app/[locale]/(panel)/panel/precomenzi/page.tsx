@@ -9,6 +9,7 @@ import { PreorderStatusButtons } from "@/components/panel/preorders/PreorderStat
 import { deletePreorderWithPin } from "@/lib/panel/preorders/actions";
 import { listPreorders, type PreorderStatus } from "@/lib/panel/preorders/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   pending: "bg-muted/20 text-muted-strong",
@@ -171,9 +172,7 @@ export default async function PreordersPage({
                     </td>
                     <td className="px-4 py-3 align-top text-xs text-muted-strong">
                       {r.expected_delivery_date
-                        ? new Date(r.expected_delivery_date).toLocaleDateString(
-                            dateLocale,
-                          )
+                        ? new Date(r.expected_delivery_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })
                         : "—"}
                     </td>
                     <td className="px-4 py-3 align-top">

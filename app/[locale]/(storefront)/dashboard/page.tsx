@@ -10,6 +10,7 @@ import { routing } from "@/lib/i18n/routing";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
 import { OrdersList } from "@/components/dashboard/OrdersList";
 import { ProfileForm } from "@/components/dashboard/ProfileForm";
+import { TIMEZONE } from "@/lib/datetime";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -148,7 +149,7 @@ export default async function DashboardPage({
             label={t("dashboard_member_since")}
             value={
               memberSince
-                ? new Date(memberSince).toLocaleDateString(dateLocale, {
+                ? new Date(memberSince).toLocaleDateString(dateLocale, { timeZone: TIMEZONE,
                     year: "numeric",
                     month: "short",
                     day: "numeric",

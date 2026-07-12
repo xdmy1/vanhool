@@ -9,6 +9,7 @@ import { Price } from "@/components/common/Price";
 import { setCustomerDiscount } from "@/lib/admin/customers/actions";
 import type { AdminCustomerRow } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 type Labels = {
   empty: string;
@@ -133,7 +134,7 @@ export function CustomersTable({
                       </div>
                       {c.created_at ? (
                         <div className="text-xs text-muted">
-                          {new Date(c.created_at).toLocaleDateString(dateLocale)}
+                          {new Date(c.created_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                         </div>
                       ) : null}
                     </div>

@@ -10,6 +10,7 @@ import { listExpenses } from "@/lib/panel/expenses/queries";
 import { getCashBalance, listCashMovements } from "@/lib/panel/cash/actions";
 import { type ExpenseCategory } from "@/lib/panel/expenses/categories";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 export default async function PanelCheltuieliCashPage({
   params,
@@ -81,7 +82,7 @@ export default async function PanelCheltuieliCashPage({
                   expenses.map((r) => (
                     <tr key={r.id}>
                       <td className="px-3 py-2 text-xs text-muted-strong">
-                        {new Date(r.paid_at).toLocaleDateString(dateLocale)}
+                        {new Date(r.paid_at).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         {t(`cat_${r.category as ExpenseCategory}` as `cat_${ExpenseCategory}`)}
@@ -129,7 +130,7 @@ export default async function PanelCheltuieliCashPage({
                   movements.map((m) => (
                     <tr key={m.id}>
                       <td className="px-3 py-2 text-xs text-muted-strong">
-                        {new Date(m.occurred_at).toLocaleString(dateLocale)}
+                        {new Date(m.occurred_at).toLocaleString(dateLocale, { timeZone: TIMEZONE })}
                       </td>
                       <td className="px-3 py-2">
                         <span

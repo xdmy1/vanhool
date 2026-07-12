@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { todayISO } from "@/lib/datetime";
 
 export type InvoiceListType = "invoice" | "proforma";
 
@@ -60,11 +61,11 @@ export async function listInvoices(args: {
           ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, customer_snapshot, account_scope"
           : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
-      // Order strictly by document number, highest first. Numbers are
-      // zero-padded fixed width (e.g. "0475"), so a string sort matches the
-      // numeric order. issued_date is a fallback tiebreaker for legacy rows
-      // that never got a number. Nulls (unnumbered drafts) sink to the bottom.
-      .order("number", { ascending: false, nullsFirst: false })
+      // Newest issue date first. Do NOT order by `number` here: numbers are
+      // zero-padded at inconsistent widths across the three writers ("0068"
+      // from invoices/actions, "00069" from sales/actions + triage/actions),
+      // so a Postgres string sort interleaves them. The numeric tiebreaker is
+      // applied in JS below, over the 300 rows this returns.
       .order("issued_date", { ascending: false })
       .limit(300);
     if (args.type) q = q.eq("type", args.type);
@@ -72,7 +73,7 @@ export async function listInvoices(args: {
     if (args.from) q = q.gte("issued_date", args.from);
     if (args.to) q = q.lte("issued_date", args.to);
     if (args.overdueOnly) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       q = q.eq("status", "issued").lt("due_date", today);
     } else if (args.status) {
       q = q.eq("status", args.status);
@@ -98,7 +99,19 @@ export async function listInvoices(args: {
     data = retry.data;
     error = retry.error;
   }
-  return (((data ?? []) as unknown) as Array<Record<string, unknown>>).map((r) => ({
+  const rows = ((data ?? []) as unknown) as Array<Record<string, unknown>>;
+  // Same issue date -> highest document number first, compared on the digits
+  // only so "0068" and "00069" sort against each other as 68 and 69. Rows with
+  // no number (unnumbered drafts) sink below numbered ones on the same date.
+  const seq = (r: Record<string, unknown>): number => {
+    const digits = String(r.number ?? "").replace(/\D/g, "");
+    return digits ? Number(digits) : -1;
+  };
+  rows.sort((a, b) => {
+    const dateCmp = String(b.issued_date ?? "").localeCompare(String(a.issued_date ?? ""));
+    return dateCmp !== 0 ? dateCmp : seq(b) - seq(a);
+  });
+  return rows.map((r) => ({
     id: r.id as string,
     order_id: r.order_id as string | null,
     type: r.type as InvoiceListType,

@@ -10,6 +10,7 @@ import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteOrderWithPin } from "@/lib/admin/orders/actions";
 import { adminListOrders } from "@/lib/admin/queries";
 import type { OrderStatus } from "@/lib/admin/orders/constants";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_VALUES = [
   "all",
@@ -122,7 +123,7 @@ export default async function AdminOrdersPage({
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-strong">
                       {o.created_at
-                        ? new Date(o.created_at).toLocaleString(dateLocale, {
+                        ? new Date(o.created_at).toLocaleString(dateLocale, { timeZone: TIMEZONE,
                             day: "2-digit",
                             month: "short",
                             hour: "2-digit",

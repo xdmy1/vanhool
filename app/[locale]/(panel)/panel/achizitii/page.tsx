@@ -12,6 +12,7 @@ import { deletePurchaseWithPin } from "@/lib/panel/purchases/actions";
 import { listPurchases } from "@/lib/panel/purchases/queries";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
   draft: "bg-muted/20 text-muted-strong",
@@ -93,7 +94,7 @@ export default async function PanelAchizitiiPage({
                   <tr key={r.id} className="hover:bg-surface-elevated">
                     <td className="px-4 py-3 font-mono text-xs">{r.document_number ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-strong">
-                      {new Date(r.document_date).toLocaleDateString(dateLocale)}
+                      {new Date(r.document_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                     </td>
                     <td className="px-4 py-3">{r.supplier_name}</td>
                     <td className="px-4 py-3">

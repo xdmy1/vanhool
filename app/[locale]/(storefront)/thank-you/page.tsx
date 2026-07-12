@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import { routing } from "@/lib/i18n/routing";
 import { ClearCartOnMount } from "@/components/cart/ClearCartOnMount";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 export async function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -74,7 +75,7 @@ export default async function ThankYouPage({
   const paymentHint = t(`success_payment_${paymentKey}` as "success_payment_cash");
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
-  const formattedDate = new Date(order.createdAt).toLocaleString(dateLocale, {
+  const formattedDate = new Date(order.createdAt).toLocaleString(dateLocale, { timeZone: TIMEZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",

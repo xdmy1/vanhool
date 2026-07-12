@@ -17,6 +17,7 @@ import {
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
+import { TIMEZONE } from "@/lib/datetime";
 
 // Day boundaries in Europe/Chisinau (where the user operates).
 // `Intl` with `en-CA` gives YYYY-MM-DD; comparing as strings is enough since
@@ -60,7 +61,7 @@ const STATUS_TONE: Record<string, string> = {
 
 function isOverdue(row: { status: string; due_date: string | null }): boolean {
   if (row.status !== "issued" || !row.due_date) return false;
-  return new Date(row.due_date) < new Date(new Date().toISOString().slice(0, 10));
+  return row.due_date < chisinauToday();
 }
 
 export default async function PanelFacturiPage({
@@ -385,7 +386,7 @@ export default async function PanelFacturiPage({
                       <InvoiceNoteCell invoiceId={r.id} initial={r.notes} />
                     </td>
                     <td className="px-4 py-3 text-muted-strong">
-                      {new Date(r.issued_date).toLocaleDateString(dateLocale)}
+                      {new Date(r.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm">{r.customer_snapshot?.name ?? "—"}</div>
