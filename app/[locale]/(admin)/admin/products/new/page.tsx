@@ -59,13 +59,18 @@ export default async function NewProductPage({
       fromLineId ? getDefaultMarkupPercent() : Promise.resolve(30),
     ]);
 
-  const categoryOptions = cats
-    .filter((c) => c.is_active !== false)
-    .map((c) => ({
-      id: c.id,
-      name: nameFor(c, locale as Locale),
-      parentId: c.parent_id,
-    }));
+  // Same policy as the edit page: keep inactive categories visible + labeled
+  // so operators registering a new part can still pick from the retired
+  // tree if that's where the part actually belongs (or move it to a
+  // TecDoc canonical cat afterwards).
+  const categoryOptions = cats.map((c) => ({
+    id: c.id,
+    name:
+      c.is_active === false
+        ? `${nameFor(c, locale as Locale)} (inactivă)`
+        : nameFor(c, locale as Locale),
+    parentId: c.parent_id,
+  }));
 
   // If the line is already linked to a product, don't prefill — bounce the
   // user to that product's edit page.

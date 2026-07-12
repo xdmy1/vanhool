@@ -48,13 +48,20 @@ export default async function EditProductPage({
 
   const initialVehicleMakeIds = await adminGetProductVehicleMakeIds(product.id);
 
-  const categoryOptions = cats
-    .filter((c) => c.is_active !== false)
-    .map((c) => ({
-      id: c.id,
-      name: nameFor(c, locale as Locale),
-      parentId: c.parent_id,
-    }));
+  // Include inactive categories in the picker — after the TecDoc canonical
+  // import (July 2026) the old 211 categories were flipped to
+  // is_active=false, but existing products still point at them. Filtering
+  // them out here made the edit form render "no category" even for products
+  // that were correctly categorised. Suffix with "(inactivă)" so the
+  // operator can see it's a retired tree and decide whether to migrate.
+  const categoryOptions = cats.map((c) => ({
+    id: c.id,
+    name:
+      c.is_active === false
+        ? `${nameFor(c, locale as Locale)} (inactivă)`
+        : nameFor(c, locale as Locale),
+    parentId: c.parent_id,
+  }));
 
   const initial = {
     partCode: product.part_code ?? "",
