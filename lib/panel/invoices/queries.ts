@@ -52,6 +52,11 @@ export async function listInvoices(args: {
    * row — but logically the call is safe to combine.
    */
   status?: InvoiceRow["status"];
+  /**
+   * Filter by whether the accountant has marked the invoice "introdus".
+   * true → only entered (accountant_entered_at set); false → only not-entered.
+   */
+  entered?: boolean;
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
 
@@ -79,6 +84,14 @@ export async function listInvoices(args: {
       q = q.eq("status", "issued").lt("due_date", today);
     } else if (args.status) {
       q = q.eq("status", args.status);
+    }
+    // Accountant "introdus" filter — only in the includeAccountant path (the
+    // fallback select doesn't carry the column). On a pre-migration schema the
+    // whole query falls back and this filter is simply dropped.
+    if (includeAccountant && args.entered !== undefined) {
+      q = args.entered
+        ? q.not("accountant_entered_at", "is", null)
+        : q.is("accountant_entered_at", null);
     }
     if (args.q) {
       // Strip SQL LIKE wildcards AND commas — commas are PostgREST's

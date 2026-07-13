@@ -402,8 +402,31 @@ export function PurchaseForm({
                   <td className="px-2 py-2 text-right tabular-nums text-muted">
                     {l.vat_rate || 0}%
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-muted">
-                    {(l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
+                  <td className="px-2 py-2 text-right">
+                    {/* Editable gross (with-VAT) cost — typing here back-computes
+                        the net unit_cost (net = gross / (1 + vat)). The operator
+                        can enter the price either way, like on sales/proforma. */}
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={
+                        l.unit_cost > 0
+                          ? Number(
+                              (l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2),
+                            )
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const gross = Number(e.target.value || 0);
+                        const factor = 1 + (l.vat_rate || 0) / 100;
+                        setLine(idx, {
+                          unit_cost: Number((gross / factor).toFixed(2)),
+                        });
+                      }}
+                      placeholder="0.00"
+                      className="ml-auto h-9 w-24 text-right"
+                    />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {(l.quantity * l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}

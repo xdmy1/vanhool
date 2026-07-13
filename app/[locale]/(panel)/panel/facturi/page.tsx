@@ -93,6 +93,9 @@ export default async function PanelFacturiPage({
     (STATUS_FILTERS as readonly string[]).includes(sp.status)
       ? (sp.status as StatusFilter)
       : undefined;
+  // Accountant "introdus" filter: entered=1 → introduse, entered=0 → neintroduse.
+  const enteredParam: boolean | undefined =
+    sp.entered === "1" ? true : sp.entered === "0" ? false : undefined;
 
   const rows = await listInvoices({
     q,
@@ -101,6 +104,7 @@ export default async function PanelFacturiPage({
     from: fromParam,
     to: toParam,
     overdueOnly,
+    entered: enteredParam,
     // "partial" is a valid runtime status the generated union doesn't list yet.
     status: statusParam as
       | "void"
@@ -200,6 +204,21 @@ export default async function PanelFacturiPage({
     if (id) next.set("status", id);
     return next.toString() ? `?${next}` : "?";
   }
+  // Accountant introdus/neintrodus filter — its own toggle group.
+  function enteredHref(val: "1" | "0" | null): string {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "entered" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (val) next.set("entered", val);
+    return next.toString() ? `?${next}` : "?";
+  }
+  const enteredChips: Array<{ id: "1" | "0" | null; label: string }> = [
+    { id: null, label: t("facturi_filter_all") },
+    { id: "1", label: t("facturi_filter_entered") },
+    { id: "0", label: t("facturi_filter_not_entered") },
+  ];
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -291,6 +310,33 @@ export default async function PanelFacturiPage({
                 )}
               >
                 {s.label}
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Accountant introdus/neintrodus filter */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted">
+            {t("accountant_entered_filter_label")}:
+          </span>
+          {enteredChips.map((c) => {
+            const active =
+              (c.id === null && enteredParam === undefined) ||
+              (c.id === "1" && enteredParam === true) ||
+              (c.id === "0" && enteredParam === false);
+            return (
+              <a
+                key={c.id ?? "all"}
+                href={enteredHref(c.id)}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+                )}
+              >
+                {c.label}
               </a>
             );
           })}
