@@ -7,8 +7,47 @@ import {
   type ProformaInitial,
 } from "@/components/panel/proforma/NewProformaForm";
 import { getInvoice } from "@/lib/panel/invoices/queries";
+import { createClient } from "@/lib/supabase/server";
 
 const MS_PER_DAY = 86_400_000;
+
+/**
+ * Recover a per-line cost the snapshot doesn't carry, so the margin buttons
+ * ("+30%", "-15%") can reprice on edit. Older proformas — and any line typed
+ * before its part was catalogued — froze no cost_price; without one, applying
+ * a margin silently did nothing. Look the part up in the catalog by code and
+ * fill its GROSS MDL cost. Parts still not in the catalog stay uncosted (the
+ * form then warns instead of failing silently).
+ */
+async function backfillLineCosts(
+  lines: ProformaInitial["lines"],
+): Promise<ProformaInitial["lines"]> {
+  const need = lines
+    .filter((l) => !(l.cost_price > 0) && l.part_code.trim())
+    .map((l) => l.part_code.trim());
+  if (need.length === 0) return lines;
+
+  const supabase = await createClient();
+  const costByCode = new Map<string, number>();
+  for (const code of Array.from(new Set(need))) {
+    const escaped = code.replace(/[\\%_]/g, "\\$&");
+    const { data } = await supabase
+      .from("products")
+      .select("part_code, supplier_code, cost_price")
+      .or(`part_code.ilike.${escaped},supplier_code.ilike.${escaped}`)
+      .limit(2);
+    // Only trust an unambiguous single match — never guess which product.
+    if (data && data.length === 1 && Number(data[0].cost_price) > 0) {
+      costByCode.set(code.toLowerCase(), Number(data[0].cost_price));
+    }
+  }
+  if (costByCode.size === 0) return lines;
+  return lines.map((l) =>
+    !(l.cost_price > 0) && l.part_code.trim()
+      ? { ...l, cost_price: costByCode.get(l.part_code.trim().toLowerCase()) ?? 0 }
+      : l,
+  );
+}
 
 function diffDays(issued: string, due: string | null): number {
   if (!due) return 7;
@@ -94,6 +133,7 @@ export default async function EditProformaPage({
     dueDays: diffDays(proforma.issued_date, proforma.due_date),
     notes: proforma.notes ?? "",
   };
+  initial.lines = await backfillLineCosts(initial.lines);
 
   const number = `${proforma.series ?? ""}${proforma.number ?? ""}`;
   return (

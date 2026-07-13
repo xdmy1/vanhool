@@ -289,13 +289,26 @@ export function NewProformaForm({
     if (trimmed === "") return;
     const m = Number(trimmed);
     if (!Number.isFinite(m) || m < 0) return;
-    setLines(
-      lines.map((l) => {
-        if (!(l.cost_price > 0)) return l;
-        const mdl = l.cost_price * (1 + m / 100);
-        return { ...l, unit_price: convertPrice(mdl, "MDL", currency) };
-      }),
-    );
+    let repriced = 0;
+    let skipped = 0;
+    const next = lines.map((l) => {
+      if (!(l.cost_price > 0)) {
+        // Margin is computed off cost; a line whose cost we don't know can't be
+        // repriced. Count it so we can tell the operator instead of silently
+        // leaving the price unchanged (which read as "the button is broken").
+        if (l.name.trim().length > 0) skipped++;
+        return l;
+      }
+      repriced++;
+      const mdl = l.cost_price * (1 + m / 100);
+      return { ...l, unit_price: convertPrice(mdl, "MDL", currency) };
+    });
+    setLines(next);
+    if (repriced === 0 && skipped > 0) {
+      toast.error(t("proforma_markup_no_cost"));
+    } else if (skipped > 0) {
+      toast.warning(t("proforma_markup_partial", { skipped }));
+    }
   }
   function removeLine(idx: number) {
     if (lines.length === 1) return;
