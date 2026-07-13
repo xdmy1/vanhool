@@ -278,10 +278,9 @@ export function NewProformaForm({
     ]);
   }
 
-  // The two buttons both MARK UP the entered price by a margin (they are not a
-  // discount): +30 → price × 1.30 (1000 → 1300), "-15" → price × 1.15
-  // (1000 → 1150 — a smaller +15% margin, labelled -15 because it's 15 points
-  // less than +30). `pct` is the margin, so both callers pass a positive value.
+  // The two buttons adjust the current price by the SIGNED percent on the
+  // label: +30 → price × 1.30 (1000 → 1300), -15 → price × 0.85
+  // (3105 → 2639.25). Plain and predictable — +30 adds 30%, -15 takes 15% off.
   function adjustAllPrices(pct: number) {
     const factor = 1 + pct / 100;
     setLines(
@@ -456,7 +455,7 @@ export function NewProformaForm({
               </button>
               <button
                 type="button"
-                onClick={() => adjustAllPrices(15)}
+                onClick={() => adjustAllPrices(-15)}
                 className="border-l border-border px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
               >
                 -15%
