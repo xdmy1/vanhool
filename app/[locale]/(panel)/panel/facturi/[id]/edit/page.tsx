@@ -83,6 +83,9 @@ export default async function EditInvoicePage({
             // Catalog price isn't snapshotted on the doc, so no yellow
             // reference for already-saved lines (only fresh picks show it).
             catalog_price: 0,
+            markup_percent: Number(
+              (it as { markup_percent?: number | null }).markup_percent ?? 0,
+            ),
           }))
         : [
             {
@@ -96,6 +99,7 @@ export default async function EditInvoicePage({
               vat_rate: 20,
               cost_price: 0,
               catalog_price: 0,
+              markup_percent: 0,
             },
           ],
     scope: invoice.account_scope,

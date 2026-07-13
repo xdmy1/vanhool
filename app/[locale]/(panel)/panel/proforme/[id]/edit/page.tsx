@@ -112,6 +112,11 @@ export default async function EditProformaPage({
             // Catalog price isn't snapshotted on the doc, so no yellow
             // reference for already-saved lines (only fresh picks show it).
             catalog_price: 0,
+            // Restore the +30/-15 margin status so the buttons reprice from
+            // the base, not from the shown (already-marked-up) price.
+            markup_percent: Number(
+              (it as { markup_percent?: number | null }).markup_percent ?? 0,
+            ),
           }))
         : [
             {
@@ -125,6 +130,7 @@ export default async function EditProformaPage({
               vat_rate: 20,
               cost_price: 0,
               catalog_price: 0,
+              markup_percent: 0,
             },
           ],
     scope: proforma.account_scope,

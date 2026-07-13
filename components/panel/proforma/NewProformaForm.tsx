@@ -58,6 +58,15 @@ type Line = {
   /** Catalog list price (products.price). Shown small + yellow next to the
    * part as a stable reference, even after the operator overrides the price. */
   catalog_price: number;
+  /**
+   * The margin STATUS the +30 / -15 buttons stamped on this line, in percent
+   * (0 = none). unit_price = base × (1 + markup_percent/100), so the base is
+   * always recoverable as unit_price / (1 + markup_percent/100). That's what
+   * lets a later button switch reprice from the ORIGINAL base instead of
+   * compounding on the shown price (edit +30 → -15: 1000 → 1300 → 1150, not
+   * 1300 × 0.85). Persisted with the line so the status survives an edit.
+   */
+  markup_percent: number;
 };
 
 type WalkIn = {
@@ -108,6 +117,7 @@ const EMPTY_LINE: Line = {
   vat_rate: 20,
   cost_price: 0,
   catalog_price: 0,
+  markup_percent: 0,
 };
 
 // Synthetic placeholder used when a client is created without a real email.
@@ -278,20 +288,20 @@ export function NewProformaForm({
     ]);
   }
 
-  // The two buttons adjust the current price by the SIGNED percent on the
-  // label: +30 → price × 1.30 (1000 → 1300), -15 → price × 0.85
-  // (3105 → 2639.25). Plain and predictable — +30 adds 30%, -15 takes 15% off.
-  function adjustAllPrices(pct: number) {
-    const factor = 1 + pct / 100;
+  // The two buttons stamp a MARGIN STATUS on every line: +30 → 30%, -15 → 15%.
+  // The base is the shown price at 0% markup, recovered from the stored status
+  // as `unit_price / (1 + markup_percent/100)`, so a later switch always
+  // reprices from that base — never compounding on the shown price. Base 1000:
+  // +30 → 1300 (status 30); edit → -15 → base 1000 × 1.15 = 1150 (status 15),
+  // NOT 1300 × 0.85. Nothing to do with a discount.
+  function applyMarginToAll(targetMarkup: number) {
     setLines(
       lines.map((l) => {
-        const eff =
-          l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
-            ? l.discounted_unit_price
-            : l.unit_price;
+        const base = l.unit_price / (1 + (l.markup_percent || 0) / 100);
         return {
           ...l,
-          unit_price: Number((eff * factor).toFixed(2)),
+          unit_price: Number((base * (1 + targetMarkup / 100)).toFixed(2)),
+          markup_percent: targetMarkup,
           discounted_unit_price: null,
         };
       }),
@@ -371,6 +381,8 @@ export function NewProformaForm({
         // selection — both for catalog rows and for draft-purchase
         // matches. Manual entries pass 0; null = unknown source.
         cost_price: l.cost_price > 0 ? l.cost_price : null,
+        // Persist the +30/-15 margin status so an edit reprices from the base.
+        markup_percent: l.markup_percent > 0 ? l.markup_percent : null,
       })),
       due_days: dueDays,
       currency,
@@ -448,14 +460,16 @@ export function NewProformaForm({
             >
               <button
                 type="button"
-                onClick={() => adjustAllPrices(30)}
+                onClick={() => applyMarginToAll(30)}
+                title="Preț = cost × 1.30 (marjă 30%)"
                 className="px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
               >
                 +30%
               </button>
               <button
                 type="button"
-                onClick={() => adjustAllPrices(-15)}
+                onClick={() => applyMarginToAll(15)}
+                title="Preț = cost × 1.15 (marjă 15%)"
                 className="border-l border-border px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
               >
                 -15%
@@ -523,6 +537,7 @@ export function NewProformaForm({
                             unit_price: convertPrice(m.unit_price, "MDL", currency),
                             cost_price: m.cost_price,
                             catalog_price: m.catalog_price,
+                            markup_percent: 0,
                           })
                         }
                         placeholder={t("proforma_form_line_partcode_placeholder")}
@@ -590,6 +605,7 @@ export function NewProformaForm({
                             unit_price: Number(
                               (net * (1 + vatRate / 100)).toFixed(2),
                             ),
+                            markup_percent: 0,
                           })
                         }
                         step="0.01"
@@ -603,7 +619,7 @@ export function NewProformaForm({
                     <td className="px-2 py-2 text-right">
                       <PriceWithVatHelper
                         value={l.unit_price}
-                        onChange={(v) => setLine(idx, { unit_price: v })}
+                        onChange={(v) => setLine(idx, { unit_price: v, markup_percent: 0 })}
                         step="0.01"
                         size="sm"
                         inputClassName="ml-auto h-9 w-24 text-right"
@@ -612,7 +628,7 @@ export function NewProformaForm({
                         <MarkupShortcuts
                           cost={convertPrice(l.cost_price, "MDL", currency)}
                           unitPrice={l.unit_price}
-                          onPick={(v) => setLine(idx, { unit_price: v })}
+                          onPick={(v) => setLine(idx, { unit_price: v, markup_percent: 0 })}
                         />
                         {l.cost_price > 0 ? (() => {
                           // Margin badge derived from the typed price — kept

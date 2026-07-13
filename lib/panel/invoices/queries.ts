@@ -174,6 +174,8 @@ export type InvoiceItemSnapshot = {
    * or freeform lines where no catalog / draft purchase backed the entry.
    */
   cost_price?: number | null;
+  /** +30/-15 margin status stamped on the line (for repricing on edit). */
+  markup_percent?: number | null;
 };
 
 export type CustomerSnapshot = {

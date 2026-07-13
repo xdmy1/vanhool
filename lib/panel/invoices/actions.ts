@@ -51,6 +51,8 @@ const lineSchema = z.object({
    * it from the catalog product or the draft purchase line) → null.
    */
   cost_price: z.number().nonnegative().nullable().optional(),
+  /** +30/-15 margin status stamped on the line, so an edit reprices from base. */
+  markup_percent: z.number().nonnegative().nullable().optional(),
 });
 
 const customerSchema = z.object({
@@ -362,6 +364,11 @@ export async function issueProforma(
       cost_price:
         i.cost_price != null && i.cost_price >= 0
           ? Number(i.cost_price)
+          : null,
+      // +30/-15 margin status, so editing reprices from the base.
+      markup_percent:
+        i.markup_percent != null && i.markup_percent > 0
+          ? Number(i.markup_percent)
           : null,
     };
   });
@@ -768,6 +775,10 @@ export async function updateProforma(
         i.cost_price != null && i.cost_price >= 0
           ? Number(i.cost_price)
           : null,
+      markup_percent:
+        i.markup_percent != null && i.markup_percent > 0
+          ? Number(i.markup_percent)
+          : null,
     };
   });
 
@@ -879,6 +890,10 @@ export async function updateInvoice(
       cost_price:
         i.cost_price != null && i.cost_price >= 0
           ? Number(i.cost_price)
+          : null,
+      markup_percent:
+        i.markup_percent != null && i.markup_percent > 0
+          ? Number(i.markup_percent)
           : null,
     };
   });
