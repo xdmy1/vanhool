@@ -15,6 +15,22 @@ const SCOPE_LOCKED_CONTA1: readonly string[] = [
 ];
 const SCOPE_LOCKED_CONTA2: readonly string[] = ["/panel/cheltuieli-cash"];
 
+// Routes whose FORM owns an authoritative conta1/conta2 selector wired to the
+// create/edit action. On these, the global topbar switcher is a redundant,
+// confusing second control (it can even contradict the form) — so hide it and
+// let the in-form selector govern. Exact routes + the dynamic /<id>/edit forms.
+const SCOPE_HIDDEN_EXACT: readonly string[] = [
+  "/panel/proforme/new",
+  "/panel/vanzare-noua",
+  "/panel/achizitii/new",
+  "/panel/comenzi-site",
+];
+const SCOPE_HIDDEN_EDIT_RE = /^\/panel\/(proforme|facturi|achizitii)\/[^/]+\/edit$/;
+
+function isScopeHidden(stripped: string): boolean {
+  return SCOPE_HIDDEN_EXACT.includes(stripped) || SCOPE_HIDDEN_EDIT_RE.test(stripped);
+}
+
 function lockedScope(stripped: string): AccountScope | null {
   if (SCOPE_LOCKED_CONTA1.some((p) => stripped === p || stripped.startsWith(`${p}/`))) {
     return "conta1";
@@ -42,6 +58,9 @@ export function BookScopeSwitcher({
   const stripped = pathname.replace(new RegExp(`^/${locale}`), "");
   const forced = lockedScope(stripped);
   const effective: AccountScope = forced ?? current;
+
+  // Hidden on routes where a form provides its own authoritative scope selector.
+  if (isScopeHidden(stripped)) return null;
 
   function pick(next: AccountScope) {
     if (forced) return;

@@ -449,27 +449,17 @@ export async function convertProformaToInvoice(
     return { ok: false, reason: "already_converted" };
   }
 
-  // Two-track scope. The proforma → invoice conversion produces a
-  // synthetic ORDER (the sale itself) and a fiscal INVOICE, and the
-  // operator wants them to live in different books when payment is
-  // already in:
-  //   • orderScope — the SALE's scope. A paid conta2 proforma was paid in
-  //     cash → the cash hit the conta2 drawer; the order keeps conta2
-  //     so the cash drawer/movement still ties to that informal sale.
-  //   • invoiceScope — the fiscal document. A paid proforma becomes a
-  //     real factură; once the document is fiscal, it lives in conta1
-  //     regardless of where the sale itself sat. Deferred conversion
-  //     stays on orderScope because no money has hit yet.
-  // `options.account_scope` overrides both — keeps the door open for a
-  // manual force if we ever need it.
+  // The invoice inherits the PROFORMA's book — no automatic flip to conta1
+  // when the conversion is paid. A conta2 proforma becomes a conta2 invoice;
+  // the operator moves a document deliberately with the scope editor.
+  // `options.account_scope` still lets the caller force a book explicitly.
   const paymentStatus = options?.payment_status ?? "paid";
   const proformaScope =
     (pf as { account_scope?: "conta1" | "conta2" }).account_scope ?? "conta1";
   const orderScope: "conta1" | "conta2" =
     options?.account_scope ?? proformaScope;
   const invoiceScope: "conta1" | "conta2" =
-    options?.account_scope ??
-    (paymentStatus === "paid" ? "conta1" : proformaScope);
+    options?.account_scope ?? proformaScope;
   // Legacy alias so the rest of this function — which currently writes
   // `scope` into the order insert — picks up orderScope without further
   // edits.
@@ -925,6 +915,49 @@ export async function updateInvoice(
  * originating order + delivery note and — for conta2 + cash — records the
  * cash inflow that was skipped at conversion time.
  */
+
+/**
+ * Move a document (invoice OR proforma) to the other accounting book.
+ *
+ * Changes ONLY `account_scope` — the reclassification the accountant cares
+ * about. The issued figures (subtotal, VAT, total, line snapshot) are left
+ * EXACTLY as the document went out; reclassifying which book it's counted in
+ * must never silently rewrite what the customer already received. There is no
+ * longer any automatic conta2 → conta1 flip on payment; this is the only way a
+ * document changes book, and it does so deliberately.
+ */
+export async function setDocumentScope(
+  id: string,
+  newScope: "conta1" | "conta2",
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (newScope !== "conta1" && newScope !== "conta2") {
+    return { ok: false, reason: "invalid_scope" };
+  }
+  const supabase = await createClient();
+
+  const { data: doc, error: loadErr } = await supabase
+    .from("invoices")
+    .select("id, account_scope")
+    .eq("id", id)
+    .maybeSingle();
+  if (loadErr || !doc) return { ok: false, reason: "not_found" };
+  if (doc.account_scope === newScope) return { ok: true };
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ account_scope: newScope, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { ok: false, reason: error.message };
+
+  revalidatePath("/[locale]/panel/facturi", "page");
+  revalidatePath(`/[locale]/panel/facturi/${id}`, "page");
+  revalidatePath("/[locale]/panel/proforme", "page");
+  revalidatePath(`/[locale]/panel/proforme/${id}`, "page");
+  return { ok: true };
+}
+
 const markPaidSchema = z.object({
   /** ISO date (YYYY-MM-DD) when the payment hit. Defaults to today. */
   paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -988,19 +1021,17 @@ export async function markInvoicePaid(
   const runningPaid = Number((alreadyPaid + paymentInInvCur).toFixed(2));
   const isFullyPaid = runningPaid >= Number(inv.total ?? 0) - 0.01;
 
-  // Operator's rule: once payment hits, the fiscal record moves to the
-  // official book. A conta2 invoice that gets paid (cash, transfer, card —
-  // doesn't matter) is no longer an informal sale, it's a fiscal document,
-  // so it belongs in conta1. The originating order and the cash_register
-  // movement keep their conta2 scope — that's where the actual money was
-  // received. Only the invoice line flips.
+  // The invoice STAYS in the book it was issued in. Marking it paid records
+  // the payment; it does NOT move the document between conta1 and conta2.
+  // (The old rule auto-flipped paid invoices to conta1 — the operator does not
+  // want that: a conta2 invoice paid in cash is still a conta2 document.
+  // Use the scope editor to move a document deliberately.)
   const { error } = await supabase
     .from("invoices")
     .update({
       // paid_at marks FULL settlement; a partial leaves it open.
       paid_at: isFullyPaid ? paidAt : null,
       updated_at: nowIso,
-      account_scope: "conta1",
       // status "partial" + paid_* aren't in the generated types yet.
       ...({
         status: isFullyPaid ? "paid" : "partial",

@@ -801,6 +801,8 @@
     "back_to_admin": "Back to Admin",
     "conta1": "Book 1",
     "conta2": "Book 2",
+    "scope_changed": "Moved to {book}",
+    "scope_label": "Book",
     "conta1_eyebrow": "Book 1 — official",
     "conta2_eyebrow": "Book 2 — cash",
     "scope_locked_hint": "This page is only available for one book — the switcher is disabled.",

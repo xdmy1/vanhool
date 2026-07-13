@@ -8,6 +8,7 @@ import { Link } from "@/lib/i18n/routing";
 import { ConvertProformaButton } from "@/components/panel/documents/ConvertProformaButton";
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { DocumentScopeSwitcher } from "@/components/panel/documents/DocumentScopeSwitcher";
 import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import {
   applyCostFallback,
@@ -141,6 +142,10 @@ export default async function PanelProformaDetailPage({
             </dd>
             <dt className="text-muted">{t("proforma_currency")}</dt>
             <dd>{proforma.currency}</dd>
+            <dt className="self-center text-muted">{t("scope_label")}</dt>
+            <dd>
+              <DocumentScopeSwitcher id={proforma.id} scope={proforma.account_scope} />
+            </dd>
             {proforma.order_id ? (
               <>
                 <dt className="text-muted">{t("triage_col_order")}</dt>

@@ -814,18 +814,14 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const numberStr = String(nextNumber).padStart(5, "0");
 
     const isPaidNow = v.payment_method === "already_paid";
-    // Once cash is in and a fiscal invoice gets stamped, the document
-    // belongs in conta1 even if the SALE itself was tagged conta2. The
-    // order row stays in v.account_scope (the cash drawer / informal
-    // sale stays where the operator put it) — only the invoice flips.
-    // Matches /panel/facturi's "paid = official book" rule.
-    const invoiceAccountScope =
-      isPaidNow && v.account_scope === "conta2" ? "conta1" : v.account_scope;
+    // The invoice lives in the SAME book as the sale — no automatic flip to
+    // conta1 when paid. The operator explicitly picks the book on the sale,
+    // and can move a document later with the scope editor; a paid conta2 sale
+    // stays a conta2 document.
+    const invoiceAccountScope = v.account_scope;
 
-    // TVA follows the INVOICE's book, not the sale's. Line prices are GROSS,
-    // so conta1 extracts 20% out of the gross subtotal (net + TVA = gross),
-    // conta2 is 0%. A paid conta2 sale → conta1 factură therefore correctly
-    // carries 20% TVA instead of shipping a 0-TVA official invoice.
+    // TVA follows the INVOICE's book: conta1 extracts 20% out of the gross
+    // subtotal (net + TVA = gross), conta2 is 0%. Line prices are GROSS.
     const invoiceVatRate = invoiceAccountScope === "conta1" ? 20 : 0;
     const invoiceNet =
       invoiceVatRate > 0

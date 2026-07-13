@@ -8,6 +8,7 @@ import { MarkInvoicePaidButton } from "@/components/panel/documents/MarkInvoiceP
 import { SendToAccountantButton } from "@/components/panel/documents/SendToAccountantButton";
 import { VoidInvoiceButton } from "@/components/panel/documents/VoidInvoiceButton";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { DocumentScopeSwitcher } from "@/components/panel/documents/DocumentScopeSwitcher";
 import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
@@ -155,6 +156,10 @@ export default async function PanelInvoiceDetailPage({
             ) : null}
             <dt className="text-muted">{t("proforma_currency")}</dt>
             <dd>{invoice.currency}</dd>
+            <dt className="self-center text-muted">{t("scope_label")}</dt>
+            <dd>
+              <DocumentScopeSwitcher id={invoice.id} scope={invoice.account_scope} />
+            </dd>
             {invoice.due_date && invoice.status === "issued" ? (
               <>
                 <dt className="text-muted">{t("invoice_due_date")}</dt>

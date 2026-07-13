@@ -801,6 +801,8 @@
     "back_to_admin": "Назад в Admin",
     "conta1": "Книга 1",
     "conta2": "Книга 2",
+    "scope_changed": "Перемещено в {book}",
+    "scope_label": "Книга",
     "conta1_eyebrow": "Книга 1 — официальная",
     "conta2_eyebrow": "Книга 2 — наличные",
     "scope_locked_hint": "Эта страница доступна только для одной книги — переключатель отключён.",

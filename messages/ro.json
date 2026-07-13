@@ -801,6 +801,8 @@
     "back_to_admin": "Înapoi la Admin",
     "conta1": "Conta 1",
     "conta2": "Conta 2",
+    "scope_changed": "Mutat în {book}",
+    "scope_label": "Conta",
     "conta1_eyebrow": "Conta 1 — oficial",
     "conta2_eyebrow": "Conta 2 — cash",
     "scope_locked_hint": "Această pagină e disponibilă doar pentru un singur cont — switcher-ul e dezactivat.",
