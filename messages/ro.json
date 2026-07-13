@@ -917,6 +917,7 @@
     "clienti_detail_doc_invoice": "Factură",
     "clienti_detail_doc_proforma": "Pro-formă",
     "clienti_detail_doc_unpaid": "Neachitată",
+    "clienti_detail_doc_paid": "Achitată",
     "clienti_detail_doc_paid_on": "Achitată {date}",
     "client_new_button": "Client nou",
     "client_new_title": "Client nou",

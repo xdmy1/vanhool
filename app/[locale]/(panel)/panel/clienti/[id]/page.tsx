@@ -268,15 +268,23 @@ function DocumentRow({
       ? t(`facturi_status_${doc.status}`)
       : t(`proforma_status_${doc.status}`);
 
-  // Deferred/unpaid invoices are the ones the operator chases — surface the
-  // paid date when settled, or an explicit "unpaid" cue when not.
-  const paymentHint = isInvoice
-    ? doc.paid_at
-      ? t("clienti_detail_doc_paid_on", { date: fmtDate(doc.paid_at) })
-      : doc.status === "issued" || doc.status === "partial"
-        ? t("clienti_detail_doc_unpaid")
-        : null
-    : null;
+  // The whole point of the client folder is telling paid from unpaid at a
+  // glance, so invoices get a dedicated green/red/amber pill — separate from
+  // the document status. Proformas have no payment state here.
+  const payment: { label: string; tone: string } | null = !isInvoice
+    ? null
+    : doc.paid_at || doc.status === "paid"
+      ? {
+          label: doc.paid_at
+            ? t("clienti_detail_doc_paid_on", { date: fmtDate(doc.paid_at) })
+            : t("clienti_detail_doc_paid"),
+          tone: "bg-success/15 text-success",
+        }
+      : doc.status === "partial"
+        ? { label: t("facturi_status_partial"), tone: "bg-warning/20 text-warning" }
+        : doc.status === "issued" || doc.status === "sent"
+          ? { label: t("clienti_detail_doc_unpaid"), tone: "bg-danger/15 text-danger" }
+          : null;
 
   return (
     <li>
@@ -302,10 +310,19 @@ function DocumentRow({
         >
           {statusLabel}
         </span>
-        {paymentHint ? (
-          <span className="text-[11px] text-muted">{paymentHint}</span>
-        ) : null}
         <span className="ml-auto text-xs text-muted-strong">{fmtDate(doc.issued_date)}</span>
+        {payment ? (
+          <span
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              payment.tone,
+            )}
+          >
+            {payment.label}
+          </span>
+        ) : (
+          <span className="w-16" aria-hidden />
+        )}
         <span className="w-28 text-right tabular-nums">
           <Price value={doc.total} currency={doc.currency} size="sm" accent={false} />
         </span>

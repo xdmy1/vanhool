@@ -917,6 +917,7 @@
     "clienti_detail_doc_invoice": "Invoice",
     "clienti_detail_doc_proforma": "Proforma",
     "clienti_detail_doc_unpaid": "Unpaid",
+    "clienti_detail_doc_paid": "Paid",
     "clienti_detail_doc_paid_on": "Paid {date}",
     "client_new_button": "New customer",
     "client_new_title": "New customer",
