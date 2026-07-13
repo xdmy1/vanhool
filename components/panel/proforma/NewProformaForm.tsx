@@ -278,11 +278,10 @@ export function NewProformaForm({
     ]);
   }
 
-  // The two buttons. Each takes the price shown NOW and scales it by the
-  // labelled percent — +30 → ×1.30, -15 → ×0.85 — so the document total moves
-  // by exactly that percent (3105 → -15 → 2639.25). No cost, no discount: it
-  // just rewrites the prices. Uses the effective (already-discounted) price as
-  // the base and stores the result as the plain price.
+  // The two buttons both MARK UP the entered price by a margin (they are not a
+  // discount): +30 → price × 1.30 (1000 → 1300), "-15" → price × 1.15
+  // (1000 → 1150 — a smaller +15% margin, labelled -15 because it's 15 points
+  // less than +30). `pct` is the margin, so both callers pass a positive value.
   function adjustAllPrices(pct: number) {
     const factor = 1 + pct / 100;
     setLines(
@@ -457,7 +456,7 @@ export function NewProformaForm({
               </button>
               <button
                 type="button"
-                onClick={() => adjustAllPrices(-15)}
+                onClick={() => adjustAllPrices(15)}
                 className="border-l border-border px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
               >
                 -15%
