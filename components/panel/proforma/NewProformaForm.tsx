@@ -179,8 +179,6 @@ export function NewProformaForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
   const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
-  const [markupPercent, setMarkupPercent] = useState<string>("");
-  const [discountPercent, setDiscountPercent] = useState<string>("");
   // conta2 is 0% TVA by default; this opt-in bills a conta2 document WITH 20%.
   const [conta2WithVat, setConta2WithVat] = useState<boolean>(
     () =>
@@ -280,59 +278,23 @@ export function NewProformaForm({
     ]);
   }
 
-  // Document-level markup (mirrors the sale wizard): price every line that has
-  // a known cost as cost × (1 + markup%). cost_price is stored in MDL → convert
-  // the marked-up price into the document currency. Lines without a cost
-  // (freeform / manual) keep their current price.
-  function applyMarkupToAll(percent: string) {
-    setMarkupPercent(percent);
-    const trimmed = percent.trim();
-    if (trimmed === "") return;
-    const m = Number(trimmed);
-    if (!Number.isFinite(m) || m < 0) return;
-    let repriced = 0;
-    let skipped = 0;
-    const next = lines.map((l) => {
-      if (!(l.cost_price > 0)) {
-        // Margin is computed off cost; a line whose cost we don't know can't be
-        // repriced. Count it so we can tell the operator instead of silently
-        // leaving the price unchanged (which read as "the button is broken").
-        if (l.name.trim().length > 0) skipped++;
-        return l;
-      }
-      repriced++;
-      const mdl = l.cost_price * (1 + m / 100);
-      return { ...l, unit_price: convertPrice(mdl, "MDL", currency) };
-    });
-    setLines(next);
-    if (repriced === 0 && skipped > 0) {
-      toast.error(t("proforma_markup_no_cost"));
-    } else if (skipped > 0) {
-      toast.warning(t("proforma_markup_partial", { skipped }));
-    }
-  }
-  // Plain discount off the CURRENT total the operator sees — no cost involved.
-  // "-15%" takes 15% off each line's current effective price, so the shown
-  // document total drops by exactly 15% (3105 → 2639.25). It reduces from
-  // wherever the price is now, not from some hidden list price, which is what
-  // "-15% de la costul total" means. Clicking again reduces again. 0 / empty
-  // clears any discount back to the full list price.
-  function applyDiscountToAll(percent: string) {
-    setDiscountPercent(percent);
-    const trimmed = percent.trim();
-    if (trimmed === "") return;
-    const d = Number(trimmed);
-    if (!Number.isFinite(d) || d < 0 || d > 100) return;
+  // The two buttons. Each takes the price shown NOW and scales it by the
+  // labelled percent — +30 → ×1.30, -15 → ×0.85 — so the document total moves
+  // by exactly that percent (3105 → -15 → 2639.25). No cost, no discount: it
+  // just rewrites the prices. Uses the effective (already-discounted) price as
+  // the base and stores the result as the plain price.
+  function adjustAllPrices(pct: number) {
+    const factor = 1 + pct / 100;
     setLines(
       lines.map((l) => {
-        if (d === 0) return { ...l, discounted_unit_price: null };
-        const current =
+        const eff =
           l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
             ? l.discounted_unit_price
             : l.unit_price;
         return {
           ...l,
-          discounted_unit_price: Number((current * (1 - d / 100)).toFixed(2)),
+          unit_price: Number((eff * factor).toFixed(2)),
+          discounted_unit_price: null,
         };
       }),
     );
@@ -478,99 +440,27 @@ export function NewProformaForm({
             {t("proforma_form_lines_section")}
           </h3>
           <div className="flex items-center gap-3">
-            <label
-              className="flex items-center gap-1.5"
-              title={t("sale_markup_hint")}
-            >
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
-                {t("sale_markup_label")}
-              </span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                step={1}
-                min={0}
-                value={markupPercent}
-                onChange={(e) => {
-                  const v = e.target.value.trim();
-                  applyMarkupToAll(
-                    v === "" ? "" : String(Math.max(0, Math.trunc(Number(v) || 0))),
-                  );
-                }}
-                placeholder="—"
-                className="h-8 w-20 text-right"
-              />
-              <span className="text-xs text-muted">%</span>
-            </label>
+            {/* Two simple buttons. They adjust the prices already shown by the
+                labelled percent: +30 raises the total 30%, -15 drops it 15%
+                (3105 → 2639.25). No cost, no separate discount. */}
             <div
               className="inline-flex overflow-hidden rounded-md border border-border"
               role="group"
-              aria-label="Markup rapid pe toate liniile"
+              aria-label="Ajustare preț pe toate liniile"
             >
-              {/* Cost-based markup preset. Only "+30%" — the old "-15%" preset
-                  meant "cost × 1.15" and kept getting confused with a discount,
-                  which is now its own control below. */}
               <button
                 type="button"
-                onClick={() => applyMarkupToAll("30")}
-                title="Prețuiește toate liniile la cost × 1.30 (nevoie de cost)"
-                className="px-2 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
+                onClick={() => adjustAllPrices(30)}
+                className="px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
               >
                 +30%
               </button>
-            </div>
-
-            {/* Plain discount on the already-entered prices (no cost needed). */}
-            <label
-              className="flex items-center gap-1.5"
-              title={t("proforma_discount_hint")}
-            >
-              <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
-                {t("proforma_discount_label")}
-              </span>
-              <Input
-                type="number"
-                inputMode="numeric"
-                step={1}
-                min={0}
-                max={100}
-                value={discountPercent}
-                onChange={(e) => {
-                  const v = e.target.value.trim();
-                  applyDiscountToAll(
-                    v === ""
-                      ? ""
-                      : String(Math.max(0, Math.min(100, Math.trunc(Number(v) || 0)))),
-                  );
-                }}
-                placeholder="—"
-                className="h-8 w-16 text-right"
-              />
-              <span className="text-xs text-muted">%</span>
-            </label>
-            <div
-              className="inline-flex overflow-hidden rounded-md border border-border"
-              role="group"
-              aria-label="Reducere rapidă pe toate liniile"
-            >
-              {["10", "15", "20"].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => applyDiscountToAll(d)}
-                  title={t("proforma_discount_hint")}
-                  className="border-l border-border px-2 py-1 text-[11px] font-semibold text-warning transition-colors first:border-l-0 hover:bg-warning/10"
-                >
-                  -{d}%
-                </button>
-              ))}
               <button
                 type="button"
-                onClick={() => applyDiscountToAll("0")}
-                title={t("proforma_discount_clear")}
-                className="border-l border-border px-2 py-1 text-[11px] font-semibold text-muted-strong transition-colors hover:bg-surface-elevated"
+                onClick={() => adjustAllPrices(-15)}
+                className="border-l border-border px-3 py-1.5 text-xs font-semibold text-warning transition-colors hover:bg-warning/10"
               >
-                ×
+                -15%
               </button>
             </div>
 
@@ -750,29 +640,6 @@ export function NewProformaForm({
                             </div>
                           );
                         })() : null}
-                      </div>
-                      {/* Editable cost basis (MDL). The margin buttons reprice
-                          off this; letting the operator set it here is what
-                          makes them work on off-catalog / legacy lines that
-                          never froze a cost. */}
-                      <div className="mt-0.5 flex items-center justify-end gap-1">
-                        <span className="text-[10px] text-muted">
-                          {t("proforma_line_cost")}
-                        </span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={l.cost_price > 0 ? l.cost_price : ""}
-                          onChange={(e) =>
-                            setLine(idx, {
-                              cost_price: Math.max(0, Number(e.target.value || 0)),
-                            })
-                          }
-                          placeholder="—"
-                          className="h-7 w-20 text-right text-[11px]"
-                        />
-                        <span className="text-[10px] text-muted">MDL</span>
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right">
