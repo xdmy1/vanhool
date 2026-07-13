@@ -180,6 +180,7 @@ export function NewProformaForm({
   const [pending, startSubmit] = useTransition();
   const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
   const [markupPercent, setMarkupPercent] = useState<string>("");
+  const [discountPercent, setDiscountPercent] = useState<string>("");
   // conta2 is 0% TVA by default; this opt-in bills a conta2 document WITH 20%.
   const [conta2WithVat, setConta2WithVat] = useState<boolean>(
     () =>
@@ -309,6 +310,24 @@ export function NewProformaForm({
     } else if (skipped > 0) {
       toast.warning(t("proforma_markup_partial", { skipped }));
     }
+  }
+  // Plain discount on the prices ALREADY entered — no cost involved. "-15%"
+  // takes 15% off each line's current price (via discounted_unit_price), so the
+  // document total drops by exactly 15%. This is what the operator means by
+  // "-15% la 3105 lei". Empty / 0 clears the discount back to full price.
+  function applyDiscountToAll(percent: string) {
+    setDiscountPercent(percent);
+    const trimmed = percent.trim();
+    if (trimmed === "") return;
+    const d = Number(trimmed);
+    if (!Number.isFinite(d) || d < 0 || d > 100) return;
+    setLines(
+      lines.map((l) => ({
+        ...l,
+        discounted_unit_price:
+          d === 0 ? null : Number((l.unit_price * (1 - d / 100)).toFixed(2)),
+      })),
+    );
   }
   function removeLine(idx: number) {
     if (lines.length === 1) return;
@@ -497,6 +516,61 @@ export function NewProformaForm({
                 -15%
               </button>
             </div>
+
+            {/* Plain discount on the already-entered prices (no cost needed). */}
+            <label
+              className="flex items-center gap-1.5"
+              title={t("proforma_discount_hint")}
+            >
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                {t("proforma_discount_label")}
+              </span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                step={1}
+                min={0}
+                max={100}
+                value={discountPercent}
+                onChange={(e) => {
+                  const v = e.target.value.trim();
+                  applyDiscountToAll(
+                    v === ""
+                      ? ""
+                      : String(Math.max(0, Math.min(100, Math.trunc(Number(v) || 0)))),
+                  );
+                }}
+                placeholder="—"
+                className="h-8 w-16 text-right"
+              />
+              <span className="text-xs text-muted">%</span>
+            </label>
+            <div
+              className="inline-flex overflow-hidden rounded-md border border-border"
+              role="group"
+              aria-label="Reducere rapidă pe toate liniile"
+            >
+              {["10", "15", "20"].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => applyDiscountToAll(d)}
+                  title={t("proforma_discount_hint")}
+                  className="border-l border-border px-2 py-1 text-[11px] font-semibold text-warning transition-colors first:border-l-0 hover:bg-warning/10"
+                >
+                  -{d}%
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => applyDiscountToAll("0")}
+                title={t("proforma_discount_clear")}
+                className="border-l border-border px-2 py-1 text-[11px] font-semibold text-muted-strong transition-colors hover:bg-surface-elevated"
+              >
+                ×
+              </button>
+            </div>
+
             <Button type="button" variant="ghost" size="sm" onClick={addLine}>
               <Plus className="size-4" />
               {t("proforma_form_line_add")}
