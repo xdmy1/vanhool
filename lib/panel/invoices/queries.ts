@@ -88,10 +88,14 @@ export async function listInvoices(args: {
     // Accountant "introdus" filter — only in the includeAccountant path (the
     // fallback select doesn't carry the column). On a pre-migration schema the
     // whole query falls back and this filter is simply dropped.
+    //   entered=true  → introduse: accountant_entered_at is set.
+    //   entered=false → neintroduse: SENT to the accountant but not yet entered.
+    //     (Not every unentered invoice — only those already handed over, which
+    //     is what the operator is chasing.)
     if (includeAccountant && args.entered !== undefined) {
       q = args.entered
         ? q.not("accountant_entered_at", "is", null)
-        : q.is("accountant_entered_at", null);
+        : q.not("accountant_sent_at", "is", null).is("accountant_entered_at", null);
     }
     if (args.q) {
       // Strip SQL LIKE wildcards AND commas — commas are PostgREST's
