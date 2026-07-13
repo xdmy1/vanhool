@@ -674,6 +674,29 @@ export function NewProformaForm({
                           );
                         })() : null}
                       </div>
+                      {/* Editable cost basis (MDL). The margin buttons reprice
+                          off this; letting the operator set it here is what
+                          makes them work on off-catalog / legacy lines that
+                          never froze a cost. */}
+                      <div className="mt-0.5 flex items-center justify-end gap-1">
+                        <span className="text-[10px] text-muted">
+                          {t("proforma_line_cost")}
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={l.cost_price > 0 ? l.cost_price : ""}
+                          onChange={(e) =>
+                            setLine(idx, {
+                              cost_price: Math.max(0, Number(e.target.value || 0)),
+                            })
+                          }
+                          placeholder="—"
+                          className="h-7 w-20 text-right text-[11px]"
+                        />
+                        <span className="text-[10px] text-muted">MDL</span>
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-right">
                       <Input
