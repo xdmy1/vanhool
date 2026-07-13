@@ -403,6 +403,8 @@ export async function issueProforma(
       // actually applies one.
       ...({
         output_locale: v.output_locale,
+        created_by: user.id,
+        created_by_name: user.fullName ?? user.email,
         ...(discount_percent > 0 ? { discount_percent } : {}),
       } as object),
     })
@@ -611,6 +613,8 @@ export async function convertProformaToInvoice(
         // Origin marker — distinguishes converted-from-proforma invoices
         // from over-the-counter sales and directly-issued invoices.
         source: "proforma_conv",
+        created_by: user.id,
+        created_by_name: user.fullName ?? user.email,
       } as object),
     })
     .select("id")

@@ -129,6 +129,10 @@ export async function triageOrder(
         refrens_invoice_id: order.invoice_id,
         refrens_url: order.invoice_url,
         status: "issued",
+        ...({
+          created_by: user.id,
+          created_by_name: user.fullName ?? user.email,
+        } as object),
       });
       if (!invErr) {
         await supabase

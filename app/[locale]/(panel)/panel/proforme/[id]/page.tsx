@@ -146,6 +146,12 @@ export default async function PanelProformaDetailPage({
             <dd>
               <DocumentScopeSwitcher id={proforma.id} scope={proforma.account_scope} />
             </dd>
+            {proforma.created_by_name ? (
+              <>
+                <dt className="text-muted">{t("document_created_by")}</dt>
+                <dd className="font-medium">{proforma.created_by_name}</dd>
+              </>
+            ) : null}
             {proforma.order_id ? (
               <>
                 <dt className="text-muted">{t("triage_col_order")}</dt>

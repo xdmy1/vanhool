@@ -75,6 +75,9 @@ type Labels = {
   marketingAccept: string;
   errorEmailExists: string;
   errorPasswordsMismatch: string;
+  errorPasswordTooShort: string;
+  errorTermsRequired: string;
+  errorFillRequired: string;
   errorUnknown: string;
   registerCheckEmail: string;
   checkEmailTitle: string;
@@ -155,7 +158,7 @@ export function RegisterForm({ labels }: { labels: Labels }) {
     if (!data.email || !data.email.includes("@")) errs.email = "*";
     const phoneDigits = data.phone.replace(/\D/g, "");
     if (!data.phone || phoneDigits.length < 7) errs.phone = "*";
-    if (data.password.length < 8) errs.password = "≥ 8";
+    if (data.password.length < 8) errs.password = labels.errorPasswordTooShort;
     if (data.password !== data.passwordConfirm) errs.passwordConfirm = labels.errorPasswordsMismatch;
     if (!data.terms) errs.terms = "*";
 
@@ -197,6 +200,28 @@ export function RegisterForm({ labels }: { labels: Labels }) {
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      // Don't fail silently — the old form set tiny inline markers and returned,
+      // so a too-short password / unticked box looked like a dead button. Tell
+      // the user what's wrong and jump to the first offending field.
+      const order = [
+        "firstName", "lastName", "email", "phone", "password", "passwordConfirm",
+        "terms", "companyName", "idno", "billingStreet", "billingCity", "vatNumber",
+      ];
+      const firstKey = order.find((k) => errs[k]) ?? Object.keys(errs)[0];
+      const message =
+        errs.password && data.password.length < 8
+          ? labels.errorPasswordTooShort
+          : errs.passwordConfirm === labels.errorPasswordsMismatch
+            ? labels.errorPasswordsMismatch
+            : errs.terms
+              ? labels.errorTermsRequired
+              : labels.errorFillRequired;
+      toast.error(message);
+      const el = document.querySelector<HTMLElement>(`[name="${firstKey}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.focus({ preventScroll: true });
+      }
       return;
     }
 

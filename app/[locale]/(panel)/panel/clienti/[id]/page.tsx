@@ -32,7 +32,14 @@ export default async function PanelClientDetailPage({
   const client = await getPanelClient(id, scope);
   if (!client) notFound();
 
-  const documents = await getClientDocuments(id, client.idno, scope);
+  // The document folder spans BOTH books. A tab filters by type; default shows
+  // invoices (the operator's usual "did they pay" question).
+  const docTab: "invoice" | "proforma" =
+    sp.docs === "proforma" ? "proforma" : "invoice";
+  const allDocuments = await getClientDocuments(id, client.idno);
+  const documents = allDocuments.filter((d) => d.type === docTab);
+  const invoiceCount = allDocuments.filter((d) => d.type === "invoice").length;
+  const proformaCount = allDocuments.filter((d) => d.type === "proforma").length;
 
   const isBusiness = client.account_type === "business";
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
@@ -208,28 +215,48 @@ export default async function PanelClientDetailPage({
         </section>
       </div>
 
-      {/* The client "folder": every invoice + proforma tied to them, in the
-          active book, newest first — with paid / unpaid status at a glance. */}
+      {/* The client "folder": every invoice + proforma tied to them across
+          BOTH books, newest first — with paid / unpaid status at a glance.
+          The tab switches between facturi and proforme. */}
       <section className="mt-6 rounded-md border border-border bg-surface p-5">
-        <header className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">
-            {t("clienti_detail_documents", { book: bookLabel })}
-          </h2>
-          {documents.length > 0 ? (
-            <span className="text-xs text-muted">
-              {t("clienti_detail_documents_count", { count: documents.length })}
-            </span>
-          ) : null}
+        <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">{t("clienti_detail_documents_all")}</h2>
+          <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
+            <Link
+              href={`/panel/clienti/${id}?docs=invoice` as "/panel"}
+              locale={locale}
+              className={cn(
+                "px-3 py-1.5 transition-colors",
+                docTab === "invoice"
+                  ? "bg-foreground text-background"
+                  : "bg-surface text-muted-strong hover:text-foreground",
+              )}
+            >
+              {t("clienti_detail_tab_invoices", { count: invoiceCount })}
+            </Link>
+            <Link
+              href={`/panel/clienti/${id}?docs=proforma` as "/panel"}
+              locale={locale}
+              className={cn(
+                "px-3 py-1.5 transition-colors",
+                docTab === "proforma"
+                  ? "bg-foreground text-background"
+                  : "bg-surface text-muted-strong hover:text-foreground",
+              )}
+            >
+              {t("clienti_detail_tab_proformas", { count: proformaCount })}
+            </Link>
+          </div>
         </header>
 
         {documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
-            {t("clienti_detail_no_documents", { book: bookLabel })}
+            {t("clienti_detail_no_documents_type")}
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {documents.map((d) => (
-              <DocumentRow key={d.id} doc={d} locale={locale} fmtDate={fmtDate} t={t} />
+              <DocumentRow key={d.id} doc={d} locale={locale} t={t} fmtDate={fmtDate} />
             ))}
           </ul>
         )}
@@ -296,8 +323,15 @@ function DocumentRow({
         <span className="text-muted">
           {isInvoice ? <Receipt className="size-4" /> : <FileText className="size-4" />}
         </span>
-        <span className="rounded bg-surface-elevated px-1.5 text-[10px] uppercase tracking-wide text-muted-strong">
-          {isInvoice ? t("clienti_detail_doc_invoice") : t("clienti_detail_doc_proforma")}
+        <span
+          className={cn(
+            "rounded px-1.5 text-[10px] uppercase tracking-wide",
+            doc.account_scope === "conta1"
+              ? "bg-primary/10 text-primary"
+              : "bg-warning/15 text-warning",
+          )}
+        >
+          {doc.account_scope === "conta1" ? t("conta1") : t("conta2")}
         </span>
         <span className="font-mono text-xs font-semibold">
           {(doc.series ?? "") + (doc.number ?? "")}

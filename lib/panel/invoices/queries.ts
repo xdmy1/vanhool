@@ -26,6 +26,8 @@ export type InvoiceRow = {
    * list — typically a vehicle plate / bus identifier so a row of
    * Davo Group proformas can be told apart at a glance. */
   notes: string | null;
+  /** Name of the admin who raised this document (snapshot at creation). */
+  created_by_name: string | null;
   customer_snapshot: {
     name?: string;
     idno?: string | null;
@@ -58,7 +60,7 @@ export async function listInvoices(args: {
       .from("invoices")
       .select(
         includeAccountant
-          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, customer_snapshot, account_scope"
+          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, created_by_name, customer_snapshot, account_scope"
           : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
       // Newest issue date first. Do NOT order by `number` here: numbers are
@@ -94,7 +96,7 @@ export async function listInvoices(args: {
   };
 
   let { data, error } = await buildQuery(true);
-  if (error && /accountant_(sent|entered)_at/i.test(error.message)) {
+  if (error && /(accountant_(sent|entered)_at|created_by_name)/i.test(error.message)) {
     const retry = await buildQuery(false);
     data = retry.data;
     error = retry.error;
@@ -131,6 +133,7 @@ export async function listInvoices(args: {
     accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
     accountant_entered_at: (r.accountant_entered_at as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
+    created_by_name: (r.created_by_name as string | null) ?? null,
     customer_snapshot: r.customer_snapshot as InvoiceRow["customer_snapshot"],
   }));
 }
@@ -201,6 +204,8 @@ export type InvoiceDetail = {
   refrens_url: string | null;
   proforma_id: string | null;
   converted_to_invoice_id: string | null;
+  /** Name of the admin who raised this document (snapshot at creation). */
+  created_by_name: string | null;
   /** Linked proforma fixed metadata (for invoices coming FROM a proforma). */
   linked_proforma?: { id: string; series: string | null; number: string | null } | null;
   /** Linked invoice fixed metadata (for proformas converted INTO an invoice). */
@@ -215,12 +220,12 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
   let { data, error } = await supabase
     .from("invoices")
     .select(
-      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, accountant_sent_at, accountant_entered_at, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method" as
+      "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, discount_percent, accountant_sent_at, accountant_entered_at, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, output_locale, paid_amount, paid_currency, paid_method, created_by_name" as
         "id, order_id, account_scope, type, series, number, issued_date, due_date, paid_at, currency, customer_snapshot, items_snapshot, subtotal, vat_amount, total, status, notes, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id",
     )
     .eq("id", id)
     .maybeSingle();
-  if (error && /(discount_percent|accountant_sent_at|accountant_entered_at)/i.test(error.message)) {
+  if (error && /(discount_percent|accountant_sent_at|accountant_entered_at|created_by_name)/i.test(error.message)) {
     const retry = await supabase
       .from("invoices")
       .select(
@@ -336,6 +341,8 @@ export async function getInvoice(id: string): Promise<InvoiceDetail | null> {
     refrens_url: data.refrens_url,
     proforma_id: data.proforma_id,
     converted_to_invoice_id: data.converted_to_invoice_id,
+    created_by_name:
+      (data as { created_by_name?: string | null }).created_by_name ?? null,
     linked_proforma,
     linked_invoice,
   };
@@ -414,6 +421,7 @@ export async function getDocumentsForRange(args: {
       refrens_url: d.refrens_url as string | null,
       proforma_id: d.proforma_id as string | null,
       converted_to_invoice_id: d.converted_to_invoice_id as string | null,
+      created_by_name: null,
       linked_proforma: null,
       linked_invoice: null,
     };

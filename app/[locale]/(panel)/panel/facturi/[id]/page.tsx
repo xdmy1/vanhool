@@ -160,6 +160,12 @@ export default async function PanelInvoiceDetailPage({
             <dd>
               <DocumentScopeSwitcher id={invoice.id} scope={invoice.account_scope} />
             </dd>
+            {invoice.created_by_name ? (
+              <>
+                <dt className="text-muted">{t("document_created_by")}</dt>
+                <dd className="font-medium">{invoice.created_by_name}</dd>
+              </>
+            ) : null}
             {invoice.due_date && invoice.status === "issued" ? (
               <>
                 <dt className="text-muted">{t("invoice_due_date")}</dt>

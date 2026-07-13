@@ -393,6 +393,11 @@ export default async function PanelFacturiPage({
                       {r.customer_snapshot?.idno ? (
                         <div className="text-xs text-muted">IDNO {r.customer_snapshot.idno}</div>
                       ) : null}
+                      {r.created_by_name ? (
+                        <div className="text-[11px] text-muted">
+                          {t("document_created_by")}: {r.created_by_name}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       {r.proforma_id ? (

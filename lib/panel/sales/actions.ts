@@ -885,6 +885,8 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         // these so the operator can still find them by origin.
         ...({
           source: "sale",
+          created_by: user.id,
+          created_by_name: user.fullName ?? user.email,
           ...(discountPercent > 0 ? { discount_percent: discountPercent } : {}),
         } as object),
         total,

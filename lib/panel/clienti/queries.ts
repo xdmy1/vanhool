@@ -269,6 +269,7 @@ export async function getPanelClient(
 export type ClientDocument = {
   id: string;
   type: "invoice" | "proforma";
+  account_scope: "conta1" | "conta2";
   series: string | null;
   number: string | null;
   issued_date: string;
@@ -293,15 +294,15 @@ export type ClientDocument = {
  * cannot be attributed to a profile and are intentionally left out — matching
  * on name alone would collide across similarly-named walk-ins.
  *
- * Scoped to the active book so it lines up with the page's Conta1/Conta2
- * toggle. Runs a few narrow queries and merges by id rather than one giant OR,
- * which keeps each filter trivially indexable and dodges PostgREST's quoting
- * rules for jsonb paths inside `.or()`.
+ * Returns documents from BOTH books (conta1 + conta2) — the folder is the full
+ * history of the client's dealings, not the currently-selected book. Each row
+ * carries its own account_scope so the UI can badge it. Runs a few narrow
+ * queries and merges by id rather than one giant OR, which keeps each filter
+ * trivially indexable and dodges PostgREST's quoting rules for jsonb paths.
  */
 export async function getClientDocuments(
   clientId: string,
   idno: string | null,
-  scope: AccountScope,
 ): Promise<ClientDocument[]> {
   const supabase = await createClient();
 
@@ -315,16 +316,16 @@ export async function getClientDocuments(
   const orderIds = (orderRows.data ?? []).map((o) => o.id);
 
   const queries = [
-    supabase.from("invoices").select(cols).eq("account_scope", scope).eq("customer_snapshot->>user_id", clientId),
+    supabase.from("invoices").select(cols).eq("customer_snapshot->>user_id", clientId),
   ];
   if (orderIds.length > 0) {
     queries.push(
-      supabase.from("invoices").select(cols).eq("account_scope", scope).in("order_id", orderIds),
+      supabase.from("invoices").select(cols).in("order_id", orderIds),
     );
   }
   if (idno && idno.trim()) {
     queries.push(
-      supabase.from("invoices").select(cols).eq("account_scope", scope).eq("customer_snapshot->>idno", idno.trim()),
+      supabase.from("invoices").select(cols).eq("customer_snapshot->>idno", idno.trim()),
     );
   }
 
@@ -337,6 +338,7 @@ export async function getClientDocuments(
       byId.set(id, {
         id,
         type: r.type as "invoice" | "proforma",
+        account_scope: (r.account_scope as "conta1" | "conta2") ?? "conta1",
         series: (r.series as string | null) ?? null,
         number: (r.number as string | null) ?? null,
         issued_date: r.issued_date as string,
