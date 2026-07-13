@@ -311,10 +311,12 @@ export function NewProformaForm({
       toast.warning(t("proforma_markup_partial", { skipped }));
     }
   }
-  // Plain discount on the prices ALREADY entered — no cost involved. "-15%"
-  // takes 15% off each line's current price (via discounted_unit_price), so the
-  // document total drops by exactly 15%. This is what the operator means by
-  // "-15% la 3105 lei". Empty / 0 clears the discount back to full price.
+  // Plain discount off the CURRENT total the operator sees — no cost involved.
+  // "-15%" takes 15% off each line's current effective price, so the shown
+  // document total drops by exactly 15% (3105 → 2639.25). It reduces from
+  // wherever the price is now, not from some hidden list price, which is what
+  // "-15% de la costul total" means. Clicking again reduces again. 0 / empty
+  // clears any discount back to the full list price.
   function applyDiscountToAll(percent: string) {
     setDiscountPercent(percent);
     const trimmed = percent.trim();
@@ -322,11 +324,17 @@ export function NewProformaForm({
     const d = Number(trimmed);
     if (!Number.isFinite(d) || d < 0 || d > 100) return;
     setLines(
-      lines.map((l) => ({
-        ...l,
-        discounted_unit_price:
-          d === 0 ? null : Number((l.unit_price * (1 - d / 100)).toFixed(2)),
-      })),
+      lines.map((l) => {
+        if (d === 0) return { ...l, discounted_unit_price: null };
+        const current =
+          l.discounted_unit_price != null && l.discounted_unit_price < l.unit_price
+            ? l.discounted_unit_price
+            : l.unit_price;
+        return {
+          ...l,
+          discounted_unit_price: Number((current * (1 - d / 100)).toFixed(2)),
+        };
+      }),
     );
   }
   function removeLine(idx: number) {
@@ -499,21 +507,16 @@ export function NewProformaForm({
               role="group"
               aria-label="Markup rapid pe toate liniile"
             >
+              {/* Cost-based markup preset. Only "+30%" — the old "-15%" preset
+                  meant "cost × 1.15" and kept getting confused with a discount,
+                  which is now its own control below. */}
               <button
                 type="button"
                 onClick={() => applyMarkupToAll("30")}
-                title="Prețuiește toate liniile la cost × 1.30"
+                title="Prețuiește toate liniile la cost × 1.30 (nevoie de cost)"
                 className="px-2 py-1 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/10"
               >
                 +30%
-              </button>
-              <button
-                type="button"
-                onClick={() => applyMarkupToAll("15")}
-                title="Prețuiește toate liniile la cost × 1.15 (marja mai mică)"
-                className="border-l border-border px-2 py-1 text-[11px] font-semibold text-muted-strong transition-colors hover:bg-surface-elevated"
-              >
-                -15%
               </button>
             </div>
 
