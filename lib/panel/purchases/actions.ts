@@ -113,6 +113,29 @@ const purchaseSchema = z.object({
 
 export type PurchaseInput = z.infer<typeof purchaseSchema>;
 
+/**
+ * Return the subset of line `product_id`s that actually exist in `products`.
+ *
+ * The purchase-line autocomplete shares `searchProducts` with the sale flow,
+ * which surfaces draft-purchase lines whose `id` is a `purchase_items` id, not
+ * a `products` id. If one of those slips into `product_id`, the whole
+ * `purchase_items` insert fails on `purchase_items_product_id_fkey`. We drop
+ * unknown ids to null instead: a null link is the correct fallback — the line
+ * is just an accounting row until `postPurchase` re-creates / re-links the
+ * product by code — so a single bad reference can never sink the save.
+ */
+async function knownProductIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  items: PurchaseInput["items"],
+): Promise<Set<string>> {
+  const ids = Array.from(
+    new Set(items.map((i) => i.product_id).filter((s): s is string => !!s)),
+  );
+  if (ids.length === 0) return new Set<string>();
+  const { data } = await supabase.from("products").select("id").in("id", ids);
+  return new Set((data ?? []).map((p) => p.id as string));
+}
+
 function computeTotals(items: PurchaseInput["items"]) {
   let subtotal = 0;
   let vat_amount = 0;
@@ -158,9 +181,11 @@ export async function createPurchase(
     .single();
   if (hErr || !header) return { ok: false, reason: hErr?.message ?? "insert_failed" };
 
+  // Guard against stale / mistyped product links (see knownProductIds).
+  const known = await knownProductIds(supabase, v.items);
   const lines = v.items.map((i) => ({
     purchase_id: header.id,
-    product_id: i.product_id ?? null,
+    product_id: i.product_id && known.has(i.product_id) ? i.product_id : null,
     supplier_code: i.supplier_code ?? null,
     internal_code: i.internal_code ?? null,
     description: i.description,
@@ -768,9 +793,11 @@ export async function updatePurchase(
   // the same fallback path createPurchase uses.
   await supabase.from("purchase_items").delete().eq("purchase_id", id);
 
+  // Guard against stale / mistyped product links (see knownProductIds).
+  const known = await knownProductIds(supabase, v.items);
   const lines = v.items.map((i) => ({
     purchase_id: id,
-    product_id: i.product_id ?? null,
+    product_id: i.product_id && known.has(i.product_id) ? i.product_id : null,
     supplier_code: i.supplier_code ?? null,
     internal_code: i.internal_code ?? null,
     description: i.description,

@@ -326,7 +326,12 @@ export function PurchaseForm({
                           description: l.description.trim()
                             ? l.description
                             : p.name_ro ?? "",
-                          product_id: p.id,
+                          // Only a CATALOG suggestion carries a real products id.
+                          // A "draft_purchase" suggestion's `id` is a
+                          // purchase_items row id — linking it here would violate
+                          // purchase_items_product_id_fkey on save. Leave it
+                          // unlinked; postPurchase re-creates/links by code.
+                          product_id: p.source === "catalog" ? p.id : null,
                           add_to_catalog: true,
                         })
                       }
@@ -350,7 +355,11 @@ export function PurchaseForm({
                             description: l.description.trim()
                               ? l.description
                               : p.name_ro ?? "",
-                            product_id: p.id,
+                            // Same guard as the supplier-code field: only a
+                            // catalog row has a real products id. Draft-purchase
+                            // suggestions carry a purchase_items id and must NOT
+                            // be written to product_id (FK violation on save).
+                            product_id: p.source === "catalog" ? p.id : null,
                             // Linking to an existing catalog product
                             // implicitly means the catalog already knows
                             // about it — keep the checkbox in sync.
