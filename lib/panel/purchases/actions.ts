@@ -126,7 +126,7 @@ export type PurchaseInput = z.infer<typeof purchaseSchema>;
  */
 async function knownProductIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  items: PurchaseInput["items"],
+  items: ReadonlyArray<{ product_id?: string | null }>,
 ): Promise<Set<string>> {
   const ids = Array.from(
     new Set(items.map((i) => i.product_id).filter((s): s is string => !!s)),
@@ -134,6 +134,69 @@ async function knownProductIds(
   if (ids.length === 0) return new Set<string>();
   const { data } = await supabase.from("products").select("id").in("id", ids);
   return new Set((data ?? []).map((p) => p.id as string));
+}
+
+/**
+ * Snapshot a purchase's current line items into `purchase_items_archive` before
+ * they're replaced or deleted. This is the safety net behind reversible deletes
+ * + the edit audit trail: whatever gets removed can be read back and restored,
+ * and we always know who removed it and when.
+ *
+ * Writes with the service-role client so the archive works regardless of the
+ * archive table's RLS (it's a server-only audit store). Best-effort: if the
+ * migration (sql/purchase-items-safety.sql) hasn't run yet, we log and move on
+ * — the atomic insert-then-delete ordering already prevents data loss without
+ * it, so archiving must never block an edit.
+ */
+async function archivePurchaseItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  purchaseId: string,
+  reason: "update_replace" | "purchase_delete",
+  userId: string | null,
+): Promise<void> {
+  const cols =
+    "id, purchase_id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, created_at";
+  // add_to_catalog may be absent on very old schemas — mirror postPurchase's
+  // fallback so a missing column never aborts the snapshot.
+  let sel = await supabase
+    .from("purchase_items")
+    .select(`${cols}, add_to_catalog` as typeof cols)
+    .eq("purchase_id", purchaseId);
+  if (sel.error && /add_to_catalog/i.test(sel.error.message)) {
+    sel = await supabase
+      .from("purchase_items")
+      .select(cols)
+      .eq("purchase_id", purchaseId);
+  }
+  const rows = (sel.data ?? []) as Array<Record<string, unknown>>;
+  if (rows.length === 0) return;
+
+  const snapshot = rows.map((r) => ({
+    id: r.id ?? null,
+    purchase_id: r.purchase_id ?? null,
+    product_id: r.product_id ?? null,
+    supplier_code: r.supplier_code ?? null,
+    internal_code: r.internal_code ?? null,
+    description: r.description ?? null,
+    quantity: r.quantity ?? null,
+    unit_cost: r.unit_cost ?? null,
+    vat_rate: r.vat_rate ?? null,
+    line_total: r.line_total ?? null,
+    add_to_catalog: (r as { add_to_catalog?: boolean | null }).add_to_catalog ?? null,
+    item_created_at: r.created_at ?? null,
+    archived_by: userId,
+    archive_reason: reason,
+  }));
+
+  const { error } = await getSupabaseAdmin()
+    .from("purchase_items_archive")
+    .insert(snapshot as never);
+  if (error) {
+    console.warn(
+      "[panel.purchases] archive skipped (run sql/purchase-items-safety.sql):",
+      error.message,
+    );
+  }
 }
 
 function computeTotals(items: PurchaseInput["items"]) {
@@ -769,29 +832,24 @@ export async function updatePurchase(
   const { subtotal, vat_amount, total } = computeTotals(v.items);
 
   const supabase = await createClient();
-  const { error: hErr } = await supabase
-    .from("purchases")
-    .update({
-      supplier_id: v.supplier_id,
-      account_scope: v.account_scope,
-      document_number: v.document_number ?? null,
-      document_date: v.document_date,
-      currency: v.currency,
-      fx_rate: v.fx_rate ?? null,
-      subtotal,
-      vat_amount,
-      total,
-      notes: v.notes ?? null,
-      file_url: v.file_url ?? null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-  if (hErr) return { ok: false, reason: hErr.message };
 
-  // Replace items wholesale. Keeps the loop simple and avoids stale lines
-  // when the operator removed a row. add_to_catalog is preserved through
-  // the same fallback path createPurchase uses.
-  await supabase.from("purchase_items").delete().eq("purchase_id", id);
+  // --- Items first, header last, and DELETE only AFTER a successful insert ---
+  // The data-loss incident came from the old order: delete every line, THEN try
+  // to insert the new set — a rejected insert (e.g. a stale product_id) left the
+  // document permanently empty. New order, safe even without a DB transaction:
+  //   1. archive the current lines (reversible + audit trail),
+  //   2. insert the NEW lines while the old ones are still present,
+  //   3. only once that succeeds, delete the OLD lines by id,
+  //   4. update the header.
+  // A failure at step 2 returns early with the old lines untouched — nothing is
+  // ever lost.
+  const { data: oldRows } = await supabase
+    .from("purchase_items")
+    .select("id")
+    .eq("purchase_id", id);
+  const oldIds = (oldRows ?? []).map((r) => r.id as string);
+
+  await archivePurchaseItems(supabase, id, "update_replace", user.id);
 
   // Guard against stale / mistyped product links (see knownProductIds).
   const known = await knownProductIds(supabase, v.items);
@@ -816,7 +874,41 @@ export async function updatePurchase(
       await supabase.from("purchase_items").insert(stripped as never)
     ).error;
   }
+  // Old lines are still intact here — the edit simply doesn't apply, no loss.
   if (lErr) return { ok: false, reason: `items: ${lErr.message}` };
+
+  // New lines are in — now remove ONLY the previously-existing ones by id.
+  if (oldIds.length > 0) {
+    await supabase.from("purchase_items").delete().in("id", oldIds);
+  }
+
+  // Header last. `updated_by` records who edited; it degrades gracefully if the
+  // column isn't migrated yet (sql/purchase-items-safety.sql).
+  const headerPatch = {
+    supplier_id: v.supplier_id,
+    account_scope: v.account_scope,
+    document_number: v.document_number ?? null,
+    document_date: v.document_date,
+    currency: v.currency,
+    fx_rate: v.fx_rate ?? null,
+    subtotal,
+    vat_amount,
+    total,
+    notes: v.notes ?? null,
+    file_url: v.file_url ?? null,
+    updated_at: new Date().toISOString(),
+    updated_by: user.id,
+  };
+  let hErr = (
+    await supabase.from("purchases").update(headerPatch as never).eq("id", id)
+  ).error;
+  if (hErr && /updated_by/i.test(hErr.message)) {
+    const { updated_by: _omitUpdatedBy, ...withoutUpdatedBy } = headerPatch;
+    hErr = (
+      await supabase.from("purchases").update(withoutUpdatedBy).eq("id", id)
+    ).error;
+  }
+  if (hErr) return { ok: false, reason: hErr.message };
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${id}`, "page");
@@ -836,6 +928,9 @@ export async function deletePurchaseWithPin(
   if (!user) return { ok: false, reason: "unauthorized" };
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = await createClient();
+  // Snapshot the lines before they're gone so a delete stays recoverable and
+  // leaves an audit trail of who removed the document.
+  await archivePurchaseItems(supabase, purchaseId, "purchase_delete", user.id);
   // purchase_items cascade via FK normally; do it explicitly in case the
   // constraint isn't set to ON DELETE CASCADE in the deployed schema.
   await supabase.from("purchase_items").delete().eq("purchase_id", purchaseId);
@@ -843,4 +938,83 @@ export async function deletePurchaseWithPin(
   if (error) return { ok: false, reason: error.message };
   revalidatePath("/[locale]/panel/achizitii", "page");
   return { ok: true };
+}
+
+/**
+ * Undo a wipe: restore a purchase's most-recent archived line snapshot back
+ * into `purchase_items`. Refuses when the purchase still has live lines, so a
+ * restore can only rescue an emptied document and can never duplicate a good
+ * one. PIN-gated, same as delete. Product links are re-sanitised on the way in.
+ */
+export async function restorePurchaseItemsFromArchive(
+  purchaseId: string,
+  pin: string,
+): Promise<{ ok: true; restored: number } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+  const supabase = await createClient();
+
+  // Never clobber a document that already has lines.
+  const { data: live } = await supabase
+    .from("purchase_items")
+    .select("id")
+    .eq("purchase_id", purchaseId)
+    .limit(1);
+  if (live && live.length > 0) return { ok: false, reason: "has_items" };
+
+  // Read the archive with the service-role client (server-only audit store).
+  const admin = getSupabaseAdmin();
+  const { data: arch, error: archErr } = await admin
+    .from("purchase_items_archive")
+    .select(
+      "product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, add_to_catalog, archived_at",
+    )
+    .eq("purchase_id", purchaseId)
+    .order("archived_at", { ascending: false });
+  if (archErr) {
+    return {
+      ok: false,
+      reason: `archive_unavailable: ${archErr.message}`,
+    };
+  }
+  const batch = (arch ?? []) as Array<Record<string, unknown>>;
+  if (batch.length === 0) return { ok: false, reason: "no_archive" };
+  // Restore only the latest batch (one edit/delete event).
+  const latest = batch[0].archived_at;
+  const toRestore = batch.filter((a) => a.archived_at === latest);
+
+  const known = await knownProductIds(
+    supabase,
+    toRestore.map((a) => ({ product_id: (a.product_id as string | null) ?? null })),
+  );
+  const lines = toRestore.map((a) => {
+    const pid = (a.product_id as string | null) ?? null;
+    return {
+      purchase_id: purchaseId,
+      product_id: pid && known.has(pid) ? pid : null,
+      supplier_code: (a.supplier_code as string | null) ?? null,
+      internal_code: (a.internal_code as string | null) ?? null,
+      description: (a.description as string | null) ?? "—",
+      quantity: Number(a.quantity ?? 0),
+      unit_cost: Number(a.unit_cost ?? 0),
+      vat_rate: Number(a.vat_rate ?? 20),
+      line_total: Number(a.line_total ?? 0),
+      add_to_catalog: Boolean(a.add_to_catalog ?? false),
+    };
+  });
+  let lErr = (
+    await supabase.from("purchase_items").insert(lines as never)
+  ).error;
+  if (lErr && /add_to_catalog/i.test(lErr.message)) {
+    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+    lErr = (
+      await supabase.from("purchase_items").insert(stripped as never)
+    ).error;
+  }
+  if (lErr) return { ok: false, reason: lErr.message };
+
+  revalidatePath("/[locale]/panel/achizitii", "page");
+  revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
+  return { ok: true, restored: lines.length };
 }
