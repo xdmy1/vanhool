@@ -1199,6 +1199,7 @@
     "facturi_source_proforma": "Proforma",
     "facturi_source_manual": "Manual",
     "facturi_filter_all": "All",
+    "facturi_filter_currency": "Currency",
     "facturi_filter_entered": "Entered",
     "facturi_filter_not_entered": "Not entered",
     "accountant_entered_filter_label": "Accountant",

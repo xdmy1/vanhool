@@ -57,6 +57,8 @@ export async function listInvoices(args: {
    * true → only entered (accountant_entered_at set); false → only not-entered.
    */
   entered?: boolean;
+  /** Restrict to a single document currency (e.g. "MDL", "EUR"). */
+  currency?: string;
 }): Promise<InvoiceRow[]> {
   const supabase = await createClient();
 
@@ -77,6 +79,7 @@ export async function listInvoices(args: {
       .limit(300);
     if (args.type) q = q.eq("type", args.type);
     if (args.scope) q = q.eq("account_scope", args.scope);
+    if (args.currency) q = q.eq("currency", args.currency);
     if (args.from) q = q.gte("issued_date", args.from);
     if (args.to) q = q.lte("issued_date", args.to);
     if (args.overdueOnly) {

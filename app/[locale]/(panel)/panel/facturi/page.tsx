@@ -96,11 +96,20 @@ export default async function PanelFacturiPage({
   // Accountant "introdus" filter: entered=1 → introduse, entered=0 → neintroduse.
   const enteredParam: boolean | undefined =
     sp.entered === "1" ? true : sp.entered === "0" ? false : undefined;
+  // Currency filter — invoices are only ever MDL (lei) or EUR.
+  const CURRENCY_FILTERS = ["MDL", "EUR"] as const;
+  type CurrencyFilter = (typeof CURRENCY_FILTERS)[number];
+  const currencyParam: CurrencyFilter | undefined =
+    typeof sp.currency === "string" &&
+    (CURRENCY_FILTERS as readonly string[]).includes(sp.currency)
+      ? (sp.currency as CurrencyFilter)
+      : undefined;
 
   const rows = await listInvoices({
     q,
     type: "invoice",
     scope: scopeParam,
+    currency: currencyParam,
     from: fromParam,
     to: toParam,
     overdueOnly,
@@ -219,6 +228,21 @@ export default async function PanelFacturiPage({
     { id: "1", label: t("facturi_filter_entered") },
     { id: "0", label: t("facturi_filter_not_entered") },
   ];
+  // Currency filter — its own toggle group. Preserves every other param.
+  function currencyHref(val: CurrencyFilter | null): string {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "currency" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (val) next.set("currency", val);
+    return next.toString() ? `?${next}` : "?";
+  }
+  const currencyChips: Array<{ id: CurrencyFilter | null; label: string }> = [
+    { id: null, label: t("facturi_filter_all") },
+    { id: "MDL", label: "Lei" },
+    { id: "EUR", label: "EUR" },
+  ];
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -329,6 +353,32 @@ export default async function PanelFacturiPage({
               <a
                 key={c.id ?? "all"}
                 href={enteredHref(c.id)}
+                className={cn(
+                  "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+                )}
+              >
+                {c.label}
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Currency filter — lei (MDL) / EUR */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted">
+            {t("facturi_filter_currency")}:
+          </span>
+          {currencyChips.map((c) => {
+            const active =
+              (c.id === null && currencyParam === undefined) ||
+              c.id === currencyParam;
+            return (
+              <a
+                key={c.id ?? "all"}
+                href={currencyHref(c.id)}
                 className={cn(
                   "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
                   active

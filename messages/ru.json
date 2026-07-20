@@ -1199,6 +1199,7 @@
     "facturi_source_proforma": "Проформа",
     "facturi_source_manual": "Вручную",
     "facturi_filter_all": "Все",
+    "facturi_filter_currency": "Валюта",
     "facturi_filter_entered": "Внесённые",
     "facturi_filter_not_entered": "Не внесённые",
     "accountant_entered_filter_label": "Бухгалтер",

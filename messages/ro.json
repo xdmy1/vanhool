@@ -1199,6 +1199,7 @@
     "facturi_source_proforma": "Proformă",
     "facturi_source_manual": "Manual",
     "facturi_filter_all": "Toate",
+    "facturi_filter_currency": "Valută",
     "facturi_filter_entered": "Introduse",
     "facturi_filter_not_entered": "Neintroduse",
     "accountant_entered_filter_label": "Contabil",
