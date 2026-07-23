@@ -10,6 +10,7 @@ export function AdminTopbar({
   displayName,
   locale,
   labels,
+  mobileNav,
 }: {
   email: string;
   displayName: string | null;
@@ -22,9 +23,12 @@ export function AdminTopbar({
     admin: string;
     logout: string;
   };
+  /** Optional hamburger button (visible only below md). */
+  mobileNav?: React.ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:px-6">
+      {mobileNav}
       <div className="ml-auto flex items-center gap-2">
         <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex">
           <Link href={"/panel" as "/admin"} locale={locale}>

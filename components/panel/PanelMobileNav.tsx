@@ -14,9 +14,19 @@ import { cn } from "@/lib/utils/cn";
  * The drawer markup is passed as children — caller renders whatever
  * sidebar component they want inside the drawer.
  */
-export function PanelMobileNav({ children }: { children: React.ReactNode }) {
+export function PanelMobileNav({
+  children,
+  breakpoint = "lg",
+}: {
+  children: React.ReactNode;
+  /** Below which breakpoint the drawer shows (and the desktop sidebar hides).
+   *  Panel sidebar hides at lg; admin sidebar hides at md — match accordingly. */
+  breakpoint?: "md" | "lg";
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  // Literal strings so Tailwind's JIT keeps both classes.
+  const hide = breakpoint === "md" ? "md:hidden" : "lg:hidden";
 
   // Auto-close when the route changes so a tap on a nav link doesn't
   // leave the drawer open over the new page.
@@ -48,7 +58,10 @@ export function PanelMobileNav({ children }: { children: React.ReactNode }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex size-9 items-center justify-center rounded-md border border-border bg-surface text-muted-strong transition-colors hover:border-primary/40 hover:text-primary lg:hidden"
+        className={cn(
+          "inline-flex size-9 items-center justify-center rounded-md border border-border bg-surface text-muted-strong transition-colors hover:border-primary/40 hover:text-primary",
+          hide,
+        )}
         aria-label="Open menu"
       >
         <Menu className="size-4" />
@@ -57,12 +70,13 @@ export function PanelMobileNav({ children }: { children: React.ReactNode }) {
       {open ? (
         <>
           <div
-            className="fixed inset-0 z-[79] bg-black/50 backdrop-blur-sm lg:hidden"
+            className={cn("fixed inset-0 z-[79] bg-black/50 backdrop-blur-sm", hide)}
             onClick={() => setOpen(false)}
           />
           <aside
             className={cn(
-              "fixed inset-y-0 left-0 z-[80] flex h-dvh w-72 max-w-[85vw] flex-col bg-surface-elevated shadow-2xl lg:hidden",
+              "fixed inset-y-0 left-0 z-[80] flex h-dvh w-72 max-w-[85vw] flex-col bg-surface-elevated shadow-2xl",
+              hide,
             )}
           >
             <div className="flex items-center justify-end border-b border-border px-3 py-2">

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { PanelMobileNav } from "@/components/panel/PanelMobileNav";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({
@@ -40,19 +41,21 @@ export default async function AdminLayout({
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
 
+  const sidebarLabels = {
+    overview: tAdmin("nav_overview"),
+    products: tAdmin("nav_products"),
+    categories: tAdmin("nav_categories"),
+    orders: tAdmin("nav_orders"),
+    promocodes: tAdmin("nav_promocodes"),
+    customers: tAdmin("nav_customers"),
+    back: tAdmin("nav_back_to_site"),
+  };
+
   return (
     <div className="flex min-h-dvh bg-background">
       <AdminSidebar
         locale={locale}
-        labels={{
-          overview: tAdmin("nav_overview"),
-          products: tAdmin("nav_products"),
-          categories: tAdmin("nav_categories"),
-          orders: tAdmin("nav_orders"),
-          promocodes: tAdmin("nav_promocodes"),
-          customers: tAdmin("nav_customers"),
-          back: tAdmin("nav_back_to_site"),
-        }}
+        labels={sidebarLabels}
         badges={{ orders: pendingOrders ?? 0 }}
       />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -68,6 +71,16 @@ export default async function AdminLayout({
             admin: tNav("admin"),
             logout: tAuth("logout"),
           }}
+          mobileNav={
+            <PanelMobileNav breakpoint="md">
+              <AdminSidebar
+                locale={locale}
+                labels={sidebarLabels}
+                badges={{ orders: pendingOrders ?? 0 }}
+                compact
+              />
+            </PanelMobileNav>
+          }
         />
         <main className="flex-1">{children}</main>
       </div>
