@@ -12,6 +12,7 @@ import {
   FileText,
   FolderTree,
   Globe,
+  Landmark,
   LayoutDashboard,
   Package,
   Receipt,
@@ -50,6 +51,7 @@ type SidebarLabels = {
   achizitii: string;
   proforme: string;
   facturi: string;
+  reconciliere: string;
   fiseLivrare: string;
   cheltuieli: string;
   cheltuieliCash: string;
@@ -98,6 +100,7 @@ export function PanelSidebar({
     { href: "/panel/achizitii", icon: ClipboardList, label: labels.achizitii },
     { href: "/panel/proforme", icon: FileSignature, label: labels.proforme },
     { href: "/panel/facturi", icon: Receipt, label: labels.facturi },
+    { href: "/panel/facturi/reconciliere", icon: Landmark, label: labels.reconciliere },
     { href: "/panel/fisa-de-livrare", icon: Truck, label: labels.fiseLivrare },
     { href: "/panel/cheltuieli", icon: FileText, label: labels.cheltuieli },
     { href: "/panel/cheltuieli-cash", icon: Wallet, label: labels.cheltuieliCash },
