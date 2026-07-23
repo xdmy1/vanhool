@@ -124,6 +124,33 @@ export function accountantMonthlyPurchasesEmail(
           ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #d8d2c5">${supplierRows.join("")}</div>`
           : "";
 
+      // Return annex — lines sent back to the supplier. Rendered as a -amount
+      // block under the purchase so the bookkeeper sees purchase + return net.
+      const rets = p.returns ?? [];
+      const retTotal = rets.reduce((s, r) => s + Number(r.total ?? 0), 0);
+      const netAfterRet = Number((p.total - retTotal).toFixed(2));
+      const annexBlock = rets.length
+        ? `<div style="padding:0 14px 12px">
+            <div style="border:1px solid #f0c9c9;border-radius:6px;overflow:hidden;margin-top:10px">
+              <div style="padding:8px 12px;background:#fbeaea;color:#b91c1c;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Anexă — retur furnizor</div>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse">
+                ${rets
+                  .map(
+                    (r) => `<tr style="border-bottom:1px solid #f3dede">
+                    <td style="padding:5px 8px;font-size:11px;color:#2a2622">${r.part_code ? `<span style="font-family:ui-monospace,monospace;color:#6b6358">${escapeHtml(String(r.part_code))}</span> ` : ""}${escapeHtml(String(r.name ?? "—"))}${r.reason ? `<div style="font-size:10px;color:#6b6358">${escapeHtml(String(r.reason))}</div>` : ""}</td>
+                    <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;white-space:nowrap">${Number(r.quantity)} buc</td>
+                    <td style="padding:5px 8px;font-size:11px;text-align:right;color:#b91c1c">−${fmtMoney(Number(r.net_amount), p.currency)}</td>
+                    <td style="padding:5px 8px;font-size:11px;text-align:right;color:#b91c1c">−${fmtMoney(Number(r.vat_amount), p.currency)}</td>
+                    <td style="padding:5px 8px;font-size:11px;text-align:right;font-weight:600;color:#b91c1c">−${fmtMoney(Number(r.total), p.currency)}</td>
+                  </tr>`,
+                  )
+                  .join("")}
+              </table>
+              <div style="padding:8px 12px;background:#fbeaea;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#2a2622"><span style="text-transform:uppercase;font-size:11px">Net după retur (${p.currency})</span><span>${fmtMoney(netAfterRet, p.currency)}</span></div>
+            </div>
+          </div>`
+        : "";
+
       return `<div style="margin-bottom:16px;border:1px solid #d8d2c5;border-radius:6px;overflow:hidden">
         <div style="padding:10px 14px;background:#f4f1ea;border-bottom:1px solid #d8d2c5">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b6358;text-transform:uppercase;letter-spacing:0.05em">
@@ -152,6 +179,7 @@ export function accountantMonthlyPurchasesEmail(
           <div style="display:flex;justify-content:space-between;color:#6b6358"><span>TVA</span><span style="color:#2a2622">${fmtMoney(p.vat_amount, p.currency)}</span></div>
           <div style="display:flex;justify-content:space-between;border-top:1px solid #d8d2c5;margin-top:4px;padding-top:4px;font-weight:700"><span style="text-transform:uppercase;font-size:11px">Total cu TVA</span><span>${fmtMoney(p.total, p.currency)}</span></div>
         </div>
+        ${annexBlock}
       </div>`;
     })
     .join("");

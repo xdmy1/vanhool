@@ -1427,9 +1427,15 @@ export async function sendInvoiceToAccountant(
   const invoice = await getInvoice(invoiceId);
   if (!invoice) return { ok: false, reason: "invoice_not_found" };
 
+  // Attach any return annexes so the bookkeeper gets invoice + credit note
+  // together (net position = invoice total − returns).
+  const { getReturnsFor } = await import("@/lib/panel/returns/actions");
+  const returns = await getReturnsFor("invoice", invoiceId);
+
   const { subject, html, text } = accountantInvoiceEmail(
     invoice,
     accountantMarkEnteredUrl("invoice", invoiceId),
+    returns,
   );
 
   const result = await sendResendEmail({

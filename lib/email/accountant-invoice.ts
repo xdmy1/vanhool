@@ -14,6 +14,7 @@ import type {
   InvoiceDetail,
   InvoiceItemSnapshot,
 } from "@/lib/panel/invoices/queries";
+import type { DocumentReturn } from "@/lib/panel/returns/actions";
 
 function escapeHtml(s: string): string {
   return s
@@ -48,6 +49,7 @@ function fmtDate(d: string | null | undefined): string {
 export function accountantInvoiceEmail(
   invoice: InvoiceDetail,
   markEnteredUrl?: string,
+  returns: DocumentReturn[] = [],
 ): {
   subject: string;
   html: string;
@@ -168,6 +170,47 @@ export function accountantInvoiceEmail(
 
   const scopeLabel = invoice.account_scope === "conta1" ? "Conta 1 — fiscal" : "Conta 2 — cash";
 
+  // Return annex — a credit block permanently attached to the invoice. The
+  // bookkeeper sees the original invoice AND the -amount returns together, so
+  // the net position (invoice total − returns) is unambiguous.
+  const returnsTotal = returns.reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const netAfterReturns = Number((Number(invoice.total) - returnsTotal).toFixed(2));
+  const returnRowsHtml = returns
+    .map(
+      (r) => `<tr style="${ROW_BORDER}">
+        <td style="padding:6px 8px;font-size:13px;color:#2a2622">
+          ${r.part_code ? `<div style="font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">${escapeHtml(String(r.part_code))}</div>` : ""}
+          <div>${escapeHtml(String(r.name ?? "—"))}</div>
+          ${r.reason ? `<div style="font-size:11px;color:#6b6358">${escapeHtml(String(r.reason))}</div>` : ""}
+        </td>
+        <td style="padding:6px 8px;font-size:13px;text-align:right;color:#2a2622;white-space:nowrap">${Number(r.quantity)}</td>
+        <td style="padding:6px 8px;font-size:13px;text-align:right;color:#b91c1c">−${fmtMoney(Number(r.net_amount), invoice.currency)}</td>
+        <td style="padding:6px 8px;font-size:13px;text-align:right;color:#b91c1c">−${fmtMoney(Number(r.vat_amount), invoice.currency)}</td>
+        <td style="padding:6px 8px;font-size:13px;text-align:right;font-weight:600;color:#b91c1c">−${fmtMoney(Number(r.total), invoice.currency)}</td>
+      </tr>`,
+    )
+    .join("");
+  const annexHtml = returns.length
+    ? `<tr><td style="padding:0 24px 20px">
+        <div style="border:1px solid #f0c9c9;border-radius:8px;overflow:hidden">
+          <div style="padding:10px 12px;background:#fbeaea;color:#b91c1c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Anexă — retururi client (notă de credit)</div>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse">
+            <thead><tr style="background:#fdf5f5">
+              <th align="left" style="padding:6px 8px;font-size:10px;color:#6b6358;text-transform:uppercase">Produs</th>
+              <th align="right" style="padding:6px 8px;font-size:10px;color:#6b6358;text-transform:uppercase">Cant.</th>
+              <th align="right" style="padding:6px 8px;font-size:10px;color:#6b6358;text-transform:uppercase">Net</th>
+              <th align="right" style="padding:6px 8px;font-size:10px;color:#6b6358;text-transform:uppercase">TVA</th>
+              <th align="right" style="padding:6px 8px;font-size:10px;color:#6b6358;text-transform:uppercase">Total</th>
+            </tr></thead>
+            <tbody>${returnRowsHtml}</tbody>
+          </table>
+          <div style="padding:10px 12px;background:#fbeaea;display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#2a2622">
+            <span>Net după retururi (${invoice.currency})</span><span>${fmtMoney(netAfterReturns, invoice.currency)}</span>
+          </div>
+        </div>
+      </td></tr>`
+    : "";
+
   const html = `<!doctype html>
 <html lang="ro">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
@@ -222,6 +265,8 @@ export function accountantInvoiceEmail(
             ${totalsRows.join("")}
           </table>
         </td></tr>
+
+        ${annexHtml}
 
         ${invoice.notes ? `<tr><td style="padding:0 24px 20px"><div style="font-size:11px;color:#6b6358;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px">Note</div><div style="font-size:13px;color:#2a2622;white-space:pre-wrap">${escapeHtml(invoice.notes)}</div></td></tr>` : ""}
 
@@ -286,6 +331,18 @@ export function accountantInvoiceEmail(
   textLines.push(`Subtotal net: ${invoice.subtotal.toFixed(2)} ${invoice.currency}`);
   textLines.push(`TVA: ${invoice.vat_amount.toFixed(2)} ${invoice.currency}`);
   textLines.push(`TOTAL cu TVA: ${invoice.total.toFixed(2)} ${invoice.currency}`);
+  if (returns.length) {
+    textLines.push("");
+    textLines.push("ANEXĂ — RETURURI CLIENT (notă de credit):");
+    for (const r of returns) {
+      textLines.push(
+        `  ${r.part_code ? r.part_code + " " : ""}${r.name ?? ""}: ${Number(r.quantity)} buc → −${Number(r.total).toFixed(2)} ${invoice.currency} (net −${Number(r.net_amount).toFixed(2)} + TVA −${Number(r.vat_amount).toFixed(2)})${r.reason ? "  [" + r.reason + "]" : ""}`,
+      );
+    }
+    textLines.push(
+      `NET DUPĂ RETURURI: ${netAfterReturns.toFixed(2)} ${invoice.currency}`,
+    );
+  }
   if (markEnteredUrl) {
     textLines.push("");
     textLines.push(`Marchează ca INTRODUS (după introducerea în contabilitate): ${markEnteredUrl}`);

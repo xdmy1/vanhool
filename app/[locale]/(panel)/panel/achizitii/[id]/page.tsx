@@ -12,6 +12,9 @@ import { Link } from "@/lib/i18n/routing";
 import { IssuePOButton } from "@/components/panel/purchases/IssuePOButton";
 import { PostPurchaseButton } from "@/components/panel/purchases/PostPurchaseButton";
 import { getPurchase } from "@/lib/panel/purchases/queries";
+import { ReturnLineButton } from "@/components/panel/returns/ReturnLineButton";
+import { ReturnsAnnexSection } from "@/components/panel/returns/ReturnsAnnexSection";
+import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { cn } from "@/lib/utils/cn";
 import { TIMEZONE } from "@/lib/datetime";
 
@@ -33,6 +36,9 @@ export default async function PanelAchizitieDetailPage({
 
   const purchase = await getPurchase(id);
   if (!purchase) notFound();
+
+  // Return annexes (lines we sent back to the supplier).
+  const returns = await getReturnsFor("purchase", purchase.id);
 
   const disabled = purchase.status === "posted" || purchase.status === "cancelled";
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
@@ -163,7 +169,20 @@ export default async function PanelAchizitieDetailPage({
                 <tr key={it.id}>
                   <td className="px-4 py-2 font-mono text-xs">{it.supplier_code ?? "—"}</td>
                   <td className="px-4 py-2 font-mono text-xs">{it.internal_code ?? "—"}</td>
-                  <td className="px-4 py-2">{it.description}</td>
+                  <td className="px-4 py-2">
+                    <div>{it.description}</div>
+                    {purchase.status !== "cancelled" && Number(it.quantity) > 0 ? (
+                      <div className="mt-1.5">
+                        <ReturnLineButton
+                          kind="purchase"
+                          parentId={purchase.id}
+                          purchaseItemId={it.id}
+                          maxQty={Number(it.quantity)}
+                          label="Retur furnizor"
+                        />
+                      </div>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums">{it.quantity}</td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     <div>{grossUnit.toFixed(2)}</div>
@@ -208,6 +227,13 @@ export default async function PanelAchizitieDetailPage({
             </tbody>
           </table>
         </section>
+
+        <ReturnsAnnexSection
+          returns={returns}
+          originalTotal={purchase.total}
+          currency={purchase.currency}
+          kind="purchase"
+        />
 
         {purchase.notes ? (
           <section className="rounded-md border border-border bg-surface p-5 text-sm">

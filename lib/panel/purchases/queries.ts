@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AccountScope } from "@/lib/panel/scope";
+import type { DocumentReturn } from "@/lib/panel/returns/actions";
 
 export type PurchaseListRow = {
   id: string;
@@ -127,6 +128,8 @@ export type PurchasesForMonth = {
       vat_rate: number;
       line_total: number;
     }>;
+    /** Supplier-return annexes attached to this purchase (single-send only). */
+    returns?: DocumentReturn[];
   }>;
 };
 

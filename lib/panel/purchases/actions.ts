@@ -731,6 +731,11 @@ export async function sendPurchaseToAccountant(
       line_total: number | string;
     }> | null;
   };
+  // Supplier-return annexes for this purchase, so the accountant gets the
+  // purchase + return net together.
+  const { getReturnsFor } = await import("@/lib/panel/returns/actions");
+  const purchaseReturns = await getReturnsFor("purchase", purchaseId);
+
   const currency = (h.currency ?? "MDL").toUpperCase();
   const purchase = {
     id: h.id,
@@ -756,6 +761,7 @@ export async function sendPurchaseToAccountant(
       vat_rate: Number(it.vat_rate ?? 0),
       line_total: Number(it.line_total ?? 0),
     })),
+    returns: purchaseReturns,
   };
   const { subject, html, text } = accountantMonthlyPurchasesEmail(
     {

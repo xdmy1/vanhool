@@ -10,6 +10,9 @@ import { VoidInvoiceButton } from "@/components/panel/documents/VoidInvoiceButto
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { DocumentScopeSwitcher } from "@/components/panel/documents/DocumentScopeSwitcher";
 import { deleteInvoiceWithPin } from "@/lib/panel/invoices/actions";
+import { ReturnLineButton } from "@/components/panel/returns/ReturnLineButton";
+import { ReturnsAnnexSection } from "@/components/panel/returns/ReturnsAnnexSection";
+import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import {
@@ -60,6 +63,9 @@ export default async function PanelInvoiceDetailPage({
   // invoice would otherwise read 20x too high).
   const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
   const docRate = FX_TO_MDL[invoice.currency] ?? 1;
+
+  // Return annexes attached to this invoice (customer brought lines back).
+  const returns = await getReturnsFor("invoice", invoice.id);
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const overdue = isOverdue(invoice);
@@ -295,6 +301,16 @@ export default async function PanelInvoiceDetailPage({
                           {t("delivery_discount_label", { percent: Math.round(pct) })}
                         </div>
                       ) : null}
+                      {invoice.status !== "void" && qty > 0 ? (
+                        <div className="mt-1.5">
+                          <ReturnLineButton
+                            kind="invoice"
+                            parentId={invoice.id}
+                            lineIndex={i}
+                            maxQty={qty}
+                          />
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums">{it.quantity ?? 0}</td>
                     <td className="px-4 py-2 text-right tabular-nums">
@@ -448,6 +464,15 @@ export default async function PanelInvoiceDetailPage({
             </tfoot>
           </table>
         </section>
+
+        <div className="lg:col-span-2">
+          <ReturnsAnnexSection
+            returns={returns}
+            originalTotal={invoice.total}
+            currency={invoice.currency}
+            kind="invoice"
+          />
+        </div>
       </div>
     </div>
   );
