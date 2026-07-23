@@ -42,6 +42,9 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS),
   terms: z.literal(true),
   promoCode: z.string().max(40).optional().or(z.literal("")),
+  /** Opt-in: settle part/all of the order with the logged-in user's MDL store
+   * credit. Ignored for guests or when no MDL credit is available. */
+  applyCredit: z.boolean().optional(),
   items: z.array(orderItemSchema).min(1),
 });
 

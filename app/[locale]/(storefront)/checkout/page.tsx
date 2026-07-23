@@ -31,6 +31,13 @@ export default async function CheckoutPage({
     .eq("id", user.id)
     .maybeSingle();
 
+  // Available MDL store credit (the site is MDL — EUR credit isn't applied
+  // here, only per-currency in the panel). Offered as an opt-in at checkout.
+  const { getMyCredits, creditBalanceByCurrency } = await import(
+    "@/lib/panel/credits/queries"
+  );
+  const availableCredit = creditBalanceByCurrency(await getMyCredits(user.id)).MDL ?? 0;
+
   const t = await getTranslations("checkout");
 
   return (
@@ -51,6 +58,7 @@ export default async function CheckoutPage({
         <CheckoutContent
           locale={locale}
           cardEnabled={maibConfigured()}
+          availableCredit={availableCredit}
           user={{
             email: profile?.email ?? user.email ?? null,
             fullName: profile?.full_name ?? null,

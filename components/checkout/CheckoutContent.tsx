@@ -28,10 +28,13 @@ const PAYMENT_ICONS = {
 export function CheckoutContent({
   locale,
   cardEnabled,
+  availableCredit = 0,
   user,
 }: {
   locale: string;
   cardEnabled: boolean;
+  /** Available MDL store credit for the logged-in user. */
+  availableCredit?: number;
   user: {
     email: string | null;
     fullName: string | null;
@@ -51,6 +54,15 @@ export function CheckoutContent({
   const tCart = useTranslations("cart");
 
   const totals = useMemo(() => calcTotals(items, promo), [items, promo]);
+
+  // Store credit — opt-in, MDL only, capped at the order total. `payable` is
+  // what the customer pays in money after credit.
+  const [applyCredit, setApplyCredit] = useState(availableCredit > 0);
+  const creditToApply =
+    availableCredit > 0 && applyCredit
+      ? Number(Math.min(availableCredit, totals.total).toFixed(2))
+      : 0;
+  const payable = Number(Math.max(0, totals.total - creditToApply).toFixed(2));
 
   // Pre-split user.phone if it starts with a known prefix
   const initialPhone = useMemo(() => {
@@ -117,6 +129,7 @@ export function CheckoutContent({
       paymentMethod,
       terms: fd.get("terms") === "on" ? (true as const) : false,
       promoCode: promo?.code ?? "",
+      applyCredit: creditToApply > 0,
       items: items.map((i) => ({
         productId: i.productId,
         slug: i.slug,
@@ -352,11 +365,40 @@ export function CheckoutContent({
             />
           </dl>
 
+          {availableCredit > 0 ? (
+            <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={applyCredit}
+                  onChange={(e) => setApplyCredit(e.target.checked)}
+                  className="mt-0.5 size-4"
+                />
+                <span className="text-sm">
+                  <span className="font-medium">Folosește creditul</span>
+                  <span className="block text-xs text-muted">
+                    Disponibil {availableCredit.toFixed(2)} lei
+                  </span>
+                </span>
+              </label>
+            </div>
+          ) : null}
+
+          {creditToApply > 0 ? (
+            <dl className="mt-3 space-y-2 text-sm">
+              <Row
+                label="Credit aplicat"
+                value={`-${creditToApply.toFixed(2)} lei`}
+                tone="success"
+              />
+            </dl>
+          ) : null}
+
           <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
             <span className="text-[11px] font-semibold">
-              {tCart("total")}
+              {creditToApply > 0 ? "De plată" : tCart("total")}
             </span>
-            <Price value={totals.total} size="xl" />
+            <Price value={payable} size="xl" />
           </div>
 
           <Button
