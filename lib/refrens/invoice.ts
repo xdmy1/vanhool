@@ -37,8 +37,24 @@ function getConfig(): RefrensConfig | null {
   return { appId, privateKey, businessSlug };
 }
 
+/**
+ * Master kill switch for the Refrens sync.
+ *
+ * The panel is now the system of record for invoices — it issues its own
+ * fiscal factură + PDF. We no longer want a DUPLICATE invoice auto-created and
+ * emailed on Refrens every time a conta1 factură is cut on the panel (or a
+ * storefront order completes). This sync is DISABLED by default.
+ *
+ * To re-enable the old behaviour, set env REFRENS_ENABLED=true (and keep the
+ * REFRENS_* credentials in place). Nothing else needs to change — both call
+ * paths (panel sale, storefront checkout) route through this switch.
+ */
+function isRefrensEnabled(): boolean {
+  return process.env.REFRENS_ENABLED === "true";
+}
+
 export function isRefrensConfigured(): boolean {
-  return getConfig() !== null;
+  return isRefrensEnabled() && getConfig() !== null;
 }
 
 function base64url(input: Buffer | string): string {
@@ -123,6 +139,11 @@ export async function createInvoiceForOrder(
   | { ok: true; invoiceId: string; invoiceUrl: string | null }
   | { ok: false; reason: string }
 > {
+  // Master kill switch — see isRefrensEnabled(). Disabled by default so the
+  // panel no longer double-creates invoices on Refrens. Returns before any
+  // network / DB work; callers already treat `ok: false` as "no Refrens link".
+  if (!isRefrensEnabled()) return { ok: false, reason: "disabled" };
+
   const cfg = getConfig();
   if (!cfg) return { ok: false, reason: "not_configured" };
 

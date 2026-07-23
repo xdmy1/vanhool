@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
-import { createInvoiceForOrder } from "@/lib/refrens/invoice";
+import { createInvoiceForOrder, isRefrensConfigured } from "@/lib/refrens/invoice";
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeCode } from "@/lib/utils/normalize-code";
@@ -915,8 +915,11 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         );
     }
 
-    // Refrens runs only for the official book + when there's a real email.
-    if (v.account_scope === "conta1" && customer_email) {
+    // Refrens sync is disabled by default (the panel is the system of record;
+    // we don't want a duplicate invoice auto-created on Refrens). Gated behind
+    // isRefrensConfigured() — re-enable with env REFRENS_ENABLED=true. Runs only
+    // for the official book + when there's a real email.
+    if (isRefrensConfigured() && v.account_scope === "conta1" && customer_email) {
       const refrensRes = await createInvoiceForOrder(orderId);
       if (refrensRes.ok && invoiceId) {
         await supabase
