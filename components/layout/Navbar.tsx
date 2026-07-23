@@ -24,14 +24,25 @@ export async function Navbar() {
   } = await supabase.auth.getUser();
   let isAdmin = false;
   let displayName: string | null = null;
+  let creditBadge: string | null = null;
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin, full_name")
-      .eq("id", user.id)
-      .maybeSingle();
+    const { getMyCredits, creditBalanceByCurrency } = await import(
+      "@/lib/panel/credits/queries"
+    );
+    const [{ data: profile }, credits] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("is_admin, full_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+      getMyCredits(user.id),
+    ]);
     isAdmin = !!profile?.is_admin;
     displayName = profile?.full_name ?? user.email ?? null;
+    // Per-currency store-credit summary for the nav badge (never summed).
+    const bal = creditBalanceByCurrency(credits);
+    const parts = Object.entries(bal).map(([c, a]) => `${a.toFixed(0)} ${c}`);
+    if (parts.length) creditBadge = parts.join(" · ");
   }
 
   const mobileLinks = [
@@ -77,11 +88,13 @@ export async function Navbar() {
                 displayName={displayName}
                 isAdmin={isAdmin}
                 locale={locale}
+                creditBadge={creditBadge}
                 labels={{
                   account: t("account"),
                   dashboard: t("dashboard"),
                   admin: t("admin"),
                   logout: tAuth("logout"),
+                  credit: t("credit"),
                 }}
               />
             </div>

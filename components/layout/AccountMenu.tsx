@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, ShieldCheck, User } from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldCheck, User, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,13 +22,22 @@ export function AccountMenu({
   displayName,
   isAdmin,
   locale,
+  creditBadge,
   labels,
 }: {
   email: string;
   displayName: string | null;
   isAdmin: boolean;
   locale: string;
-  labels: { account: string; dashboard: string; admin: string; logout: string };
+  /** Per-currency store-credit summary (e.g. "1500 MDL · 200 EUR"). */
+  creditBadge?: string | null;
+  labels: {
+    account: string;
+    dashboard: string;
+    admin: string;
+    logout: string;
+    credit?: string;
+  };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -77,6 +86,17 @@ export function AccountMenu({
             <span>{labels.dashboard}</span>
           </Link>
         </DropdownMenuItem>
+        {creditBadge ? (
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard" locale={locale} className="flex w-full items-center gap-2">
+              <Wallet className="size-4 text-primary" />
+              <span>{labels.credit ?? "Credit"}</span>
+              <span className="ml-auto rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-primary">
+                {creditBadge}
+              </span>
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         {isAdmin ? (
           <DropdownMenuItem asChild>
             <Link href="/admin" locale={locale} className="flex w-full items-center gap-2">

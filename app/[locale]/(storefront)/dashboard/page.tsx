@@ -6,6 +6,7 @@ import { Container } from "@/components/layout/Container";
 import { Price } from "@/components/common/Price";
 import { createClient } from "@/lib/supabase/server";
 import { getMyOrders } from "@/lib/db/orders";
+import { getMyCredits, creditBalanceByCurrency } from "@/lib/panel/credits/queries";
 import { routing } from "@/lib/i18n/routing";
 import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
 import { OrdersList } from "@/components/dashboard/OrdersList";
@@ -32,7 +33,7 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login?next=/${locale}/dashboard`);
 
-  const [t, orders, profileRes] = await Promise.all([
+  const [t, orders, profileRes, credits] = await Promise.all([
     getTranslations("auth"),
     getMyOrders(),
     supabase
@@ -40,9 +41,15 @@ export default async function DashboardPage({
       .select("full_name, email, phone, language, created_at")
       .eq("id", user.id)
       .maybeSingle(),
+    getMyCredits(user.id),
   ]);
 
   const profile = profileRes.data ?? null;
+  // Store credit available to spend, kept per-currency (never summed lei/eur).
+  const creditBal = creditBalanceByCurrency(credits);
+  const activeCredits = credits.filter(
+    (c) => c.status === "active" && c.amount - c.used_amount > 0,
+  );
   const totalSpent = orders.reduce((acc, o) => acc + o.total, 0);
   const memberSince = profile?.created_at ?? user.created_at;
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
@@ -158,6 +165,50 @@ export default async function DashboardPage({
             }
           />
         </div>
+
+        {/* Store credit — available balance per currency + downloadable vouchers. */}
+        {activeCredits.length > 0 ? (
+          <div className="mb-8 rounded-md border border-primary/30 bg-primary/5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="grid size-9 place-items-center rounded-sm border border-primary/30 bg-primary/10 text-primary">
+                  <Wallet className="size-4" />
+                </span>
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted">
+                    Credit disponibil
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 text-xl font-bold tracking-tight">
+                    {Object.entries(creditBal).map(([cur, amt]) => (
+                      <span key={cur} className="tabular-nums">
+                        {amt.toFixed(2)} {cur}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <ul className="mt-4 divide-y divide-border rounded-md border border-border bg-surface">
+              {activeCredits.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
+                  <span className="font-mono text-xs font-semibold">{c.serial ?? "—"}</span>
+                  {c.reason ? <span className="text-xs text-muted">{c.reason}</span> : null}
+                  <span className="ml-auto tabular-nums font-semibold text-primary">
+                    {(c.amount - c.used_amount).toFixed(2)} {c.currency}
+                  </span>
+                  <a
+                    href={`/${locale}/dashboard/credit/${c.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded border border-border bg-background px-2 py-0.5 text-[11px] text-primary transition-colors hover:bg-primary/10"
+                  >
+                    PDF
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <DashboardTabs
           labels={{

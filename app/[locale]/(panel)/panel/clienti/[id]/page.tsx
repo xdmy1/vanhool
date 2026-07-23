@@ -10,6 +10,13 @@ import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
 import { getClientDocuments, getPanelClient } from "@/lib/panel/clienti/queries";
 import type { ClientDocument } from "@/lib/panel/clienti/queries";
+import {
+  getClientCredits,
+  creditBalanceByCurrency,
+  owedByCurrency,
+} from "@/lib/panel/credits/queries";
+import { IssueCreditButton } from "@/components/panel/credits/IssueCreditButton";
+import { VoidCreditButton } from "@/components/panel/credits/VoidCreditButton";
 import { getActiveBook } from "@/lib/panel/scope";
 import { cn } from "@/lib/utils/cn";
 import { TIMEZONE } from "@/lib/datetime";
@@ -38,6 +45,17 @@ export default async function PanelClientDetailPage({
     sp.docs === "proforma" ? "proforma" : "invoice";
   const allDocuments = await getClientDocuments(id, client.idno);
   const documents = allDocuments.filter((d) => d.type === docTab);
+
+  // Balance with us — kept strictly per-currency (never mix lei/eur):
+  //   owed   = open invoices (issued/sent/partial) this client hasn't paid,
+  //   credit = available store credit,
+  //   net    = owed − credit  (positive = they owe, negative = we owe them).
+  const credits = await getClientCredits(id);
+  const owed = owedByCurrency(allDocuments);
+  const creditBal = creditBalanceByCurrency(credits);
+  const balanceCurrencies = Array.from(
+    new Set([...Object.keys(owed), ...Object.keys(creditBal)]),
+  ).sort();
   const invoiceCount = allDocuments.filter((d) => d.type === "invoice").length;
   const proformaCount = allDocuments.filter((d) => d.type === "proforma").length;
 
@@ -214,6 +232,105 @@ export default async function PanelClientDetailPage({
           </div>
         </section>
       </div>
+
+      {/* Balance with us — per-currency, never summed across lei/eur. */}
+      <section className="mt-6 rounded-md border border-border bg-surface p-5">
+        <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Balanță cu noi</h2>
+          <IssueCreditButton clientId={id} />
+        </header>
+
+        {balanceCurrencies.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
+            Fără facturi deschise și fără credit.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {balanceCurrencies.map((cur) => {
+              const o = Number((owed[cur] ?? 0).toFixed(2));
+              const c = Number((creditBal[cur] ?? 0).toFixed(2));
+              const net = Number((o - c).toFixed(2));
+              return (
+                <div key={cur} className="rounded-md border border-border bg-background p-4">
+                  <div className="text-xs uppercase tracking-wide text-muted">{cur}</div>
+                  <div className="mt-2 flex items-center justify-between text-sm">
+                    <span className="text-muted">Facturi deschise</span>
+                    <span className="tabular-nums font-medium text-destructive">
+                      {o.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted">Credit disponibil</span>
+                    <span className="tabular-nums font-medium text-success">
+                      {c.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+                    <span className="text-xs uppercase tracking-wide text-muted">
+                      {net > 0 ? "Datorează" : net < 0 ? "Are în plus" : "La zi"}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-lg font-bold tabular-nums",
+                        net > 0 ? "text-destructive" : net < 0 ? "text-success" : "text-foreground",
+                      )}
+                    >
+                      {Math.abs(net).toFixed(2)} {cur}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {credits.length > 0 ? (
+          <div className="mt-5">
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+              Credite emise
+            </div>
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {credits.map((cr) => {
+                const avail = Number((cr.amount - cr.used_amount).toFixed(2));
+                return (
+                  <li key={cr.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
+                    <span className="font-mono text-xs font-semibold">{cr.serial ?? "—"}</span>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 text-[10px] uppercase tracking-wide",
+                        cr.status === "active"
+                          ? "bg-success/15 text-success"
+                          : cr.status === "used"
+                            ? "bg-surface-elevated text-muted"
+                            : "bg-destructive/10 text-destructive",
+                      )}
+                    >
+                      {cr.status === "active" ? "activ" : cr.status === "used" ? "folosit" : "anulat"}
+                    </span>
+                    {cr.reason ? <span className="text-xs text-muted">{cr.reason}</span> : null}
+                    <span className="ml-auto tabular-nums">
+                      <span className="text-muted">disp. </span>
+                      <span className="font-semibold text-success">
+                        {avail.toFixed(2)} {cr.currency}
+                      </span>
+                      <span className="text-xs text-muted"> / {cr.amount.toFixed(2)}</span>
+                    </span>
+                    <a
+                      href={`/${locale}/dashboard/credit/${cr.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded border border-border bg-surface px-2 py-0.5 text-[11px] text-primary transition-colors hover:bg-primary/10"
+                    >
+                      PDF
+                    </a>
+                    {cr.status === "active" ? <VoidCreditButton creditId={cr.id} /> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+      </section>
 
       {/* The client "folder": every invoice + proforma tied to them across
           BOTH books, newest first — with paid / unpaid status at a glance.
