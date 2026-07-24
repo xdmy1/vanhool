@@ -86,6 +86,9 @@ const lineInputSchema = z.object({
   description: z.string().min(1),
   quantity: z.number().positive(),
   unit_cost: z.number().nonnegative(),
+  /** Unit of measure (buc / litru / metru / …). App vocabulary — see
+   *  lib/stock.ts PRODUCT_UNITS. Flows to products.unit on postPurchase. */
+  unit: z.string().default("buc"),
   vat_rate: z.number().nonnegative().default(20),
   /** Opt-in: when true, postPurchase creates / restocks a catalog product
    * for this line. When false (default), the line is purely an accounting
@@ -254,18 +257,21 @@ export async function createPurchase(
     description: i.description,
     quantity: i.quantity,
     unit_cost: i.unit_cost,
+    unit: i.unit ?? "buc",
     vat_rate: i.vat_rate ?? 20,
     line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
     add_to_catalog: !!i.add_to_catalog,
   }));
-  // Insert; if the catalog column hasn't been migrated yet, retry without
-  // it so existing schemas keep working — flag just defaults to false.
+  // Insert; if the catalog / unit columns haven't been migrated yet, retry
+  // without them so existing schemas keep working.
   // Cast through never to satisfy stale generated types.
   let lErr = (
     await supabase.from("purchase_items").insert(lines as never)
   ).error;
-  if (lErr && /add_to_catalog/i.test(lErr.message)) {
-    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+  if (lErr && /(add_to_catalog|\bunit\b)/i.test(lErr.message)) {
+    const stripped = lines.map(
+      ({ add_to_catalog: _a, unit: _u, ...rest }) => rest,
+    );
     lErr = (
       await supabase.from("purchase_items").insert(stripped as never)
     ).error;
@@ -326,16 +332,17 @@ export async function postPurchase(
     quantity: number;
     unit_cost: number;
     vat_rate: number;
+    unit?: string | null;
     add_to_catalog?: boolean;
   };
   let itemsRes = await supabase
     .from("purchase_items")
     .select(
-      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, add_to_catalog" as
+      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, unit, add_to_catalog" as
         "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
     )
     .eq("purchase_id", purchaseId);
-  if (itemsRes.error && /add_to_catalog/i.test(itemsRes.error.message)) {
+  if (itemsRes.error && /(add_to_catalog|\bunit\b)/i.test(itemsRes.error.message)) {
     itemsRes = await supabase
       .from("purchase_items")
       .select(
@@ -426,19 +433,24 @@ export async function postPurchase(
           price: Number((costMdl * markupFactor).toFixed(2)),
           cost_price: costMdl,
           stock_quantity: 0,
+          // Carry the purchase line's unit onto the new product so the same
+          // unit shows in the admin catalog and on the public storefront.
+          unit: (it.unit ?? "buc") || "buc",
           is_active: false, // owner reviews before publishing
           supplier_id: header.supplier_id,
           supplier_code: it.supplier_code ?? null,
         };
+        // Cast through never: generated types are stale for `unit` /
+        // `internal_only` (added by migrations) until regenerated.
         let { data: newP, error: newErr } = await supabase
           .from("products")
-          .insert({ ...base, internal_only: !wantsCatalog } as typeof base)
+          .insert({ ...base, internal_only: !wantsCatalog } as never)
           .select("id")
           .single();
         // sql/products-internal-only.sql not applied yet — keep posting rather
         // than blocking the warehouse on a migration.
         if (newErr && /internal_only/i.test(newErr.message)) {
-          const retry = await supabase.from("products").insert(base).select("id").single();
+          const retry = await supabase.from("products").insert(base as never).select("id").single();
           newP = retry.data;
           newErr = retry.error;
         }
@@ -691,15 +703,24 @@ export async function sendPurchaseToAccountant(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
 
   const supabase = await createClient();
-  const { data: header } = await supabase
+  const purSelect = (withUnit: boolean) =>
+    `id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, file_url, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, ${withUnit ? "unit, " : ""}vat_rate, line_total)`;
+  let hr = await supabase
     .from("purchases")
-    .select(
-      "id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, file_url, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total)",
-    )
+    .select(purSelect(true))
     .eq("id", purchaseId)
     .maybeSingle();
+  // Retry without `unit` if the column isn't migrated yet.
+  if (hr.error && /\bunit\b/i.test(hr.error.message)) {
+    hr = await supabase
+      .from("purchases")
+      .select(purSelect(false))
+      .eq("id", purchaseId)
+      .maybeSingle();
+  }
+  const header = hr.data;
   if (!header) return { ok: false, reason: "purchase_not_found" };
-  if ((header as { account_scope: string }).account_scope !== "conta1") {
+  if ((header as unknown as { account_scope: string }).account_scope !== "conta1") {
     return { ok: false, reason: "conta1_only" };
   }
   const h = header as unknown as {
@@ -727,6 +748,7 @@ export async function sendPurchaseToAccountant(
       description: string;
       quantity: number | string;
       unit_cost: number | string;
+      unit?: string | null;
       vat_rate: number | string;
       line_total: number | string;
     }> | null;
@@ -758,6 +780,7 @@ export async function sendPurchaseToAccountant(
       description: it.description,
       quantity: Number(it.quantity ?? 0),
       unit_cost: Number(it.unit_cost ?? 0),
+      unit: (it.unit ?? "buc") || "buc",
       vat_rate: Number(it.vat_rate ?? 0),
       line_total: Number(it.line_total ?? 0),
     })),
@@ -867,6 +890,7 @@ export async function updatePurchase(
     description: i.description,
     quantity: i.quantity,
     unit_cost: i.unit_cost,
+    unit: i.unit ?? "buc",
     vat_rate: i.vat_rate ?? 20,
     line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
     add_to_catalog: !!i.add_to_catalog,
@@ -874,8 +898,10 @@ export async function updatePurchase(
   let lErr = (
     await supabase.from("purchase_items").insert(lines as never)
   ).error;
-  if (lErr && /add_to_catalog/i.test(lErr.message)) {
-    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+  if (lErr && /(add_to_catalog|\bunit\b)/i.test(lErr.message)) {
+    const stripped = lines.map(
+      ({ add_to_catalog: _a, unit: _u, ...rest }) => rest,
+    );
     lErr = (
       await supabase.from("purchase_items").insert(stripped as never)
     ).error;

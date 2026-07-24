@@ -183,7 +183,9 @@ export default async function PanelAchizitieDetailPage({
                       </div>
                     ) : null}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{it.quantity}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">
+                    {it.quantity} <span className="text-[10px] text-muted">{it.unit}</span>
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     <div>{grossUnit.toFixed(2)}</div>
                     {hasVat ? (

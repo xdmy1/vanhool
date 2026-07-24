@@ -43,6 +43,7 @@ export default async function PanelAchizitiiEditPage({
       description: it.description,
       quantity: it.quantity,
       unit_cost: it.unit_cost,
+      unit: it.unit ?? "buc",
       vat_rate: it.vat_rate,
       add_to_catalog: it.add_to_catalog,
       product_id: it.product_id ?? null,

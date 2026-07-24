@@ -82,7 +82,7 @@ export function accountantMonthlyPurchasesEmail(
               ${it.supplier_code ? `<span style="font-family:ui-monospace,monospace;color:#6b6358">${escapeHtml(it.supplier_code)}</span><br/>` : ""}
               ${escapeHtml(it.description)}
             </td>
-            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top;white-space:nowrap">${it.quantity} buc</td>
+            <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top;white-space:nowrap">${it.quantity} ${escapeHtml((it as { unit?: string }).unit ?? "buc")}</td>
             <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(it.unit_cost, p.currency)}</td>
             <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(netLine, p.currency)}</td>
             <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(vatLineAmount, p.currency)}<div style="font-size:9px;color:#6b6358">${it.vat_rate}%</div></td>

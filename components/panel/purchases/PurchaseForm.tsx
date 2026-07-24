@@ -15,6 +15,7 @@ import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { PurchaseFileUpload } from "@/components/panel/purchases/PurchaseFileUpload";
 import { cn } from "@/lib/utils/cn";
+import { PRODUCT_UNITS, isDivisibleUnit, unitStep } from "@/lib/stock";
 import {
   createSupplier,
   searchSuppliers,
@@ -46,6 +47,8 @@ type Line = {
   description: string;
   quantity: number;
   unit_cost: number;
+  /** Unit of measure (buc / litru / metru / …). Flows to products.unit. */
+  unit: string;
   vat_rate: number;
   /** When true, postPurchase creates a product in the catalog from this
    * line (or increments stock if it already exists). Default false —
@@ -63,6 +66,7 @@ const EMPTY_LINE: Line = {
   description: "",
   quantity: 1,
   unit_cost: 0,
+  unit: "buc",
   // Start at 0 so a freshly-typed cost shows up as-is in the line total;
   // the operator picks +TVA 20% explicitly when needed.
   vat_rate: 0,
@@ -171,6 +175,7 @@ export function PurchaseForm({
           description: l.description.trim(),
           quantity: l.quantity,
           unit_cost: l.unit_cost,
+          unit: l.unit || "buc",
           vat_rate: l.vat_rate,
           add_to_catalog: !!l.add_to_catalog,
           product_id: l.product_id ?? null,
@@ -385,19 +390,44 @@ export function PurchaseForm({
                     />
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <Input
-                      type="number"
-                      step={1}
-                      min={1}
-                      value={l.quantity > 0 ? l.quantity : ""}
-                      onChange={(e) =>
-                        setLine(idx, {
-                          quantity: Math.max(1, Math.trunc(Number(e.target.value) || 0)),
-                        })
-                      }
-                      placeholder="1"
-                      className="ml-auto h-9 w-20 text-right"
-                    />
+                    <div className="flex items-center justify-end gap-1">
+                      <Input
+                        type="number"
+                        step={unitStep(l.unit)}
+                        min={isDivisibleUnit(l.unit) ? 0 : 1}
+                        value={l.quantity > 0 ? l.quantity : ""}
+                        onChange={(e) => {
+                          const raw = Number(e.target.value) || 0;
+                          // Divisible units (litru/metru/kg) keep decimals; "buc"
+                          // stays whole.
+                          const q = isDivisibleUnit(l.unit)
+                            ? Math.max(0, raw)
+                            : Math.max(1, Math.trunc(raw));
+                          setLine(idx, { quantity: q });
+                        }}
+                        placeholder="1"
+                        className="h-9 w-16 text-right"
+                      />
+                      <select
+                        value={l.unit}
+                        onChange={(e) => {
+                          const unit = e.target.value;
+                          // Snap qty to a whole number when switching to "buc".
+                          const q = isDivisibleUnit(unit)
+                            ? l.quantity
+                            : Math.max(1, Math.trunc(l.quantity));
+                          setLine(idx, { unit, quantity: q });
+                        }}
+                        className="h-9 rounded-md border border-border bg-surface px-1 text-xs"
+                        title="Unitate de măsură"
+                      >
+                        {PRODUCT_UNITS.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-2 py-2 text-right">
                     <PriceWithVatHelper
