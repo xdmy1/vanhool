@@ -401,27 +401,31 @@ export default async function HomePage({
         <section className="py-14 md:py-16">
           <Container>
             <SectionHead title={t.categoriesTitle} sub={t.categoriesSub} />
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {catTiles.map((cat) => (
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
+              {catTiles.map((cat, i) => (
                 <Link
                   key={cat.slug}
                   href={`/catalog?category=${cat.slug}`}
                   locale={locale}
-                  className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                  style={{ animationDelay: `${i * 55}ms` }}
+                  className="group relative aspect-square overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-2 hover:ring-primary/40 motion-safe:animate-[ib-fade-up_0.5s_ease-out_backwards]"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={cat.image}
                     alt={cat.name}
                     loading="lazy"
-                    className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="absolute inset-0 size-full object-cover transition-transform duration-[650ms] ease-out group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
-                    <span className="text-sm font-semibold leading-tight text-white drop-shadow">
+                  {/* readability gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/0" />
+                  {/* brand tint on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/55 via-primary/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3.5">
+                    <span className="text-sm font-semibold leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.6)]">
                       {cat.name}
                     </span>
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition-colors group-hover:bg-primary">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/20 text-white backdrop-blur transition-all duration-300 group-hover:translate-x-0.5 group-hover:bg-white group-hover:text-primary">
                       <ArrowRight className="size-4" />
                     </span>
                   </div>
@@ -512,7 +516,8 @@ export default async function HomePage({
               return (
                 <div
                   key={f.title}
-                  className="group rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                  className="group rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md motion-safe:animate-[ib-fade-up_0.5s_ease-out_backwards]"
                 >
                   <div className="mb-3 grid size-11 place-items-center rounded-lg border border-primary/20 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-sm transition-transform group-hover:scale-105">
                     <Icon className="size-5" />
