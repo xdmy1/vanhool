@@ -13,6 +13,8 @@ import {
   UserPlus,
   ClipboardList,
   Check,
+  Lock,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 
@@ -290,11 +292,12 @@ export default async function HomePage({
       .limit(8),
     supabase
       .from("products")
-      .select("name_ro, name_en, name_ru, image_url")
-      .not("image_url", "is", null)
+      .select("part_code, name_ro, name_en, name_ru")
+      .not("part_code", "is", null)
+      .not("name_ro", "is", null)
       .eq("is_active", true)
       .order("is_featured", { ascending: false })
-      .limit(6),
+      .limit(10),
   ]);
 
   const salesPhone = tf("contact_phone");
@@ -305,10 +308,24 @@ export default async function HomePage({
     name: nameFor(c, loc),
     image: c.image_url as string,
   }));
-  const showcase = (prodRes.data ?? [])
-    .map((p) => p.image_url as string)
-    .filter(Boolean)
+  // Clean catalog "result rows" for the electronic-catalog mockup — real part
+  // codes + names, never prices (contract pricing is behind login).
+  const catalogRows = (prodRes.data ?? [])
+    .map((p) => {
+      const code = (p.part_code as string) ?? "";
+      let name = nameFor(p, loc);
+      // Names often start with the code — drop the duplicate prefix for display.
+      if (code && name.startsWith(code)) name = name.slice(code.length).trim();
+      return { code, name };
+    })
+    .filter((r) => r.code && r.name)
     .slice(0, 4);
+  const catalogLabels =
+    loc === "en"
+      ? { search: "Search by OEM code…", stock: "In stock", price: "Contract price" }
+      : loc === "ru"
+        ? { search: "Поиск по OEM-коду…", stock: "В наличии", price: "Контрактная цена" }
+        : { search: "Caută după cod OEM…", stock: "În stoc", price: "Preț contract" };
 
   return (
     <>
@@ -482,25 +499,58 @@ export default async function HomePage({
                 </div>
               </div>
 
-              {/* Real product images as the visual */}
-              {showcase.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {showcase.map((src, i) => (
-                    <div
-                      key={i}
-                      className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 shadow-sm"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={src}
-                        alt=""
-                        loading="lazy"
-                        className="size-full object-contain"
-                      />
+              {/* Clean catalog UI mockup (real part codes, prices gated) */}
+              <div className="relative">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-6 -z-10 rounded-[2rem] bg-primary/25 opacity-40 blur-3xl"
+                />
+                <div className="overflow-hidden rounded-xl border border-white/10 bg-white shadow-2xl">
+                  {/* browser chrome */}
+                  <div className="flex items-center gap-1.5 border-b border-black/10 bg-[#f4f1ea] px-3 py-2.5">
+                    <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                    <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                    <span className="size-2.5 rounded-full bg-[#28c840]" />
+                    <div className="ml-2 flex-1 truncate rounded-md bg-white px-2.5 py-1 text-[10px] text-black/40">
+                      inter-bus.md/catalog
                     </div>
-                  ))}
+                  </div>
+                  <div className="p-4">
+                    {/* search bar */}
+                    <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-[#faf9f6] px-3 py-2.5">
+                      <Search className="size-4 text-primary" />
+                      <span className="text-sm text-black/45">{catalogLabels.search}</span>
+                    </div>
+                    {/* result rows */}
+                    <div className="mt-3 space-y-2">
+                      {catalogRows.map((r, i) => (
+                        <div
+                          key={i}
+                          style={{ animationDelay: `${150 + i * 120}ms` }}
+                          className="flex items-center gap-3 rounded-lg border border-black/[0.06] bg-white px-3 py-2.5 shadow-sm motion-safe:animate-[ib-fade-up_0.5s_ease-out_backwards]"
+                        >
+                          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-[#f4f1ea] text-primary">
+                            <Package className="size-4" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-mono text-[10px] text-black/45">{r.code}</div>
+                            <div className="truncate text-xs font-medium text-black/80">
+                              {r.name}
+                            </div>
+                          </div>
+                          <span className="hidden shrink-0 items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 sm:inline-flex">
+                            {catalogLabels.stock}
+                          </span>
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-black/[0.04] px-2 py-1 text-[10px] font-medium text-black/40">
+                            <Lock className="size-3" />
+                            {catalogLabels.price}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              ) : null}
+              </div>
             </div>
           </div>
         </Container>
