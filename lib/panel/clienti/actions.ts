@@ -1,6 +1,6 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -37,9 +37,21 @@ const clientSchema = z.object({
   shipping_city: z.string().nullable().optional(),
   shipping_district: z.string().nullable().optional(),
   shipping_postal: z.string().nullable().optional(),
+  /** When true (and a real email is given), provision a login-capable B2B
+   *  account: the server generates a strong password and returns it once so
+   *  the operator can hand it to the client. */
+  generate_login: z.boolean().optional(),
 });
 
 export type PanelClientInput = z.infer<typeof clientSchema>;
+
+/** A readable, strong one-time password for a freshly provisioned B2B login. */
+function generatePassword(): string {
+  // 9 url-safe bytes → 12 chars; prefix guarantees upper+lower+digit+symbol so
+  // it satisfies any Supabase password policy.
+  const body = randomBytes(9).toString("base64url").replace(/[^A-Za-z0-9]/g, "");
+  return `Ib${body}#7`;
+}
 
 function normalize(input: PanelClientInput) {
   return {
@@ -62,7 +74,10 @@ function normalize(input: PanelClientInput) {
  */
 export async function createPanelClient(
   raw: unknown,
-): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
+): Promise<
+  | { ok: true; id: string; login?: { email: string; password: string } }
+  | { ok: false; reason: string }
+> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
 
@@ -100,9 +115,16 @@ export async function createPanelClient(
   const placeholderEmail =
     input.email ?? `panel-${randomUUID()}@inter-bus.md`;
 
+  // Provision a real login only when the operator asked AND a real email is
+  // given (a placeholder can't receive credentials). The generated password is
+  // returned once so the operator can pass it to the client; we never store it.
+  const wantsLogin = !!input.generate_login && !!input.email;
+  const password = wantsLogin ? generatePassword() : undefined;
+
   const { data: created, error: authErr } = await admin.auth.admin.createUser({
     email: placeholderEmail,
     email_confirm: true,
+    ...(password ? { password } : {}),
     user_metadata: {
       full_name: input.full_name ?? displayName,
       phone: input.phone ?? undefined,
@@ -167,7 +189,51 @@ export async function createPanelClient(
   }
 
   revalidatePath("/[locale]/panel/clienti", "page");
-  return { ok: true, id: userId };
+  return {
+    ok: true,
+    id: userId,
+    ...(password && input.email
+      ? { login: { email: input.email, password } }
+      : {}),
+  };
+}
+
+/**
+ * (Re)generate a login password for an existing client — used both to give a
+ * B2B login to a client created before this flow, and to reset a forgotten
+ * one. Returns the new password once (never stored). Requires the client to
+ * have a real (non-placeholder) email.
+ */
+export async function resetClientLoginPassword(
+  clientId: string,
+): Promise<
+  | { ok: true; login: { email: string; password: string } }
+  | { ok: false; reason: string }
+> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  let admin;
+  try {
+    admin = getSupabaseAdmin();
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "missing_service_role" };
+  }
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("email")
+    .eq("id", clientId)
+    .maybeSingle();
+  const email = (profile as { email?: string | null } | null)?.email ?? null;
+  if (!email || /^panel-[a-f0-9-]+@inter-bus\.md$/i.test(email)) {
+    return { ok: false, reason: "no_real_email" };
+  }
+
+  const password = generatePassword();
+  const { error } = await admin.auth.admin.updateUserById(clientId, { password });
+  if (error) return { ok: false, reason: error.message };
+
+  return { ok: true, login: { email, password } };
 }
 
 export async function updatePanelClient(

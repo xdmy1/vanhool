@@ -45,14 +45,21 @@ export async function Navbar() {
     if (parts.length) creditBadge = parts.join(" · ");
   }
 
-  const mobileLinks = [
-    { href: "/catalog" as const, label: t("catalog") },
-    { href: "/categories" as const, label: t("categories") },
-    { href: "/promotions" as const, label: t("promotions") },
-    { href: "/piese-auto" as const, label: tv("nav_link") },
-    { href: "/about" as const, label: t("about") },
-    { href: "/contact" as const, label: t("contact") },
-  ];
+  // Shop links only for authenticated partners; guests see public pages only
+  // (the storefront is gated — see proxy.ts).
+  const mobileLinks = user
+    ? [
+        { href: "/catalog" as const, label: t("catalog") },
+        { href: "/categories" as const, label: t("categories") },
+        { href: "/promotions" as const, label: t("promotions") },
+        { href: "/piese-auto" as const, label: tv("nav_link") },
+        { href: "/about" as const, label: t("about") },
+        { href: "/contact" as const, label: t("contact") },
+      ]
+    : [
+        { href: "/about" as const, label: t("about") },
+        { href: "/contact" as const, label: t("contact") },
+      ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
@@ -69,12 +76,15 @@ export async function Navbar() {
           </span>
         </Link>
 
+        {/* Search hits the gated catalog — partners only. */}
         <div className="hidden min-w-0 flex-1 md:block">
-          <SearchBar
-            placeholder={t("search_placeholder")}
-            buttonLabel={t("search_button")}
-            size="md"
-          />
+          {user ? (
+            <SearchBar
+              placeholder={t("search_placeholder")}
+              buttonLabel={t("search_button")}
+              size="md"
+            />
+          ) : null}
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5 md:gap-2">
@@ -111,13 +121,23 @@ export async function Navbar() {
               </Link>
             </Button>
           )}
-          <Button variant="primary" size="md" asChild className="gap-1.5">
-            <Link href="/cart" locale={locale}>
-              <ShoppingBag className="size-4" />
-              <span className="hidden sm:inline">{t("cart")}</span>
-              <CartCount />
-            </Link>
-          </Button>
+          {/* Cart / checkout is gated — only for signed-in partners. */}
+          {user ? (
+            <Button variant="primary" size="md" asChild className="gap-1.5">
+              <Link href="/cart" locale={locale}>
+                <ShoppingBag className="size-4" />
+                <span className="hidden sm:inline">{t("cart")}</span>
+                <CartCount />
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" asChild className="gap-1.5 md:hidden">
+              <Link href="/login" locale={locale}>
+                <User className="size-4" />
+                {t("login")}
+              </Link>
+            </Button>
+          )}
           <MobileNav
             locale={locale}
             user={user ? { displayName, email: user.email ?? "" } : null}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Save } from "lucide-react";
+import { Save, KeyRound, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -52,6 +52,13 @@ export function ClientForm({ locale, initial }: Props) {
   const t = useTranslations("panel");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Credentials to show once after provisioning a B2B login.
+  const [createdLogin, setCreatedLogin] = useState<{
+    id: string;
+    email: string;
+    password: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const [state, setState] = useState<PanelClientInput>(() => ({
     ...EMPTY,
@@ -95,8 +102,14 @@ export function ClientForm({ locale, initial }: Props) {
         : await createPanelClient(state);
       if (res.ok) {
         toast.success(initial ? t("client_form_updated") : t("client_form_created"));
-        if (!initial && "id" in res) {
-          router.push(`/${locale}/panel/clienti/${res.id}`);
+        const newId = (res as { id?: string }).id;
+        const login = (res as { login?: { email: string; password: string } }).login;
+        // If a B2B login was provisioned, show the credentials once (the
+        // password is never retrievable again) before leaving the page.
+        if (!initial && newId && login) {
+          setCreatedLogin({ id: newId, ...login });
+        } else if (!initial && newId) {
+          router.push(`/${locale}/panel/clienti/${newId}`);
         } else {
           router.refresh();
         }
@@ -107,6 +120,54 @@ export function ClientForm({ locale, initial }: Props) {
   }
 
   const isBusiness = state.account_type === "business";
+
+  // One-time credentials panel — shown after a B2B login is provisioned.
+  if (createdLogin) {
+    const block = `Site: inter-bus.md\nEmail: ${createdLogin.email}\nParolă: ${createdLogin.password}`;
+    return (
+      <div className="mx-auto max-w-lg rounded-lg border border-primary/40 bg-primary/5 p-6">
+        <div className="flex items-center gap-2 text-primary">
+          <KeyRound className="size-5" />
+          <h3 className="text-base font-semibold">Cont B2B creat</h3>
+        </div>
+        <p className="mt-2 text-sm text-muted-strong">
+          Transmite aceste date clientului. <strong>Parola nu mai poate fi
+          revăzută</strong> — copiaz-o acum.
+        </p>
+        <div className="mt-4 space-y-2 rounded-md border border-border bg-surface p-4 font-mono text-sm">
+          <div className="flex justify-between gap-3">
+            <span className="text-muted">Email</span>
+            <span className="font-semibold">{createdLogin.email}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-muted">Parolă</span>
+            <span className="font-semibold">{createdLogin.password}</span>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center gap-2">
+          <Button
+            onClick={() => {
+              navigator.clipboard?.writeText(block).then(() => {
+                setCopied(true);
+                toast.success("Copiat");
+                setTimeout(() => setCopied(false), 1500);
+              });
+            }}
+            className="gap-1.5"
+          >
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copied ? "Copiat" : "Copiază datele"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/${locale}/panel/clienti/${createdLogin.id}`)}
+          >
+            Mergi la client
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -183,6 +244,34 @@ export function ClientForm({ locale, initial }: Props) {
               placeholder={t("client_form_email_placeholder")}
             />
           </Field>
+          {/* B2B login — only on create, only when a real email is present. */}
+          {!initial ? (
+            <div className="sm:col-span-2">
+              <label
+                className={cn(
+                  "flex items-start gap-2.5 rounded-md border p-3 transition-colors",
+                  state.email && state.email.includes("@")
+                    ? "cursor-pointer border-primary/30 bg-primary/5"
+                    : "cursor-not-allowed border-border bg-surface opacity-60",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4"
+                  disabled={!state.email || !state.email.includes("@")}
+                  checked={!!state.generate_login}
+                  onChange={(e) => set("generate_login", e.target.checked)}
+                />
+                <span className="text-sm">
+                  <span className="font-medium">Creează cont de login (B2B)</span>
+                  <span className="block text-xs text-muted">
+                    Generează o parolă pe care i-o dai clientului ca să intre pe
+                    inter-bus.md. Necesită un email real.
+                  </span>
+                </span>
+              </label>
+            </div>
+          ) : null}
           <Field label={t("sale_client_walkin_phone")}>
             <Input
               value={state.phone ?? ""}

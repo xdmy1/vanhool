@@ -7,8 +7,19 @@ import type { Database } from "@/lib/supabase/database.types";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PROTECTED_PREFIXES = ["dashboard", "checkout"] as const;
 const ADMIN_PREFIXES = ["admin", "panel"] as const;
+
+// inter-bus.md is a closed B2B platform: the public sees ONLY the landing +
+// these pages. Everything else in the storefront (catalog, products, cart,
+// checkout, dashboard, …) requires a login. Allow-list, not block-list, so a
+// new shop route is gated by default. `register` is intentionally absent —
+// accounts are created by the operator (its page redirects to /login).
+const PUBLIC_PREFIXES = [
+  "login",
+  "contact",
+  "about",
+  "informatii",
+] as const;
 
 function localeOf(pathname: string): string | null {
   const seg = pathname.split("/")[1];
@@ -21,8 +32,12 @@ function matchesProtected(pathname: string): "auth" | "admin" | null {
   if (!locale) return null;
   const rest = pathname.slice(locale.length + 1).replace(/^\/+/, "").split("/")[0];
   if (ADMIN_PREFIXES.includes(rest as (typeof ADMIN_PREFIXES)[number])) return "admin";
-  if (PROTECTED_PREFIXES.includes(rest as (typeof PROTECTED_PREFIXES)[number])) return "auth";
-  return null;
+  // Landing (empty rest) + explicit public pages stay open; everything else
+  // in the storefront requires authentication.
+  if (rest === "" || PUBLIC_PREFIXES.includes(rest as (typeof PUBLIC_PREFIXES)[number])) {
+    return null;
+  }
+  return "auth";
 }
 
 export async function proxy(request: NextRequest) {
