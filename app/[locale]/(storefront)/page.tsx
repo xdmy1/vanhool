@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowRight, LogIn, Mail, Phone, Search, Truck, Tag, Headset } from "lucide-react";
 
 import { Container } from "@/components/layout/Container";
@@ -6,7 +6,6 @@ import { BrandsMarquee } from "@/components/home/BrandsMarquee";
 import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
-import { getCompanyAndBank } from "@/lib/panel/settings/company";
 import { localeAlternates } from "@/lib/seo";
 
 export async function generateStaticParams() {
@@ -139,11 +138,15 @@ export default async function HomePage({
   const t = T[locale] ?? T.ro;
 
   const supabase = await createClient();
-  const [{ data: { user } }, { company }] = await Promise.all([
+  // Public sales contact (single source of truth = the footer message keys),
+  // NOT the fiscal/company settings which carry the internal contact.
+  const [{ data: { user } }, tf] = await Promise.all([
     supabase.auth.getUser(),
-    getCompanyAndBank(),
+    getTranslations("footer"),
   ]);
-  const phoneHref = `tel:${company.phone.replace(/\s/g, "")}`;
+  const salesPhone = tf("contact_phone");
+  const salesEmail = tf("contact_email");
+  const phoneHref = `tel:${salesPhone.replace(/\s/g, "")}`;
 
   return (
     <>
@@ -233,7 +236,7 @@ export default async function HomePage({
                 className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Phone className="size-4" />
-                {t.callCta} · {company.phone}
+                {t.callCta} · {salesPhone}
               </a>
               <Link
                 href="/contact"
@@ -244,7 +247,7 @@ export default async function HomePage({
                 {t.contactCta}
               </Link>
             </div>
-            <div className="mt-4 text-xs text-muted">{company.email}</div>
+            <div className="mt-4 text-xs text-muted">{salesEmail}</div>
           </div>
         </Container>
       </section>
