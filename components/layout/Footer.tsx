@@ -5,6 +5,7 @@ import { Container } from "@/components/layout/Container";
 import { Logo } from "@/components/layout/Logo";
 import { Link } from "@/lib/i18n/routing";
 import { maibConfigured } from "@/lib/payments/maib/client";
+import { createClient } from "@/lib/supabase/server";
 
 export async function Footer() {
   // Card scheme logos + legal line appear only once maib is live — until then
@@ -16,6 +17,15 @@ export async function Footer() {
   const tc = await getTranslations("categories_list");
   const locale = await getLocale();
   const year = new Date().getFullYear();
+
+  // Storefront is gated (see proxy.ts): show shop / category links only to
+  // signed-in partners. Guests get a B2B "sign in / request account" column so
+  // the footer never links to pages that just bounce to /login.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAuthed = !!user;
 
   const shopLinks = [
     { href: "/catalog" as const, label: tn("catalog") },
@@ -76,27 +86,55 @@ export async function Footer() {
             <p className="mt-4 max-w-md text-sm text-muted-strong">{t("tagline")}</p>
           </div>
 
-          <FooterColumn title={t("section_shop")} links={shopLinks} locale={locale} />
-          <FooterColumn title={t("section_support")} links={supportLinks} locale={locale} />
-
-          <div>
-            <h4 className="mb-3 text-sm font-semibold text-foreground">
-              {tn("categories")}
-            </h4>
-            <ul className="space-y-2 text-sm text-muted-strong">
-              {categoryLinks.map((cat) => (
-                <li key={cat.slug}>
+          {isAuthed ? (
+            <FooterColumn title={t("section_shop")} links={shopLinks} locale={locale} />
+          ) : (
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">B2B</h4>
+              <ul className="space-y-2 text-sm text-muted-strong">
+                <li>
                   <Link
-                    href={`/catalog?category=${cat.slug}`}
+                    href="/login"
                     locale={locale}
                     className="transition-colors hover:text-foreground"
                   >
-                    {cat.label}
+                    {tn("login")}
                   </Link>
                 </li>
-              ))}
-            </ul>
-          </div>
+                <li>
+                  <Link
+                    href="/contact"
+                    locale={locale}
+                    className="transition-colors hover:text-foreground"
+                  >
+                    {tn("contact")}
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          )}
+          <FooterColumn title={t("section_support")} links={supportLinks} locale={locale} />
+
+          {isAuthed ? (
+            <div>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">
+                {tn("categories")}
+              </h4>
+              <ul className="space-y-2 text-sm text-muted-strong">
+                {categoryLinks.map((cat) => (
+                  <li key={cat.slug}>
+                    <Link
+                      href={`/catalog?category=${cat.slug}`}
+                      locale={locale}
+                      className="transition-colors hover:text-foreground"
+                    >
+                      {cat.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-10 border-t border-border pt-6">
