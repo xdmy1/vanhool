@@ -12,29 +12,21 @@ import {
   PackageCheck,
   UserPlus,
   ClipboardList,
-  Cog,
-  Disc,
-  Wrench,
-  Zap,
-  Gauge,
-  Wind,
-  Filter,
-  Sofa,
+  Check,
   type LucideIcon,
 } from "lucide-react";
 
 import { Container } from "@/components/layout/Container";
 import { BrandsMarquee } from "@/components/home/BrandsMarquee";
+import { CountUp } from "@/components/home/CountUp";
 import { Link } from "@/lib/i18n/routing";
 import { routing } from "@/lib/i18n/routing";
 import { createClient } from "@/lib/supabase/server";
-import { getCategoryTree } from "@/lib/db/categories";
 import { localeAlternates } from "@/lib/seo";
-import type { Category, Locale } from "@/lib/db/types";
+import type { Locale } from "@/lib/db/types";
 
 // inter-bus.md is a closed B2B platform — the homepage is a rich presentation +
-// login gate, not a public shop. Copy lives in a local per-locale dict (same
-// pattern as the old HOME_META) so the page stays self-contained.
+// login gate. Copy lives in a local per-locale dict so the page is self-contained.
 type Copy = {
   metaTitle: string;
   metaDesc: string;
@@ -50,6 +42,10 @@ type Copy = {
   categoriesTitle: string;
   categoriesSub: string;
   categoriesAll: string;
+  catalogEyebrow: string;
+  catalogTitle: string;
+  catalogBody: string;
+  catalogPoints: string[];
   servicesTitle: string;
   servicesSub: string;
   services: Array<{ title: string; body: string }>;
@@ -88,6 +84,15 @@ const T: Record<string, Copy> = {
     categoriesTitle: "Game complete de piese",
     categoriesSub: "De la frânare și motor la direcție, electrică și caroserie — pentru toată flota.",
     categoriesAll: "Vezi tot catalogul",
+    catalogEyebrow: "Catalog electronic",
+    catalogTitle: "Mii de referințe în catalogul tău electronic",
+    catalogBody:
+      "Cel mai bun instrument pentru service-ul și flota ta: căutare rapidă după cod OEM, disponibilitate în timp real, prețurile tale de contract și comandă în câteva clickuri.",
+    catalogPoints: [
+      "Căutare după cod OEM, denumire sau marca vehiculului",
+      "Prețuri de contract și discount pe cont",
+      "Comandă online, livrare MD + Europa",
+    ],
     servicesTitle: "De ce Inter Bus",
     servicesSub: "Tot ce are nevoie un service sau o flotă profesionistă, într-un singur loc.",
     services: [
@@ -136,6 +141,15 @@ const T: Record<string, Copy> = {
     categoriesTitle: "Full parts range",
     categoriesSub: "From braking and engine to steering, electrics and body — for the whole fleet.",
     categoriesAll: "See the full catalog",
+    catalogEyebrow: "Electronic catalog",
+    catalogTitle: "Thousands of references in your electronic catalog",
+    catalogBody:
+      "The best tool for your workshop and fleet: fast OEM code search, real-time availability, your contract prices and ordering in a few clicks.",
+    catalogPoints: [
+      "Search by OEM code, name or vehicle make",
+      "Contract prices and account discounts",
+      "Order online, delivery MD + Europe",
+    ],
     servicesTitle: "Why Inter Bus",
     servicesSub: "Everything a professional workshop or fleet needs, in one place.",
     services: [
@@ -184,6 +198,15 @@ const T: Record<string, Copy> = {
     categoriesTitle: "Полный ассортимент",
     categoriesSub: "От тормозов и двигателя до рулевого, электрики и кузова — для всего парка.",
     categoriesAll: "Весь каталог",
+    catalogEyebrow: "Электронный каталог",
+    catalogTitle: "Тысячи артикулов в вашем электронном каталоге",
+    catalogBody:
+      "Лучший инструмент для сервиса и автопарка: быстрый поиск по OEM-коду, наличие в реальном времени, ваши контрактные цены и заказ в пару кликов.",
+    catalogPoints: [
+      "Поиск по OEM-коду, названию или марке техники",
+      "Контрактные цены и скидка на аккаунт",
+      "Заказ онлайн, доставка MD + Европа",
+    ],
     servicesTitle: "Почему Inter Bus",
     servicesSub: "Всё, что нужно профессиональному сервису или автопарку, в одном месте.",
     services: [
@@ -233,26 +256,13 @@ export async function generateMetadata({
 const SERVICE_ICONS: LucideIcon[] = [Search, Tag, Truck, ShieldCheck, Headset, PackageCheck];
 const STEP_ICONS: LucideIcon[] = [UserPlus, Search, ClipboardList];
 
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  brakes: Disc,
-  engine: Cog,
-  chassis: Wrench,
-  electro: Zap,
-  air: Gauge,
-  "air-pressure": Gauge,
-  couplings: Filter,
-  clutch: Cog,
-  steering: Wrench,
-  cooling: Wind,
-  body: ShieldCheck,
-  bodywork: ShieldCheck,
-  interior: Sofa,
-  hoses: Wind,
-  filter: Filter,
-};
-
-function iconFor(cat: Category): LucideIcon {
-  return CATEGORY_ICONS[cat.slug] ?? CATEGORY_ICONS[cat.iconKey as string] ?? Cog;
+function nameFor(
+  row: { name_ro: string | null; name_en: string | null; name_ru: string | null },
+  loc: Locale,
+): string {
+  if (loc === "en") return row.name_en ?? row.name_ro ?? "";
+  if (loc === "ru") return row.name_ru ?? row.name_ro ?? "";
+  return row.name_ro ?? row.name_en ?? "";
 }
 
 export default async function HomePage({
@@ -266,23 +276,53 @@ export default async function HomePage({
   const t = T[locale] ?? T.ro;
 
   const supabase = await createClient();
-  // Public sales contact = the footer message keys (single source of truth),
-  // NOT the fiscal/company settings.
-  const [{ data: { user } }, tf, categoryTree] = await Promise.all([
+  // Public sales contact = footer message keys (single source of truth). Real
+  // category photos + product images drive the visual sections.
+  const [{ data: { user } }, tf, catRes, prodRes] = await Promise.all([
     supabase.auth.getUser(),
     getTranslations("footer"),
-    getCategoryTree(loc),
+    supabase
+      .from("categories")
+      .select("slug, name_ro, name_en, name_ru, image_url")
+      .not("image_url", "is", null)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .limit(8),
+    supabase
+      .from("products")
+      .select("name_ro, name_en, name_ru, image_url")
+      .not("image_url", "is", null)
+      .eq("is_active", true)
+      .order("is_featured", { ascending: false })
+      .limit(6),
   ]);
+
   const salesPhone = tf("contact_phone");
   const salesEmail = tf("contact_email");
   const phoneHref = `tel:${salesPhone.replace(/\s/g, "")}`;
-  const topCategories = categoryTree.slice(0, 12);
+  const catTiles = (catRes.data ?? []).map((c) => ({
+    slug: c.slug as string,
+    name: nameFor(c, loc),
+    image: c.image_url as string,
+  }));
+  const showcase = (prodRes.data ?? [])
+    .map((p) => p.image_url as string)
+    .filter(Boolean)
+    .slice(0, 4);
 
   return (
     <>
       {/* Hero */}
-      <section className="border-b border-border bg-surface">
-        <Container className="py-16 md:py-24">
+      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface via-surface to-background">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[-6rem] -z-0 h-[26rem] w-[52rem] max-w-full -translate-x-1/2 rounded-full bg-primary/10 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-0 opacity-[0.15] [background-image:linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,black,transparent)]"
+        />
+        <Container className="relative py-16 md:py-24">
           <div className="mx-auto max-w-3xl text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
               {t.eyebrow}
@@ -298,7 +338,7 @@ export default async function HomePage({
                 <Link
                   href="/catalog"
                   locale={locale}
-                  className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                 >
                   {t.enterShop}
                   <ArrowRight className="size-4" />
@@ -307,7 +347,7 @@ export default async function HomePage({
                 <Link
                   href="/login"
                   locale={locale}
-                  className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                 >
                   <LogIn className="size-4" />
                   {t.login}
@@ -331,8 +371,8 @@ export default async function HomePage({
           </div>
         </Container>
 
-        {/* Stats band */}
-        <div className="border-t border-border/60 bg-background">
+        {/* Stats band with count-up */}
+        <div className="relative border-t border-border/60 bg-gradient-to-b from-background to-surface/40">
           <Container>
             <dl className="grid grid-cols-2 divide-x divide-border/60 md:grid-cols-4">
               {t.stats.map((s, i) => (
@@ -340,8 +380,11 @@ export default async function HomePage({
                   key={s.label}
                   className={`px-4 py-6 text-center ${i >= 2 ? "border-t border-border/60 md:border-t-0" : ""}`}
                 >
-                  <dt className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-                    {s.value}
+                  <dt>
+                    <CountUp
+                      value={s.value}
+                      className="bg-gradient-to-br from-foreground to-primary bg-clip-text text-2xl font-bold tracking-tight text-transparent md:text-4xl"
+                    />
                   </dt>
                   <dd className="mt-1 text-xs uppercase tracking-wide text-muted">
                     {s.label}
@@ -353,54 +396,125 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Categories showcase */}
-      <section className="py-14 md:py-16">
-        <Container>
-          <SectionHead title={t.categoriesTitle} sub={t.categoriesSub} />
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {topCategories.map((cat) => {
-              const Icon = iconFor(cat);
-              return (
+      {/* Category photo tiles */}
+      {catTiles.length > 0 ? (
+        <section className="py-14 md:py-16">
+          <Container>
+            <SectionHead title={t.categoriesTitle} sub={t.categoriesSub} />
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {catTiles.map((cat) => (
                 <Link
-                  key={cat.id}
+                  key={cat.slug}
                   href={`/catalog?category=${cat.slug}`}
                   locale={locale}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  className="group relative aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </span>
-                  <span className="min-w-0 flex-1 text-sm font-medium text-foreground group-hover:text-primary">
-                    {cat.name}
-                  </span>
-                  <ArrowRight className="size-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    loading="lazy"
+                    className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
+                    <span className="text-sm font-semibold leading-tight text-white drop-shadow">
+                      {cat.name}
+                    </span>
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition-colors group-hover:bg-primary">
+                      <ArrowRight className="size-4" />
+                    </span>
+                  </div>
                 </Link>
-              );
-            })}
-          </div>
-          <div className="mt-6 flex justify-center">
-            <Link
-              href={user ? "/categories" : "/login"}
-              locale={locale}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-5 py-2.5 text-sm font-semibold uppercase tracking-wider text-foreground transition-colors hover:border-primary hover:text-primary"
-            >
-              {t.categoriesAll}
-              <ArrowRight className="size-4" />
-            </Link>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-center">
+              <Link
+                href={user ? "/categories" : "/login"}
+                locale={locale}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-5 py-2.5 text-sm font-semibold uppercase tracking-wider text-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                {t.categoriesAll}
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </Container>
+        </section>
+      ) : null}
+
+      {/* Electronic catalog feature card */}
+      <section className="border-t border-border bg-surface py-14 md:py-16">
+        <Container>
+          <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#1f2733] to-[#0f1620] shadow-md">
+            <div className="grid items-center gap-8 p-8 md:grid-cols-2 md:p-12">
+              <div>
+                <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                  <span className="h-px w-6 bg-primary" />
+                  {t.catalogEyebrow}
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">
+                  {t.catalogTitle}
+                </h2>
+                <p className="mt-3 text-sm text-white/70 md:text-base">{t.catalogBody}</p>
+                <ul className="mt-5 space-y-2">
+                  {t.catalogPoints.map((p) => (
+                    <li key={p} className="flex items-start gap-2 text-sm text-white/85">
+                      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary/20 text-primary">
+                        <Check className="size-3.5" />
+                      </span>
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-7">
+                  <Link
+                    href={user ? "/catalog" : "/login"}
+                    locale={locale}
+                    className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                  >
+                    {user ? t.enterShop : t.login}
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Real product images as the visual */}
+              {showcase.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {showcase.map((src, i) => (
+                    <div
+                      key={i}
+                      className="aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5 p-3 shadow-sm"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt=""
+                        loading="lazy"
+                        className="size-full object-contain"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
         </Container>
       </section>
 
       {/* Services / why us */}
-      <section className="border-t border-border bg-surface py-14 md:py-16">
+      <section className="py-14 md:py-16">
         <Container>
           <SectionHead title={t.servicesTitle} sub={t.servicesSub} />
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {t.services.map((f, i) => {
               const Icon = SERVICE_ICONS[i] ?? Search;
               return (
-                <div key={f.title} className="rounded-lg border border-border bg-background p-5">
-                  <div className="mb-3 grid size-10 place-items-center rounded-md border border-primary/30 bg-primary/10 text-primary">
+                <div
+                  key={f.title}
+                  className="group rounded-xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                >
+                  <div className="mb-3 grid size-11 place-items-center rounded-lg border border-primary/20 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-sm transition-transform group-hover:scale-105">
                     <Icon className="size-5" />
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
@@ -413,18 +527,21 @@ export default async function HomePage({
       </section>
 
       {/* How it works */}
-      <section className="py-14 md:py-16">
+      <section className="border-t border-border bg-surface py-14 md:py-16">
         <Container>
           <SectionHead title={t.howTitle} sub={t.howSub} />
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {t.steps.map((s, i) => {
               const Icon = STEP_ICONS[i] ?? UserPlus;
               return (
-                <div key={s.title} className="relative rounded-lg border border-border bg-surface p-6">
-                  <div className="absolute right-4 top-4 text-4xl font-bold text-border">
+                <div
+                  key={s.title}
+                  className="relative overflow-hidden rounded-xl border border-border bg-background p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className="absolute right-3 top-2 text-6xl font-bold text-primary/10">
                     {i + 1}
                   </div>
-                  <div className="mb-3 grid size-11 place-items-center rounded-md bg-primary text-primary-foreground">
+                  <div className="mb-3 grid size-11 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-hover text-primary-foreground shadow-sm">
                     <Icon className="size-5" />
                   </div>
                   <h3 className="text-base font-semibold text-foreground">{s.title}</h3>
@@ -437,7 +554,7 @@ export default async function HomePage({
       </section>
 
       {/* Brands */}
-      <section className="border-t border-border bg-surface py-14 md:py-16">
+      <section className="py-14 md:py-16">
         <Container>
           <SectionHead title={t.brandsTitle} sub={t.brandsSub} center />
         </Container>
@@ -447,9 +564,9 @@ export default async function HomePage({
       </section>
 
       {/* B2B account CTA */}
-      <section id="b2b" className="border-t border-border py-14 md:py-16">
+      <section id="b2b" className="border-t border-border bg-surface py-14 md:py-16">
         <Container>
-          <div className="mx-auto max-w-2xl rounded-xl border border-primary/30 bg-primary/5 p-8 text-center">
+          <div className="mx-auto max-w-2xl rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/[0.03] p-8 text-center shadow-sm">
             <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
               {t.b2bTitle}
             </h2>
@@ -459,7 +576,7 @@ export default async function HomePage({
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <a
                 href={phoneHref}
-                className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
               >
                 <Phone className="size-4" />
                 {t.callCta} · {salesPhone}
