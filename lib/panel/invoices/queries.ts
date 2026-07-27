@@ -161,6 +161,10 @@ export async function listInvoices(args: {
 export type InvoiceItemSnapshot = {
   productId?: string | null;
   partCode?: string | null;
+  /** Supplier's own part code (from the purchase). Not persisted on the
+   *  snapshot — resolved on demand when forwarding to the accountant so the
+   *  bookkeeper sees BOTH the internal code and the supplier code. */
+  supplier_code?: string | null;
   name?: string;
   description?: string | null;
   quantity?: number;

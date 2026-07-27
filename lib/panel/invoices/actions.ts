@@ -16,6 +16,9 @@ import { sendResendEmail } from "@/lib/email/resend";
 import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
+import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
+
+type InvoiceLineWithSupplier = InvoiceItemSnapshot;
 
 // Bookkeeper inbox — single recipient for the "send to accountant" button
 // on each invoice / proforma detail page. Per project owner; not stored in
@@ -230,6 +233,69 @@ async function resolveLineProductId(
     if (data && data.length === 1) return data[0].id;
   }
   return null;
+}
+
+/**
+ * Resolve each invoice line's SUPPLIER part code (from purchase_items) so the
+ * accountant email can show internal code + supplier code side by side. Matches
+ * by product_id first, then by internal_code == the line's partCode. Most-recent
+ * purchase wins. Best-effort — lines keep their fields; supplier_code is added
+ * where a purchase is found (null otherwise).
+ */
+async function attachSupplierCodes(
+  lines: InvoiceLineWithSupplier[],
+): Promise<InvoiceLineWithSupplier[]> {
+  if (!Array.isArray(lines) || lines.length === 0) return lines;
+  const supabase = await createClient();
+  const productIds = Array.from(
+    new Set(lines.map((l) => l.productId).filter((s): s is string => !!s)),
+  );
+  const partCodes = Array.from(
+    new Set(lines.map((l) => l.partCode).filter((s): s is string => !!s)),
+  );
+
+  const byProduct = new Map<string, string>();
+  const byCode = new Map<string, string>();
+
+  if (productIds.length > 0) {
+    const { data } = await supabase
+      .from("purchase_items")
+      .select("product_id, internal_code, supplier_code, created_at")
+      .in("product_id", productIds)
+      .order("created_at", { ascending: false });
+    for (const r of (data ?? []) as Array<{
+      product_id: string | null;
+      internal_code: string | null;
+      supplier_code: string | null;
+    }>) {
+      if (!r.supplier_code) continue;
+      if (r.product_id && !byProduct.has(r.product_id)) byProduct.set(r.product_id, r.supplier_code);
+      if (r.internal_code && !byCode.has(r.internal_code)) byCode.set(r.internal_code, r.supplier_code);
+    }
+  }
+  if (partCodes.length > 0) {
+    const { data } = await supabase
+      .from("purchase_items")
+      .select("internal_code, supplier_code, created_at")
+      .in("internal_code", partCodes)
+      .order("created_at", { ascending: false });
+    for (const r of (data ?? []) as Array<{
+      internal_code: string | null;
+      supplier_code: string | null;
+    }>) {
+      if (r.supplier_code && r.internal_code && !byCode.has(r.internal_code)) {
+        byCode.set(r.internal_code, r.supplier_code);
+      }
+    }
+  }
+
+  return lines.map((l) => ({
+    ...l,
+    supplier_code:
+      (l.productId ? byProduct.get(l.productId) : undefined) ??
+      (l.partCode ? byCode.get(l.partCode) : undefined) ??
+      null,
+  }));
 }
 
 /** Shift `products.stock_quantity` by `delta` for one product. */
@@ -1426,6 +1492,10 @@ export async function sendInvoiceToAccountant(
   const { getInvoice } = await import("@/lib/panel/invoices/queries");
   const invoice = await getInvoice(invoiceId);
   if (!invoice) return { ok: false, reason: "invoice_not_found" };
+
+  // Enrich each line with the supplier's own part code (from the purchase) so
+  // the bookkeeper sees BOTH the internal code and the supplier code.
+  invoice.items_snapshot = await attachSupplierCodes(invoice.items_snapshot);
 
   // Attach any return annexes so the bookkeeper gets invoice + credit note
   // together (net position = invoice total − returns).

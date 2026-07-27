@@ -135,9 +135,11 @@ export function accountantInvoiceEmail(
            <div style="font-size:11px;color:#15803d;font-weight:600">-${linePct}%</div>`
         : fmtMoney(effPerUnitNet, invoice.currency);
       const unit = ((it as { unit?: string }).unit ?? "buc").toString();
+      const supplierCode = (it as { supplier_code?: string | null }).supplier_code;
       return `<tr style="${ROW_BORDER}">
         <td style="padding:6px 8px;font-size:13px;color:#2a2622">
-          ${it.partCode ? `<div style="font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">${escapeHtml(String(it.partCode))}</div>` : ""}
+          ${it.partCode ? `<div style="font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">Cod intern: ${escapeHtml(String(it.partCode))}</div>` : ""}
+          ${supplierCode ? `<div style="font-family:ui-monospace,monospace;font-size:11px;color:#6b6358">Cod furnizor: ${escapeHtml(String(supplierCode))}</div>` : ""}
           <div>${escapeHtml(String(it.name ?? "—"))}</div>
         </td>
         <td style="padding:6px 8px;font-size:13px;text-align:right;color:#2a2622;white-space:nowrap">${qty} ${escapeHtml(unit)}</td>
@@ -319,8 +321,15 @@ export function accountantInvoiceEmail(
       ? `  [Reducere de la ${listPerUnitNet.toFixed(2)}]`
       : "";
     const unit = ((it as { unit?: string }).unit ?? "buc").toString();
+    const supplierCodeT = (it as { supplier_code?: string | null }).supplier_code;
+    const codesT = [
+      it.partCode ? `cod intern ${it.partCode}` : "",
+      supplierCodeT ? `cod furnizor ${supplierCodeT}` : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     textLines.push(
-      `  ${it.partCode ? it.partCode + " " : ""}${it.name ?? ""}: ${qty} ${unit} × ${effPerUnitNet.toFixed(2)} = net ${netLineTotal.toFixed(2)} + TVA ${vatLineAmount.toFixed(2)} = total ${grossLineTotal.toFixed(2)} ${invoice.currency}${discNote}`,
+      `  ${codesT ? codesT + " — " : ""}${it.name ?? ""}: ${qty} ${unit} × ${effPerUnitNet.toFixed(2)} = net ${netLineTotal.toFixed(2)} + TVA ${vatLineAmount.toFixed(2)} = total ${grossLineTotal.toFixed(2)} ${invoice.currency}${discNote}`,
     );
   }
   if (discountAmount > 0) {
