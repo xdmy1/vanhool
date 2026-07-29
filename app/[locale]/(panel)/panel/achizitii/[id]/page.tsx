@@ -171,6 +171,9 @@ export default async function PanelAchizitieDetailPage({
                   <td className="px-4 py-2 font-mono text-xs">{it.internal_code ?? "—"}</td>
                   <td className="px-4 py-2">
                     <div>{it.description}</div>
+                    {it.pack_note ? (
+                      <div className="text-[10px] text-warning">↔ Desfăcut: {it.pack_note}</div>
+                    ) : null}
                     {purchase.status !== "cancelled" && Number(it.quantity) > 0 ? (
                       <div className="mt-1.5">
                         <ReturnLineButton

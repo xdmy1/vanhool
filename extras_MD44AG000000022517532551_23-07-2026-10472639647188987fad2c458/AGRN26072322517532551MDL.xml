@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Extras>
+    <head>
+        <cont>22517532551</cont>
+        <bic>AGRNMD2X437</bic>
+        <da_extr>2026-07-20</da_extr>
+        <etapa>1</etapa>
+        <da_prec>2026-07-20</da_prec>
+        <sold_start>8226.46</sold_start>
+        <rulaj_debit>27632.00</rulaj_debit>
+        <rulaj_credit>60361.20</rulaj_credit>
+        <sold_end>40955.66</sold_end>
+        <count_doc>3</count_doc>
+    </head>
+    <documents>
+        <document>
+            <da_extr>2026-07-21</da_extr>
+            <nr_dok>15</nr_dok>
+            <da_dok>2026-07-21</da_dok>
+            <ti_dok>1</ti_dok>
+            <s_d>16000.00</s_d>
+            <s_c>0</s_c>
+            <pcont>MD44AG000000022517532551</pcont>
+            <pkd_fisk>1026023029685</pkd_fisk>
+            <pkd_sdiv></pkd_sdiv>
+            <pcont_tr></pcont_tr>
+            <piban></piban>
+            <pbic>AGRNMD2X</pbic>
+            <pname>Inter Bus Parts S.R.L.</pname>
+            <bcont></bcont>
+            <bkd_fisk>1011600029422</bkd_fisk>
+            <bkd_sdiv></bkd_sdiv>
+            <bcont_tr></bcont_tr>
+            <biban>MD28MO2224ASV48563237100</biban>
+            <bbic>MOBBMD22</bbic>
+            <bname>(R) AD AUTO TOTAL I.C.S. S.R.L.</bname>
+            <description>Plata pentru Marfuri/Produse confor m Factura/Cont de plata/Invoice Nr. f/nr din 21-07-2026</description>
+            <tr_type>N</tr_type>
+            <tr_code>001</tr_code>
+            <reference>FT262020229508</reference>
+        </document>
+        <document>
+            <da_extr>2026-07-21</da_extr>
+            <nr_dok>14</nr_dok>
+            <da_dok>2026-07-21</da_dok>
+            <ti_dok>1</ti_dok>
+            <s_d>11632.00</s_d>
+            <s_c>0</s_c>
+            <pcont>MD44AG000000022517532551</pcont>
+            <pkd_fisk>1026023029685</pkd_fisk>
+            <pkd_sdiv></pkd_sdiv>
+            <pcont_tr></pcont_tr>
+            <piban></piban>
+            <pbic>AGRNMD2X</pbic>
+            <pname>Inter Bus Parts S.R.L.</pname>
+            <bcont></bcont>
+            <bkd_fisk>1002600017102</bkd_fisk>
+            <bkd_sdiv></bkd_sdiv>
+            <bcont_tr></bcont_tr>
+            <biban>MD21EN000000222422214408</biban>
+            <bbic>ENEGMD22</bbic>
+            <bname>(R) SRL OLMOSDON</bname>
+            <description>Plata pentru Marfuri/Produse confor m Factura/Cont de plata/Invoice Nr. f/nr din 21-07-2026</description>
+            <tr_type>N</tr_type>
+            <tr_code>001</tr_code>
+            <reference>FT262020229438</reference>
+        </document>
+        <document>
+            <da_extr>2026-07-21</da_extr>
+            <nr_dok>419</nr_dok>
+            <da_dok>2026-07-21</da_dok>
+            <ti_dok>1</ti_dok>
+            <s_d>0</s_d>
+            <s_c>60361.20</s_c>
+            <pcont></pcont>
+            <pkd_fisk>1013600041329</pkd_fisk>
+            <pkd_sdiv></pkd_sdiv>
+            <pcont_tr></pcont_tr>
+            <piban>MD29AG000000022512290650</piban>
+            <pbic>AGRNMD2X435</pbic>
+            <pname>(R) DAVO GROUP S.R.L.</pname>
+            <bcont>MD44AG000000022517532551</bcont>
+            <bkd_fisk>1026023029685</bkd_fisk>
+            <bkd_sdiv></bkd_sdiv>
+            <bcont_tr></bcont_tr>
+            <biban></biban>
+            <bbic>AGRNMD2X</bbic>
+            <bname>Inter Bus Parts S.R.L.</bname>
+            <description>Plata pentru Marfuri/Produse confor m Factura/Cont de plata/Invoice Nr. f/nr din 21-07-2026</description>
+            <tr_type>N</tr_type>
+            <tr_code>001</tr_code>
+            <reference>FT262020175571</reference>
+        </document>
+    </documents>
+</Extras>

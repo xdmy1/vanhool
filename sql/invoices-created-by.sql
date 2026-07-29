@@ -17,3 +17,5 @@ comment on column public.invoices.created_by is
   'The admin/operator who raised this invoice or proforma.';
 comment on column public.invoices.created_by_name is
   'Name snapshot of the admin who raised it, frozen at creation time.';
+ la achizitie, sa pot pune pretul fara tva si sa imi dea cu tva, dar sa pot pune si pretul cu tva si automat sa mi-l dea brut. si adica sa fie ca la vanzari cumva. sa pot scrie la achizitie in
+  campul pret cu tva[

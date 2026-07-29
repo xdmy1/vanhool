@@ -89,6 +89,8 @@ const lineInputSchema = z.object({
   /** Unit of measure (buc / litru / metru / …). App vocabulary — see
    *  lib/stock.ts PRODUCT_UNITS. Flows to products.unit on postPurchase. */
   unit: z.string().default("buc"),
+  /** Split trace shown to the bookkeeper (e.g. "1 buc → 200 litri"). */
+  pack_note: z.string().nullable().optional(),
   vat_rate: z.number().nonnegative().default(20),
   /** Opt-in: when true, postPurchase creates / restocks a catalog product
    * for this line. When false (default), the line is purely an accounting
@@ -215,6 +217,171 @@ function computeTotals(items: PurchaseInput["items"]) {
   return { subtotal, vat_amount, total: Number((subtotal + vat_amount).toFixed(2)) };
 }
 
+/** One purchase line as read back from `purchase_items` for stock application. */
+type PostedLine = {
+  id: string;
+  product_id: string | null;
+  supplier_code: string | null;
+  internal_code: string | null;
+  description: string;
+  quantity: number | string;
+  unit_cost: number | string;
+  vat_rate: number | string;
+  unit?: string | null;
+  add_to_catalog?: boolean;
+};
+
+/**
+ * Apply a set of purchase lines to stock: for each line resolve (or create) the
+ * catalog product, increment its stock by the line quantity, refresh cost_price
+ * (GROSS MDL = net × (1+vat) × fx) and add the supplier cross-reference. Links
+ * `product_id` back onto the line. This is the single source of truth shared by
+ * postPurchase (first post) and updatePurchase (re-apply on edit of a posted
+ * document). cost_price is GROSS per project convention — see the CORE math fix.
+ */
+async function applyPostedLines(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  header: {
+    supplier_id: string;
+    currency: string | null;
+    fx_rate: number | string | null;
+  },
+  lines: PostedLine[],
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+  const currency = (header.currency ?? "MDL").toUpperCase();
+  const toMdl =
+    currency === "MDL"
+      ? 1
+      : Number(header.fx_rate) || DEFAULT_FX_TO_MDL[currency] || 1;
+  const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
+  const { data: supplier } = await supabase
+    .from("suppliers")
+    .select("name")
+    .eq("id", header.supplier_id)
+    .maybeSingle();
+  const supplierName = supplier?.name ?? "Furnizor";
+
+  for (const it of lines) {
+    const wantsCatalog = it.add_to_catalog ?? false;
+    let productId = it.product_id;
+
+    // unit_cost is NET; the cash out is GROSS = net × (1 + vat/100), in MDL.
+    const vatRate = Number(it.vat_rate ?? 20);
+    const costMdl = Number(
+      (Number(it.unit_cost) * (1 + vatRate / 100) * toMdl).toFixed(2),
+    );
+
+    if (!productId) {
+      const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
+      const esc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
+      const { data: existing } = await supabase
+        .from("products")
+        .select("id")
+        .ilike("part_code", esc(code))
+        .limit(1);
+      let matchId = existing?.[0]?.id ?? null;
+      if (!matchId && it.supplier_code) {
+        const { data: bySupplier } = await supabase
+          .from("products")
+          .select("id")
+          .ilike("supplier_code", esc(it.supplier_code))
+          .limit(2);
+        if (bySupplier && bySupplier.length === 1) matchId = bySupplier[0].id;
+      }
+      if (matchId) {
+        productId = matchId;
+      } else {
+        const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
+        const base = {
+          part_code: code,
+          name_ro: it.description.slice(0, 200),
+          slug,
+          price: Number((costMdl * markupFactor).toFixed(2)),
+          cost_price: costMdl,
+          stock_quantity: 0,
+          unit: (it.unit ?? "buc") || "buc",
+          is_active: false,
+          supplier_id: header.supplier_id,
+          supplier_code: it.supplier_code ?? null,
+        };
+        let { data: newP, error: newErr } = await supabase
+          .from("products")
+          .insert({ ...base, internal_only: !wantsCatalog } as never)
+          .select("id")
+          .single();
+        if (newErr && /internal_only/i.test(newErr.message)) {
+          const retry = await supabase.from("products").insert(base as never).select("id").single();
+          newP = retry.data;
+          newErr = retry.error;
+        }
+        if (newErr || !newP) {
+          return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
+        }
+        productId = newP.id;
+      }
+      await supabase.from("purchase_items").update({ product_id: productId }).eq("id", it.id);
+    }
+
+    const { data: cur } = await supabase
+      .from("products")
+      .select("stock_quantity, cross_references")
+      .eq("id", productId)
+      .maybeSingle();
+    const newStock = Number(cur?.stock_quantity ?? 0) + Number(it.quantity);
+    const refs = Array.isArray(cur?.cross_references) ? [...cur!.cross_references] : [];
+    if (it.supplier_code) {
+      const has = refs.some(
+        (r) =>
+          r &&
+          typeof r === "object" &&
+          !Array.isArray(r) &&
+          (r as Record<string, unknown>).code === it.supplier_code,
+      );
+      if (!has) refs.push({ brand: supplierName, code: it.supplier_code } as Json);
+    }
+    // Also sync the unit (a split turns 1 barrel → 200 litri) and refresh
+    // cost. Cast through never: `unit` is a manually-migrated column the
+    // generated types don't know about yet.
+    await supabase
+      .from("products")
+      .update({
+        stock_quantity: newStock,
+        cost_price: costMdl,
+        unit: (it.unit ?? "buc") || "buc",
+        cross_references: refs as unknown as Json,
+      } as never)
+      .eq("id", productId);
+  }
+  return { ok: true };
+}
+
+/**
+ * Reverse the stock a set of lines previously added (used when re-applying a
+ * posted purchase on edit). For each line with a product_id, stock -= quantity
+ * (floored at 0). cost_price is left as-is — it's re-set by applyPostedLines.
+ */
+async function reversePostedLines(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lines: Array<{ product_id: string | null; quantity: number | string | null }>,
+): Promise<void> {
+  for (const it of lines) {
+    if (!it.product_id) continue;
+    const qty = Number(it.quantity ?? 0);
+    if (qty <= 0) continue;
+    const { data: p } = await supabase
+      .from("products")
+      .select("stock_quantity")
+      .eq("id", it.product_id)
+      .maybeSingle();
+    if (!p) continue;
+    await supabase
+      .from("products")
+      .update({ stock_quantity: Math.max(0, Number(p.stock_quantity ?? 0) - qty) })
+      .eq("id", it.product_id);
+  }
+}
+
 export async function createPurchase(
   raw: unknown,
 ): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
@@ -258,19 +425,20 @@ export async function createPurchase(
     quantity: i.quantity,
     unit_cost: i.unit_cost,
     unit: i.unit ?? "buc",
+    pack_note: i.pack_note ?? null,
     vat_rate: i.vat_rate ?? 20,
     line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
     add_to_catalog: !!i.add_to_catalog,
   }));
-  // Insert; if the catalog / unit columns haven't been migrated yet, retry
-  // without them so existing schemas keep working.
+  // Insert; if the catalog / unit / pack_note columns haven't been migrated yet,
+  // retry without them so existing schemas keep working.
   // Cast through never to satisfy stale generated types.
   let lErr = (
     await supabase.from("purchase_items").insert(lines as never)
   ).error;
-  if (lErr && /(add_to_catalog|\bunit\b)/i.test(lErr.message)) {
+  if (lErr && /(add_to_catalog|\bunit\b|pack_note)/i.test(lErr.message)) {
     const stripped = lines.map(
-      ({ add_to_catalog: _a, unit: _u, ...rest }) => rest,
+      ({ add_to_catalog: _a, unit: _u, pack_note: _p, ...rest }) => rest,
     );
     lErr = (
       await supabase.from("purchase_items").insert(stripped as never)
@@ -704,7 +872,7 @@ export async function sendPurchaseToAccountant(
 
   const supabase = await createClient();
   const purSelect = (withUnit: boolean) =>
-    `id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, file_url, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, ${withUnit ? "unit, " : ""}vat_rate, line_total)`;
+    `id, account_scope, document_number, document_date, status, currency, subtotal, vat_amount, total, file_url, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, ${withUnit ? "unit, pack_note, " : ""}vat_rate, line_total)`;
   let hr = await supabase
     .from("purchases")
     .select(purSelect(true))
@@ -749,6 +917,7 @@ export async function sendPurchaseToAccountant(
       quantity: number | string;
       unit_cost: number | string;
       unit?: string | null;
+      pack_note?: string | null;
       vat_rate: number | string;
       line_total: number | string;
     }> | null;
@@ -781,6 +950,7 @@ export async function sendPurchaseToAccountant(
       quantity: Number(it.quantity ?? 0),
       unit_cost: Number(it.unit_cost ?? 0),
       unit: (it.unit ?? "buc") || "buc",
+      pack_note: it.pack_note ?? null,
       vat_rate: Number(it.vat_rate ?? 0),
       line_total: Number(it.line_total ?? 0),
     })),
@@ -844,10 +1014,11 @@ export async function sendPurchaseToAccountant(
 }
 
 /**
- * Update an existing purchase — header fields + replace all line items
- * with the new set. Posted purchases CAN be edited but stock is NOT
- * re-adjusted automatically; the operator is expected to know that
- * editing a posted document doesn't roll back / re-apply stock moves.
+ * Update an existing purchase — header fields + replace all line items with the
+ * new set. For POSTED purchases the stock is re-adjusted automatically: every
+ * old line's stock is reversed and every new line re-applied (create/link
+ * product, stock += qty, refresh cost_price), so the net change per product is
+ * exactly the edit. Draft purchases haven't touched stock, so nothing moves.
  */
 export async function updatePurchase(
   id: string,
@@ -874,9 +1045,25 @@ export async function updatePurchase(
   // ever lost.
   const { data: oldRows } = await supabase
     .from("purchase_items")
-    .select("id")
+    .select("id, product_id, quantity")
     .eq("purchase_id", id);
   const oldIds = (oldRows ?? []).map((r) => r.id as string);
+  // Captured for the stock re-apply below (posted purchases only).
+  const oldLines = (oldRows ?? []).map((r) => ({
+    product_id: (r as { product_id: string | null }).product_id ?? null,
+    quantity: (r as { quantity: number | string | null }).quantity ?? 0,
+  }));
+
+  // Is this a POSTED purchase? If so, editing must roll the old stock back and
+  // re-apply the new lines so stock + cost stay correct (operator complaint:
+  // "editez achiziția, editează-mi și stocul"). Draft purchases haven't touched
+  // stock, so they need no adjustment.
+  const { data: hdrStatus } = await supabase
+    .from("purchases")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  const wasPosted = hdrStatus?.status === "posted";
 
   await archivePurchaseItems(supabase, id, "update_replace", user.id);
 
@@ -891,6 +1078,7 @@ export async function updatePurchase(
     quantity: i.quantity,
     unit_cost: i.unit_cost,
     unit: i.unit ?? "buc",
+    pack_note: i.pack_note ?? null,
     vat_rate: i.vat_rate ?? 20,
     line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
     add_to_catalog: !!i.add_to_catalog,
@@ -898,9 +1086,9 @@ export async function updatePurchase(
   let lErr = (
     await supabase.from("purchase_items").insert(lines as never)
   ).error;
-  if (lErr && /(add_to_catalog|\bunit\b)/i.test(lErr.message)) {
+  if (lErr && /(add_to_catalog|\bunit\b|pack_note)/i.test(lErr.message)) {
     const stripped = lines.map(
-      ({ add_to_catalog: _a, unit: _u, ...rest }) => rest,
+      ({ add_to_catalog: _a, unit: _u, pack_note: _p, ...rest }) => rest,
     );
     lErr = (
       await supabase.from("purchase_items").insert(stripped as never)
@@ -912,6 +1100,39 @@ export async function updatePurchase(
   // New lines are in — now remove ONLY the previously-existing ones by id.
   if (oldIds.length > 0) {
     await supabase.from("purchase_items").delete().in("id", oldIds);
+  }
+
+  // Posted purchase: re-adjust stock. Reverse every OLD line's contribution,
+  // then apply every NEW line — the net effect per product is exactly the edit
+  // delta (works for changed qty, split lines, added and removed lines).
+  if (wasPosted) {
+    await reversePostedLines(supabase, oldLines);
+    let newRes = await supabase
+      .from("purchase_items")
+      .select(
+        "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, unit, add_to_catalog" as
+          "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
+      )
+      .eq("purchase_id", id);
+    if (newRes.error && /(add_to_catalog|\bunit\b)/i.test(newRes.error.message)) {
+      newRes = await supabase
+        .from("purchase_items")
+        .select(
+          "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
+        )
+        .eq("purchase_id", id);
+    }
+    const newLines = (newRes.data ?? []) as unknown as PostedLine[];
+    // Best-effort: the edit is already saved; a stock-apply hiccup is logged,
+    // not fatal, so the operator never loses the document.
+    const applied = await applyPostedLines(
+      supabase,
+      { supplier_id: v.supplier_id, currency: v.currency, fx_rate: v.fx_rate ?? null },
+      newLines,
+    );
+    if (!applied.ok) {
+      console.warn("[panel.purchases] stock re-apply on edit:", applied.reason);
+    }
   }
 
   // Header last. `updated_by` records who edited; it degrades gracefully if the

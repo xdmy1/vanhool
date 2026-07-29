@@ -77,10 +77,12 @@ export function accountantMonthlyPurchasesEmail(
             (it.line_total * (it.vat_rate / 100)).toFixed(2),
           );
           const grossLine = Number((netLine + vatLineAmount).toFixed(2));
+          const packNote = (it as { pack_note?: string | null }).pack_note;
           return `<tr style="border-bottom:1px solid #eee5d2">
             <td style="padding:5px 8px;font-size:11px;color:#2a2622;vertical-align:top">
               ${it.supplier_code ? `<span style="font-family:ui-monospace,monospace;color:#6b6358">${escapeHtml(it.supplier_code)}</span><br/>` : ""}
               ${escapeHtml(it.description)}
+              ${packNote ? `<div style="margin-top:2px;font-size:10px;color:#b45309">↔ Desfăcut: ${escapeHtml(String(packNote))}</div>` : ""}
             </td>
             <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top;white-space:nowrap">${it.quantity} ${escapeHtml((it as { unit?: string }).unit ?? "buc")}</td>
             <td style="padding:5px 8px;font-size:11px;text-align:right;color:#2a2622;vertical-align:top">${fmtMoney(it.unit_cost, p.currency)}</td>
@@ -266,8 +268,10 @@ export function accountantMonthlyPurchasesEmail(
       const netLine = Number(it.line_total.toFixed(2));
       const vatLine = Number((it.line_total * (it.vat_rate / 100)).toFixed(2));
       const grossLine = Number((netLine + vatLine).toFixed(2));
+      const um = (it as { unit?: string }).unit ?? "buc";
+      const pn = (it as { pack_note?: string | null }).pack_note;
       textLines.push(
-        `   • ${code}${it.description}: ${it.quantity} buc × ${it.unit_cost.toFixed(2)} = net ${netLine.toFixed(2)} + TVA ${vatLine.toFixed(2)} (${it.vat_rate}%) = total ${grossLine.toFixed(2)} ${p.currency}`,
+        `   • ${code}${it.description}: ${it.quantity} ${um} × ${it.unit_cost.toFixed(2)} = net ${netLine.toFixed(2)} + TVA ${vatLine.toFixed(2)} (${it.vat_rate}%) = total ${grossLine.toFixed(2)} ${p.currency}${pn ? ` [desfăcut: ${pn}]` : ""}`,
       );
     }
     textLines.push(

@@ -126,6 +126,7 @@ export type PurchasesForMonth = {
       quantity: number;
       unit_cost: number;
       unit: string;
+      pack_note: string | null;
       vat_rate: number;
       line_total: number;
     }>;
@@ -145,7 +146,7 @@ export async function getConta1PurchasesForRange(
 ): Promise<PurchasesForMonth> {
   const supabase = await createClient();
   const buildSelect = (withUnit: boolean) =>
-    `id, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, ${withUnit ? "unit, " : ""}vat_rate, line_total)`;
+    `id, document_number, document_date, status, currency, subtotal, vat_amount, total, suppliers(name, idno, vat_code, contact_email, contact_phone, address), purchase_items(id, supplier_code, internal_code, description, quantity, unit_cost, ${withUnit ? "unit, pack_note, " : ""}vat_rate, line_total)`;
   let { data, error } = await supabase
     .from("purchases")
     .select(buildSelect(true))
@@ -153,8 +154,8 @@ export async function getConta1PurchasesForRange(
     .gte("document_date", fromIso)
     .lte("document_date", toIso)
     .order("document_date", { ascending: true });
-  // Retry without `unit` if the column isn't migrated yet.
-  if (error && /\bunit\b/i.test(error.message)) {
+  // Retry without `unit` / `pack_note` if the columns aren't migrated yet.
+  if (error && /(\bunit\b|pack_note)/i.test(error.message)) {
     ({ data, error } = await supabase
       .from("purchases")
       .select(buildSelect(false))
@@ -198,6 +199,7 @@ export async function getConta1PurchasesForRange(
       quantity: number | string;
       unit_cost: number | string;
       unit?: string | null;
+      pack_note?: string | null;
       vat_rate: number | string;
       line_total: number | string;
     }> | null;
@@ -234,6 +236,7 @@ export async function getConta1PurchasesForRange(
         quantity: Number(it.quantity ?? 0),
         unit_cost: Number(it.unit_cost ?? 0),
         unit: (it.unit ?? "buc") || "buc",
+        pack_note: it.pack_note ?? null,
         vat_rate: Number(it.vat_rate ?? 0),
         line_total: Number(it.line_total ?? 0),
       })),
@@ -284,6 +287,7 @@ export type PurchaseDetail = {
     quantity: number;
     unit_cost: number;
     unit: string;
+    pack_note: string | null;
     vat_rate: number;
     line_total: number;
     add_to_catalog: boolean;
@@ -378,12 +382,12 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   let itemsRes = await supabase
     .from("purchase_items")
     .select(
-      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, unit, vat_rate, line_total, add_to_catalog" as
+      "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, unit, pack_note, vat_rate, line_total, add_to_catalog" as
         "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total",
     )
     .eq("purchase_id", id)
     .order("created_at");
-  if (itemsRes.error && /(add_to_catalog|\bunit\b)/i.test(itemsRes.error.message)) {
+  if (itemsRes.error && /(add_to_catalog|\bunit\b|pack_note)/i.test(itemsRes.error.message)) {
     itemsRes = await supabase
       .from("purchase_items")
       .select(
@@ -428,6 +432,7 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
       quantity: Number(it.quantity),
       unit_cost: Number(it.unit_cost),
       unit: ((it as { unit?: string | null }).unit ?? "buc") || "buc",
+      pack_note: (it as { pack_note?: string | null }).pack_note ?? null,
       vat_rate: Number(it.vat_rate),
       line_total: Number(it.line_total ?? it.quantity * it.unit_cost),
       add_to_catalog: Boolean(
