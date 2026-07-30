@@ -27,11 +27,15 @@ import { cn } from "@/lib/utils/cn";
 export function SplitLineControl({
   quantity,
   unitCost,
+  vatRate,
   currentUnit,
   onApply,
 }: {
   quantity: number;
+  /** NET unit cost (before VAT) — what's stored on the line. */
   unitCost: number;
+  /** VAT % on the line (0 or 20) — the split preview divides the GROSS total. */
+  vatRate: number;
   currentUnit: string;
   onApply: (next: {
     quantity: number;
@@ -63,10 +67,16 @@ export function SplitLineControl({
   }, [open]);
 
   const perN = Number(per.replace(",", ".")) || 0;
-  const lineTotal = Number((quantity * unitCost).toFixed(2));
+  const vatFactor = 1 + (Number(vatRate) || 0) / 100;
+  // GROSS (with VAT) is what the split divides + shows — the actual cash out.
+  const grossTotal = Number((quantity * unitCost * vatFactor).toFixed(2));
+  const netTotal = Number((quantity * unitCost).toFixed(2));
   const newQty = perN > 0 ? Number((quantity * perN).toFixed(3)) : 0;
-  const newCost = newQty > 0 ? Number((lineTotal / newQty).toFixed(2)) : 0;
-  const valid = perN > 1 && newQty > 0 && lineTotal > 0;
+  // Per-sub-unit GROSS (shown) + NET (stored on the line; VAT re-applied later).
+  const newGross = newQty > 0 ? Number((grossTotal / newQty).toFixed(2)) : 0;
+  const newCost = newQty > 0 ? Number((netTotal / newQty).toFixed(2)) : 0;
+  const hasVat = vatFactor > 1;
+  const valid = perN > 1 && newQty > 0 && grossTotal > 0;
 
   function apply() {
     if (!valid) return;
@@ -137,7 +147,7 @@ export function SplitLineControl({
             </select>
           </div>
 
-          {/* live preview */}
+          {/* live preview — divides the GROSS (with-VAT) total */}
           <div className="mt-2 rounded-md border border-border bg-background p-2 text-[11px]">
             {valid ? (
               <>
@@ -148,15 +158,31 @@ export function SplitLineControl({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">Cost / {unit}</span>
+                  <span className="text-muted">
+                    Cost {hasVat ? "cu TVA" : ""} / {unit}
+                  </span>
                   <span className="font-semibold tabular-nums text-primary">
-                    {newCost.toFixed(2)} lei
+                    {newGross.toFixed(2)} lei
                   </span>
                 </div>
+                {hasVat ? (
+                  <div className="flex justify-between text-muted">
+                    <span>din care net / {unit}</span>
+                    <span className="tabular-nums">{newCost.toFixed(2)} lei</span>
+                  </div>
+                ) : null}
                 <div className="mt-1 flex justify-between border-t border-border/60 pt-1 text-muted">
-                  <span>Total (neschimbat)</span>
-                  <span className="tabular-nums">{lineTotal.toFixed(2)} lei</span>
+                  <span>Total {hasVat ? "cu TVA" : ""} (neschimbat)</span>
+                  <span className="tabular-nums font-medium text-foreground">
+                    {grossTotal.toFixed(2)} lei
+                  </span>
                 </div>
+                {hasVat ? (
+                  <div className="flex justify-between text-muted">
+                    <span>Total net</span>
+                    <span className="tabular-nums">{netTotal.toFixed(2)} lei</span>
+                  </div>
+                ) : null}
               </>
             ) : (
               <span className="text-muted">

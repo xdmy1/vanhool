@@ -436,6 +436,7 @@ export function PurchaseForm({
                       <SplitLineControl
                         quantity={l.quantity}
                         unitCost={l.unit_cost}
+                        vatRate={l.vat_rate}
                         currentUnit={l.unit}
                         onApply={(next) => setLine(idx, next)}
                       />
