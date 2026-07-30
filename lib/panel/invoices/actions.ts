@@ -17,6 +17,7 @@ import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
 import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
+import { normalizeCode } from "@/lib/utils/normalize-code";
 
 type InvoiceLineWithSupplier = InvoiceItemSnapshot;
 
@@ -207,32 +208,76 @@ async function resolveLineProductId(
     null;
   if (direct) return direct;
 
-  const code = (
-    ((line as { partCode?: string | null }).partCode ??
-      (line as { part_code?: string | null }).part_code) ||
-    ""
-  ).trim();
-  if (!code) return null;
+  // Collect every code the line carries. A proforma for an uncatalogued part
+  // freezes the SUPPLIER code as `partCode`; once the purchase is posted the
+  // new product's `part_code` becomes the auto-generated INTERNAL code and the
+  // quoted code lives on `supplier_code` + the normalized `search_codes` index.
+  // So we must RE-RESOLVE at conversion time across all of these.
+  const codes = Array.from(
+    new Set(
+      [
+        (line as { partCode?: string | null }).partCode,
+        (line as { part_code?: string | null }).part_code,
+        (line as { supplierCode?: string | null }).supplierCode,
+        (line as { supplier_code?: string | null }).supplier_code,
+      ]
+        .map((c) => (c ?? "").toString().trim())
+        .filter((c) => c.length > 0),
+    ),
+  );
+  if (codes.length === 0) return null;
 
-  // Try both columns, because a line's code can be either kind:
-  //   • part_code     — set when the line was picked off the catalog, and it
-  //                     is the auto-generated INTERNAL code for products that
-  //                     `postPurchase` created (part_code = internal_code).
-  //   • supplier_code — what a proforma quoted off a supplier list, which is
-  //                     the code `postPurchase` copies onto the new product.
-  // The supplier-code path is the one that carries the common flow: quote an
-  // uncatalogued part, enter the purchase under the same code, invoice it.
-  const escaped = code.replace(/[\\%_]/g, "\\$&");
-  for (const column of ["part_code", "supplier_code"] as const) {
-    const { data } = await client
-      .from("products")
-      .select("id")
-      .ilike(column, escaped)
-      .limit(2);
-    // Ambiguous code → refuse to guess which product to move stock on.
-    if (data && data.length === 1) return data[0].id;
+  // Tiered candidate pool. Tier 1 exact part_code, tier 2 exact supplier_code,
+  // tier 3 normalized search_codes (survives space/dash/case differences AND
+  // matches a product that was cataloged AFTER the proforma was raised — the
+  // whole point). Lower tier wins; ties broken by most-recent product (the one
+  // the just-entered purchase created). Ranking is stock-INDEPENDENT so the
+  // decrement and the later void/delete restore resolve to the SAME product.
+  const best = new Map<string, { tier: number; created: string }>();
+  const consider = (
+    rows: Array<{ id: string; created_at?: string | null }> | null,
+    tier: number,
+  ) => {
+    for (const r of rows ?? []) {
+      const prev = best.get(r.id);
+      if (!prev || tier < prev.tier) {
+        best.set(r.id, { tier, created: r.created_at ?? "" });
+      }
+    }
+  };
+
+  for (const code of codes) {
+    const escaped = code.replace(/[\\%_]/g, "\\$&");
+    const norm = normalizeCode(code);
+    const [byPart, bySupplier, byCodes] = await Promise.all([
+      client.from("products").select("id, created_at").ilike("part_code", escaped).limit(5),
+      client.from("products").select("id, created_at").ilike("supplier_code", escaped).limit(5),
+      norm.length > 0
+        ? client
+            .from("products")
+            .select("id, created_at")
+            .contains("search_codes", [norm])
+            .limit(5)
+        : Promise.resolve({ data: [] as Array<{ id: string; created_at?: string | null }> }),
+    ]);
+    consider(byPart.data as Array<{ id: string; created_at?: string | null }>, 1);
+    consider(bySupplier.data as Array<{ id: string; created_at?: string | null }>, 2);
+    consider(byCodes.data as Array<{ id: string; created_at?: string | null }>, 3);
   }
-  return null;
+
+  if (best.size === 0) return null;
+  const ranked = Array.from(best.entries()).sort((a, b) => {
+    if (a[1].tier !== b[1].tier) return a[1].tier - b[1].tier;
+    return b[1].created.localeCompare(a[1].created); // most recent first
+  });
+  if (best.size > 1) {
+    // Deterministic PICK, not skip: goods physically left the shelf, so under-
+    // decrementing (oversell) is the worse failure. Log for review.
+    console.warn(
+      `[panel.invoices] resolveLineProductId ambiguous for code(s) ${codes.join("/")}: ${best.size} products, picked ${ranked[0][0].slice(0, 8)}`,
+    );
+  }
+  return ranked[0][0];
 }
 
 /**
