@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { DecimalInput } from "@/components/common/DecimalInput";
 import { MarkupShortcuts } from "@/components/panel/sales/MarkupShortcuts";
 import { Price } from "@/components/common/Price";
 import { cn } from "@/lib/utils/cn";
@@ -1066,35 +1067,22 @@ function StepProducts({
                     </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Input
-                          type="number"
-                          // Pieces stay integers; litri/m allow up to 3
-                          // decimals (typical for fluid + cable cuts).
-                          step={l.unit === "buc" ? 1 : 0.001}
+                        <DecimalInput
+                          // Pieces stay integers; litri/m allow decimals. Can't
+                          // sell more than stock — clamped to stock on blur for
+                          // real catalog parts (draft/not-received lines have no
+                          // stock row, so they stay uncapped).
+                          value={l.qty}
+                          integer={l.unit === "buc"}
                           min={l.unit === "buc" ? 1 : 0.001}
                           max={
-                            l.unit === "buc"
+                            !isDraft &&
+                            typeof l.product.stock_quantity === "number" &&
+                            l.product.stock_quantity > 0
                               ? l.product.stock_quantity
                               : undefined
                           }
-                          value={l.qty}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value || 0);
-                            let next =
-                              l.unit === "buc"
-                                ? Math.max(1, Math.trunc(raw))
-                                : Math.max(0.001, raw);
-                            // Can't sell more than we physically have. Real
-                            // catalog parts are clamped to stock here so the
-                            // operator never gets a late server reject; draft
-                            // (not-yet-received) lines have no stock row, so
-                            // they're left uncapped by design.
-                            const stock = l.product.stock_quantity;
-                            if (!isDraft && typeof stock === "number" && stock > 0) {
-                              next = Math.min(next, stock);
-                            }
-                            update(idx, { qty: next });
-                          }}
+                          onChange={(n) => update(idx, { qty: n ?? 0 })}
                           className="h-8 w-20 text-right"
                         />
                         <UnitSelector
@@ -1152,18 +1140,11 @@ function StepProducts({
                       </div>
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <DecimalInput
+                        value={l.discounted_unit_price ?? null}
+                        allowEmpty
                         min={0}
-                        value={l.discounted_unit_price ?? ""}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          update(idx, {
-                            discounted_unit_price:
-                              raw === "" ? null : Math.max(0, Number(raw)),
-                          });
-                        }}
+                        onChange={(n) => update(idx, { discounted_unit_price: n })}
                         placeholder={l.unit_price.toFixed(2)}
                         className="ml-auto h-8 w-24 text-right"
                       />

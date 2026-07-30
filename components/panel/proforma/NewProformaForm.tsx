@@ -28,6 +28,7 @@ import {
 } from "@/lib/panel/invoices/actions";
 import { PartCodeAutocomplete } from "@/components/panel/proforma/PartCodeAutocomplete";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { DecimalInput } from "@/components/common/DecimalInput";
 import { MarkupShortcuts } from "@/components/panel/sales/MarkupShortcuts";
 import {
   type ClientSearchResult,
@@ -577,20 +578,11 @@ export function NewProformaForm({
                       </select>
                     </td>
                     <td className="px-2 py-2 text-right">
-                      <Input
-                        type="number"
-                        step={l.unit === "buc" ? 1 : 0.001}
-                        min={l.unit === "buc" ? 1 : 0.001}
+                      <DecimalInput
                         value={l.quantity}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value || 0);
-                          setLine(idx, {
-                            quantity:
-                              l.unit === "buc"
-                                ? Math.max(0, Math.trunc(raw))
-                                : Math.max(0, raw),
-                          });
-                        }}
+                        integer={l.unit === "buc"}
+                        min={0}
+                        onChange={(n) => setLine(idx, { quantity: n ?? 0 })}
                         className="ml-auto h-9 w-20 text-right"
                       />
                     </td>
@@ -657,18 +649,11 @@ export function NewProformaForm({
                       </div>
                     </td>
                     <td className="px-2 py-2 text-right">
-                      <Input
-                        type="number"
-                        step="0.01"
+                      <DecimalInput
+                        value={l.discounted_unit_price ?? null}
+                        allowEmpty
                         min={0}
-                        value={l.discounted_unit_price ?? ""}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          setLine(idx, {
-                            discounted_unit_price:
-                              raw === "" ? null : Math.max(0, Number(raw)),
-                          });
-                        }}
+                        onChange={(n) => setLine(idx, { discounted_unit_price: n })}
                         placeholder={l.unit_price > 0 ? l.unit_price.toFixed(2) : "—"}
                         className="ml-auto h-9 w-24 text-right"
                       />

@@ -15,6 +15,7 @@ import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
 import { PurchaseFileUpload } from "@/components/panel/purchases/PurchaseFileUpload";
 import { SplitLineControl } from "@/components/panel/purchases/SplitLineControl";
+import { DecimalInput } from "@/components/common/DecimalInput";
 import { cn } from "@/lib/utils/cn";
 import { PRODUCT_UNITS, isDivisibleUnit, unitStep } from "@/lib/stock";
 import {
@@ -396,21 +397,14 @@ export function PurchaseForm({
                   </td>
                   <td className="px-2 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Input
-                        type="number"
-                        step={unitStep(l.unit)}
+                      <DecimalInput
+                        value={l.quantity}
+                        integer={!isDivisibleUnit(l.unit)}
                         min={isDivisibleUnit(l.unit) ? 0 : 1}
-                        value={l.quantity > 0 ? l.quantity : ""}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value) || 0;
-                          // Divisible units (litru/metru/kg) keep decimals; "buc"
-                          // stays whole.
-                          const q = isDivisibleUnit(l.unit)
-                            ? Math.max(0, raw)
-                            : Math.max(1, Math.trunc(raw));
+                        onChange={(n) =>
                           // Manual change invalidates a prior split trace.
-                          setLine(idx, { quantity: q, pack_note: null });
-                        }}
+                          setLine(idx, { quantity: n ?? 0, pack_note: null })
+                        }
                         placeholder="1"
                         className="h-9 w-16 text-right"
                       />
