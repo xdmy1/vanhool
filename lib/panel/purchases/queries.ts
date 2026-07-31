@@ -19,6 +19,8 @@ export type PurchaseListRow = {
 export async function listPurchases(args: {
   scope: AccountScope;
   q?: string;
+  /** Restrict to a single purchase status (e.g. "draft" for the dashboard KPI). */
+  status?: PurchaseListRow["status"];
 }): Promise<PurchaseListRow[]> {
   const supabase = await createClient();
 
@@ -69,6 +71,9 @@ export async function listPurchases(args: {
       .eq("account_scope", args.scope)
       .order("document_date", { ascending: false })
       .limit(100);
+    if (args.status) {
+      q = q.eq("status", args.status);
+    }
     if (allowedIds) {
       q = q.in("id", allowedIds);
     }

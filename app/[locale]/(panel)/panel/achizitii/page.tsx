@@ -37,11 +37,34 @@ export default async function PanelAchizitiiPage({
 
   const scope = await getActiveBook(sp);
   const q = typeof sp.q === "string" ? sp.q : undefined;
-  const rows = await listPurchases({ scope, q });
+  // Status filter — "Draft" is the set the dashboard "Achiziții draft" card
+  // links to; "Postat" is the everyday completed set.
+  const PURCHASE_STATUS_FILTERS = ["draft", "posted"] as const;
+  type PurchaseStatusFilter = (typeof PURCHASE_STATUS_FILTERS)[number];
+  const statusParam: PurchaseStatusFilter | undefined =
+    typeof sp.status === "string" &&
+    (PURCHASE_STATUS_FILTERS as readonly string[]).includes(sp.status)
+      ? (sp.status as PurchaseStatusFilter)
+      : undefined;
+  const rows = await listPurchases({ scope, q, status: statusParam });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const bookLabel = scope === "conta1" ? t("conta1") : t("conta2");
   const statusLabel = (s: string) =>
     t(`achizitii_status_${s}` as "achizitii_status_draft");
+
+  function statusHref(id: PurchaseStatusFilter | null): string {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "status" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (id) next.set("status", id);
+    return next.toString() ? `?${next}` : "?";
+  }
+  const statusChips: Array<{ id: PurchaseStatusFilter; label: string }> = [
+    { id: "draft", label: t("achizitii_status_draft") },
+    { id: "posted", label: t("achizitii_status_posted") },
+  ];
 
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
@@ -67,6 +90,37 @@ export default async function PanelAchizitiiPage({
           placeholder={t("achizitii_search_placeholder")}
           className="w-full max-w-md"
         />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <a
+          href={statusHref(null)}
+          className={cn(
+            "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+            !statusParam
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+          )}
+        >
+          {t("facturi_filter_all")}
+        </a>
+        {statusChips.map((s) => {
+          const active = statusParam === s.id;
+          return (
+            <a
+              key={s.id}
+              href={statusHref(s.id)}
+              className={cn(
+                "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+              )}
+            >
+              {s.label}
+            </a>
+          );
+        })}
       </div>
 
       <div className="mt-6">

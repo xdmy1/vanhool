@@ -41,8 +41,31 @@ export default async function PanelProformePage({
   setRequestLocale(locale);
 
   const q = typeof sp.q === "string" ? sp.q : undefined;
-  const rows = await listInvoices({ type: "proforma", q });
+  // Status filter — "Deschise" (sent) is the open set the dashboard links to.
+  const PROFORMA_STATUS_FILTERS = ["sent", "converted", "void"] as const;
+  type ProformaStatusFilter = (typeof PROFORMA_STATUS_FILTERS)[number];
+  const statusParam: ProformaStatusFilter | undefined =
+    typeof sp.status === "string" &&
+    (PROFORMA_STATUS_FILTERS as readonly string[]).includes(sp.status)
+      ? (sp.status as ProformaStatusFilter)
+      : undefined;
+  const rows = await listInvoices({ type: "proforma", q, status: statusParam });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
+
+  function statusHref(id: ProformaStatusFilter | null): string {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "status" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (id) next.set("status", id);
+    return next.toString() ? `?${next}` : "?";
+  }
+  const statusChips: Array<{ id: ProformaStatusFilter; label: string }> = [
+    { id: "sent", label: t("proforma_filter_open") },
+    { id: "converted", label: t("proforma_status_converted") },
+    { id: "void", label: t("proforma_status_void") },
+  ];
   const statusLabel = (s: string) =>
     s === "sent"
       ? t("proforma_status_sent")
@@ -78,6 +101,37 @@ export default async function PanelProformePage({
 
       <div className="mt-6 max-w-md">
         <SearchInput placeholder={t("proforma_search_placeholder")} />
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <a
+          href={statusHref(null)}
+          className={cn(
+            "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+            !statusParam
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+          )}
+        >
+          {t("facturi_filter_all")}
+        </a>
+        {statusChips.map((s) => {
+          const active = statusParam === s.id;
+          return (
+            <a
+              key={s.id}
+              href={statusHref(s.id)}
+              className={cn(
+                "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+              )}
+            >
+              {s.label}
+            </a>
+          );
+        })}
       </div>
 
       <div className="mt-6">

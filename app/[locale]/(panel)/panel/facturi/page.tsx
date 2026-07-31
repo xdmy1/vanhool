@@ -86,6 +86,10 @@ export default async function PanelFacturiPage({
   const fromParam = typeof sp.from === "string" && sp.from ? sp.from : undefined;
   const toParam = typeof sp.to === "string" && sp.to ? sp.to : undefined;
   const overdueOnly = sp.overdue === "1";
+  // "Neachitate" — the open receivable set (issued / sent / partial, not paid).
+  // Cross-status, so it lives outside the single-status radio group and is
+  // mutually exclusive with both `status` and `overdue`.
+  const unpaidOnly = sp.unpaid === "1";
   const STATUS_FILTERS = ["draft", "issued", "partial", "paid", "void"] as const;
   type StatusFilter = (typeof STATUS_FILTERS)[number];
   const statusParam: StatusFilter | undefined =
@@ -113,6 +117,7 @@ export default async function PanelFacturiPage({
     from: fromParam,
     to: toParam,
     overdueOnly,
+    unpaidOnly,
     entered: enteredParam,
     // "partial" is a valid runtime status the generated union doesn't list yet.
     status: statusParam as
@@ -187,12 +192,22 @@ export default async function PanelFacturiPage({
   const overdueHref = (() => {
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) {
-      // Drop both `overdue` and `status` so toggling overdue clears any
-      // active status chip — the two are mutually exclusive in the UI.
-      if (k === "overdue" || k === "status" || v === undefined) continue;
+      // Drop `overdue`, `status` and `unpaid` so toggling overdue clears any
+      // active status / unpaid chip — the three are mutually exclusive.
+      if (k === "overdue" || k === "status" || k === "unpaid" || v === undefined) continue;
       next.set(k, Array.isArray(v) ? v.join(",") : v);
     }
     if (!overdueOnly) next.set("overdue", "1");
+    return next.toString() ? `?${next}` : "?";
+  })();
+  // "Neachitate" toggle — mutually exclusive with status / overdue.
+  const unpaidHref = (() => {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      if (k === "unpaid" || k === "status" || k === "overdue" || v === undefined) continue;
+      next.set(k, Array.isArray(v) ? v.join(",") : v);
+    }
+    if (!unpaidOnly) next.set("unpaid", "1");
     return next.toString() ? `?${next}` : "?";
   })();
   // One href per status chip; clicking a status drops `overdue` so the
@@ -207,7 +222,7 @@ export default async function PanelFacturiPage({
   function statusHref(id: StatusFilter | null): string {
     const next = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) {
-      if (k === "status" || k === "overdue" || v === undefined) continue;
+      if (k === "status" || k === "overdue" || k === "unpaid" || v === undefined) continue;
       next.set(k, Array.isArray(v) ? v.join(",") : v);
     }
     if (id) next.set("status", id);
@@ -313,12 +328,23 @@ export default async function PanelFacturiPage({
             href={statusHref(null)}
             className={cn(
               "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
-              !statusParam && !overdueOnly
+              !statusParam && !overdueOnly && !unpaidOnly
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border bg-surface hover:border-primary/40 hover:text-primary",
             )}
           >
             {t("facturi_filter_all")}
+          </a>
+          <a
+            href={unpaidHref}
+            className={cn(
+              "inline-flex h-8 items-center rounded-md border px-3 text-[11px] uppercase tracking-wide transition-colors",
+              unpaidOnly
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-surface hover:border-primary/40 hover:text-primary",
+            )}
+          >
+            {t("facturi_filter_unpaid")}
           </a>
           {statusChips.map((s) => {
             const active = statusParam === s.id;

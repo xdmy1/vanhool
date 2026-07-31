@@ -127,15 +127,35 @@ export default async function PanelDashboardPage({
     (r) => (r as { currency?: string | null }).currency,
   );
 
-  const openProformas = proformas.filter((p) => p.status === "sent").length;
-  const unpaidInvoices = invoices.filter(
-    (i) => i.status === "issued" || i.status === "sent" || i.status === "draft",
-  ).length;
-
+  // Open proformas = still "sent" (presented to the customer, awaiting
+  // conversion). Converted ones became invoices (counted as a receivable
+  // below), void/paid are closed, draft isn't presented yet — none belong in
+  // the "expected" figure.
+  const openProformaDocs = proformas.filter((p) => p.status === "sent");
+  const openProformas = openProformaDocs.length;
   const proformaTotalByCurrency = bucketBy(
-    proformas.filter((p) => p.status === "sent"),
+    openProformaDocs,
     (p) => Number(p.total ?? 0),
     (p) => p.currency,
+  );
+
+  // "Neplătite" = the canonical receivable set (issued / sent / partial and not
+  // yet paid) — identical to owedByCurrency and the facturi ?unpaid=1 list.
+  //   • draft   is NOT owed (never issued to the customer),
+  //   • partial IS owed (they still owe total − paid_amount),
+  //   • paid / void / converted are closed.
+  const OPEN_INVOICE_STATUS = new Set(["issued", "sent", "partial"]);
+  const openInvoices = invoices.filter(
+    (i) => OPEN_INVOICE_STATUS.has(i.status) && !i.paid_at,
+  );
+  const unpaidInvoices = openInvoices.length;
+  // How much customers still owe us, per currency — never collapse EUR into
+  // MDL. Subtract any partial payment so a half-settled invoice contributes
+  // only its remaining balance.
+  const invoiceOwedByCurrency = bucketBy(
+    openInvoices,
+    (i) => Number(i.total ?? 0) - Number(i.paid_amount ?? 0),
+    (i) => i.currency,
   );
 
   const fmtDateTime = (d: string | null) =>
@@ -180,6 +200,8 @@ export default async function PanelDashboardPage({
             c1: formatBucket(todayConta1ByCurrency),
             c2: formatBucket(todayConta2ByCurrency),
           })}
+          href="/panel/statistici"
+          locale={locale}
           accent
         />
         <KpiCard
@@ -187,6 +209,8 @@ export default async function PanelDashboardPage({
           label={t("dashboard_kpi_cash")}
           value={`${cash.balance.toFixed(2)} MDL`}
           sub={t("dashboard_kpi_cash_sub", { count: cash.movements_count })}
+          href="/panel/cheltuieli-cash"
+          locale={locale}
         />
         <KpiCard
           icon={Globe}
@@ -201,7 +225,7 @@ export default async function PanelDashboardPage({
           icon={AlertTriangle}
           label={t("dashboard_kpi_low_stock")}
           value={String(lowStock ?? 0)}
-          href="/panel/stock"
+          href="/panel/stock?filter=low"
           locale={locale}
           accent={(lowStock ?? 0) > 0}
           tone={(lowStock ?? 0) > 0 ? "warning" : undefined}
@@ -217,21 +241,24 @@ export default async function PanelDashboardPage({
           sub={t("dashboard_kpi_open_proformas_sub", {
             total: formatBucket(proformaTotalByCurrency),
           })}
-          href="/panel/proforme"
+          href="/panel/proforme?status=sent"
           locale={locale}
         />
         <KpiCard
           icon={Receipt}
           label={t("dashboard_kpi_unpaid_invoices")}
           value={String(unpaidInvoices)}
-          href="/panel/facturi"
+          sub={t("dashboard_kpi_unpaid_invoices_sub", {
+            total: formatBucket(invoiceOwedByCurrency),
+          })}
+          href="/panel/facturi?unpaid=1"
           locale={locale}
         />
         <KpiCard
           icon={ClipboardList}
           label={t("dashboard_kpi_draft_purchases")}
           value={String(draftPurchases ?? 0)}
-          href="/panel/achizitii"
+          href="/panel/achizitii?status=draft"
           locale={locale}
         />
         <KpiCard
@@ -241,6 +268,8 @@ export default async function PanelDashboardPage({
           sub={t("dashboard_kpi_7d_orders_sub", {
             total: salesByDay.reduce((s, r) => s + r.gross, 0).toFixed(2),
           })}
+          href="/panel/statistici"
+          locale={locale}
         />
       </section>
 

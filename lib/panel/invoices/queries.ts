@@ -15,6 +15,9 @@ export type InvoiceRow = {
   paid_at: string | null;
   currency: string;
   total: number;
+  /** Amount already settled (partial payments). Null when never paid. Used to
+   * derive the outstanding balance = total − paid_amount for open invoices. */
+  paid_amount: number | null;
   status: "draft" | "issued" | "sent" | "paid" | "void" | "converted";
   refrens_invoice_id: string | null;
   refrens_url: string | null;
@@ -47,6 +50,13 @@ export async function listInvoices(args: {
   /** When true, restrict to invoices past their due_date and still 'issued'. */
   overdueOnly?: boolean;
   /**
+   * When true, restrict to OPEN (unpaid) invoices — status issued / sent /
+   * partial. This is the canonical "receivable" set (what customers still owe);
+   * excludes draft (not issued to the customer yet), paid, void and converted.
+   * Mutually exclusive with `overdueOnly` / `status` at the UI level.
+   */
+  unpaidOnly?: boolean;
+  /**
    * Restrict to a single document status. Mutually exclusive with
    * `overdueOnly` at the UI level — both go through the same chip
    * row — but logically the call is safe to combine.
@@ -67,8 +77,8 @@ export async function listInvoices(args: {
       .from("invoices")
       .select(
         includeAccountant
-          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, created_by_name, customer_snapshot, account_scope"
-          : "id, order_id, type, series, number, issued_date, due_date, paid_at, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
+          ? "id, order_id, type, series, number, issued_date, due_date, paid_at, paid_amount, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, accountant_sent_at, accountant_entered_at, notes, created_by_name, customer_snapshot, account_scope"
+          : "id, order_id, type, series, number, issued_date, due_date, paid_at, paid_amount, currency, total, status, refrens_invoice_id, refrens_url, proforma_id, converted_to_invoice_id, notes, customer_snapshot, account_scope",
       )
       // Newest issue date first. Do NOT order by `number` here: numbers are
       // zero-padded at inconsistent widths across the three writers ("0068"
@@ -85,6 +95,14 @@ export async function listInvoices(args: {
     if (args.overdueOnly) {
       const today = todayISO();
       q = q.eq("status", "issued").lt("due_date", today);
+    } else if (args.unpaidOnly) {
+      // Same open-status set as owedByCurrency / the dashboard KPI, so the
+      // filtered list count matches the "Facturi neplătite" card. "partial"
+      // isn't in the generated status union yet, so cast the array.
+      q = q.in(
+        "status",
+        ["issued", "sent", "partial"] as unknown as Array<InvoiceRow["status"]>,
+      );
     } else if (args.status) {
       q = q.eq("status", args.status);
     }
@@ -143,6 +161,7 @@ export async function listInvoices(args: {
     issued_date: r.issued_date as string,
     due_date: r.due_date as string | null,
     paid_at: r.paid_at as string | null,
+    paid_amount: r.paid_amount == null ? null : Number(r.paid_amount),
     currency: (r.currency as string | null) ?? "MDL",
     total: Number(r.total ?? 0),
     status: r.status as InvoiceRow["status"],
