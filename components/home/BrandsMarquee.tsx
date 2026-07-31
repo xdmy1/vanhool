@@ -132,10 +132,15 @@ type Brand = { name: string; url: string };
  * 60fps on mobile. Each row uses a duplicated track translated by -50%
  * (or 0 → -50% reversed) so the loop is seamless without JS.
  *
+ * Rendered as WORDMARKS (brand names), not images: the logos were hotlinked
+ * from shop.mits-automotive.be, which now 308-redirects every image path to a
+ * login page — so ~256 <img> tags per page all failed and showed their `alt`
+ * text. Text cards have zero external dependency and can never break this way.
+ * The `url` field in BRAND_LOGOS is kept (currently unused) so real logo files
+ * can be dropped in later without re-typing the brand list.
+ *
  * No touch-scroll interaction in this version: writing `scrollLeft` per
- * frame on two rows brought mobile rendering to a crawl. The trade-off
- * is acceptable since each logo passes through the visible area within
- * a few seconds anyway.
+ * frame on two rows brought mobile rendering to a crawl.
  */
 export function BrandsMarquee() {
   // Split brands disjointly between the two rows — no brand appears in both
@@ -187,17 +192,12 @@ function MarqueeRow({
         {tiles.map((b, i) => (
           <div
             key={`${b.name}-${i}`}
-            className="flex h-12 w-24 shrink-0 select-none items-center justify-center rounded-md bg-white px-2.5 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-16 sm:w-32 sm:px-3 sm:py-2 md:h-20 md:w-40 md:rounded-lg md:px-5 md:py-3"
+            className="flex h-11 shrink-0 select-none items-center justify-center whitespace-nowrap rounded-md bg-white px-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-14 sm:px-5 md:h-16 md:rounded-lg md:px-7"
             title={b.name}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={b.url}
-              alt={b.name}
-              loading="lazy"
-              draggable={false}
-              className="max-h-full max-w-full select-none object-contain"
-            />
+            <span className="text-sm font-semibold tracking-tight text-slate-700 sm:text-base md:text-lg">
+              {b.name}
+            </span>
           </div>
         ))}
       </div>
