@@ -328,6 +328,255 @@ export type InvoiceExportRow = {
   refrens_url: string | null;
 };
 
+// ---------- Period totals (headline KPI + period-over-period delta) ----------
+export type PeriodTotals = { revenue: number; orders: number; aov: number };
+
+/** Revenue (MDL-normalised), order count and average order value for a range. */
+export async function reportPeriodTotals(
+  range: DateRange,
+  scope?: AccountScope,
+): Promise<PeriodTotals> {
+  const rows = await fetchOrdersInRange({ range, scope });
+  let revenue = 0;
+  for (const o of rows) {
+    revenue += toMdl(Number(o.total ?? 0), (o as { currency?: string | null }).currency);
+  }
+  const orders = rows.length;
+  return {
+    revenue: Number(revenue.toFixed(2)),
+    orders,
+    aov: orders > 0 ? Number((revenue / orders).toFixed(2)) : 0,
+  };
+}
+
+// ---------- Profit summary (HONEST — only cost-covered lines) ----------
+// A large share of line items has no captured cost snapshot. Counting those as
+// 100% margin would massively overstate profit, so profit / margin are computed
+// ONLY over lines with cost_price > 0, and we surface `coveragePct` (what share
+// of revenue that represents) so the number is never read as the whole picture.
+export type ProfitLeader = {
+  productId: string;
+  partCode: string | null;
+  name: string | null;
+  qty: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  marginPct: number;
+};
+export type ProfitSummary = {
+  /** All revenue in the range (MDL). */
+  revenueTotal: number;
+  /** Revenue of lines that DO carry a cost (the profit base). */
+  revenueCovered: number;
+  cost: number;
+  profit: number;
+  marginPct: number;
+  /** revenueCovered / revenueTotal — how trustworthy the profit figure is. */
+  coveragePct: number;
+  leaders: ProfitLeader[];
+};
+
+export async function reportProfitSummary(
+  range: DateRange,
+  scope?: AccountScope,
+  limit = 8,
+): Promise<ProfitSummary> {
+  const rows = await fetchOrdersInRange({ scope, range });
+  const map = new Map<string, ProfitLeader>();
+  let revenueTotal = 0;
+  let revenueCovered = 0;
+  let costTotal = 0;
+  for (const o of rows) {
+    const items = (Array.isArray(o.items) ? o.items : []) as Array<{
+      productId?: string;
+      partCode?: string | null;
+      name?: string | null;
+      quantity?: number;
+      price?: number;
+      cost_price?: number;
+      total?: number;
+    }>;
+    const orderCurrency = (o as { currency?: string | null }).currency;
+    for (const it of items) {
+      const qty = Number(it.quantity ?? 0);
+      const revenue = toMdl(
+        Number(it.total ?? qty * Number(it.price ?? 0)),
+        orderCurrency,
+      );
+      revenueTotal += revenue;
+      const cp = Number(it.cost_price ?? 0);
+      if (cp <= 0) continue; // no cost snapshot → excluded from profit
+      const cost = qty * cp; // cost_price is GROSS MDL
+      revenueCovered += revenue;
+      costTotal += cost;
+      const key = String(it.productId ?? it.partCode ?? "—");
+      const e =
+        map.get(key) ?? {
+          productId: key,
+          partCode: it.partCode ?? null,
+          name: it.name ?? null,
+          qty: 0,
+          revenue: 0,
+          cost: 0,
+          profit: 0,
+          marginPct: 0,
+        };
+      e.qty += qty;
+      e.revenue += revenue;
+      e.cost += cost;
+      e.profit = e.revenue - e.cost;
+      e.marginPct = e.revenue > 0 ? (e.profit / e.revenue) * 100 : 0;
+      map.set(key, e);
+    }
+  }
+  const profit = revenueCovered - costTotal;
+  return {
+    revenueTotal: Number(revenueTotal.toFixed(2)),
+    revenueCovered: Number(revenueCovered.toFixed(2)),
+    cost: Number(costTotal.toFixed(2)),
+    profit: Number(profit.toFixed(2)),
+    marginPct: revenueCovered > 0 ? Number(((profit / revenueCovered) * 100).toFixed(1)) : 0,
+    coveragePct:
+      revenueTotal > 0 ? Number(((revenueCovered / revenueTotal) * 100).toFixed(0)) : 0,
+    leaders: Array.from(map.values())
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, limit)
+      .map((e) => ({
+        ...e,
+        revenue: Number(e.revenue.toFixed(2)),
+        cost: Number(e.cost.toFixed(2)),
+        profit: Number(e.profit.toFixed(2)),
+        marginPct: Number(e.marginPct.toFixed(1)),
+      })),
+  };
+}
+
+// ---------- Receivables aging (open invoices bucketed by age) ----------
+// Same open-receivable definition as the dashboard / owedByCurrency:
+// issued|sent|partial, not paid, owed = total − paid_amount. Per-currency,
+// never mixed. Aged by days since issued_date (always present).
+export type AgingBucket = {
+  key: string;
+  minDays: number;
+  maxDays: number | null;
+  byCurrency: Record<string, number>;
+  count: number;
+};
+export async function reportReceivablesAging(): Promise<{
+  buckets: AgingBucket[];
+  totalByCurrency: Record<string, number>;
+}> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("invoices")
+    .select("issued_date, currency, total, paid_amount, status, paid_at")
+    .eq("type", "invoice")
+    .limit(1000);
+  const defs: Array<{ key: string; minDays: number; maxDays: number | null }> = [
+    { key: "0-30", minDays: 0, maxDays: 30 },
+    { key: "31-60", minDays: 31, maxDays: 60 },
+    { key: "61-90", minDays: 61, maxDays: 90 },
+    { key: "90+", minDays: 91, maxDays: null },
+  ];
+  const buckets: AgingBucket[] = defs.map((d) => ({ ...d, byCurrency: {}, count: 0 }));
+  const totalByCurrency: Record<string, number> = {};
+  const open = new Set(["issued", "sent", "partial"]);
+  const todayMs = Date.parse(`${todayISO()}T00:00:00Z`);
+  for (const r of ((data ?? []) as unknown) as Array<{
+    issued_date: string | null;
+    currency: string | null;
+    total: number | null;
+    paid_amount: number | null;
+    status: string;
+    paid_at: string | null;
+  }>) {
+    if (!open.has(r.status) || r.paid_at) continue;
+    const owed = Number(r.total ?? 0) - Number(r.paid_amount ?? 0);
+    if (owed <= 0.005) continue;
+    const cur = (r.currency ?? "MDL").toUpperCase();
+    const issuedMs = Date.parse(`${String(r.issued_date)}T00:00:00Z`);
+    const age = Number.isFinite(issuedMs)
+      ? Math.max(0, Math.floor((todayMs - issuedMs) / 86_400_000))
+      : 0;
+    const b =
+      buckets.find(
+        (x) => age >= x.minDays && (x.maxDays == null || age <= x.maxDays),
+      ) ?? buckets[buckets.length - 1];
+    b.byCurrency[cur] = Number(((b.byCurrency[cur] ?? 0) + owed).toFixed(2));
+    b.count += 1;
+    totalByCurrency[cur] = Number(((totalByCurrency[cur] ?? 0) + owed).toFixed(2));
+  }
+  return { buckets, totalByCurrency };
+}
+
+// ---------- Document conversion (proforma → invoice → paid) ----------
+export type ConversionStats = {
+  proformasIssued: number;
+  proformasConverted: number;
+  proformaRate: number;
+  invoicesIssued: number;
+  invoicesPaid: number;
+  paidRate: number;
+};
+export async function reportConversion(range: DateRange): Promise<ConversionStats> {
+  const supabase = await createClient();
+  const [{ data: pf }, { data: inv }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("status, converted_to_invoice_id")
+      .eq("type", "proforma")
+      .gte("issued_date", range.from)
+      .lte("issued_date", range.to)
+      .limit(2000),
+    supabase
+      .from("invoices")
+      .select("status, paid_at")
+      .eq("type", "invoice")
+      .gte("issued_date", range.from)
+      .lte("issued_date", range.to)
+      .limit(2000),
+  ]);
+  const proformasIssued = (pf ?? []).length;
+  const proformasConverted = (pf ?? []).filter(
+    (p) =>
+      (p as { status?: string }).status === "converted" ||
+      (p as { converted_to_invoice_id?: string | null }).converted_to_invoice_id,
+  ).length;
+  const invoicesIssued = (inv ?? []).length;
+  const invoicesPaid = (inv ?? []).filter(
+    (i) =>
+      (i as { status?: string }).status === "paid" ||
+      (i as { paid_at?: string | null }).paid_at,
+  ).length;
+  return {
+    proformasIssued,
+    proformasConverted,
+    proformaRate:
+      proformasIssued > 0 ? Math.round((proformasConverted / proformasIssued) * 100) : 0,
+    invoicesIssued,
+    invoicesPaid,
+    paidRate: invoicesIssued > 0 ? Math.round((invoicesPaid / invoicesIssued) * 100) : 0,
+  };
+}
+
+// ---------- Open proforma value (per currency) ----------
+export async function reportOpenProformaValue(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("invoices")
+    .select("currency, total, status")
+    .eq("type", "proforma")
+    .eq("status", "sent")
+    .limit(1000);
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as Array<{ currency: string | null; total: number | null }>) {
+    const cur = (r.currency ?? "MDL").toUpperCase();
+    out[cur] = Number(((out[cur] ?? 0) + Number(r.total ?? 0)).toFixed(2));
+  }
+  return out;
+}
+
 export async function listInvoicesForExport(range: DateRange): Promise<InvoiceExportRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
