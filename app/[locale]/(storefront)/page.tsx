@@ -467,8 +467,8 @@ export default async function HomePage({
       <section className="border-t border-border bg-surface py-14 md:py-16">
         <Container>
           <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-[#1f2733] to-[#0f1620] shadow-md">
-            <div className="grid items-center gap-8 p-8 md:grid-cols-2 md:p-12">
-              <div>
+            <div className="grid items-center gap-8 p-6 sm:p-8 md:grid-cols-2 md:p-12">
+              <div className="min-w-0">
                 <div className="mb-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
                   <span className="h-px w-6 bg-primary" />
                   {t.catalogEyebrow}
@@ -500,7 +500,7 @@ export default async function HomePage({
               </div>
 
               {/* Clean catalog UI mockup (real part codes, prices gated) */}
-              <div className="relative">
+              <div className="relative min-w-0">
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -inset-6 -z-10 rounded-[2rem] bg-primary/25 opacity-40 blur-3xl"
@@ -518,8 +518,8 @@ export default async function HomePage({
                   <div className="p-4">
                     {/* search bar */}
                     <div className="flex items-center gap-2 rounded-lg border border-black/10 bg-[#faf9f6] px-3 py-2.5">
-                      <Search className="size-4 text-primary" />
-                      <span className="text-sm text-black/45">{catalogLabels.search}</span>
+                      <Search className="size-4 shrink-0 text-primary" />
+                      <span className="truncate text-sm text-black/45">{catalogLabels.search}</span>
                     </div>
                     {/* result rows */}
                     <div className="mt-3 space-y-2">
@@ -533,7 +533,7 @@ export default async function HomePage({
                             <Package className="size-4" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="font-mono text-[10px] text-black/45">{r.code}</div>
+                            <div className="truncate font-mono text-[10px] text-black/45">{r.code}</div>
                             <div className="truncate text-xs font-medium text-black/80">
                               {r.name}
                             </div>
