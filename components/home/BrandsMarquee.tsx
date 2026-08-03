@@ -128,16 +128,72 @@ const BRAND_LOGOS = [
 type Brand = { name: string; url: string };
 
 /**
+ * Real brand logos, hosted LOCALLY in /public/brands (never expire, no external
+ * dependency). The old marquee hotlinked shop.mits-automotive.be, which now
+ * 308-redirects every image to a login page — so every logo broke and the
+ * browser showed the `alt` text. These 49 were recovered as SVG/PNG from
+ * Wikimedia Commons and each was visually verified to be the correct company
+ * (search returns false positives like "Gates Foundation" / "Monroe College" —
+ * those were dropped). Brands not in this map render a clean text wordmark, so
+ * the whole list still shows. To add a logo: drop the file in /public/brands
+ * and add an entry here. The `url` field in BRAND_LOGOS is now unused.
+ */
+const LOGO_FILES: Record<string, string> = {
+  "Knorr-Bremse": "knorr-bremse.png",
+  Wabco: "wabco.svg",
+  Haldex: "haldex.svg",
+  "Van Hool": "van-hool.svg",
+  Bosch: "bosch.svg",
+  Hella: "hella.svg",
+  Eberspächer: "ebersp-cher.png",
+  Koni: "koni.png",
+  Varta: "varta.svg",
+  SWF: "swf.svg",
+  ContiTech: "contitech.svg",
+  Sachs: "sachs.svg",
+  Dayco: "dayco.png",
+  SKF: "skf.svg",
+  Brembo: "brembo.svg",
+  Osram: "osram.svg",
+  ZF: "zf.svg",
+  Hengst: "hengst.svg",
+  VDO: "vdo.svg",
+  "AL-KO": "al-ko.svg",
+  Stabilus: "stabilus.svg",
+  Moog: "moog.png",
+  FAG: "fag.png",
+  INA: "ina.svg",
+  Timken: "timken.svg",
+  BorgWarner: "borgwarner.svg",
+  Meritor: "meritor.svg",
+  Webasto: "webasto.svg",
+  Iveco: "iveco.svg",
+  Dana: "dana.png",
+  DAF: "daf.svg",
+  Volvo: "volvo.svg",
+  "Mercedes-Benz": "mercedes-benz.svg",
+  Voith: "voith.svg",
+  Knott: "knott.svg",
+  Temsa: "temsa.svg",
+  VDL: "vdl.svg",
+  Valeo: "valeo.svg",
+  Prestolite: "prestolite.svg",
+  Cummins: "cummins.svg",
+  Eaton: "eaton.svg",
+  Mahle: "mahle.svg",
+  TRW: "trw.svg",
+  Legris: "legris.svg",
+  Solaris: "solaris.svg",
+  Vitesco: "vitesco.svg",
+  Siemens: "siemens.svg",
+  Sanden: "sanden.svg",
+  Mekra: "mekra.png",
+};
+
+/**
  * Two-row brand marquee. Pure CSS transform animation — GPU-accelerated,
  * 60fps on mobile. Each row uses a duplicated track translated by -50%
  * (or 0 → -50% reversed) so the loop is seamless without JS.
- *
- * Rendered as WORDMARKS (brand names), not images: the logos were hotlinked
- * from shop.mits-automotive.be, which now 308-redirects every image path to a
- * login page — so ~256 <img> tags per page all failed and showed their `alt`
- * text. Text cards have zero external dependency and can never break this way.
- * The `url` field in BRAND_LOGOS is kept (currently unused) so real logo files
- * can be dropped in later without re-typing the brand list.
  *
  * No touch-scroll interaction in this version: writing `scrollLeft` per
  * frame on two rows brought mobile rendering to a crawl.
@@ -189,17 +245,31 @@ function MarqueeRow({
           willChange: "transform",
         }}
       >
-        {tiles.map((b, i) => (
-          <div
-            key={`${b.name}-${i}`}
-            className="flex h-11 shrink-0 select-none items-center justify-center whitespace-nowrap rounded-md bg-white px-4 shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-14 sm:px-5 md:h-16 md:rounded-lg md:px-7"
-            title={b.name}
-          >
-            <span className="text-sm font-semibold tracking-tight text-slate-700 sm:text-base md:text-lg">
-              {b.name}
-            </span>
-          </div>
-        ))}
+        {tiles.map((b, i) => {
+          const logo = LOGO_FILES[b.name];
+          return (
+            <div
+              key={`${b.name}-${i}`}
+              className="flex h-14 w-28 shrink-0 select-none items-center justify-center rounded-lg bg-white px-3 shadow-[0_2px_10px_rgba(0,0,0,0.06)] ring-1 ring-black/5 sm:h-16 sm:w-36 sm:px-4 md:h-20 md:w-44 md:px-5"
+              title={b.name}
+            >
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/brands/${logo}`}
+                  alt={b.name}
+                  loading="lazy"
+                  draggable={false}
+                  className="max-h-[68%] max-w-[86%] select-none object-contain"
+                />
+              ) : (
+                <span className="line-clamp-2 text-center text-xs font-semibold leading-tight tracking-tight text-slate-700 sm:text-sm">
+                  {b.name}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <style>{`
