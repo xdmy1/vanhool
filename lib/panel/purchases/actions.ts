@@ -12,6 +12,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
+import { normalizeCode } from "@/lib/utils/normalize-code";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
 // env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
@@ -227,6 +228,67 @@ type PostedLine = {
 };
 
 /**
+ * Resolve a purchase line to an EXISTING product by NORMALISED code, so codes
+ * that differ only by spaces / dashes / case ("C 4312/1" vs "C4312/1") collapse
+ * to the same catalog product instead of spawning a duplicate (which is how the
+ * stock silently landed on a phantom product). Mirrors the invoice resolver:
+ * tier 1 exact part_code, tier 2 exact supplier_code, tier 3 normalised
+ * search_codes. Ties prefer a REAL catalog product (active, not internal-only),
+ * then the most recent. Returns null when nothing matches → caller creates one.
+ */
+async function resolvePurchaseProductId(
+  client: Awaited<ReturnType<typeof createClient>>,
+  line: { internal_code?: string | null; supplier_code?: string | null },
+): Promise<string | null> {
+  const codes = Array.from(
+    new Set(
+      [line.internal_code, line.supplier_code]
+        .map((c) => (c ?? "").toString().trim())
+        .filter((c) => c.length > 0),
+    ),
+  );
+  if (codes.length === 0) return null;
+
+  type Cand = { tier: number; real: boolean; created: string };
+  const best = new Map<string, Cand>();
+  const consider = (
+    rows: Array<{ id: string; created_at?: string | null; is_active?: boolean | null; internal_only?: boolean | null }> | null,
+    tier: number,
+  ) => {
+    for (const r of rows ?? []) {
+      const real = !!r.is_active && !r.internal_only;
+      const prev = best.get(r.id);
+      if (!prev || tier < prev.tier) {
+        best.set(r.id, { tier, real, created: r.created_at ?? "" });
+      }
+    }
+  };
+
+  const cols = "id, created_at, is_active, internal_only";
+  for (const code of codes) {
+    const escaped = code.replace(/[\\%_]/g, "\\$&");
+    const norm = normalizeCode(code);
+    const [byPart, bySupplier, byCodes] = await Promise.all([
+      client.from("products").select(cols).ilike("part_code", escaped).limit(5),
+      client.from("products").select(cols).ilike("supplier_code", escaped).limit(5),
+      norm.length > 0
+        ? client.from("products").select(cols).contains("search_codes", [norm]).limit(5)
+        : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+    ]);
+    consider(byPart.data as never, 1);
+    consider(bySupplier.data as never, 2);
+    consider(byCodes.data as never, 3);
+  }
+  if (best.size === 0) return null;
+  const ranked = Array.from(best.entries()).sort((a, b) => {
+    if (a[1].tier !== b[1].tier) return a[1].tier - b[1].tier;
+    if (a[1].real !== b[1].real) return a[1].real ? -1 : 1; // real catalog product wins
+    return b[1].created.localeCompare(a[1].created); // else most recent
+  });
+  return ranked[0][0];
+}
+
+/**
  * Apply a set of purchase lines to stock: for each line resolve (or create) the
  * catalog product, increment its stock by the line quantity, refresh cost_price
  * (GROSS MDL = net × (1+vat) × fx) and add the supplier cross-reference. Links
@@ -268,22 +330,11 @@ async function applyPostedLines(
     );
 
     if (!productId) {
+      // Normalised match first — "C 4312/1" and "C4312/1" resolve to the SAME
+      // existing product instead of creating a duplicate that silently steals
+      // the stock. Only mint a new product when nothing matches.
+      const matchId = await resolvePurchaseProductId(supabase, it);
       const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
-      const esc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
-      const { data: existing } = await supabase
-        .from("products")
-        .select("id")
-        .ilike("part_code", esc(code))
-        .limit(1);
-      let matchId = existing?.[0]?.id ?? null;
-      if (!matchId && it.supplier_code) {
-        const { data: bySupplier } = await supabase
-          .from("products")
-          .select("id")
-          .ilike("supplier_code", esc(it.supplier_code))
-          .limit(2);
-        if (bySupplier && bySupplier.length === 1) matchId = bySupplier[0].id;
-      }
       if (matchId) {
         productId = matchId;
       } else {
