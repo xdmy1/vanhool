@@ -23,6 +23,7 @@ import {
   searchSuppliers,
 } from "@/lib/panel/suppliers/actions";
 import { createPurchase, updatePurchase } from "@/lib/panel/purchases/actions";
+import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
 import { searchProducts, type ProductSearchResult } from "@/lib/panel/sales/actions";
 import type { AccountScope } from "@/lib/panel/scope";
 
@@ -128,19 +129,12 @@ export function PurchaseForm({
   }
   const [pending, startSave] = useTransition();
 
+  // GROSS-anchored: each line total = qty × the with-VAT unit price the operator
+  // sees, so 30 × 175 = 5250 (not 5249.88 from a rounded net). Shared with the
+  // server via purchaseTotals so the saved document matches this preview.
   const totals = useMemo(() => {
-    let subtotal = 0;
-    let vat = 0;
-    for (const l of lines) {
-      const net = l.quantity * l.unit_cost;
-      subtotal += net;
-      vat += net * (l.vat_rate / 100);
-    }
-    return {
-      subtotal: Number(subtotal.toFixed(2)),
-      vat: Number(vat.toFixed(2)),
-      total: Number((subtotal + vat).toFixed(2)),
-    };
+    const { subtotal, vat_amount, total } = purchaseTotals(lines);
+    return { subtotal, vat: vat_amount, total };
   }, [lines]);
 
   function setLine(idx: number, patch: Partial<Line>) {
@@ -475,7 +469,7 @@ export function PurchaseForm({
                     />
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
-                    {(l.quantity * l.unit_cost * (1 + (l.vat_rate || 0) / 100)).toFixed(2)}
+                    {purchaseLine(l.quantity, l.unit_cost, l.vat_rate).gross.toFixed(2)}
                   </td>
                   <td className="px-2 py-2 text-center">
                     <input

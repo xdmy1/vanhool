@@ -11,6 +11,7 @@ import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
+import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
 // env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
@@ -204,17 +205,11 @@ async function archivePurchaseItems(
   }
 }
 
+// GROSS-anchored totals (shared with the form) — the document total is the sum
+// of qty × with-VAT unit price, so 30 × 175 = 5250 reconciles to the cent
+// instead of collapsing to 5249.88 via a rounded net. See lib/.../line-math.ts.
 function computeTotals(items: PurchaseInput["items"]) {
-  let subtotal = 0;
-  let vat_amount = 0;
-  for (const i of items) {
-    const lineNet = i.quantity * i.unit_cost;
-    subtotal += lineNet;
-    vat_amount += lineNet * ((i.vat_rate ?? 20) / 100);
-  }
-  subtotal = Number(subtotal.toFixed(2));
-  vat_amount = Number(vat_amount.toFixed(2));
-  return { subtotal, vat_amount, total: Number((subtotal + vat_amount).toFixed(2)) };
+  return purchaseTotals(items);
 }
 
 /** One purchase line as read back from `purchase_items` for stock application. */
@@ -427,7 +422,9 @@ export async function createPurchase(
     unit: i.unit ?? "buc",
     pack_note: i.pack_note ?? null,
     vat_rate: i.vat_rate ?? 20,
-    line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
+    // NET line, gross-anchored (= gross / (1+vat)), so line_total × (1+vat)
+    // reproduces exactly the with-VAT total the operator saw (e.g. 4375 → 5250).
+    line_total: purchaseLine(i.quantity, i.unit_cost, Number(i.vat_rate ?? 20)).net,
     add_to_catalog: !!i.add_to_catalog,
   }));
   // Insert; if the catalog / unit / pack_note columns haven't been migrated yet,
@@ -1080,7 +1077,9 @@ export async function updatePurchase(
     unit: i.unit ?? "buc",
     pack_note: i.pack_note ?? null,
     vat_rate: i.vat_rate ?? 20,
-    line_total: Number((i.quantity * i.unit_cost).toFixed(2)),
+    // NET line, gross-anchored (= gross / (1+vat)), so line_total × (1+vat)
+    // reproduces exactly the with-VAT total the operator saw (e.g. 4375 → 5250).
+    line_total: purchaseLine(i.quantity, i.unit_cost, Number(i.vat_rate ?? 20)).net,
     add_to_catalog: !!i.add_to_catalog,
   }));
   let lErr = (
