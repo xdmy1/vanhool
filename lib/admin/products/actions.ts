@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { setStockAbsolute, type StockDb } from "@/lib/stock-ledger";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 
@@ -19,7 +20,7 @@ async function requireAdmin() {
     .eq("id", user.id)
     .maybeSingle();
   if (!profile?.is_admin) return { ok: false as const, error: "forbidden" };
-  return { ok: true as const, supabase };
+  return { ok: true as const, supabase, user };
 }
 
 const crossRefSchema = z.object({
@@ -287,14 +288,39 @@ export async function createProduct(values: unknown): Promise<ProductActionResul
     parsed.data.manufacturerId,
   );
   const payload = buildPayload(parsed.data, manufacturerName);
+  // Opening balance goes through the ledger: insert at 0, then set — so the
+  // initial stock is an auditable movement like every later change.
+  const { stock_quantity: createStock, ...createPayload } = payload as {
+    stock_quantity?: number;
+  } & Record<string, unknown>;
   const { data, error } = await auth.supabase
     .from("products")
     // `unit` isn't in the generated types yet — cast so it still persists.
-    .insert({ ...payload, ...({ unit: parsed.data.unit ?? "buc" } as object) })
+    .insert({
+      ...createPayload,
+      stock_quantity: 0,
+      ...({ unit: parsed.data.unit ?? "buc" } as object),
+    } as never)
     .select("id")
     .single();
   if (error || !data) {
     return { ok: false, code: "server", message: dbErrorMessage(error) };
+  }
+  if (createStock !== undefined && Number(createStock) > 0) {
+    const set = await setStockAbsolute(
+      auth.supabase as unknown as StockDb,
+      data.id,
+      Number(createStock),
+      `initial:${data.id}`,
+      auth.user.id,
+    );
+    if (!set.ok) {
+      return {
+        ok: false,
+        code: "server",
+        message: `${set.reason} — produsul a fost creat FĂRĂ stoc; setează stocul din editare`,
+      };
+    }
   }
   await syncVehicleMakes(auth.supabase, data.id, parsed.data.vehicleMakeIds ?? []);
   revalidatePath("/", "layout");
@@ -330,11 +356,37 @@ export async function updateProduct(
     parsed.data.manufacturerId,
   );
   const payload = buildPayload(parsed.data, manufacturerName);
+
+  // The stock field is an ABSOLUTE set from a stale form — route it through
+  // the stock ledger (locked delta, recorded movement) instead of clobbering
+  // whatever sales/purchases happened since the form was loaded. Row update
+  // FIRST, stock second: a failed save must not have moved stock already.
+  const { stock_quantity: absStock, ...payloadNoStock } = payload as {
+    stock_quantity?: number;
+  } & Record<string, unknown>;
+
   const { error } = await auth.supabase
     .from("products")
-    .update({ ...payload, ...({ unit: parsed.data.unit ?? "buc" } as object) })
+    .update({
+      ...payloadNoStock,
+      ...({ unit: parsed.data.unit ?? "buc" } as object),
+    } as never)
     .eq("id", id);
   if (error) return { ok: false, code: "server", message: dbErrorMessage(error) };
+
+  if (absStock !== undefined) {
+    const set = await setStockAbsolute(
+      auth.supabase as unknown as StockDb,
+      id,
+      Number(absStock),
+      `manual:${id}:${crypto.randomUUID()}`,
+      auth.user.id,
+    );
+    if (!set.ok) {
+      // No raw-write fallback — surface it; the rest of the edit is saved.
+      return { ok: false, code: "server", message: `${set.reason} — stocul NU a fost modificat` };
+    }
+  }
   await syncVehicleMakes(auth.supabase, id, parsed.data.vehicleMakeIds ?? []);
   revalidatePath("/", "layout");
   return { ok: true, id };

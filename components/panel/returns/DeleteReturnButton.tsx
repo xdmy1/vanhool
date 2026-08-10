@@ -23,7 +23,10 @@ export function DeleteReturnButton({ returnId }: { returnId: string }) {
             toast.error("Nu am putut anula anexa.");
             return;
           }
-          toast.success("Anexă anulată (stoc reversat).");
+          // Copy stays honest: on a cancelled/voided parent the stock move is
+          // deliberately skipped (the cancel already netted it), so we don't
+          // claim a reversal that may not have happened.
+          toast.success("Anexă anulată.");
           router.refresh();
         })
       }

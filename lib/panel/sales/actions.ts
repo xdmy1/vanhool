@@ -11,6 +11,8 @@ import { createInvoiceForOrder, isRefrensConfigured } from "@/lib/refrens/invoic
 import type { AccountScope } from "@/lib/panel/scope";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeCode } from "@/lib/utils/normalize-code";
+import { roundStock } from "@/lib/stock";
+import { applyStockMovement, ledgerReady, type StockDb } from "@/lib/stock-ledger";
 import {
   isBelowCost,
   blockedBelowCost,
@@ -658,7 +660,27 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     for (const p of products) byId.set(p.id, p);
   }
 
-  // Validate stock + build items snapshot
+  // Validate stock AGGREGATED per product (the same product on two lines must
+  // be checked as one sum — stock 4 must reject 3+3), then build the snapshot.
+  const wantByProduct = new Map<string, number>();
+  for (const line of v.items) {
+    if (!line.product_id) continue;
+    wantByProduct.set(
+      line.product_id,
+      roundStock((wantByProduct.get(line.product_id) ?? 0) + line.qty),
+    );
+  }
+  for (const [pid, want] of wantByProduct) {
+    const p = byId.get(pid);
+    if (!p) return { ok: false, reason: `product_missing:${pid}` };
+    if ((p.stock_quantity ?? 0) < want) {
+      return {
+        ok: false,
+        reason: `stock_insufficient:${p.part_code ?? p.id.slice(0, 8)} (disponibil ${p.stock_quantity ?? 0}, cerut ${want})`,
+      };
+    }
+  }
+
   const items: Array<Record<string, unknown>> = [];
   const belowCost: BelowCostLine[] = [];
   // cost_price is stored in MDL; convert it to the sale currency before the
@@ -671,12 +693,6 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const p = line.product_id ? byId.get(line.product_id) ?? null : null;
     if (line.product_id && !p) {
       return { ok: false, reason: `product_missing:${line.product_id}` };
-    }
-    if (p && (p.stock_quantity ?? 0) < line.qty) {
-      return {
-        ok: false,
-        reason: `stock_insufficient:${p.part_code ?? p.id.slice(0, 8)} (disponibil ${p.stock_quantity ?? 0})`,
-      };
     }
     const dp = line.discounted_unit_price;
     const effective =
@@ -746,6 +762,12 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   // below stores the NET subtotal + extracted TVA. net + TVA === gross.
   const total = subtotal;
 
+  // The ledger is mandatory: a sale whose decrement can't be recorded must
+  // refuse BEFORE creating any rows, not sell and shrug.
+  if (!(await ledgerReady(supabase as unknown as StockDb))) {
+    return { ok: false, reason: "stock_ledger_missing — rulează sql/stock-accuracy.sql" };
+  }
+
   // Insert order
   const { data: order, error: oErr } = await supabase
     .from("orders")
@@ -782,17 +804,31 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   if (oErr || !order) return { ok: false, reason: oErr?.message ?? "order_insert_failed" };
   const orderId = order.id;
 
-  // Decrement stock — sequential. Race-safe enough for admin-only usage; can
-  // be tightened with a Postgres function later if we get concurrent salespeople.
-  // Lines without product_id (draft-purchase sales) skip the decrement —
-  // there's no catalog row to point at, and the parent purchase will
-  // increment stock when it eventually gets posted.
-  for (const line of v.items) {
-    if (!line.product_id) continue;
-    const p = byId.get(line.product_id);
-    if (!p) continue;
-    const newQty = Math.max(0, (p.stock_quantity ?? 0) - line.qty);
-    await supabase.from("products").update({ stock_quantity: newQty }).eq("id", p.id);
+  // Decrement stock through the LEDGER: one atomic movement per product
+  // (aggregated across lines), ref `sale:<order_id>:<product_id>` — a retried
+  // action or concurrent double-submit can never decrement twice, and the
+  // atomic `stock = stock + delta` update can't lose concurrent writes.
+  // Lines without product_id (draft-purchase sales) skip the decrement here —
+  // postPurchase settles them (ref `draft_settle:…`) when the parent purchase
+  // is posted and the catalog product finally exists.
+  for (const [pid, want] of wantByProduct) {
+    const moved = await applyStockMovement(supabase as unknown as StockDb, {
+      productId: pid,
+      delta: -want,
+      reason: "sale",
+      ref: `sale:${orderId}:${pid}`,
+      orderId,
+      createdBy: user.id,
+    });
+    if (!moved.ok) {
+      // Surface, don't shrug: the order exists but stock didn't move fully.
+      // Deleting the order from admin restores exactly the movements that DID
+      // apply (ledger), so the recovery path is clean.
+      return {
+        ok: false,
+        reason: `${moved.reason} — vânzarea nu s-a finalizat; șterge comanda din Admin → Comenzi și reia`,
+      };
+    }
   }
 
   // Always mirror the sale into the invoices table — both books need a

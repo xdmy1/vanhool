@@ -17,7 +17,16 @@ import { accountantInvoiceEmail } from "@/lib/email/accountant-invoice";
 import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
 import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
-import { normalizeCode } from "@/lib/utils/normalize-code";
+import { getReturnsFor } from "@/lib/panel/returns/actions";
+import { roundStock } from "@/lib/stock";
+import {
+  applyStockMovement,
+  getOrderMovements,
+  ledgerReady,
+  resolveLineProductId,
+  reverseOrderStock,
+  type StockDb,
+} from "@/lib/stock-ledger";
 
 type InvoiceLineWithSupplier = InvoiceItemSnapshot;
 
@@ -184,101 +193,10 @@ async function takeNextNumber(
   return { series, number: padded };
 }
 
-/**
- * Resolve the catalog product behind a document line.
- *
- * A proforma freezes `productId` at issue time, but in the normal flow the
- * part isn't in the catalog yet — the operator quotes it off a supplier list,
- * and only once the client accepts does the purchase get entered under the
- * SAME code, creating the product. So a line that quoted an uncatalogued part
- * carries `productId: null` forever, and matching on it alone would silently
- * skip the stock move. Fall back to the part code.
- *
- * Used by both the stock decrement (conversion) and the stock restore
- * (void / delete) — they MUST resolve lines identically, or voiding an
- * invoice would credit back stock that was never taken.
- */
-async function resolveLineProductId(
-  client: Awaited<ReturnType<typeof createClient>>,
-  line: Record<string, unknown>,
-): Promise<string | null> {
-  const direct =
-    ((line as { productId?: string | null }).productId ??
-      (line as { product_id?: string | null }).product_id) ||
-    null;
-  if (direct) return direct;
-
-  // Collect every code the line carries. A proforma for an uncatalogued part
-  // freezes the SUPPLIER code as `partCode`; once the purchase is posted the
-  // new product's `part_code` becomes the auto-generated INTERNAL code and the
-  // quoted code lives on `supplier_code` + the normalized `search_codes` index.
-  // So we must RE-RESOLVE at conversion time across all of these.
-  const codes = Array.from(
-    new Set(
-      [
-        (line as { partCode?: string | null }).partCode,
-        (line as { part_code?: string | null }).part_code,
-        (line as { supplierCode?: string | null }).supplierCode,
-        (line as { supplier_code?: string | null }).supplier_code,
-      ]
-        .map((c) => (c ?? "").toString().trim())
-        .filter((c) => c.length > 0),
-    ),
-  );
-  if (codes.length === 0) return null;
-
-  // Tiered candidate pool. Tier 1 exact part_code, tier 2 exact supplier_code,
-  // tier 3 normalized search_codes (survives space/dash/case differences AND
-  // matches a product that was cataloged AFTER the proforma was raised — the
-  // whole point). Lower tier wins; ties broken by most-recent product (the one
-  // the just-entered purchase created). Ranking is stock-INDEPENDENT so the
-  // decrement and the later void/delete restore resolve to the SAME product.
-  const best = new Map<string, { tier: number; created: string }>();
-  const consider = (
-    rows: Array<{ id: string; created_at?: string | null }> | null,
-    tier: number,
-  ) => {
-    for (const r of rows ?? []) {
-      const prev = best.get(r.id);
-      if (!prev || tier < prev.tier) {
-        best.set(r.id, { tier, created: r.created_at ?? "" });
-      }
-    }
-  };
-
-  for (const code of codes) {
-    const escaped = code.replace(/[\\%_]/g, "\\$&");
-    const norm = normalizeCode(code);
-    const [byPart, bySupplier, byCodes] = await Promise.all([
-      client.from("products").select("id, created_at").ilike("part_code", escaped).limit(5),
-      client.from("products").select("id, created_at").ilike("supplier_code", escaped).limit(5),
-      norm.length > 0
-        ? client
-            .from("products")
-            .select("id, created_at")
-            .contains("search_codes", [norm])
-            .limit(5)
-        : Promise.resolve({ data: [] as Array<{ id: string; created_at?: string | null }> }),
-    ]);
-    consider(byPart.data as Array<{ id: string; created_at?: string | null }>, 1);
-    consider(bySupplier.data as Array<{ id: string; created_at?: string | null }>, 2);
-    consider(byCodes.data as Array<{ id: string; created_at?: string | null }>, 3);
-  }
-
-  if (best.size === 0) return null;
-  const ranked = Array.from(best.entries()).sort((a, b) => {
-    if (a[1].tier !== b[1].tier) return a[1].tier - b[1].tier;
-    return b[1].created.localeCompare(a[1].created); // most recent first
-  });
-  if (best.size > 1) {
-    // Deterministic PICK, not skip: goods physically left the shelf, so under-
-    // decrementing (oversell) is the worse failure. Log for review.
-    console.warn(
-      `[panel.invoices] resolveLineProductId ambiguous for code(s) ${codes.join("/")}: ${best.size} products, picked ${ranked[0][0].slice(0, 8)}`,
-    );
-  }
-  return ranked[0][0];
-}
+// Product resolution + every stock mutation live in lib/stock-ledger.ts — the
+// decrement (conversion), the restore (void / delete) and the returns flow all
+// share the same resolver and the same idempotent ledger, so they can never
+// disagree about which product moved.
 
 /**
  * Resolve each invoice line's SUPPLIER part code (from purchase_items) so the
@@ -341,24 +259,6 @@ async function attachSupplierCodes(
       (l.partCode ? byCode.get(l.partCode) : undefined) ??
       null,
   }));
-}
-
-/** Shift `products.stock_quantity` by `delta` for one product. */
-async function adjustStock(
-  client: Awaited<ReturnType<typeof createClient>>,
-  productId: string,
-  delta: number,
-): Promise<void> {
-  const { data: p } = await client
-    .from("products")
-    .select("stock_quantity")
-    .eq("id", productId)
-    .maybeSingle();
-  if (!p) return;
-  await client
-    .from("products")
-    .update({ stock_quantity: Math.max(0, Number(p.stock_quantity ?? 0) + delta) })
-    .eq("id", productId);
 }
 
 // ---- Public actions --------------------------------------------------------
@@ -558,6 +458,11 @@ export async function convertProformaToInvoice(
   if (!user) return { ok: false, reason: "unauthorized" };
 
   const supabase = await createClient();
+  // The ledger is mandatory: converting IS the sale, and a conversion that
+  // can't record its stock movements must refuse up front, not half-run.
+  if (!(await ledgerReady(supabase as unknown as StockDb))) {
+    return { ok: false, reason: "stock_ledger_missing — rulează sql/stock-accuracy.sql" };
+  }
   const { data: pf, error: pfErr } = await supabase
     .from("invoices")
     .select("*")
@@ -662,9 +567,13 @@ export async function convertProformaToInvoice(
       })
       .select("id")
       .single();
-    if (!oErr && o) {
-      orderId = o.id;
+    // HARD FAIL: without the synthetic order there is nowhere to hang the
+    // stock movements or the later void/cancel restore — continuing would
+    // create an invoice whose decrement could never be reversed.
+    if (oErr || !o) {
+      return { ok: false, reason: `order_create_failed: ${oErr?.message ?? "?"}` };
     }
+    orderId = o.id;
   }
   const deferredDue =
     paymentStatus === "deferred"
@@ -739,29 +648,93 @@ export async function convertProformaToInvoice(
     .single();
   if (insErr || !inv) return { ok: false, reason: insErr?.message ?? "insert_failed" };
 
-  // The goods leave stock on the INVOICE, not on the proforma and not on
-  // payment: the client takes the part when the factură is cut, whether he
-  // settles now or on the deferred due date. So this runs for both
-  // `paid` and `deferred`. Guarded by `already_converted` above, so it
-  // cannot double-decrement on a retry.
-  if (wasAdHoc) {
-    for (const it of pfSnapshot) {
-      const qty = Number((it as { quantity?: number }).quantity ?? 0);
-      if (qty <= 0) continue;
-      const productId = await resolveLineProductId(supabase, it);
-      if (!productId) continue;
-      await adjustStock(supabase, productId, -qty);
-    }
-  }
-
-  await supabase
+  // CLAIM the conversion atomically BEFORE anything moves stock: only the
+  // caller whose conditional update lands gets to keep its invoice. The loser
+  // of a double-click deletes its own just-created rows and reports
+  // already_converted — two invoices / a double decrement are impossible.
+  // (The loser burns an invoice number; harmless, the sequence stays unique.)
+  const { data: claimedPf } = await supabase
     .from("invoices")
     .update({
       status: "converted",
       converted_to_invoice_id: inv.id,
       updated_at: now.toISOString(),
     })
-    .eq("id", pf.id);
+    .eq("id", pf.id)
+    .is("converted_to_invoice_id", null)
+    .neq("status", "converted")
+    .select("id");
+  if (!claimedPf || claimedPf.length === 0) {
+    await supabase.from("invoices").delete().eq("id", inv.id);
+    if (wasAdHoc && orderId) {
+      await supabase.from("orders").delete().eq("id", orderId);
+    }
+    return { ok: false, reason: "already_converted" };
+  }
+
+  // The goods leave stock on the INVOICE, not on the proforma and not on
+  // payment: the client takes the part when the factură is cut, whether he
+  // settles now or on the deferred due date. So this runs for both
+  // `paid` and `deferred`. Ledger refs (`sale:<order>:<product>`) make it
+  // idempotent on top of the claim, and quantities are aggregated per
+  // product so the same part on two proforma lines decrements in full.
+  if (wasAdHoc && orderId) {
+    const take = new Map<string, number>();
+    const unresolvedIdx: number[] = [];
+    for (let i = 0; i < pfSnapshot.length; i++) {
+      const it = pfSnapshot[i];
+      const qty = Number((it as { quantity?: number }).quantity ?? 0);
+      if (qty <= 0) continue;
+      const productId = await resolveLineProductId(
+        supabase as unknown as StockDb,
+        it,
+      );
+      if (!productId) {
+        // Part not cataloged yet (purchase not entered). Mark the order line
+        // like a draft-purchase sale: the void/cancel restore skips it, and
+        // settleDraftPurchaseSales decrements it when the purchase posts.
+        unresolvedIdx.push(i);
+        continue;
+      }
+      take.set(productId, roundStock((take.get(productId) ?? 0) + qty));
+    }
+    for (const [productId, qty] of take) {
+      const moved = await applyStockMovement(supabase as unknown as StockDb, {
+        productId,
+        delta: -qty,
+        reason: "sale",
+        ref: `sale:${orderId}:${productId}`,
+        orderId,
+        invoiceId: inv.id,
+        createdBy: user.id,
+      });
+      if (!moved.ok) {
+        return {
+          ok: false,
+          reason: `${moved.reason} — factura ${series}${number} a fost creată dar stocul nu s-a mișcat complet; verifică produsele`,
+        };
+      }
+    }
+    if (unresolvedIdx.length > 0) {
+      const { data: ordRow } = await supabase
+        .from("orders")
+        .select("items")
+        .eq("id", orderId)
+        .maybeSingle();
+      const ordItems = Array.isArray(ordRow?.items)
+        ? [...(ordRow!.items as Array<Record<string, unknown>>)]
+        : [];
+      for (const i of unresolvedIdx) {
+        if (ordItems[i]) {
+          ordItems[i] = { ...ordItems[i], from_draft_purchase: true };
+        }
+      }
+      await supabase
+        .from("orders")
+        .update({ items: ordItems as unknown as Json })
+        .eq("id", orderId);
+    }
+  }
 
   // Cash inflow only when the money actually came in. Deferred payments
   // get recorded when the customer pays.
@@ -957,7 +930,7 @@ export async function updateInvoice(
 
   const { data: existing } = await supabase
     .from("invoices")
-    .select("id, type, status, issued_date")
+    .select("id, type, status, issued_date, order_id, items_snapshot")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, reason: "invoice_not_found" };
@@ -966,6 +939,26 @@ export async function updateInvoice(
   // still editable — typos in customer details, fixing a wrong item.
   if (existing.status === "paid") return { ok: false, reason: "already_paid" };
   if (existing.status === "void") return { ok: false, reason: "voided" };
+
+  // An invoice with return annexes is line-locked: returns reference lines by
+  // index and cap against them — reordering/removing lines would let the same
+  // goods be credited twice (or block a legitimate return). Undo the returns
+  // first if the lines really must change.
+  const invReturns = await getReturnsFor("invoice", id);
+  if (invReturns.length > 0) {
+    return { ok: false, reason: "has_returns" };
+  }
+
+  // Read the ledger BEFORE writing anything: if the read fails we refuse the
+  // edit rather than saving new quantities whose stock diff can't be applied.
+  const updDb = supabase as unknown as StockDb;
+  let saleMovements: Awaited<ReturnType<typeof getOrderMovements>> | null = null;
+  if (existing.order_id) {
+    saleMovements = await getOrderMovements(updDb, existing.order_id);
+    if (!saleMovements.ok) {
+      return { ok: false, reason: saleMovements.reason };
+    }
+  }
 
   const updInvoiceBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
   if (updInvoiceBlocked.length > 0) {
@@ -1032,6 +1025,53 @@ export async function updateInvoice(
     })
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };
+
+  // Quantity edits move stock too — this invoice IS the sale, so changing a
+  // line from 1 to 5 must take 4 more out (and 5→1 must put 4 back). Diff the
+  // old vs new snapshot per RESOLVED product and apply the difference through
+  // the ledger. Applies only to orders whose decrement lives in the ledger;
+  // pre-ledger invoices keep the old no-move behavior rather than guessing.
+  if (existing.order_id && saleMovements?.ok) {
+    const db = updDb;
+    const movements = saleMovements.rows;
+    if (movements.some((m) => m.reason === "sale")) {
+      const aggregate = async (snap: Array<Record<string, unknown>>) => {
+        const m = new Map<string, number>();
+        for (const it of snap) {
+          const qty = Number((it as { quantity?: number }).quantity ?? 0);
+          if (qty <= 0) continue;
+          const pid = await resolveLineProductId(db, it);
+          if (!pid) continue;
+          m.set(pid, roundStock((m.get(pid) ?? 0) + qty));
+        }
+        return m;
+      };
+      const before = await aggregate(
+        Array.isArray(existing.items_snapshot)
+          ? (existing.items_snapshot as Array<Record<string, unknown>>)
+          : [],
+      );
+      const after = await aggregate(
+        itemsSnapshot as unknown as Array<Record<string, unknown>>,
+      );
+      for (const pid of new Set([...before.keys(), ...after.keys()])) {
+        const delta = roundStock((before.get(pid) ?? 0) - (after.get(pid) ?? 0));
+        if (delta === 0) continue;
+        const seq = movements.filter(
+          (m) => m.product_id === pid && m.reason === "invoice_edit",
+        ).length;
+        await applyStockMovement(db, {
+          productId: pid,
+          delta,
+          reason: "invoice_edit",
+          ref: `invoice_edit:${id}:${pid}:${seq}`,
+          orderId: existing.order_id,
+          invoiceId: id,
+          createdBy: user.id,
+        });
+      }
+    }
+  }
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath(`/[locale]/panel/facturi/${id}`, "page");
@@ -1248,33 +1288,47 @@ export async function voidInvoice(
   if (inv.status === "void") return { ok: true };
 
   const nowIso = new Date().toISOString();
-  const { error } = await supabase
-    .from("invoices")
-    .update({ status: "void", updated_at: nowIso })
-    .eq("id", id);
-  if (error) return { ok: false, reason: error.message };
 
-  // Stock + order cleanup only for fiscal invoices with a linked order.
+  // Cleanup FIRST, void-flip LAST: if the stock restore fails, the invoice
+  // stays live and the operator can simply retry — a voided invoice whose
+  // restore silently died would be unrecoverable from the UI. All cleanup
+  // steps are idempotent (ledger refs / conditional updates), so a concurrent
+  // double-void converges instead of doubling.
   if (inv.type === "invoice" && inv.order_id) {
-    const { data: ord } = await supabase
+    const ordCols = "id, status, items, account_scope, total, currency, payment_method";
+    let ordRes = await supabase
       .from("orders")
-      .select("id, status, items, account_scope, total, currency")
+      .select(`${ordCols}, payment_status` as typeof ordCols)
       .eq("id", inv.order_id)
       .maybeSingle();
+    if (ordRes.error && /payment_status/i.test(ordRes.error.message)) {
+      ordRes = await supabase
+        .from("orders")
+        .select(ordCols)
+        .eq("id", inv.order_id)
+        .maybeSingle();
+    }
+    const ord = ordRes.data;
 
     if (ord && ord.status !== "cancelled") {
-      const items = Array.isArray(ord.items)
-        ? (ord.items as Array<Record<string, unknown>>)
-        : [];
-      // Restore stock for each line, resolving the product the same way the
-      // decrement did (productId, else part code) so the two stay symmetric.
-      for (const it of items) {
-        const qty = Number((it as { quantity?: number }).quantity ?? 0);
-        if (qty <= 0) continue;
-        const productId = await resolveLineProductId(supabase, it);
-        if (!productId) continue;
-        await adjustStock(supabase, productId, qty);
-      }
+      // Restore EXACTLY what the ledger recorded for this order (sales,
+      // draft settles, invoice edits, minus returns already credited back) —
+      // never a re-guess from the item snapshot. Pre-ledger orders fall back
+      // to the snapshot once; unpaid card orders restore nothing. A failed
+      // restore ABORTS the void — nothing has been flipped yet.
+      const restored = await reverseOrderStock(
+        supabase as unknown as StockDb,
+        {
+          id: ord.id,
+          items: ord.items,
+          payment_method:
+            (ord as { payment_method?: string | null }).payment_method ?? null,
+          payment_status:
+            (ord as { payment_status?: string | null }).payment_status ?? null,
+        },
+        user.id,
+      );
+      if (!restored.ok) return restored;
 
       await supabase
         .from("orders")
@@ -1311,6 +1365,12 @@ export async function voidInvoice(
       }
     }
   }
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ status: "void", updated_at: nowIso })
+    .eq("id", id);
+  if (error) return { ok: false, reason: error.message };
 
   revalidatePath("/[locale]/panel/proforme", "page");
   revalidatePath("/[locale]/panel/facturi", "page");
@@ -1441,23 +1501,38 @@ export async function deleteInvoiceWithPin(
   const nowIso = new Date().toISOString();
 
   if (inv && inv.type === "invoice" && inv.order_id) {
-    const { data: ord } = await supabase
+    const delOrdCols = "id, status, items, account_scope, total, currency, payment_method";
+    let delOrdRes = await supabase
       .from("orders")
-      .select("id, status, items, account_scope, total, currency")
+      .select(`${delOrdCols}, payment_status` as typeof delOrdCols)
       .eq("id", inv.order_id)
       .maybeSingle();
+    if (delOrdRes.error && /payment_status/i.test(delOrdRes.error.message)) {
+      delOrdRes = await supabase
+        .from("orders")
+        .select(delOrdCols)
+        .eq("id", inv.order_id)
+        .maybeSingle();
+    }
+    const ord = delOrdRes.data;
 
     if (ord && ord.status !== "cancelled") {
-      const items = Array.isArray(ord.items)
-        ? (ord.items as Array<Record<string, unknown>>)
-        : [];
-      for (const it of items) {
-        const qty = Number((it as { quantity?: number }).quantity ?? 0);
-        if (qty <= 0) continue;
-        const productId = await resolveLineProductId(supabase, it);
-        if (!productId) continue;
-        await adjustStock(supabase, productId, qty);
-      }
+      // Same ledger-based restore as voidInvoice — undo what actually moved.
+      // A failed restore aborts the delete: the document must not vanish
+      // while its stock stays out.
+      const restored = await reverseOrderStock(
+        supabase as unknown as StockDb,
+        {
+          id: ord.id,
+          items: ord.items,
+          payment_method:
+            (ord as { payment_method?: string | null }).payment_method ?? null,
+          payment_status:
+            (ord as { payment_status?: string | null }).payment_status ?? null,
+        },
+        user.id,
+      );
+      if (!restored.ok) return restored;
 
       await supabase
         .from("orders")

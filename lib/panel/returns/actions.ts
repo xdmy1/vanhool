@@ -5,8 +5,40 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPanelUser } from "@/lib/panel/auth";
+import { roundStock } from "@/lib/stock";
+import {
+  applyStockMovement,
+  getMovementByRef,
+  resolveLineProductId,
+  type StockDb,
+} from "@/lib/stock-ledger";
 
 const r2 = (n: number) => Number(n.toFixed(2));
+
+/**
+ * Total quantity already returned against one line of a parent document.
+ * The cap for a new return is line quantity − this sum: the same line can
+ * never be returned past what was actually sold/bought, no matter how many
+ * times the button is pressed.
+ */
+async function alreadyReturnedQty(
+  parentType: "invoice" | "purchase",
+  parentId: string,
+  lineRef: string,
+): Promise<number> {
+  const { data } = await getSupabaseAdmin()
+    .from("document_returns")
+    .select("quantity")
+    .eq("parent_type", parentType)
+    .eq("parent_id", parentId)
+    .eq("line_ref", lineRef);
+  return roundStock(
+    ((data ?? []) as Array<{ quantity: number | string | null }>).reduce(
+      (s, r) => s + Number(r.quantity ?? 0),
+      0,
+    ),
+  );
+}
 
 /** A negative annex line attached to an invoice or a purchase. */
 export type DocumentReturn = {
@@ -55,40 +87,9 @@ export async function getReturnsFor(
   }
 }
 
-/** Resolve the catalog product behind an invoice line (id, else part code). */
-async function resolveProductId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  productId: string | null,
-  code: string | null,
-): Promise<string | null> {
-  if (productId) return productId;
-  const c = (code ?? "").trim();
-  if (!c) return null;
-  const esc = c.replace(/[\\%_]/g, "\\$&");
-  for (const col of ["part_code", "supplier_code"] as const) {
-    const { data } = await supabase.from("products").select("id").ilike(col, esc).limit(2);
-    if (data && data.length === 1) return data[0].id;
-  }
-  return null;
-}
-
-/** Shift a product's stock by delta (never below 0). */
-async function adjustStock(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  productId: string,
-  delta: number,
-): Promise<void> {
-  const { data: p } = await supabase
-    .from("products")
-    .select("stock_quantity")
-    .eq("id", productId)
-    .maybeSingle();
-  if (!p) return;
-  await supabase
-    .from("products")
-    .update({ stock_quantity: Math.max(0, Number(p.stock_quantity ?? 0) + delta) })
-    .eq("id", productId);
-}
+// Product resolution and stock movement are shared with the sale/void paths
+// via lib/stock-ledger.ts — the return MUST resolve a line to the same product
+// its sale decremented, and every move goes through the idempotent ledger.
 
 /**
  * Customer return: attach a -amount annex to an invoice for one of its lines,
@@ -107,11 +108,26 @@ export async function createInvoiceLineReturn(
 
   const { data: inv } = await supabase
     .from("invoices")
-    .select("id, type, currency, account_scope, items_snapshot")
+    .select("id, type, status, order_id, currency, account_scope, items_snapshot")
     .eq("id", invoiceId)
     .maybeSingle();
   if (!inv) return { ok: false, reason: "invoice_not_found" };
   if (inv.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
+  // A voided invoice already restored its stock — a return annex on top of it
+  // would credit the goods (and the money) twice. Same for a CANCELLED order:
+  // the cancel restored everything, so a return would be a second credit.
+  if (inv.status === "void") return { ok: false, reason: "invoice_void" };
+  const parentOrderId = (inv as { order_id?: string | null }).order_id ?? null;
+  if (parentOrderId) {
+    const { data: parentOrd } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", parentOrderId)
+      .maybeSingle();
+    if (parentOrd?.status === "cancelled") {
+      return { ok: false, reason: "order_cancelled" };
+    }
+  }
 
   const items = Array.isArray(inv.items_snapshot)
     ? (inv.items_snapshot as Array<Record<string, unknown>>)
@@ -120,7 +136,12 @@ export async function createInvoiceLineReturn(
   if (!line) return { ok: false, reason: "line_not_found" };
 
   const lineQty = Number((line as { quantity?: number }).quantity ?? 0);
-  const qty = Math.min(quantity && quantity > 0 ? quantity : lineQty, lineQty);
+  // Cap at what's LEFT of the line across all prior returns — pressing Retur
+  // twice can never credit more than was sold.
+  const prevReturned = await alreadyReturnedQty("invoice", invoiceId, String(lineIndex));
+  const remaining = roundStock(lineQty - prevReturned);
+  if (remaining <= 0) return { ok: false, reason: "already_returned" };
+  const qty = Math.min(quantity && quantity > 0 ? quantity : remaining, remaining);
   if (qty <= 0) return { ok: false, reason: "bad_quantity" };
 
   // it.total is the GROSS line amount (what the customer paid). Prorate by qty.
@@ -134,17 +155,16 @@ export async function createInvoiceLineReturn(
   const vat = r2(returnGross - net);
   const unitAmount = r2(qty > 0 ? returnGross / qty : 0);
 
-  const productId = await resolveProductId(
-    supabase,
-    ((line as { productId?: string | null }).productId ?? null) as string | null,
-    ((line as { partCode?: string | null }).partCode ?? null) as string | null,
+  // Same resolver the sale-side uses (normalized code tiers) — the return
+  // must land on the SAME product the sale decremented.
+  const productId = await resolveLineProductId(
+    supabase as unknown as StockDb,
+    line,
   );
-  let stockAdjusted = false;
-  if (productId) {
-    await adjustStock(supabase, productId, qty); // customer return → +stock
-    stockAdjusted = true;
-  }
 
+  // Row first, stock second: the movement's ref is keyed by the row id, so a
+  // crash between the two leaves an annex with stock_adjusted=false (visible,
+  // re-creatable) instead of untracked stock.
   const { data: row, error } = await getSupabaseAdmin()
     .from("document_returns")
     .insert({
@@ -163,16 +183,38 @@ export async function createInvoiceLineReturn(
       currency: inv.currency ?? "MDL",
       account_scope: scope,
       reason: reason?.trim() || null,
-      stock_adjusted: stockAdjusted,
+      stock_adjusted: false,
       created_by: user.id,
     } as never)
     .select("id")
     .single();
   if (error) return { ok: false, reason: error.message };
+  const returnId = (row as { id: string }).id;
+
+  if (productId) {
+    // Carries the invoice's order_id so a later void/cancel of the whole
+    // order nets this credit out instead of restoring on top of it.
+    const moved = await applyStockMovement(supabase as unknown as StockDb, {
+      productId,
+      delta: qty, // customer return → +stock
+      reason: "return",
+      ref: `return:${returnId}`,
+      orderId: (inv as { order_id?: string | null }).order_id ?? null,
+      invoiceId,
+      returnId,
+      createdBy: user.id,
+    });
+    if (moved.ok) {
+      await getSupabaseAdmin()
+        .from("document_returns")
+        .update({ stock_adjusted: true } as never)
+        .eq("id", returnId);
+    }
+  }
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
-  return { ok: true, id: (row as { id: string }).id };
+  return { ok: true, id: returnId };
 }
 
 /**
@@ -207,7 +249,46 @@ export async function createPurchaseLineReturn(
   if (!pur) return { ok: false, reason: "purchase_not_found" };
 
   const lineQty = Number(it.quantity ?? 0);
-  const qty = Math.min(quantity && quantity > 0 ? quantity : lineQty, lineQty);
+  // Cap on a STABLE identity. Purchase edits regenerate line ids (insert-new,
+  // delete-old), so a line-id cap would reset after every edit and allow a
+  // second full credit. The product is what physically exists, so cap at
+  // (total purchased qty of this product on the document) − (already returned
+  // for this product). Lines without a product fall back to the line-id cap.
+  let remaining: number;
+  if (it.product_id) {
+    const { data: sameProduct } = await supabase
+      .from("purchase_items")
+      .select("quantity")
+      .eq("purchase_id", purchaseId)
+      .eq("product_id", it.product_id);
+    const purchasedQty = roundStock(
+      ((sameProduct ?? []) as Array<{ quantity: number | string | null }>).reduce(
+        (s, r) => s + Number(r.quantity ?? 0),
+        0,
+      ),
+    );
+    const { data: prev } = await getSupabaseAdmin()
+      .from("document_returns")
+      .select("quantity")
+      .eq("parent_type", "purchase")
+      .eq("parent_id", purchaseId)
+      .eq("product_id", it.product_id);
+    const returned = roundStock(
+      ((prev ?? []) as Array<{ quantity: number | string | null }>).reduce(
+        (s, r) => s + Number(r.quantity ?? 0),
+        0,
+      ),
+    );
+    remaining = roundStock(purchasedQty - returned);
+  } else {
+    const prevReturned = await alreadyReturnedQty("purchase", purchaseId, it.id);
+    remaining = roundStock(lineQty - prevReturned);
+  }
+  if (remaining <= 0) return { ok: false, reason: "already_returned" };
+  const qty = Math.min(
+    quantity && quantity > 0 ? quantity : Math.min(lineQty, remaining),
+    remaining,
+  );
   if (qty <= 0) return { ok: false, reason: "bad_quantity" };
 
   const vatRate = Number(it.vat_rate ?? 0);
@@ -215,12 +296,6 @@ export async function createPurchaseLineReturn(
   const vat = r2(net * (vatRate / 100));
   const gross = r2(net + vat);
   const unitAmount = r2(qty > 0 ? gross / qty : 0);
-
-  let stockAdjusted = false;
-  if (it.product_id) {
-    await adjustStock(supabase, it.product_id, -qty); // supplier return → -stock
-    stockAdjusted = true;
-  }
 
   const { data: row, error } = await getSupabaseAdmin()
     .from("document_returns")
@@ -240,16 +315,35 @@ export async function createPurchaseLineReturn(
       currency: pur.currency ?? "MDL",
       account_scope: pur.account_scope ?? "conta1",
       reason: reason?.trim() || null,
-      stock_adjusted: stockAdjusted,
+      stock_adjusted: false,
       created_by: user.id,
     } as never)
     .select("id")
     .single();
   if (error) return { ok: false, reason: error.message };
+  const returnId = (row as { id: string }).id;
+
+  if (it.product_id) {
+    const moved = await applyStockMovement(supabase as unknown as StockDb, {
+      productId: it.product_id,
+      delta: -qty, // supplier return → -stock
+      reason: "return",
+      ref: `return:${returnId}`,
+      purchaseId,
+      returnId,
+      createdBy: user.id,
+    });
+    if (moved.ok) {
+      await getSupabaseAdmin()
+        .from("document_returns")
+        .update({ stock_adjusted: true } as never)
+        .eq("id", returnId);
+    }
+  }
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
-  return { ok: true, id: (row as { id: string }).id };
+  return { ok: true, id: returnId };
 }
 
 /**
@@ -280,11 +374,57 @@ export async function deleteReturn(
     stock_adjusted: boolean | null;
   };
   if (r.stock_adjusted && r.product_id) {
-    const qty = Number(r.quantity ?? 0);
-    // Reverse the original move: invoice return had +qty → now -qty; purchase
-    // return had -qty → now +qty.
-    const delta = r.parent_type === "invoice" ? -qty : qty;
-    if (qty > 0) await adjustStock(supabase, r.product_id, delta);
+    const db = supabase as unknown as StockDb;
+    // If the parent document was since cancelled/voided, its reversal already
+    // netted this return out — reversing again would drain stock the cancel
+    // accounted for. Skip the move, just remove the row. (Symmetric for both
+    // parents: invoice → order cancelled/void, purchase → cancelled.)
+    let orderCancelled = false;
+    if (r.parent_type === "invoice") {
+      const { data: parentInv } = await supabase
+        .from("invoices")
+        .select("order_id, status")
+        .eq("id", r.parent_id)
+        .maybeSingle();
+      if (parentInv?.status === "void") orderCancelled = true;
+      if (!orderCancelled && parentInv?.order_id) {
+        const { data: parentOrd } = await supabase
+          .from("orders")
+          .select("status")
+          .eq("id", parentInv.order_id)
+          .maybeSingle();
+        orderCancelled = parentOrd?.status === "cancelled";
+      }
+    } else {
+      const { data: parentPur } = await supabase
+        .from("purchases")
+        .select("status")
+        .eq("id", r.parent_id)
+        .maybeSingle();
+      orderCancelled = parentPur?.status === "cancelled";
+    }
+
+    if (!orderCancelled) {
+      // Ledger-first: negate the recorded movement (exact product + delta).
+      // Pre-ledger returns fall back to the stored product_id × quantity.
+      // Either way the `reverse:` ref makes a repeated undo a no-op.
+      const mv = await getMovementByRef(db, `return:${returnId}`);
+      const qty = Number(r.quantity ?? 0);
+      const legacyDelta = r.parent_type === "invoice" ? -qty : qty;
+      const delta = mv ? -Number(mv.delta) : legacyDelta;
+      const productId = mv ? mv.product_id : r.product_id;
+      if (delta !== 0) {
+        await applyStockMovement(db, {
+          productId,
+          delta,
+          reason: "return_reverse",
+          ref: `reverse:return:${returnId}`,
+          orderId: mv?.order_id ?? null,
+          returnId,
+          createdBy: user.id,
+        });
+      }
+    }
   }
 
   const { error } = await admin.from("document_returns").delete().eq("id", returnId);

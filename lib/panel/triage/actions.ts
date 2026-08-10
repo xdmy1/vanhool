@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
+import { reverseOrderStock, type StockDb } from "@/lib/stock-ledger";
 import type { Json } from "@/lib/supabase/database.types";
 
 const triageSchema = z.object({
@@ -178,9 +179,11 @@ export async function triageOrder(
 }
 
 /**
- * Cancel a storefront order straight from the triage tray. Doesn't touch
- * stock, invoices, or delivery notes — cancellation here means "we never
- * fulfilled this, mark it dead and stop showing it as a pending decision."
+ * Cancel a storefront order straight from the triage tray. "We never
+ * fulfilled this" still means the checkout DECREMENTED stock (cash/transfer
+ * orders finalize immediately), so cancelling here restores it through the
+ * ledger exactly like the admin cancel does — the two cancel buttons must
+ * agree. Unpaid card orders restore nothing (their finalize never ran).
  * PIN-gated like every other destructive admin action.
  */
 export async function cancelStorefrontOrder(
@@ -192,6 +195,37 @@ export async function cancelStorefrontOrder(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
 
   const supabase = await createClient();
+  const ordCols = "id, status, items, payment_method";
+  let ordRes = await supabase
+    .from("orders")
+    .select(`${ordCols}, payment_status` as typeof ordCols)
+    .eq("id", orderId)
+    .maybeSingle();
+  if (ordRes.error && /payment_status/i.test(ordRes.error.message)) {
+    ordRes = await supabase
+      .from("orders")
+      .select(ordCols)
+      .eq("id", orderId)
+      .maybeSingle();
+  }
+  const ord = ordRes.data;
+  if (ord && ord.status !== "cancelled") {
+    const restored = await reverseOrderStock(
+      supabase as unknown as StockDb,
+      {
+        id: orderId,
+        items: ord.items,
+        payment_method:
+          (ord as { payment_method?: string | null }).payment_method ?? null,
+        payment_status:
+          (ord as { payment_status?: string | null }).payment_status ?? null,
+      },
+      user.id,
+    );
+    // Don't mark it dead while the goods are still charged out — retry heals.
+    if (!restored.ok) return { ok: false, reason: restored.reason };
+  }
+
   const { error } = await supabase
     .from("orders")
     .update({

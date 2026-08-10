@@ -4,7 +4,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { verifyCallbackSignature } from "@/lib/payments/maib/client";
 import { finalizeOrder } from "@/lib/orders/actions";
+import { sendResendEmail, getAdminEmail } from "@/lib/email/resend";
+import { reverseOrderStock, type StockDb } from "@/lib/stock-ledger";
 import type { MaibCallbackBody, MaibPayInfo } from "@/lib/payments/maib/types";
+
+/** Money moved but the order can't follow — the admin must hear about it. */
+function alertAdmin(subject: string, body: string): void {
+  void sendResendEmail({
+    to: getAdminEmail(),
+    subject,
+    html: `<p>${body}</p>`,
+    text: body,
+  }).catch((e) => console.error("[maib] admin alert failed:", e));
+}
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +48,10 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   if (status === "OK") {
     // Idempotent transition pending → paid. If a prior callback already
-    // flipped it, no rows come back and we skip re-fulfilment.
+    // flipped it, no rows come back and we skip re-fulfilment. An order the
+    // admin cancelled while the customer sat on the payment page must NOT be
+    // resurrected and fulfilled — the money lands as a payments row for the
+    // operator to refund, but stock stays untouched.
     const { data: updated } = await admin
       .from("orders")
       .update({
@@ -47,19 +62,68 @@ export async function POST(req: NextRequest): Promise<Response> {
       })
       .eq("id", orderId)
       .neq("payment_status", "paid")
+      .neq("status", "cancelled")
       .select("id");
     await recordPayment(admin, orderId, payId, result, "paid");
     if (updated && updated.length > 0) {
       await finalizeOrder(orderId);
+    } else {
+      // Either a replayed callback (fine) or money landing on a CANCELLED
+      // order — the customer paid for something we won't ship. The payments
+      // row alone is invisible; wake the admin up.
+      const { data: cur } = await admin
+        .from("orders")
+        .select("status")
+        .eq("id", orderId)
+        .maybeSingle();
+      if ((cur as { status?: string } | null)?.status === "cancelled") {
+        alertAdmin(
+          `⚠️ Plată maib pe comandă ANULATĂ #${orderId.slice(0, 8)}`,
+          `Comanda ${orderId} este anulată dar maib a confirmat plata (payId ${payId ?? "?"}). Clientul trebuie rambursat manual — stocul NU a fost mișcat.`,
+        );
+      }
     }
     return new Response("OK", { status: 200 });
   }
 
   if (status === "REVERSED") {
-    await admin
+    // Bank reversed the money. Only a payment that actually WAS paid undoes a
+    // sale — a reversal on a pending/failed authorization must not touch
+    // stock (nothing was ever decremented). Read the truth BEFORE writing.
+    const { data: pre } = await admin
       .from("orders")
-      .update({ payment_status: "refunded" })
-      .eq("id", orderId);
+      .select("status, payment_status, items, payment_method")
+      .eq("id", orderId)
+      .maybeSingle();
+    const preRow = pre as
+      | { status?: string | null; payment_status?: string | null; items?: unknown; payment_method?: string | null }
+      | null;
+    const wasPaid = preRow?.payment_status === "paid";
+    if (preRow && preRow.payment_status !== "refunded") {
+      await admin
+        .from("orders")
+        .update({
+          payment_status: "refunded",
+          ...(wasPaid ? { status: "cancelled" } : {}),
+        })
+        .eq("id", orderId)
+        .neq("payment_status", "refunded");
+      if (wasPaid && preRow.status !== "cancelled") {
+        const restored = await reverseOrderStock(admin as unknown as StockDb, {
+          id: orderId,
+          items: preRow.items ?? [],
+          payment_method: preRow.payment_method ?? "card",
+          payment_status: "paid",
+        });
+        if (!restored.ok) {
+          console.error(`[maib] REVERSED: stock restore failed for ${orderId}: ${restored.reason}`);
+        }
+        alertAdmin(
+          `↩️ Plată maib STORNATĂ #${orderId.slice(0, 8)}`,
+          `Banca a stornat plata comenzii ${orderId} (payId ${payId ?? "?"}). Comanda a fost anulată și stocul restaurat${restored.ok ? "" : " — ATENȚIE: restaurarea stocului a EȘUAT, verifică manual"}.`,
+        );
+      }
+    }
     await recordPayment(admin, orderId, payId, result, "refunded");
     return new Response("OK", { status: 200 });
   }

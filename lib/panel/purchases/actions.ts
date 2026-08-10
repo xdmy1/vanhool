@@ -13,6 +13,15 @@ import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
 import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
 import { normalizeCode } from "@/lib/utils/normalize-code";
+import { roundStock } from "@/lib/stock";
+import {
+  applyStockMovement,
+  getPurchaseMovements,
+  ledgerReady,
+  reversePurchaseLines,
+  settlePurchaseCancelNet,
+  type StockDb,
+} from "@/lib/stock-ledger";
 
 // Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
 // env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
@@ -163,13 +172,14 @@ async function archivePurchaseItems(
 ): Promise<void> {
   const cols =
     "id, purchase_id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, created_at";
-  // add_to_catalog may be absent on very old schemas — mirror postPurchase's
-  // fallback so a missing column never aborts the snapshot.
+  // add_to_catalog / unit / pack_note may be absent on very old schemas —
+  // mirror postPurchase's fallback so a missing column never aborts the
+  // snapshot.
   let sel = await supabase
     .from("purchase_items")
-    .select(`${cols}, add_to_catalog` as typeof cols)
+    .select(`${cols}, add_to_catalog, unit, pack_note` as typeof cols)
     .eq("purchase_id", purchaseId);
-  if (sel.error && /add_to_catalog/i.test(sel.error.message)) {
+  if (sel.error && /(add_to_catalog|\bunit\b|pack_note)/i.test(sel.error.message)) {
     sel = await supabase
       .from("purchase_items")
       .select(cols)
@@ -190,14 +200,26 @@ async function archivePurchaseItems(
     vat_rate: r.vat_rate ?? null,
     line_total: r.line_total ?? null,
     add_to_catalog: (r as { add_to_catalog?: boolean | null }).add_to_catalog ?? null,
+    unit: (r as { unit?: string | null }).unit ?? null,
+    pack_note: (r as { pack_note?: string | null }).pack_note ?? null,
     item_created_at: r.created_at ?? null,
     archived_by: userId,
     archive_reason: reason,
   }));
 
-  const { error } = await getSupabaseAdmin()
+  let { error } = await getSupabaseAdmin()
     .from("purchase_items_archive")
     .insert(snapshot as never);
+  // Archive table pre-dates the unit/pack_note columns (sql/stock-accuracy.sql)
+  // — strip them rather than losing the whole snapshot.
+  if (error && /(\bunit\b|pack_note)/i.test(error.message)) {
+    const stripped = snapshot.map(({ unit: _u, pack_note: _p, ...rest }) => rest);
+    error = (
+      await getSupabaseAdmin()
+        .from("purchase_items_archive")
+        .insert(stripped as never)
+    ).error;
+  }
   if (error) {
     console.warn(
       "[panel.purchases] archive skipped (run sql/purchase-items-safety.sql):",
@@ -290,21 +312,26 @@ async function resolvePurchaseProductId(
 
 /**
  * Apply a set of purchase lines to stock: for each line resolve (or create) the
- * catalog product, increment its stock by the line quantity, refresh cost_price
- * (GROSS MDL = net × (1+vat) × fx) and add the supplier cross-reference. Links
- * `product_id` back onto the line. This is the single source of truth shared by
- * postPurchase (first post) and updatePurchase (re-apply on edit of a posted
- * document). cost_price is GROSS per project convention — see the CORE math fix.
+ * catalog product, move stock through the LEDGER (ref `purchase_post:<line_id>`
+ * — idempotent, so a retried or double-clicked post is a no-op), refresh
+ * cost_price (GROSS MDL = net × (1+vat) × fx) and add the supplier
+ * cross-reference. Links `product_id` back onto the line. This is the single
+ * source of truth shared by postPurchase (first post) and updatePurchase
+ * (re-apply on edit of a posted document). cost_price is GROSS per project
+ * convention — see the CORE math fix.
  */
 async function applyPostedLines(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  purchaseId: string,
   header: {
     supplier_id: string;
     currency: string | null;
     fx_rate: number | string | null;
   },
   lines: PostedLine[],
+  userId: string | null,
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const db = supabase as unknown as StockDb;
   const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
   const currency = (header.currency ?? "MDL").toUpperCase();
   const toMdl =
@@ -318,6 +345,8 @@ async function applyPostedLines(
     .eq("id", header.supplier_id)
     .maybeSingle();
   const supplierName = supplier?.name ?? "Furnizor";
+  // Collected per line for the draft-sale settlement pass below.
+  const resolvedLines: Array<{ productId: string; codes: string[] }> = [];
 
   for (const it of lines) {
     const wantsCatalog = it.add_to_catalog ?? false;
@@ -369,12 +398,24 @@ async function applyPostedLines(
       await supabase.from("purchase_items").update({ product_id: productId }).eq("id", it.id);
     }
 
+    // Stock through the ledger — one movement per purchase line, keyed by the
+    // line's id. A re-run (healing retry, edit re-apply of an unchanged line
+    // id) is a no-op; a genuinely new line id applies exactly once.
+    const applied = await applyStockMovement(db, {
+      productId,
+      delta: Number(it.quantity),
+      reason: "purchase_post",
+      ref: `purchase_post:${it.id}`,
+      purchaseId,
+      createdBy: userId,
+    });
+    if (!applied.ok) return { ok: false, reason: applied.reason };
+
     const { data: cur } = await supabase
       .from("products")
-      .select("stock_quantity, cross_references")
+      .select("cross_references")
       .eq("id", productId)
       .maybeSingle();
-    const newStock = Number(cur?.stock_quantity ?? 0) + Number(it.quantity);
     const refs = Array.isArray(cur?.cross_references) ? [...cur!.cross_references] : [];
     if (it.supplier_code) {
       const has = refs.some(
@@ -387,44 +428,111 @@ async function applyPostedLines(
       if (!has) refs.push({ brand: supplierName, code: it.supplier_code } as Json);
     }
     // Also sync the unit (a split turns 1 barrel → 200 litri) and refresh
-    // cost. Cast through never: `unit` is a manually-migrated column the
-    // generated types don't know about yet.
+    // cost. A zero-cost restock line must NOT wipe cost_price to 0 — that
+    // would disarm the below-cost guard for the product. Cast through never:
+    // `unit` is a manually-migrated column the generated types don't know yet.
     await supabase
       .from("products")
       .update({
-        stock_quantity: newStock,
-        cost_price: costMdl,
+        ...(costMdl > 0 ? { cost_price: costMdl } : {}),
         unit: (it.unit ?? "buc") || "buc",
         cross_references: refs as unknown as Json,
       } as never)
       .eq("id", productId);
+
+    resolvedLines.push({
+      productId,
+      codes: [it.internal_code, it.supplier_code].filter(
+        (c): c is string => !!c && c.trim().length > 0,
+      ),
+    });
   }
+
+  // Goods sold from this purchase while it was still a DRAFT never moved stock
+  // (no catalog product existed). Now that the products exist and the full
+  // purchased quantity is in, take those already-sold units back out and link
+  // the order lines — otherwise stock overstates by everything sold pre-post.
+  await settleDraftPurchaseSales(supabase, purchaseId, resolvedLines, userId);
+
   return { ok: true };
 }
 
 /**
- * Reverse the stock a set of lines previously added (used when re-applying a
- * posted purchase on edit). For each line with a product_id, stock -= quantity
- * (floored at 0). cost_price is left as-is — it's re-set by applyPostedLines.
+ * Find panel sales whose lines were sold "from draft purchase" (no catalog
+ * product at sale time) matching the freshly-posted products by NORMALIZED
+ * code, decrement their sold quantity through the ledger (once — ref
+ * `draft_settle:<order_id>:<product_id>`), and link the order lines to the
+ * product so future reversals see them like any other catalog line.
  */
-async function reversePostedLines(
+async function settleDraftPurchaseSales(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  lines: Array<{ product_id: string | null; quantity: number | string | null }>,
+  purchaseId: string,
+  targets: Array<{ productId: string; codes: string[] }>,
+  userId: string | null,
 ): Promise<void> {
-  for (const it of lines) {
-    if (!it.product_id) continue;
-    const qty = Number(it.quantity ?? 0);
-    if (qty <= 0) continue;
-    const { data: p } = await supabase
-      .from("products")
-      .select("stock_quantity")
-      .eq("id", it.product_id)
-      .maybeSingle();
-    if (!p) continue;
+  const db = supabase as unknown as StockDb;
+  const codeMap = new Map<string, string>();
+  for (const t of targets) {
+    for (const c of t.codes) {
+      const n = normalizeCode(c);
+      if (n) codeMap.set(n, t.productId);
+    }
+  }
+  if (codeMap.size === 0) return;
+
+  // Draft-line sales only exist in the panel flow, and are recent by nature
+  // (the part was quoted, sold, then the purchase got posted).
+  const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("id, status, items")
+    .eq("source", "panel")
+    .neq("status", "cancelled")
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  for (const ord of orders ?? []) {
+    const items = Array.isArray(ord.items)
+      ? [...(ord.items as Array<Record<string, unknown>>)]
+      : [];
+    const takeByProduct = new Map<string, number>();
+    let changed = false;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!(it as { from_draft_purchase?: boolean }).from_draft_purchase) continue;
+      if ((it as { productId?: string | null }).productId) continue;
+      const code = normalizeCode(
+        String((it as { partCode?: string | null }).partCode ?? ""),
+      );
+      const productId = code ? codeMap.get(code) : undefined;
+      if (!productId) continue;
+      const qty = Number((it as { quantity?: number }).quantity ?? 0);
+      if (qty <= 0) continue;
+      takeByProduct.set(
+        productId,
+        roundStock((takeByProduct.get(productId) ?? 0) + qty),
+      );
+      items[i] = { ...it, productId, from_draft_purchase: false };
+      changed = true;
+    }
+    if (!changed) continue;
+    for (const [productId, qty] of takeByProduct) {
+      await applyStockMovement(db, {
+        productId,
+        delta: -qty,
+        reason: "sale",
+        ref: `draft_settle:${ord.id}:${productId}`,
+        orderId: ord.id as string,
+        purchaseId,
+        note: "vânzare din achiziție-draft, decontată la postare",
+        createdBy: userId,
+      });
+    }
     await supabase
-      .from("products")
-      .update({ stock_quantity: Math.max(0, Number(p.stock_quantity ?? 0) - qty) })
-      .eq("id", it.product_id);
+      .from("orders")
+      .update({ items: items as unknown as Json })
+      .eq("id", ord.id as string);
   }
 }
 
@@ -521,20 +629,13 @@ export async function postPurchase(
     .eq("id", purchaseId)
     .maybeSingle();
   if (!header) return { ok: false, reason: "purchase_not_found" };
-  if (header.status === "posted") return { ok: true };
   if (header.status === "cancelled") return { ok: false, reason: "purchase_cancelled" };
 
-  // Products are stored in MDL. Convert line costs using the purchase's
-  // explicit fx_rate, else fall back to the fixed reference table
-  // (EUR=20, USD=17). No live FX lookups.
-  const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
-  const currency = (header.currency ?? "MDL").toUpperCase();
-  const toMdl =
-    currency === "MDL"
-      ? 1
-      : (Number(header.fx_rate) || DEFAULT_FX_TO_MDL[currency] || 1);
-  // Markup is configurable from /panel/setari — falls back to 30% if unset.
-  const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
+  // The ledger is mandatory on this path — posting without it would flip the
+  // document to `posted` while moving no stock.
+  if (!(await ledgerReady(supabase as unknown as StockDb))) {
+    return { ok: false, reason: "stock_ledger_missing — rulează sql/stock-accuracy.sql" };
+  }
 
   // Try with the opt-in catalog flag; fall back if the migration hasn't
   // been applied yet (every line is then treated as add_to_catalog=true,
@@ -569,155 +670,82 @@ export async function postPurchase(
   const items = (itemsRes.data ?? []) as unknown as ItemRow[];
   if (items.length === 0) return { ok: false, reason: "no_items" };
 
-  // Fetch supplier name for cross_reference entries
-  const { data: supplier } = await supabase
-    .from("suppliers")
-    .select("name")
-    .eq("id", header.supplier_id)
-    .maybeSingle();
-  const supplierName = supplier?.name ?? "Furnizor";
-
-  for (const it of items) {
-    // `add_to_catalog` gates the SITE listing only — never internal stock.
-    // Every posted line gets a product row and moves stock, because the
-    // warehouse holds the part whether or not we ever publish it. Unticked
-    // simply means the product stays `is_active: false`: invisible on the
-    // storefront, fully usable in the panel (sale, proforma, invoice).
-    //
-    // This is what closes the hole where a purchase entered without the tick
-    // brought goods in that stock never knew about, so the invoice had
-    // nothing to take back out.
-    //
-    // New products stay `is_active: false` regardless of the tick — the owner
-    // reviews the auto-markup price before anything reaches the storefront.
-    // Unticked lines additionally get `internal_only`, which keeps them out of
-    // the admin product catalog while staying fully stock-tracked and sellable.
-    const wantsCatalog =
-      (it as { add_to_catalog?: boolean }).add_to_catalog ?? false;
-
-    let productId = it.product_id;
-
-    // CORE math fix (operator complaint: "piesa cu TVA ne-a costat 1200
-    // nu 1000"). unit_cost on purchase_items is NET (before TVA). The
-    // amount that actually came out of the bank account is GROSS:
-    //   gross_per_unit = unit_cost × (1 + vat_rate / 100)
-    // That's the cost margin calculations must work against — otherwise
-    // a 20%-TVA part bought at 1000 net (1200 paid) gets sold at 1200
-    // and the system reports a +20% margin when reality is 0.
-    const vatRate = Number((it as { vat_rate?: number | string }).vat_rate ?? 20);
-    const grossPerUnitMdl = Number(
-      (Number(it.unit_cost) * (1 + vatRate / 100) * toMdl).toFixed(2),
-    );
-    const costMdl = grossPerUnitMdl;
-
-    if (!productId) {
-      const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
-
-      // Re-stocking an existing part is the common case once part_code is
-      // unique — look the product up first and link instead of creating a
-      // duplicate. Match is case-insensitive to mirror the unique index.
-      //
-      // Also match on supplier_code: now that EVERY line creates a product,
-      // a part re-bought from the same supplier under the same supplier code
-      // must land on the existing product instead of flooding the catalog
-      // with a near-duplicate on each purchase.
-      const esc = (s: string) => s.replace(/[\\%_]/g, "\\$&");
-      const { data: existing } = await supabase
-        .from("products")
-        .select("id")
-        .ilike("part_code", esc(code))
-        .limit(1);
-      let matchId = existing?.[0]?.id ?? null;
-      if (!matchId && it.supplier_code) {
-        const { data: bySupplier } = await supabase
-          .from("products")
-          .select("id")
-          .ilike("supplier_code", esc(it.supplier_code))
-          .limit(2);
-        // Ambiguous supplier code → create a fresh product rather than
-        // silently stocking the wrong one.
-        if (bySupplier && bySupplier.length === 1) matchId = bySupplier[0].id;
-      }
-      if (matchId) {
-        productId = matchId;
-      } else {
-        const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
-        const base = {
-          part_code: code,
-          name_ro: it.description.slice(0, 200),
-          slug,
-          price: Number((costMdl * markupFactor).toFixed(2)),
-          cost_price: costMdl,
-          stock_quantity: 0,
-          // Carry the purchase line's unit onto the new product so the same
-          // unit shows in the admin catalog and on the public storefront.
-          unit: (it.unit ?? "buc") || "buc",
-          is_active: false, // owner reviews before publishing
-          supplier_id: header.supplier_id,
-          supplier_code: it.supplier_code ?? null,
-        };
-        // Cast through never: generated types are stale for `unit` /
-        // `internal_only` (added by migrations) until regenerated.
-        let { data: newP, error: newErr } = await supabase
-          .from("products")
-          .insert({ ...base, internal_only: !wantsCatalog } as never)
-          .select("id")
-          .single();
-        // sql/products-internal-only.sql not applied yet — keep posting rather
-        // than blocking the warehouse on a migration.
-        if (newErr && /internal_only/i.test(newErr.message)) {
-          const retry = await supabase.from("products").insert(base as never).select("id").single();
-          newP = retry.data;
-          newErr = retry.error;
-        }
-        if (newErr || !newP) {
-          return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
-        }
-        productId = newP.id;
-      }
-      // Link back to purchase line so future operations know the product.
-      await supabase
-        .from("purchase_items")
-        .update({ product_id: productId })
-        .eq("id", it.id);
-    }
-
-    // Increment stock and refresh cost_price + cross_references entry
-    const { data: cur } = await supabase
-      .from("products")
-      .select("stock_quantity, cross_references")
-      .eq("id", productId)
-      .maybeSingle();
-    const newStock = Number(cur?.stock_quantity ?? 0) + Number(it.quantity);
-    const refs = Array.isArray(cur?.cross_references) ? [...cur!.cross_references] : [];
-    if (it.supplier_code) {
-      const has = refs.some(
-        (r) =>
-          r &&
-          typeof r === "object" &&
-          !Array.isArray(r) &&
-          (r as Record<string, unknown>).code === it.supplier_code,
-      );
-      if (!has) refs.push({ brand: supplierName, code: it.supplier_code } as Json);
-    }
-    await supabase
-      .from("products")
-      .update({
-        stock_quantity: newStock,
-        cost_price: costMdl,
-        cross_references: refs as unknown as Json,
-      })
-      .eq("id", productId);
-  }
-
-  await supabase
+  // Atomic claim AFTER validation: only one caller flips the row to `posted`
+  // — a double-click / second tab loses the conditional update and takes the
+  // heal branch instead. Stock is applied after the claim through idempotent
+  // ledger refs (`purchase_post:<line_id>`), so posting can never double-add
+  // and a mid-apply failure heals via the idempotent re-apply (also run by
+  // Editare → Salvează on a posted document).
+  const { data: claimed } = await supabase
     .from("purchases")
     .update({
       status: "posted",
       received_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", purchaseId);
+    .eq("id", purchaseId)
+    .neq("status", "posted")
+    .neq("status", "cancelled")
+    .select("id");
+  if (!claimed || claimed.length === 0) {
+    const { data: cur } = await supabase
+      .from("purchases")
+      .select("status")
+      .eq("id", purchaseId)
+      .maybeSingle();
+    if (cur?.status !== "posted") {
+      return { ok: false, reason: "purchase_cancelled" };
+    }
+    // Already posted → fall through and re-run the idempotent apply (heal).
+  }
+
+  // One shared implementation with the edit-repost path: normalized product
+  // resolution (never raw ilike — "C 4312/1" and "C4312/1" are the same
+  // part), product creation, ledger stock, GROSS-MDL cost, cross-references,
+  // draft-sale settlement.
+  const applied = await applyPostedLines(
+    supabase,
+    purchaseId,
+    {
+      supplier_id: header.supplier_id,
+      currency: header.currency,
+      fx_rate: header.fx_rate,
+    },
+    items as unknown as PostedLine[],
+    user.id,
+  );
+  if (!applied.ok) {
+    // Status is already `posted` (claimed above) but some lines may not have
+    // applied. The ledger makes the retry safe AND reachable: opening the
+    // document and saving it (Editare → Salvează) re-runs the idempotent
+    // apply, so only the missing lines move stock.
+    return {
+      ok: false,
+      reason: `${applied.reason} — deschide achiziția și apasă Salvează pentru a relua postarea`,
+    };
+  }
+
+  // A cancel can land between our claim and the line application (it reverses
+  // only the movements that existed at that moment). If it did, reverse what
+  // we just applied so cancel + post never leave residue.
+  const { data: after } = await supabase
+    .from("purchases")
+    .select("status")
+    .eq("id", purchaseId)
+    .maybeSingle();
+  if (after?.status === "cancelled") {
+    await reversePurchaseLines(
+      supabase as unknown as StockDb,
+      purchaseId,
+      items.map((it) => ({
+        id: it.id,
+        product_id: it.product_id,
+        quantity: it.quantity,
+      })),
+      user.id,
+    );
+    return { ok: false, reason: "purchase_cancelled" };
+  }
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
@@ -824,36 +852,35 @@ export async function cancelPurchase(
     .select("status")
     .eq("id", purchaseId)
     .maybeSingle();
+  if (cur?.status === "cancelled") return { ok: true };
   const wasPosted = cur?.status === "posted";
 
   if (wasPosted) {
-    // Pull every line that pushed stock and reverse it. Mirrors the
-    // increment loop in postPurchase. Idempotency safe: status flips
-    // to "cancelled" below and a re-call short-circuits because we
-    // only restore when wasPosted=true on the FIRST cancel.
+    // Reverse through the ledger: each line's actual `purchase_post`
+    // movement is negated under a unique `reverse:` ref, so a double-click,
+    // a concurrent cancel or a later delete can never reverse twice. Then
+    // net out what line reversal can't see (supplier returns).
     const { data: items } = await supabase
       .from("purchase_items")
-      .select("product_id, quantity")
+      .select("id, product_id, quantity")
       .eq("purchase_id", purchaseId);
-    for (const it of (items ?? []) as Array<{
-      product_id: string | null;
-      quantity: number | string | null;
-    }>) {
-      if (!it.product_id) continue;
-      const qty = Number(it.quantity ?? 0);
-      if (qty <= 0) continue;
-      const { data: prod } = await supabase
-        .from("products")
-        .select("stock_quantity")
-        .eq("id", it.product_id)
-        .maybeSingle();
-      if (!prod) continue;
-      const next = Math.max(0, Number(prod.stock_quantity ?? 0) - qty);
-      await supabase
-        .from("products")
-        .update({ stock_quantity: next })
-        .eq("id", it.product_id);
-    }
+    const reversed = await reversePurchaseLines(
+      supabase as unknown as StockDb,
+      purchaseId,
+      (items ?? []) as Array<{
+        id: string;
+        product_id: string | null;
+        quantity: number | string | null;
+      }>,
+      user.id,
+    );
+    if (!reversed.ok) return reversed;
+    const netted = await settlePurchaseCancelNet(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    if (!netted.ok) return netted;
   }
 
   const { error } = await supabase
@@ -1096,8 +1123,10 @@ export async function updatePurchase(
     .select("id, product_id, quantity")
     .eq("purchase_id", id);
   const oldIds = (oldRows ?? []).map((r) => r.id as string);
-  // Captured for the stock re-apply below (posted purchases only).
+  // Captured for the stock re-apply below (posted purchases only). Line ids
+  // included — the ledger reverses each line's recorded movement by ref.
   const oldLines = (oldRows ?? []).map((r) => ({
+    id: r.id as string,
     product_id: (r as { product_id: string | null }).product_id ?? null,
     quantity: (r as { quantity: number | string | null }).quantity ?? 0,
   }));
@@ -1155,8 +1184,18 @@ export async function updatePurchase(
   // Posted purchase: re-adjust stock. Reverse every OLD line's contribution,
   // then apply every NEW line — the net effect per product is exactly the edit
   // delta (works for changed qty, split lines, added and removed lines).
+  // A stock hiccup here never loses the document (it's already saved), but it
+  // MUST surface to the operator — re-saving the edit re-runs the idempotent
+  // apply and heals.
+  let stockIssue: string | null = null;
   if (wasPosted) {
-    await reversePostedLines(supabase, oldLines);
+    const reversed = await reversePurchaseLines(
+      supabase as unknown as StockDb,
+      id,
+      oldLines,
+      user.id,
+    );
+    if (!reversed.ok) stockIssue = reversed.reason;
     let newRes = await supabase
       .from("purchase_items")
       .select(
@@ -1173,16 +1212,14 @@ export async function updatePurchase(
         .eq("purchase_id", id);
     }
     const newLines = (newRes.data ?? []) as unknown as PostedLine[];
-    // Best-effort: the edit is already saved; a stock-apply hiccup is logged,
-    // not fatal, so the operator never loses the document.
     const applied = await applyPostedLines(
       supabase,
+      id,
       { supplier_id: v.supplier_id, currency: v.currency, fx_rate: v.fx_rate ?? null },
       newLines,
+      user.id,
     );
-    if (!applied.ok) {
-      console.warn("[panel.purchases] stock re-apply on edit:", applied.reason);
-    }
+    if (!applied.ok) stockIssue = stockIssue ?? applied.reason;
   }
 
   // Header last. `updated_by` records who edited; it degrades gracefully if the
@@ -1215,13 +1252,23 @@ export async function updatePurchase(
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${id}`, "page");
+
+  // Document saved either way; a stock hiccup surfaces as an error the
+  // operator can act on (re-save = idempotent heal), never a silent warn.
+  if (stockIssue) {
+    return {
+      ok: false,
+      reason: `${stockIssue} — documentul e salvat; apasă din nou Salvează pentru a corecta stocul`,
+    };
+  }
   return { ok: true };
 }
 
 /**
- * Hard-delete a purchase + its line items. PIN-gated. Stock isn't
- * rolled back automatically — admin should already have cancelled
- * the purchase first if it was posted.
+ * Hard-delete a purchase + its line items. PIN-gated. A POSTED purchase gets
+ * its stock reversed through the ledger FIRST (same refs as cancelPurchase,
+ * so cancel-then-delete can never reverse twice) — deleting the document that
+ * brought goods in must also take those goods back out.
  */
 export async function deletePurchaseWithPin(
   purchaseId: string,
@@ -1231,6 +1278,38 @@ export async function deletePurchaseWithPin(
   if (!user) return { ok: false, reason: "unauthorized" };
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = await createClient();
+
+  const { data: hdr } = await supabase
+    .from("purchases")
+    .select("status")
+    .eq("id", purchaseId)
+    .maybeSingle();
+  if (hdr?.status === "posted") {
+    const { data: items } = await supabase
+      .from("purchase_items")
+      .select("id, product_id, quantity")
+      .eq("purchase_id", purchaseId);
+    const reversed = await reversePurchaseLines(
+      supabase as unknown as StockDb,
+      purchaseId,
+      (items ?? []) as Array<{
+        id: string;
+        product_id: string | null;
+        quantity: number | string | null;
+      }>,
+      user.id,
+    );
+    // A delete that cannot reverse its stock must NOT proceed — the document
+    // would vanish while the phantom quantity stays forever.
+    if (!reversed.ok) return reversed;
+    const netted = await settlePurchaseCancelNet(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    if (!netted.ok) return netted;
+  }
+
   // Snapshot the lines before they're gone so a delete stays recoverable and
   // leaves an audit trail of who removed the document.
   await archivePurchaseItems(supabase, purchaseId, "purchase_delete", user.id);
@@ -1268,13 +1347,21 @@ export async function restorePurchaseItemsFromArchive(
 
   // Read the archive with the service-role client (server-only audit store).
   const admin = getSupabaseAdmin();
-  const { data: arch, error: archErr } = await admin
+  const archCols =
+    "product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, add_to_catalog, archived_at";
+  let archRes = await admin
     .from("purchase_items_archive")
-    .select(
-      "product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, line_total, add_to_catalog, archived_at",
-    )
+    .select(`${archCols}, unit, pack_note` as typeof archCols)
     .eq("purchase_id", purchaseId)
     .order("archived_at", { ascending: false });
+  if (archRes.error && /(\bunit\b|pack_note)/i.test(archRes.error.message)) {
+    archRes = await admin
+      .from("purchase_items_archive")
+      .select(archCols)
+      .eq("purchase_id", purchaseId)
+      .order("archived_at", { ascending: false });
+  }
+  const { data: arch, error: archErr } = archRes;
   if (archErr) {
     return {
       ok: false,
@@ -1304,18 +1391,77 @@ export async function restorePurchaseItemsFromArchive(
       vat_rate: Number(a.vat_rate ?? 20),
       line_total: Number(a.line_total ?? 0),
       add_to_catalog: Boolean(a.add_to_catalog ?? false),
+      // Restored split lines keep their unit + trace ("1 buc → 200 litri")
+      // instead of silently reverting to "buc".
+      unit: ((a as { unit?: string | null }).unit ?? "buc") || "buc",
+      pack_note: (a as { pack_note?: string | null }).pack_note ?? null,
     };
   });
   let lErr = (
     await supabase.from("purchase_items").insert(lines as never)
   ).error;
-  if (lErr && /add_to_catalog/i.test(lErr.message)) {
-    const stripped = lines.map(({ add_to_catalog: _ignore, ...rest }) => rest);
+  if (lErr && /(add_to_catalog|\bunit\b|pack_note)/i.test(lErr.message)) {
+    const stripped = lines.map(
+      ({ add_to_catalog: _a, unit: _u, pack_note: _p, ...rest }) => rest,
+    );
     lErr = (
       await supabase.from("purchase_items").insert(stripped as never)
     ).error;
   }
   if (lErr) return { ok: false, reason: lErr.message };
+
+  // If the purchase is POSTED and the ledger shows its stock effect was fully
+  // reversed (e.g. deleted-then-recovered, or an edit whose reverse ran but
+  // whose re-apply died), re-apply the restored lines so document and stock
+  // agree again. When the ledger shows stock still in — or the purchase
+  // predates the ledger and we can't know — leave stock alone and say so.
+  const { data: hdr } = await supabase
+    .from("purchases")
+    .select("status, supplier_id, currency, fx_rate")
+    .eq("id", purchaseId)
+    .maybeSingle();
+  if (hdr?.status === "posted") {
+    const movementsRes = await getPurchaseMovements(
+      supabase as unknown as StockDb,
+      purchaseId,
+    );
+    // Only the post/reverse pair decides whether the purchase's own stock is
+    // currently OUT — draft-settles and supplier returns share the purchase_id
+    // but belong to other documents' stories and must not poison this check.
+    const movements = movementsRes.ok
+      ? movementsRes.rows.filter(
+          (m) => m.reason === "purchase_post" || m.reason === "purchase_reverse",
+        )
+      : [];
+    const net = movements.reduce((s, m) => roundStock(s + Number(m.delta)), 0);
+    if (movementsRes.ok && movements.length > 0 && net === 0) {
+      const { data: restored } = await supabase
+        .from("purchase_items")
+        .select(
+          "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, unit, add_to_catalog" as
+            "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate",
+        )
+        .eq("purchase_id", purchaseId);
+      const applied = await applyPostedLines(
+        supabase,
+        purchaseId,
+        {
+          supplier_id: hdr.supplier_id,
+          currency: hdr.currency,
+          fx_rate: hdr.fx_rate,
+        },
+        (restored ?? []) as unknown as PostedLine[],
+        user.id,
+      );
+      if (!applied.ok) {
+        console.warn("[panel.purchases] restore re-apply:", applied.reason);
+      }
+    } else {
+      console.warn(
+        `[panel.purchases] restore ${purchaseId}: stock NOT re-applied (ledger net=${net}, movements=${movements.length}) — verifică manual stocul`,
+      );
+    }
+  }
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");

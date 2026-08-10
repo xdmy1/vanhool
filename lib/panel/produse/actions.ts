@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { pingIndexNow } from "@/lib/indexnow";
+import { setStockAbsolute, type StockDb } from "@/lib/stock-ledger";
 
 const productSchema = z.object({
   part_code: z.string().min(1, "Cod obligatoriu"),
@@ -56,17 +57,36 @@ export async function createPanelProduct(
   const slug = slugify(`${parsed.data.name_ro}-${parsed.data.part_code}`);
   // `unit` isn't in the generated types yet — add it via cast so the insert
   // still writes it (products.unit exists at runtime after the UoM migration).
-  const { unit: newUnit, ...newRest } = parsed.data;
+  // Initial stock goes through the LEDGER (insert at 0, then set) so opening
+  // balances are auditable movements like everything else.
+  const { unit: newUnit, stock_quantity: initialStock, ...newRest } = parsed.data;
   const { data, error } = await supabase
     .from("products")
     .insert({
       ...newRest,
+      stock_quantity: 0,
       slug,
       ...({ unit: newUnit } as object),
     })
     .select("id")
     .single();
   if (error) return { ok: false, reason: error.message };
+
+  if (initialStock > 0) {
+    const set = await setStockAbsolute(
+      supabase as unknown as StockDb,
+      data.id,
+      initialStock,
+      `initial:${data.id}`,
+      user.id,
+    );
+    if (!set.ok) {
+      return {
+        ok: false,
+        reason: `${set.reason} — produsul a fost creat FĂRĂ stoc; setează stocul din editare`,
+      };
+    }
+  }
 
   if (linkLineId) {
     const { error: linkErr } = await supabase
@@ -99,7 +119,27 @@ export async function updatePanelProduct(
   }
 
   const supabase = await createClient();
-  const { unit: updUnit, ...updRest } = parsed.data;
+  const { unit: updUnit, stock_quantity: updStock, ...updRest } = parsed.data;
+
+  // The stock field is an ABSOLUTE set from a form loaded minutes ago — write
+  // it through the ledger (row lock → delta recorded → value set) so it can't
+  // silently revert a sale/purchase that landed in between, and the change
+  // shows up in stock_movements like every other move.
+  if (updStock !== undefined) {
+    const set = await setStockAbsolute(
+      supabase as unknown as StockDb,
+      id,
+      updStock,
+      `manual:${id}:${crypto.randomUUID()}`,
+      user.id,
+    );
+    if (!set.ok) {
+      // No silent fallback to a raw write — that path is exactly the "absolute
+      // overwrite loses concurrent movements" bug this overhaul removes.
+      return { ok: false, reason: `${set.reason} — rulează sql/stock-accuracy.sql` };
+    }
+  }
+
   const { data: updated, error } = await supabase
     .from("products")
     .update({

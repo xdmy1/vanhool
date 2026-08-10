@@ -10,6 +10,8 @@ import { checkoutSchema, type CheckoutValues } from "@/lib/validation/checkout";
 import type { CartItem } from "@/lib/cart/types";
 import type { Json } from "@/lib/supabase/database.types";
 import { sendResendEmail, getAdminEmail } from "@/lib/email/resend";
+import { roundStock } from "@/lib/stock";
+import { applyStockMovement, ledgerReady, type StockDb } from "@/lib/stock-ledger";
 import {
   orderAdminEmail,
   orderCustomerEmail,
@@ -45,6 +47,18 @@ export async function createOrder(values: unknown): Promise<CreateOrderResult> {
   }
   const data: CheckoutValues = parsed.data;
   if (data.items.length === 0) return { ok: false, code: "empty_cart" };
+
+  // The stock ledger must exist before any order is taken — a checkout whose
+  // finalize can't record its movements would sell without decrementing, and
+  // a later cancel would then "restore" stock that was never taken.
+  if (!(await ledgerReady(getSupabaseAdmin() as unknown as StockDb))) {
+    console.error("[checkout] stock ledger missing — run sql/stock-accuracy.sql");
+    return {
+      ok: false,
+      code: "server",
+      message: "Comenzile sunt temporar indisponibile. Încercați mai târziu.",
+    };
+  }
 
   const cartItems: CartItem[] = data.items.map((i) => ({
     productId: i.productId,
@@ -350,24 +364,34 @@ export async function finalizeOrder(
       .eq("id", orderId);
   }
 
-  // Decrement stock for each catalog-linked line (read-modify-write).
+  // Decrement stock through the LEDGER — aggregated per product, atomic
+  // (`stock = stock + delta`), idempotent (ref `sale:<order_id>:<product_id>`):
+  // a duplicated payment callback or a double finalize can never decrement
+  // twice, and no clamp — overselling shows up as honest negative stock
+  // instead of turning into phantom inventory on a later cancel.
+  const take = new Map<string, number>();
   for (const it of items) {
     if (!it.productId || !it.quantity || it.quantity <= 0) continue;
-    const { data: prod } = await admin
-      .from("products")
-      .select("stock_quantity")
-      .eq("id", it.productId)
-      .maybeSingle();
-    if (!prod) continue;
-    const next = Math.max(
-      0,
-      Number((prod as { stock_quantity: number | null }).stock_quantity ?? 0) -
-        it.quantity,
+    take.set(
+      it.productId,
+      roundStock((take.get(it.productId) ?? 0) + it.quantity),
     );
-    await admin
-      .from("products")
-      .update({ stock_quantity: next } as never)
-      .eq("id", it.productId);
+  }
+  for (const [productId, qty] of take) {
+    const moved = await applyStockMovement(admin as unknown as StockDb, {
+      productId,
+      delta: -qty,
+      reason: "sale",
+      ref: `sale:${orderId}:${productId}`,
+      orderId,
+    });
+    if (!moved.ok) {
+      // Money is already in (this runs post-payment) so we can't refuse —
+      // but this must never pass silently on a money path.
+      console.error(
+        `[orders] CRITIC: comanda ${orderId} plătită dar stocul nu s-a mișcat pentru ${productId}: ${moved.reason}`,
+      );
+    }
   }
 
   // Inline (cash/transfer) callers pass the applied code directly so promo

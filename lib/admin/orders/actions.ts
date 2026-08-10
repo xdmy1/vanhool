@@ -6,7 +6,32 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/admin/db-errors";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
+import {
+  reverseOrderStock,
+  unreverseOrderStock,
+  type StockDb,
+} from "@/lib/stock-ledger";
 import { ORDER_STATUSES, type OrderStatus } from "./constants";
+
+/**
+ * Load the fields the stock-ledger reverse helpers need. `payment_status` is
+ * a maib-migration column — fall back without it on legacy schemas.
+ */
+async function loadOrderForStock(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string,
+): Promise<Record<string, unknown> | null> {
+  const cols = "id, status, items, payment_method";
+  let res = await supabase
+    .from("orders")
+    .select(`${cols}, payment_status` as typeof cols)
+    .eq("id", id)
+    .maybeSingle();
+  if (res.error && /payment_status/i.test(res.error.message)) {
+    res = await supabase.from("orders").select(cols).eq("id", id).maybeSingle();
+  }
+  return (res.data as Record<string, unknown>) ?? null;
+}
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -38,40 +63,30 @@ export async function updateOrderStatus(
   const parsed = statusSchema.safeParse(status);
   if (!parsed.success) return { ok: false, code: "validation" };
 
-  // Cancelling an order rolls back the stock that was decremented when
-  // the order was placed (storefront + panel sale paths both touch
-  // stock now). Skip when current status is already "cancelled" so
-  // a re-toggle doesn't double-restore.
-  if (parsed.data === "cancelled") {
-    const { data: cur } = await auth.supabase
-      .from("orders")
-      .select("status, items")
-      .eq("id", id)
-      .maybeSingle();
-    if (cur && cur.status !== "cancelled") {
-      const items = Array.isArray(cur.items)
-        ? (cur.items as Array<Record<string, unknown>>)
-        : [];
-      for (const it of items) {
-        const productId =
-          (it as { productId?: string | null }).productId ??
-          (it as { product_id?: string | null }).product_id ??
-          null;
-        const qty = Number((it as { quantity?: number }).quantity ?? 0);
-        if (!productId || qty <= 0) continue;
-        const { data: prod } = await auth.supabase
-          .from("products")
-          .select("stock_quantity")
-          .eq("id", productId)
-          .maybeSingle();
-        if (!prod) continue;
-        const next = Number(prod.stock_quantity ?? 0) + qty;
-        await auth.supabase
-          .from("products")
-          .update({ stock_quantity: next })
-          .eq("id", productId);
-      }
-    }
+  // Stock follows the status through the LEDGER:
+  //   → cancelled: restore exactly what the order actually took (nothing for
+  //     an unpaid card order, returns already credited stay credited).
+  //   cancelled →: re-take exactly what the cancel restored, so
+  //     cancel → un-cancel → cancel cycles never double-restore.
+  const cur = await loadOrderForStock(auth.supabase, id);
+  const curStatus = (cur?.status as string | null) ?? null;
+  const db = auth.supabase as unknown as StockDb;
+  if (cur && parsed.data === "cancelled" && curStatus !== "cancelled") {
+    const restored = await reverseOrderStock(
+      db,
+      {
+        id,
+        items: cur.items,
+        payment_method: (cur.payment_method as string | null) ?? null,
+        payment_status: (cur.payment_status as string | null) ?? null,
+      },
+      auth.user.id,
+    );
+    // Refuse the status change if stock couldn't follow it — retry heals.
+    if (!restored.ok) return { ok: false, code: "server", message: restored.reason };
+  } else if (cur && parsed.data !== "cancelled" && curStatus === "cancelled") {
+    const retaken = await unreverseOrderStock(db, id, auth.user.id);
+    if (!retaken.ok) return { ok: false, code: "server", message: retaken.reason };
   }
 
   const { error } = await auth.supabase
@@ -113,37 +128,24 @@ export async function deleteOrderWithPin(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
   const supabase = auth.supabase;
 
-  // Restore stock BEFORE removing the row. The sale path decrements
-  // stock on insert; hard-delete must undo that or the catalog ends up
-  // permanently short. Skip restoration if the order was already
-  // cancelled (stock was put back when status flipped to cancelled).
-  const { data: ord } = await supabase
-    .from("orders")
-    .select("id, status, items")
-    .eq("id", id)
-    .maybeSingle();
-  if (ord && ord.status !== "cancelled") {
-    const items = Array.isArray(ord.items)
-      ? (ord.items as Array<Record<string, unknown>>)
-      : [];
-    for (const it of items) {
-      const productId =
-        (it as { productId?: string | null }).productId ??
-        (it as { product_id?: string | null }).product_id ??
-        null;
-      const qty = Number((it as { quantity?: number }).quantity ?? 0);
-      if (!productId || qty <= 0) continue;
-      const { data: p } = await supabase
-        .from("products")
-        .select("stock_quantity")
-        .eq("id", productId)
-        .maybeSingle();
-      if (!p) continue;
-      await supabase
-        .from("products")
-        .update({ stock_quantity: Number(p.stock_quantity ?? 0) + qty })
-        .eq("id", productId);
-    }
+  // Restore stock BEFORE removing the row, through the LEDGER: it puts back
+  // exactly what this order actually took (nothing for an unpaid card order,
+  // nothing extra after an earlier cancel — the net is already zero). The
+  // movements survive the delete (no FK), keeping the audit trail.
+  const ord = await loadOrderForStock(supabase, id);
+  if (ord && (ord.status as string | null) !== "cancelled") {
+    const restored = await reverseOrderStock(
+      supabase as unknown as StockDb,
+      {
+        id,
+        items: ord.items,
+        payment_method: (ord.payment_method as string | null) ?? null,
+        payment_status: (ord.payment_status as string | null) ?? null,
+      },
+      auth.user.id,
+    );
+    // The order must not vanish while its stock stays out — abort the delete.
+    if (!restored.ok) return { ok: false, reason: restored.reason };
   }
 
   // Before cascading the delete, reverse any cash drawer inflows
