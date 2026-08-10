@@ -54,6 +54,25 @@ export async function createPanelProduct(
   }
 
   const supabase = await createClient();
+
+  // Duplicate-code guard (mirrors the admin form): a re-submit after a
+  // partial failure must find the existing product, not mint a twin.
+  const dupCode = parsed.data.part_code.trim();
+  if (dupCode) {
+    const escaped = dupCode.replace(/[\\%_]/g, "\\$&");
+    const { data: dup } = await supabase
+      .from("products")
+      .select("id, part_code")
+      .ilike("part_code", escaped)
+      .limit(1);
+    if (dup && dup.length > 0) {
+      return {
+        ok: false,
+        reason: `Codul "${dup[0].part_code}" este deja folosit de un alt produs.`,
+      };
+    }
+  }
+
   const slug = slugify(`${parsed.data.name_ro}-${parsed.data.part_code}`);
   // `unit` isn't in the generated types yet — add it via cast so the insert
   // still writes it (products.unit exists at runtime after the UoM migration).

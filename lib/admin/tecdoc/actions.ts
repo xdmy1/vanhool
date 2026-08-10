@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { setStockAbsolute, type StockDb } from "@/lib/stock-ledger";
 import { ApifyError } from "@/lib/apify/client";
 import { isApifyConfigured } from "@/lib/apify/config";
 import { lookupByPartCode, type TecdocPart } from "@/lib/apify/tecdoc";
@@ -145,8 +146,9 @@ export async function importProductFromTecdoc(
     brand: (payload.brand ?? "").trim() || null,
     slug,
     price: typeof payload.price === "number" ? payload.price : 0,
-    stock_quantity:
-      typeof payload.stockQuantity === "number" ? payload.stockQuantity : 0,
+    // Opening balance goes through the stock LEDGER (insert at 0, set after)
+    // like every other product-creation path — never a raw column write.
+    stock_quantity: 0,
     category_id: payload.categoryId ?? null,
     warranty_months:
       typeof payload.warrantyMonths === "number" ? payload.warrantyMonths : null,
@@ -177,6 +179,25 @@ export async function importProductFromTecdoc(
 
   if (error || !data) {
     return { ok: false, code: "server", message: error?.message ?? "insert failed" };
+  }
+
+  const initialStock =
+    typeof payload.stockQuantity === "number" ? payload.stockQuantity : 0;
+  if (initialStock > 0) {
+    const set = await setStockAbsolute(
+      auth.supabase as unknown as StockDb,
+      data.id,
+      initialStock,
+      `initial:${data.id}`,
+      null,
+    );
+    if (!set.ok) {
+      return {
+        ok: false,
+        code: "server",
+        message: `${set.reason} — produsul a fost creat FĂRĂ stoc; setează stocul din editare`,
+      };
+    }
   }
 
   revalidatePath("/", "layout");

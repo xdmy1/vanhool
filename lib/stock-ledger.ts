@@ -151,13 +151,40 @@ export async function getPurchaseMovements(
 export async function getMovementByRef(
   db: StockDb,
   ref: string,
-): Promise<StockMovementRow | null> {
-  const { data } = await db
+): Promise<{ ok: true; row: StockMovementRow | null } | { ok: false; reason: string }> {
+  const { data, error } = await db
     .from("stock_movements")
     .select(MOVEMENT_COLS)
     .eq("ref", ref)
     .maybeSingle();
-  return (data as StockMovementRow) ?? null;
+  if (error) return { ok: false, reason: `stock_ledger: ${error.message}` };
+  return { ok: true, row: (data as StockMovementRow) ?? null };
+}
+
+/**
+ * The moment the ledger was installed (written by sql/stock-accuracy.sql into
+ * panel_settings). Documents created BEFORE it may have moved stock off-ledger
+ * → their reversals may use the legacy snapshot fallback, once. Documents
+ * created AFTER it are ledger-only: zero movements = zero stock taken, and a
+ * snapshot "restore" would fabricate inventory. Missing epoch (migration not
+ * run / row deleted) disables the legacy fallback — the conservative failure
+ * is restoring nothing, never restoring phantom.
+ */
+export async function getLedgerEpoch(db: StockDb): Promise<string | null> {
+  const { data, error } = await db
+    .from("panel_settings")
+    .select("value")
+    .eq("key", "stock.ledger_epoch")
+    .maybeSingle();
+  if (error || !data) return null;
+  const v = (data as { value?: unknown }).value;
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+/** True when `createdAt` is strictly before the ledger epoch. */
+function isPreEpoch(createdAt: string | null | undefined, epoch: string | null): boolean {
+  if (!epoch || !createdAt) return false;
+  return new Date(createdAt).getTime() < new Date(epoch).getTime();
 }
 
 /**
@@ -185,6 +212,8 @@ export type OrderForStock = {
   items: unknown;
   payment_method?: string | null;
   payment_status?: string | null;
+  /** Needed to decide the pre/post-epoch branch; loaders must select it. */
+  created_at?: string | null;
 };
 
 /**
@@ -231,7 +260,17 @@ export async function reverseOrderStock(
     return { ok: true };
   }
 
-  // Pre-ledger take. Unpaid/failed card orders never decremented stock —
+  // No ledger take. Two very different worlds meet here:
+  //   • order created BEFORE the ledger epoch → its decrement ran off-ledger
+  //     (old direct writes) → the snapshot fallback below restores it, once;
+  //   • order created AFTER the epoch → zero movements means zero stock was
+  //     ever taken (e.g. its finalize/decrement failed and the sale errored)
+  //     → restore NOTHING; a snapshot restore would fabricate inventory.
+  // Missing epoch = conservative: no legacy restore.
+  const epoch = await getLedgerEpoch(db);
+  if (!isPreEpoch(order.created_at, epoch)) return { ok: true };
+
+  // Unpaid/failed card orders never decremented stock even pre-epoch —
   // restoring them would fabricate inventory out of an abandoned payment page.
   const pm = (order.payment_method ?? "").toLowerCase();
   const paid = order.payment_status ?? null;
@@ -317,12 +356,18 @@ export async function unreverseOrderStock(
 }
 
 /**
- * Reverse the stock a purchase's lines actually added. Ledger-first: each
- * line's `purchase_post:<line_id>` movement is negated under a unique
- * `reverse:` ref (cancel → delete can never double-reverse). Purchases whose
- * POST predates the ledger (no `purchase_post` movements — later returns
- * don't count) fall back to product_id × quantity, once, under
- * `purchase_unpost:<line_id>`. A failed ledger read aborts.
+ * Reverse the stock a purchase actually added. Ledger-first, as a SWEEP: every
+ * outstanding `purchase_post:*` movement of the purchase is negated under a
+ * unique `reverse:` ref — including orphans whose line row no longer exists
+ * (an edit whose reverse died mid-way leaves exactly such orphans; the sweep
+ * is what makes "save again to heal" true). Cancel → delete can never
+ * double-reverse (same refs).
+ *
+ * Purchases POSTED before the ledger epoch (no `purchase_post` movements —
+ * later returns don't count) fall back to product_id × quantity from the
+ * passed lines, once, under `purchase_unpost:<line_id>`. Post-epoch purchases
+ * with zero post movements reverse NOTHING — nothing was ever applied.
+ * A failed ledger read aborts.
  */
 export async function reversePurchaseLines(
   db: StockDb,
@@ -334,33 +379,47 @@ export async function reversePurchaseLines(
   if (!res.ok) return res;
   const rows = res.rows;
   const byRef = new Map(rows.map((r) => [r.ref, r]));
-  const postedPreLedger = !rows.some((r) => r.reason === "purchase_post");
-  for (const it of lines) {
-    const mv = byRef.get(`purchase_post:${it.id}`);
-    if (mv) {
+
+  const posts = rows.filter((r) => r.reason === "purchase_post");
+  if (posts.length > 0) {
+    for (const mv of posts) {
+      if (byRef.has(`reverse:${mv.ref}`)) continue; // already reversed
       const moved = await applyStockMovement(db, {
         productId: mv.product_id,
         delta: -Number(mv.delta),
         reason: "purchase_reverse",
-        ref: `reverse:purchase_post:${it.id}`,
+        ref: `reverse:${mv.ref}`,
         purchaseId,
-        createdBy,
-      });
-      if (!moved.ok) return moved;
-    } else if (postedPreLedger && it.product_id && Number(it.quantity ?? 0) > 0) {
-      const moved = await applyStockMovement(db, {
-        productId: it.product_id,
-        delta: -Number(it.quantity),
-        reason: "purchase_reverse",
-        ref: `purchase_unpost:${it.id}`,
-        purchaseId,
-        note: "reversare document pre-ledger",
         createdBy,
       });
       if (!moved.ok) return moved;
     }
-    // Post-ledger line with no purchase_post movement = its apply never ran
-    // (mid-post failure) → it added nothing → correctly reverses to nothing.
+    return { ok: true };
+  }
+
+  // Zero post movements: legacy reversal is allowed only for purchases that
+  // predate the ledger — a post-epoch purchase with no posts applied nothing.
+  const { data: hdr } = await db
+    .from("purchases")
+    .select("created_at")
+    .eq("id", purchaseId)
+    .maybeSingle();
+  const epoch = await getLedgerEpoch(db);
+  if (!isPreEpoch((hdr as { created_at?: string | null } | null)?.created_at, epoch)) {
+    return { ok: true };
+  }
+  for (const it of lines) {
+    if (!it.product_id || Number(it.quantity ?? 0) <= 0) continue;
+    const moved = await applyStockMovement(db, {
+      productId: it.product_id,
+      delta: -Number(it.quantity),
+      reason: "purchase_reverse",
+      ref: `purchase_unpost:${it.id}`,
+      purchaseId,
+      note: "reversare document pre-ledger",
+      createdBy,
+    });
+    if (!moved.ok) return moved;
   }
   return { ok: true };
 }

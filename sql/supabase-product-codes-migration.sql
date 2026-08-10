@@ -101,6 +101,12 @@ begin
         codes := array_append(codes, public.normalize_code(new.part_code));
     end if;
 
+    -- supplier_code branch added by sql/stock-accuracy.sql — kept here too so
+    -- re-pasting THIS file never regresses the restock resolver.
+    if new.supplier_code is not null and length(trim(new.supplier_code)) > 0 then
+        codes := array_append(codes, public.normalize_code(new.supplier_code));
+    end if;
+
     if new.barcode is not null and length(trim(new.barcode)) > 0 then
         codes := array_append(codes, public.normalize_code(new.barcode));
     end if;

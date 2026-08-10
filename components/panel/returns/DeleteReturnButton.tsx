@@ -20,7 +20,7 @@ export function DeleteReturnButton({ returnId }: { returnId: string }) {
         start(async () => {
           const res = await deleteReturn(returnId);
           if (!res.ok) {
-            toast.error("Nu am putut anula anexa.");
+            toast.error(`Nu am putut anula anexa: ${res.reason}`);
             return;
           }
           // Copy stays honest: on a cancelled/voided parent the stock move is

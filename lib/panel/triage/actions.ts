@@ -195,7 +195,7 @@ export async function cancelStorefrontOrder(
   if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
 
   const supabase = await createClient();
-  const ordCols = "id, status, items, payment_method";
+  const ordCols = "id, status, items, payment_method, created_at";
   let ordRes = await supabase
     .from("orders")
     .select(`${ordCols}, payment_status` as typeof ordCols)
@@ -219,6 +219,8 @@ export async function cancelStorefrontOrder(
           (ord as { payment_method?: string | null }).payment_method ?? null,
         payment_status:
           (ord as { payment_status?: string | null }).payment_status ?? null,
+        created_at:
+          (ord as { created_at?: string | null }).created_at ?? null,
       },
       user.id,
     );

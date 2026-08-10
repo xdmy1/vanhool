@@ -21,6 +21,7 @@ import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { roundStock } from "@/lib/stock";
 import {
   applyStockMovement,
+  getLedgerEpoch,
   getOrderMovements,
   ledgerReady,
   resolveLineProductId,
@@ -672,6 +673,74 @@ export async function convertProformaToInvoice(
     return { ok: false, reason: "already_converted" };
   }
 
+  // Order-linked proforma: normally the checkout already took the goods
+  // (finalizeOrder wrote `sale:` movements) and we must NOT decrement again.
+  // But an order with ZERO ledger take whose invoice is being cut — a card
+  // order that never got its paid callback, or any post-epoch order whose
+  // finalize failed — is handing the goods over NOW. Decrement with exactly
+  // the refs finalizeOrder would use, so a late paid callback collides into
+  // no-ops instead of double-taking. Pre-epoch non-card orders decremented
+  // off-ledger at checkout → skip (their take is real, just invisible).
+  if (!wasAdHoc && orderId) {
+    const cdb = supabase as unknown as StockDb;
+    const ordMv = await getOrderMovements(cdb, orderId);
+    if (!ordMv.ok) {
+      return {
+        ok: false,
+        reason: `${ordMv.reason} — factura ${series}${number} a fost creată dar stocul nu s-a verificat; anuleaz-o (Void) și emite din nou`,
+      };
+    }
+    if (!ordMv.rows.some((r) => r.reason === "sale")) {
+      const linkCols = "id, created_at, payment_method";
+      let linkRes = await supabase
+        .from("orders")
+        .select(`${linkCols}, payment_status` as typeof linkCols)
+        .eq("id", orderId)
+        .maybeSingle();
+      if (linkRes.error && /payment_status/i.test(linkRes.error.message)) {
+        linkRes = await supabase.from("orders").select(linkCols).eq("id", orderId).maybeSingle();
+      }
+      const linkOrd = linkRes.data as
+        | { created_at?: string | null; payment_method?: string | null; payment_status?: string | null }
+        | null;
+      const epoch = await getLedgerEpoch(cdb);
+      const pm = (linkOrd?.payment_method ?? "").toLowerCase();
+      const unpaidCard =
+        (pm === "card" || pm === "maib") && (linkOrd?.payment_status ?? null) !== "paid";
+      const preEpoch =
+        !!epoch &&
+        !!linkOrd?.created_at &&
+        new Date(linkOrd.created_at).getTime() < new Date(epoch).getTime();
+      if (!preEpoch || unpaidCard) {
+        const linkTake = new Map<string, number>();
+        for (const it of pfSnapshot) {
+          const qty = Number((it as { quantity?: number }).quantity ?? 0);
+          if (qty <= 0) continue;
+          const pid = await resolveLineProductId(cdb, it);
+          if (!pid) continue;
+          linkTake.set(pid, roundStock((linkTake.get(pid) ?? 0) + qty));
+        }
+        for (const [pid, qty] of linkTake) {
+          const moved = await applyStockMovement(cdb, {
+            productId: pid,
+            delta: -qty,
+            reason: "sale",
+            ref: `sale:${orderId}:${pid}`,
+            orderId,
+            invoiceId: inv.id,
+            createdBy: user.id,
+          });
+          if (!moved.ok) {
+            return {
+              ok: false,
+              reason: `${moved.reason} — factura ${series}${number} a fost creată dar stocul nu s-a mișcat complet; anuleaz-o (Void) și emite din nou`,
+            };
+          }
+        }
+      }
+    }
+  }
+
   // The goods leave stock on the INVOICE, not on the proforma and not on
   // payment: the client takes the part when the factură is cut, whether he
   // settles now or on the deferred due date. So this runs for both
@@ -711,7 +780,7 @@ export async function convertProformaToInvoice(
       if (!moved.ok) {
         return {
           ok: false,
-          reason: `${moved.reason} — factura ${series}${number} a fost creată dar stocul nu s-a mișcat complet; verifică produsele`,
+          reason: `${moved.reason} — factura ${series}${number} a fost creată dar stocul nu s-a mișcat complet; anuleaz-o (Void) și emite din nou`,
         };
       }
     }
@@ -1060,7 +1129,7 @@ export async function updateInvoice(
         const seq = movements.filter(
           (m) => m.product_id === pid && m.reason === "invoice_edit",
         ).length;
-        await applyStockMovement(db, {
+        const moved = await applyStockMovement(db, {
           productId: pid,
           delta,
           reason: "invoice_edit",
@@ -1069,6 +1138,22 @@ export async function updateInvoice(
           invoiceId: id,
           createdBy: user.id,
         });
+        if (!moved.ok) {
+          return {
+            ok: false,
+            reason: `${moved.reason} — factura e salvată dar stocul NU s-a ajustat; redeschide editarea și salvează din nou`,
+          };
+        }
+        // `applied: false` = the seq ref was taken by a CONCURRENT edit. Do
+        // NOT walk the seq forward (that could stack two edits' deltas on a
+        // snapshot only one of them owns) — abort; re-opening the invoice
+        // diffs against the latest saved state and converges correctly.
+        if (!moved.applied) {
+          return {
+            ok: false,
+            reason: "stock_edit_conflict — altă editare a rulat în paralel; redeschide factura, verifică liniile și salvează din nou",
+          };
+        }
       }
     }
   }
@@ -1295,7 +1380,7 @@ export async function voidInvoice(
   // steps are idempotent (ledger refs / conditional updates), so a concurrent
   // double-void converges instead of doubling.
   if (inv.type === "invoice" && inv.order_id) {
-    const ordCols = "id, status, items, account_scope, total, currency, payment_method";
+    const ordCols = "id, status, items, account_scope, total, currency, payment_method, created_at";
     let ordRes = await supabase
       .from("orders")
       .select(`${ordCols}, payment_status` as typeof ordCols)
@@ -1325,6 +1410,8 @@ export async function voidInvoice(
             (ord as { payment_method?: string | null }).payment_method ?? null,
           payment_status:
             (ord as { payment_status?: string | null }).payment_status ?? null,
+          created_at:
+            (ord as { created_at?: string | null }).created_at ?? null,
         },
         user.id,
       );
@@ -1501,7 +1588,7 @@ export async function deleteInvoiceWithPin(
   const nowIso = new Date().toISOString();
 
   if (inv && inv.type === "invoice" && inv.order_id) {
-    const delOrdCols = "id, status, items, account_scope, total, currency, payment_method";
+    const delOrdCols = "id, status, items, account_scope, total, currency, payment_method, created_at";
     let delOrdRes = await supabase
       .from("orders")
       .select(`${delOrdCols}, payment_status` as typeof delOrdCols)
@@ -1529,6 +1616,8 @@ export async function deleteInvoiceWithPin(
             (ord as { payment_method?: string | null }).payment_method ?? null,
           payment_status:
             (ord as { payment_status?: string | null }).payment_status ?? null,
+          created_at:
+            (ord as { created_at?: string | null }).created_at ?? null,
         },
         user.id,
       );

@@ -24,7 +24,32 @@
 --
 -- Idempotent — safe to paste into Supabase Studio's SQL editor more than once.
 -- RUN THIS BEFORE DEPLOYING THE MATCHING APP CODE.
+--
+-- NOTE for manual fixes from Supabase Studio: the SQL editor runs as role
+-- `postgres` (no JWT), so the two functions below reject it by design. A
+-- manual correction must insert the stock_movements row AND update
+-- products.stock_quantity yourself, in one transaction.
 -- ============================================================================
+
+-- 0) Preconditions — fail LOUDLY with instructions instead of half-installing.
+do $$
+declare
+  v_type text;
+begin
+  select data_type into v_type
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'products'
+     and column_name = 'stock_quantity';
+  if v_type is distinct from 'numeric' then
+    raise exception 'PRECONDIȚIE: rulează întâi sql/units-of-measure-migration.sql — products.stock_quantity trebuie să fie numeric(12,3), este %', coalesce(v_type, 'lipsă');
+  end if;
+  if to_regclass('public.purchase_items_archive') is null then
+    raise exception 'PRECONDIȚIE: rulează întâi sql/purchase-items-safety.sql — lipsește purchase_items_archive';
+  end if;
+  if to_regclass('public.panel_settings') is null then
+    raise exception 'PRECONDIȚIE: rulează întâi sql/supabase-panel-migration.sql — lipsește panel_settings';
+  end if;
+end $$;
 
 -- 1) The ledger --------------------------------------------------------------
 create table if not exists public.stock_movements (
@@ -58,7 +83,20 @@ drop policy if exists stock_movements_read on public.stock_movements;
 create policy stock_movements_read on public.stock_movements
   for select to authenticated using (public.is_admin());
 grant select on public.stock_movements to authenticated, service_role;
--- No insert/update/delete grants: writes go ONLY through the functions below.
+-- What blocks client writes is RLS (enabled, SELECT-only policy → no path for
+-- insert/update/delete), not the absence of grants — Supabase's default
+-- privileges may have granted table rights at creation, so revoke explicitly.
+revoke insert, update, delete on public.stock_movements from anon, authenticated;
+
+-- The ledger epoch: the moment this migration first ran. Documents created
+-- BEFORE it may have moved stock off-ledger (legacy snapshot restores are
+-- allowed for them, once); documents created after it are ledger-only — zero
+-- movements on a post-epoch document means zero stock was taken, full stop.
+insert into public.panel_settings (key, value)
+select 'stock.ledger_epoch', to_jsonb(now())
+where not exists (
+  select 1 from public.panel_settings where key = 'stock.ledger_epoch'
+);
 
 -- 2) The one true stock write ------------------------------------------------
 create or replace function public.apply_stock_movement(

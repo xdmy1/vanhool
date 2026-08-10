@@ -67,6 +67,29 @@ export async function POST(req: NextRequest): Promise<Response> {
     await recordPayment(admin, orderId, payId, result, "paid");
     if (updated && updated.length > 0) {
       await finalizeOrder(orderId);
+      // An admin cancel can race this callback: its restore saw an unpaid
+      // order (restored nothing), our finalize then decremented, and the
+      // cancel's status write won. Re-read; if the order ended cancelled,
+      // net the take back out and page the admin about the orphan money.
+      const { data: post } = await admin
+        .from("orders")
+        .select("status, items, payment_method, created_at")
+        .eq("id", orderId)
+        .maybeSingle();
+      if ((post as { status?: string } | null)?.status === "cancelled") {
+        await reverseOrderStock(admin as unknown as StockDb, {
+          id: orderId,
+          items: (post as { items?: unknown }).items ?? [],
+          payment_method:
+            (post as { payment_method?: string | null }).payment_method ?? "card",
+          payment_status: "paid",
+          created_at: (post as { created_at?: string | null }).created_at ?? null,
+        });
+        alertAdmin(
+          `⚠️ Plată maib pe comandă ANULATĂ #${orderId.slice(0, 8)}`,
+          `Comanda ${orderId} a fost anulată în timp ce maib confirma plata (payId ${payId ?? "?"}). Stocul a fost readus la zero net; clientul trebuie rambursat manual.`,
+        );
+      }
     } else {
       // Either a replayed callback (fine) or money landing on a CANCELLED
       // order — the customer paid for something we won't ship. The payments
@@ -92,11 +115,17 @@ export async function POST(req: NextRequest): Promise<Response> {
     // stock (nothing was ever decremented). Read the truth BEFORE writing.
     const { data: pre } = await admin
       .from("orders")
-      .select("status, payment_status, items, payment_method")
+      .select("status, payment_status, items, payment_method, created_at")
       .eq("id", orderId)
       .maybeSingle();
     const preRow = pre as
-      | { status?: string | null; payment_status?: string | null; items?: unknown; payment_method?: string | null }
+      | {
+          status?: string | null;
+          payment_status?: string | null;
+          items?: unknown;
+          payment_method?: string | null;
+          created_at?: string | null;
+        }
       | null;
     const wasPaid = preRow?.payment_status === "paid";
     if (preRow && preRow.payment_status !== "refunded") {
@@ -114,6 +143,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           items: preRow.items ?? [],
           payment_method: preRow.payment_method ?? "card",
           payment_status: "paid",
+          created_at: preRow.created_at ?? null,
         });
         if (!restored.ok) {
           console.error(`[maib] REVERSED: stock restore failed for ${orderId}: ${restored.reason}`);

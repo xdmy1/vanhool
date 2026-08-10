@@ -9,6 +9,7 @@ import { roundStock } from "@/lib/stock";
 import {
   applyStockMovement,
   getMovementByRef,
+  ledgerReady,
   resolveLineProductId,
   type StockDb,
 } from "@/lib/stock-ledger";
@@ -105,6 +106,12 @@ export async function createInvoiceLineReturn(
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   const supabase = await createClient();
+
+  // Money path: a return annex whose stock move can't be recorded must not be
+  // created at all — it would travel to the accountant while stock stands still.
+  if (!(await ledgerReady(supabase as unknown as StockDb))) {
+    return { ok: false, reason: "stock_ledger_missing — rulează sql/stock-accuracy.sql" };
+  }
 
   const { data: inv } = await supabase
     .from("invoices")
@@ -204,12 +211,16 @@ export async function createInvoiceLineReturn(
       returnId,
       createdBy: user.id,
     });
-    if (moved.ok) {
-      await getSupabaseAdmin()
-        .from("document_returns")
-        .update({ stock_adjusted: true } as never)
-        .eq("id", returnId);
+    if (!moved.ok) {
+      // No annex without its stock effect: remove the row and surface the
+      // error — a retry recreates both together.
+      await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
+      return { ok: false, reason: moved.reason };
     }
+    await getSupabaseAdmin()
+      .from("document_returns")
+      .update({ stock_adjusted: true } as never)
+      .eq("id", returnId);
   }
 
   revalidatePath("/[locale]/panel/facturi", "page");
@@ -233,6 +244,11 @@ export async function createPurchaseLineReturn(
   if (!user) return { ok: false, reason: "unauthorized" };
   const supabase = await createClient();
 
+  // Same ledger gate as the invoice-side return — no annex without its move.
+  if (!(await ledgerReady(supabase as unknown as StockDb))) {
+    return { ok: false, reason: "stock_ledger_missing — rulează sql/stock-accuracy.sql" };
+  }
+
   const { data: it } = await supabase
     .from("purchase_items")
     .select("id, purchase_id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate")
@@ -243,10 +259,21 @@ export async function createPurchaseLineReturn(
   }
   const { data: pur } = await supabase
     .from("purchases")
-    .select("id, currency, account_scope")
+    .select("id, status, currency, account_scope")
     .eq("id", purchaseId)
     .maybeSingle();
   if (!pur) return { ok: false, reason: "purchase_not_found" };
+  // Only POSTED purchases hold stock to give back to the supplier. A draft
+  // never added stock (the −qty would be pure phantom removal); a cancelled
+  // one already reversed everything (a return here would double-drain, and
+  // deleteReturn deliberately skips reversal for cancelled parents).
+  const purStatus = (pur as { status?: string | null }).status ?? null;
+  if (purStatus !== "posted") {
+    return {
+      ok: false,
+      reason: purStatus === "cancelled" ? "purchase_cancelled" : "purchase_not_posted",
+    };
+  }
 
   const lineQty = Number(it.quantity ?? 0);
   // Cap on a STABLE identity. Purchase edits regenerate line ids (insert-new,
@@ -333,12 +360,15 @@ export async function createPurchaseLineReturn(
       returnId,
       createdBy: user.id,
     });
-    if (moved.ok) {
-      await getSupabaseAdmin()
-        .from("document_returns")
-        .update({ stock_adjusted: true } as never)
-        .eq("id", returnId);
+    if (!moved.ok) {
+      // No annex without its stock effect — remove the row, surface, retry-safe.
+      await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
+      return { ok: false, reason: moved.reason };
     }
+    await getSupabaseAdmin()
+      .from("document_returns")
+      .update({ stock_adjusted: true } as never)
+      .eq("id", returnId);
   }
 
   revalidatePath("/[locale]/panel/achizitii", "page");
@@ -407,14 +437,19 @@ export async function deleteReturn(
     if (!orderCancelled) {
       // Ledger-first: negate the recorded movement (exact product + delta).
       // Pre-ledger returns fall back to the stored product_id × quantity.
-      // Either way the `reverse:` ref makes a repeated undo a no-op.
-      const mv = await getMovementByRef(db, `return:${returnId}`);
+      // Either way the `reverse:` ref makes a repeated undo a no-op. A failed
+      // read or a failed reversal ABORTS the delete — removing the row while
+      // the stock credit stays would also reset the cumulative return cap
+      // (rows are the cap's source), opening a second full credit.
+      const mvRes = await getMovementByRef(db, `return:${returnId}`);
+      if (!mvRes.ok) return mvRes;
+      const mv = mvRes.row;
       const qty = Number(r.quantity ?? 0);
       const legacyDelta = r.parent_type === "invoice" ? -qty : qty;
       const delta = mv ? -Number(mv.delta) : legacyDelta;
       const productId = mv ? mv.product_id : r.product_id;
       if (delta !== 0) {
-        await applyStockMovement(db, {
+        const moved = await applyStockMovement(db, {
           productId,
           delta,
           reason: "return_reverse",
@@ -423,6 +458,7 @@ export async function deleteReturn(
           returnId,
           createdBy: user.id,
         });
+        if (!moved.ok) return moved;
       }
     }
   }

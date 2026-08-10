@@ -21,7 +21,7 @@ async function loadOrderForStock(
   supabase: Awaited<ReturnType<typeof createClient>>,
   id: string,
 ): Promise<Record<string, unknown> | null> {
-  const cols = "id, status, items, payment_method";
+  const cols = "id, status, items, payment_method, created_at";
   let res = await supabase
     .from("orders")
     .select(`${cols}, payment_status` as typeof cols)
@@ -79,6 +79,7 @@ export async function updateOrderStatus(
         items: cur.items,
         payment_method: (cur.payment_method as string | null) ?? null,
         payment_status: (cur.payment_status as string | null) ?? null,
+        created_at: (cur.created_at as string | null) ?? null,
       },
       auth.user.id,
     );
@@ -141,6 +142,7 @@ export async function deleteOrderWithPin(
         items: ord.items,
         payment_method: (ord.payment_method as string | null) ?? null,
         payment_status: (ord.payment_status as string | null) ?? null,
+        created_at: (ord.created_at as string | null) ?? null,
       },
       auth.user.id,
     );

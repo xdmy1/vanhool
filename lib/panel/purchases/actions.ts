@@ -16,6 +16,7 @@ import { normalizeCode } from "@/lib/utils/normalize-code";
 import { roundStock } from "@/lib/stock";
 import {
   applyStockMovement,
+  getOrderMovements,
   getPurchaseMovements,
   ledgerReady,
   reversePurchaseLines,
@@ -496,8 +497,7 @@ async function settleDraftPurchaseSales(
     const items = Array.isArray(ord.items)
       ? [...(ord.items as Array<Record<string, unknown>>)]
       : [];
-    const takeByProduct = new Map<string, number>();
-    let changed = false;
+    const matches: Array<{ idx: number; productId: string; qty: number }> = [];
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!(it as { from_draft_purchase?: boolean }).from_draft_purchase) continue;
@@ -509,25 +509,51 @@ async function settleDraftPurchaseSales(
       if (!productId) continue;
       const qty = Number((it as { quantity?: number }).quantity ?? 0);
       if (qty <= 0) continue;
-      takeByProduct.set(
-        productId,
-        roundStock((takeByProduct.get(productId) ?? 0) + qty),
-      );
-      items[i] = { ...it, productId, from_draft_purchase: false };
-      changed = true;
+      matches.push({ idx: i, productId, qty });
     }
-    if (!changed) continue;
+    if (matches.length === 0) continue;
+
+    const takeByProduct = new Map<string, number>();
+    for (const m of matches) {
+      takeByProduct.set(
+        m.productId,
+        roundStock((takeByProduct.get(m.productId) ?? 0) + m.qty),
+      );
+    }
+
+    // Movements FIRST, marking second — and marking only for products whose
+    // movement actually landed. A failed RPC leaves the line unmarked, so the
+    // next post/edit retries it instead of stranding the sold quantity.
+    // seq-suffixed refs allow a legitimate SECOND settle of the same
+    // order+product (two purchases cataloguing different codes of one part).
+    const ordMvRes = await getOrderMovements(db, ord.id as string);
+    if (!ordMvRes.ok) continue; // can't read → don't move, don't mark
+    const settled = new Set<string>();
     for (const [productId, qty] of takeByProduct) {
-      await applyStockMovement(db, {
+      const seq = ordMvRes.rows.filter((r) =>
+        r.ref.startsWith(`draft_settle:${ord.id}:${productId}:`),
+      ).length;
+      const moved = await applyStockMovement(db, {
         productId,
         delta: -qty,
         reason: "sale",
-        ref: `draft_settle:${ord.id}:${productId}`,
+        ref: `draft_settle:${ord.id}:${productId}:${seq}`,
         orderId: ord.id as string,
         purchaseId,
         note: "vânzare din achiziție-draft, decontată la postare",
         createdBy: userId,
       });
+      if (moved.ok) settled.add(productId);
+      else console.error("[panel.purchases] draft settle failed:", moved.reason);
+    }
+    if (settled.size === 0) continue;
+    for (const m of matches) {
+      if (!settled.has(m.productId)) continue;
+      items[m.idx] = {
+        ...items[m.idx],
+        productId: m.productId,
+        from_draft_purchase: false,
+      };
     }
     await supabase
       .from("orders")
@@ -742,6 +768,13 @@ export async function postPurchase(
         product_id: it.product_id,
         quantity: it.quantity,
       })),
+      user.id,
+    );
+    // Net out anything the racing cancel couldn't see (its line reversal ran
+    // against a partial ledger) — idempotent, converges the race to zero.
+    await settlePurchaseCancelNet(
+      supabase as unknown as StockDb,
+      purchaseId,
       user.id,
     );
     return { ok: false, reason: "purchase_cancelled" };
@@ -1196,7 +1229,9 @@ export async function updatePurchase(
       user.id,
     );
     if (!reversed.ok) stockIssue = reversed.reason;
-    let newRes = await supabase
+    let newRes = !reversed.ok
+      ? { data: [] as never[], error: null }
+      : await supabase
       .from("purchase_items")
       .select(
         "id, product_id, supplier_code, internal_code, description, quantity, unit_cost, vat_rate, unit, add_to_catalog" as
@@ -1454,7 +1489,12 @@ export async function restorePurchaseItemsFromArchive(
         user.id,
       );
       if (!applied.ok) {
-        console.warn("[panel.purchases] restore re-apply:", applied.reason);
+        // Lines are restored (that part succeeded) but stock didn't follow —
+        // surface it; Editare → Salvează re-runs the idempotent apply.
+        return {
+          ok: false,
+          reason: `linii restaurate, dar stocul nu s-a re-aplicat: ${applied.reason} — deschide Editare și apasă Salvează`,
+        };
       }
     } else {
       console.warn(

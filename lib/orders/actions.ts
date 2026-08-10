@@ -387,10 +387,17 @@ export async function finalizeOrder(
     });
     if (!moved.ok) {
       // Money is already in (this runs post-payment) so we can't refuse —
-      // but this must never pass silently on a money path.
+      // but a silent console line is not a signal. Page the admin.
       console.error(
         `[orders] CRITIC: comanda ${orderId} plătită dar stocul nu s-a mișcat pentru ${productId}: ${moved.reason}`,
       );
+      const alertText = `Comanda ${orderId} este plătită/confirmată dar mișcarea de stoc pentru produsul ${productId} a EȘUAT (${moved.reason}). Verifică manual stocul.`;
+      void sendResendEmail({
+        to: getAdminEmail(),
+        subject: `⚠️ Stoc nemișcat pe comandă plătită #${orderId.slice(0, 8)}`,
+        html: `<p>${alertText}</p>`,
+        text: alertText,
+      }).catch((e) => console.error("[orders] admin alert failed:", e));
     }
   }
 
