@@ -83,7 +83,7 @@ export async function ProductsTable({
               <td className="px-4 py-3 text-right tabular-nums">
                 <span
                   className={cn(
-                    (p.stock_quantity ?? 0) === 0
+                    (p.stock_quantity ?? 0) <= 0
                       ? "text-destructive"
                       : (p.stock_quantity ?? 0) <= 5
                         ? "text-warning"

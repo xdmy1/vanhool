@@ -399,6 +399,13 @@ export async function reversePurchaseLines(
 
   // Zero post movements: legacy reversal is allowed only for purchases that
   // predate the ledger — a post-epoch purchase with no posts applied nothing.
+  // And only ONCE ever: line ids regenerate on every edit, so the unpost refs
+  // alone can't guarantee it — any prior purchase_reverse row means the
+  // off-ledger take was already reversed, and reversing again (under fresh
+  // line ids) would subtract phantom stock on each retried save.
+  if (rows.some((r) => r.reason === "purchase_reverse")) {
+    return { ok: true };
+  }
   const { data: hdr } = await db
     .from("purchases")
     .select("created_at")
@@ -453,6 +460,10 @@ export async function settlePurchaseCancelNet(
     ) {
       continue;
     }
+    // `purchase_unpost` rows are the on-ledger stand-in for an OFF-ledger
+    // take (pre-epoch history) — zeroing them would re-add stock that was
+    // never in the ledger's books. Exclude them from the net target.
+    if (hasLedgerPost && r.ref.startsWith("purchase_unpost:")) continue;
     target.set(
       r.product_id,
       roundStock((target.get(r.product_id) ?? 0) + Number(r.delta)),

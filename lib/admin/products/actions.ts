@@ -49,7 +49,7 @@ const productSchema = z.object({
   price: z.number().nonnegative().max(1_000_000),
   costPrice: z.number().nonnegative().max(1_000_000).nullable().optional(),
   // numeric(12,3) — divisible units keep decimals.
-  stockQuantity: z.number().nonnegative(),
+  stockQuantity: z.number(), // negative = honest oversell; editable, not rejected
   /** Unit of measure (buc/litru/metru/kg/...). App-level vocabulary. */
   unit: z.string().default("buc"),
   storageLocation: z.string().max(120).optional().or(z.literal("")),

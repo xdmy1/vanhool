@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { verifyCallbackSignature } from "@/lib/payments/maib/client";
 import { finalizeOrder } from "@/lib/orders/actions";
 import { sendResendEmail, getAdminEmail } from "@/lib/email/resend";
+import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import { reverseOrderStock, type StockDb } from "@/lib/stock-ledger";
 import type { MaibCallbackBody, MaibPayInfo } from "@/lib/payments/maib/types";
 
@@ -148,6 +149,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         if (!restored.ok) {
           console.error(`[maib] REVERSED: stock restore failed for ${orderId}: ${restored.reason}`);
         }
+        await releaseOrderCredits(orderId);
         alertAdmin(
           `↩️ Plată maib STORNATĂ #${orderId.slice(0, 8)}`,
           `Banca a stornat plata comenzii ${orderId} (payId ${payId ?? "?"}). Comanda a fost anulată și stocul restaurat${restored.ok ? "" : " — ATENȚIE: restaurarea stocului a EȘUAT, verifică manual"}.`,

@@ -327,7 +327,6 @@ export function ProductForm({
       errs.nameRo = labels.required;
     }
     if (payload.price < 0 || !Number.isFinite(payload.price)) errs.price = labels.required;
-    if (payload.stockQuantity < 0) errs.stockQuantity = labels.required;
     if (isPromo) {
       const pp = payload.promoPrice ?? null;
       if (pp == null || pp <= 0) {

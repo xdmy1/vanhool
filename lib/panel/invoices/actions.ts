@@ -18,6 +18,7 @@ import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
 import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
 import { getReturnsFor } from "@/lib/panel/returns/actions";
+import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import { roundStock } from "@/lib/stock";
 import {
   applyStockMovement,
@@ -471,6 +472,9 @@ export async function convertProformaToInvoice(
     .maybeSingle();
   if (pfErr || !pf) return { ok: false, reason: "proforma_not_found" };
   if (pf.type !== "proforma") return { ok: false, reason: "not_a_proforma" };
+  // A voided proforma is a cancelled quote — converting it (from a stale tab)
+  // would resurrect it into a live order + invoice + stock decrement.
+  if (pf.status === "void") return { ok: false, reason: "proforma_void" };
   if (pf.converted_to_invoice_id) {
     return { ok: false, reason: "already_converted" };
   }
@@ -700,6 +704,15 @@ export async function convertProformaToInvoice(
       if (linkRes.error && /payment_status/i.test(linkRes.error.message)) {
         linkRes = await supabase.from("orders").select(linkCols).eq("id", orderId).maybeSingle();
       }
+      // "Can't know" must mean "don't move" here like everywhere else — a
+      // failed read or a missing epoch defaulting to DECREMENT would take a
+      // second bite out of every pre-overhaul order-linked proforma.
+      if (linkRes.error) {
+        return {
+          ok: false,
+          reason: `${linkRes.error.message} — factura ${series}${number} a fost creată dar verificarea stocului a eșuat; corectează stocul din fișa produsului dacă e cazul`,
+        };
+      }
       const linkOrd = linkRes.data as
         | { created_at?: string | null; payment_method?: string | null; payment_status?: string | null }
         | null;
@@ -707,11 +720,16 @@ export async function convertProformaToInvoice(
       const pm = (linkOrd?.payment_method ?? "").toLowerCase();
       const unpaidCard =
         (pm === "card" || pm === "maib") && (linkOrd?.payment_status ?? null) !== "paid";
-      const preEpoch =
-        !!epoch &&
+      // Decrement ONLY on positive knowledge: a provably post-epoch order
+      // (its finalize would have written ledger rows, and there are none) or
+      // a provably never-paid card order. Missing epoch / missing order /
+      // missing created_at → decrement nothing; the off-ledger take of a
+      // pre-overhaul order is the likelier truth.
+      const provablyPostEpoch =
+        epoch !== null &&
         !!linkOrd?.created_at &&
-        new Date(linkOrd.created_at).getTime() < new Date(epoch).getTime();
-      if (!preEpoch || unpaidCard) {
+        new Date(linkOrd.created_at).getTime() >= new Date(epoch).getTime();
+      if (provablyPostEpoch || unpaidCard) {
         const linkTake = new Map<string, number>();
         for (const it of pfSnapshot) {
           const qty = Number((it as { quantity?: number }).quantity ?? 0);
@@ -999,7 +1017,7 @@ export async function updateInvoice(
 
   const { data: existing } = await supabase
     .from("invoices")
-    .select("id, type, status, issued_date, order_id, items_snapshot")
+    .select("id, type, status, issued_date, order_id, items_snapshot, updated_at")
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, reason: "invoice_not_found" };
@@ -1074,32 +1092,18 @@ export async function updateInvoice(
   const issued = new Date(existing.issued_date);
   const due = new Date(issued.getTime() + (v.due_days ?? 7) * 86_400_000);
 
-  const { error } = await supabase
-    .from("invoices")
-    .update({
-      account_scope: v.account_scope,
-      currency: v.currency,
-      customer_snapshot: v.customer as unknown as Json,
-      items_snapshot: itemsSnapshot as unknown as Json,
-      subtotal,
-      vat_amount,
-      total,
-      due_date: due.toISOString().slice(0, 10),
-      notes: v.notes ?? null,
-      updated_at: new Date().toISOString(),
-      ...({
-        output_locale: v.output_locale,
-        ...(discount_percent > 0 ? { discount_percent } : {}),
-      } as object),
-    })
-    .eq("id", id);
-  if (error) return { ok: false, reason: error.message };
-
-  // Quantity edits move stock too — this invoice IS the sale, so changing a
-  // line from 1 to 5 must take 4 more out (and 5→1 must put 4 back). Diff the
-  // old vs new snapshot per RESOLVED product and apply the difference through
-  // the ledger. Applies only to orders whose decrement lives in the ledger;
-  // pre-ledger invoices keep the old no-move behavior rather than guessing.
+  // STOCK FIRST, snapshot second. Refs are stamped with the BASE snapshot's
+  // updated_at, which makes the whole edit idempotent: a retry after a lost
+  // response diffs the same base → same refs → no-ops, then the snapshot
+  // write lands. The snapshot write below is a CAS on that same updated_at,
+  // so a concurrent edit can't silently overwrite — the loser compensates
+  // its own movements and reports a conflict.
+  const baseStamp = Date.parse(
+    (existing as { updated_at?: string | null }).updated_at ??
+      existing.issued_date ??
+      "1970-01-01",
+  );
+  const appliedDeltas: Array<{ pid: string; delta: number }> = [];
   if (existing.order_id && saleMovements?.ok) {
     const db = updDb;
     const movements = saleMovements.rows;
@@ -1126,36 +1130,75 @@ export async function updateInvoice(
       for (const pid of new Set([...before.keys(), ...after.keys()])) {
         const delta = roundStock((before.get(pid) ?? 0) - (after.get(pid) ?? 0));
         if (delta === 0) continue;
-        const seq = movements.filter(
-          (m) => m.product_id === pid && m.reason === "invoice_edit",
-        ).length;
         const moved = await applyStockMovement(db, {
           productId: pid,
           delta,
           reason: "invoice_edit",
-          ref: `invoice_edit:${id}:${pid}:${seq}`,
+          ref: `invoice_edit:${id}:${pid}:${baseStamp}`,
           orderId: existing.order_id,
           invoiceId: id,
           createdBy: user.id,
         });
-        if (!moved.ok) {
-          return {
-            ok: false,
-            reason: `${moved.reason} — factura e salvată dar stocul NU s-a ajustat; redeschide editarea și salvează din nou`,
-          };
-        }
-        // `applied: false` = the seq ref was taken by a CONCURRENT edit. Do
-        // NOT walk the seq forward (that could stack two edits' deltas on a
-        // snapshot only one of them owns) — abort; re-opening the invoice
-        // diffs against the latest saved state and converges correctly.
-        if (!moved.applied) {
-          return {
-            ok: false,
-            reason: "stock_edit_conflict — altă editare a rulat în paralel; redeschide factura, verifică liniile și salvează din nou",
-          };
-        }
+        // Nothing has been written to the invoice yet — a hard failure just
+        // aborts the edit cleanly.
+        if (!moved.ok) return moved;
+        // applied=false → this exact base→target transition already moved
+        // stock (an earlier attempt whose snapshot write was lost) — carry on
+        // to the snapshot write, which is exactly the missing half.
+        if (moved.applied) appliedDeltas.push({ pid, delta });
       }
     }
+  }
+
+  const existingUpdatedAt =
+    (existing as { updated_at?: string | null }).updated_at ?? null;
+  let write = supabase
+    .from("invoices")
+    .update({
+      account_scope: v.account_scope,
+      currency: v.currency,
+      customer_snapshot: v.customer as unknown as Json,
+      items_snapshot: itemsSnapshot as unknown as Json,
+      subtotal,
+      vat_amount,
+      total,
+      due_date: due.toISOString().slice(0, 10),
+      notes: v.notes ?? null,
+      updated_at: new Date().toISOString(),
+      ...({
+        output_locale: v.output_locale,
+        ...(discount_percent > 0 ? { discount_percent } : {}),
+      } as object),
+    })
+    .eq("id", id);
+  write = existingUpdatedAt
+    ? write.eq("updated_at", existingUpdatedAt)
+    : write.is("updated_at", null);
+  const { data: written, error } = await write.select("id");
+  if (error) {
+    // Transient write failure: movements are in but base-stamped — the retry
+    // re-runs them as no-ops and only the snapshot write repeats.
+    return { ok: false, reason: `${error.message} — apasă din nou Salvează` };
+  }
+  if (!written || written.length === 0) {
+    // CAS lost: someone else saved this invoice meanwhile. Take back exactly
+    // what we moved and report the conflict — stock and snapshot stay theirs.
+    for (const a of appliedDeltas) {
+      await applyStockMovement(updDb, {
+        productId: a.pid,
+        delta: -a.delta,
+        reason: "invoice_edit",
+        ref: `reverse:invoice_edit:${id}:${a.pid}:${baseStamp}`,
+        orderId: existing.order_id,
+        invoiceId: id,
+        createdBy: user.id,
+      });
+    }
+    return {
+      ok: false,
+      reason:
+        "edit_conflict — altă editare a salvat între timp; redeschide factura și reia modificarea",
+    };
   }
 
   revalidatePath("/[locale]/panel/facturi", "page");
@@ -1257,6 +1300,21 @@ export async function markInvoicePaid(
   if (inv.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
   if (inv.status === "paid") return { ok: false, reason: "already_paid" };
   if (inv.status === "void") return { ok: false, reason: "voided" };
+
+  // A payment on an invoice whose order was CANCELLED (stock restored,
+  // possibly refunded) must not silently resurrect it into "delivered" —
+  // documents would then claim goods left while the ledger says they're on
+  // the shelf. Un-cancel the order first, deliberately, then mark paid.
+  if (inv.order_id) {
+    const { data: payOrd } = await supabase
+      .from("orders")
+      .select("status")
+      .eq("id", inv.order_id)
+      .maybeSingle();
+    if (payOrd?.status === "cancelled") {
+      return { ok: false, reason: "order_cancelled — comanda e anulată; de-anuleaz-o întâi din Admin → Comenzi dacă plata e reală" };
+    }
+  }
 
   const nowIso = new Date().toISOString();
   // Treat the user-supplied date as the actual payment moment.
@@ -1421,6 +1479,7 @@ export async function voidInvoice(
         .from("orders")
         .update({ status: "cancelled", updated_at: nowIso })
         .eq("id", inv.order_id);
+      await releaseOrderCredits(inv.order_id);
 
       await supabase
         .from("delivery_notes")
@@ -1627,6 +1686,7 @@ export async function deleteInvoiceWithPin(
         .from("orders")
         .update({ status: "cancelled", updated_at: nowIso })
         .eq("id", inv.order_id);
+      await releaseOrderCredits(inv.order_id);
 
       await supabase
         .from("delivery_notes")

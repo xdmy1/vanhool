@@ -217,10 +217,26 @@ export async function createInvoiceLineReturn(
       await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
       return { ok: false, reason: moved.reason };
     }
-    await getSupabaseAdmin()
+    const { error: flagErr } = await getSupabaseAdmin()
       .from("document_returns")
       .update({ stock_adjusted: true } as never)
       .eq("id", returnId);
+    if (flagErr) {
+      // stock_adjusted=false with a live movement would make deleteReturn
+      // skip the reversal while removing the row (cap reset + stuck credit).
+      // Undo both halves and surface — the retry recreates them together.
+      await applyStockMovement(supabase as unknown as StockDb, {
+        productId,
+        delta: -qty,
+        reason: "return_reverse",
+        ref: `reverse:return:${returnId}`,
+        orderId: (inv as { order_id?: string | null }).order_id ?? null,
+        returnId,
+        createdBy: user.id,
+      });
+      await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
+      return { ok: false, reason: flagErr.message };
+    }
   }
 
   revalidatePath("/[locale]/panel/facturi", "page");
@@ -365,10 +381,23 @@ export async function createPurchaseLineReturn(
       await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
       return { ok: false, reason: moved.reason };
     }
-    await getSupabaseAdmin()
+    const { error: flagErr } = await getSupabaseAdmin()
       .from("document_returns")
       .update({ stock_adjusted: true } as never)
       .eq("id", returnId);
+    if (flagErr) {
+      await applyStockMovement(supabase as unknown as StockDb, {
+        productId: it.product_id,
+        delta: qty,
+        reason: "return_reverse",
+        ref: `reverse:return:${returnId}`,
+        purchaseId,
+        returnId,
+        createdBy: user.id,
+      });
+      await getSupabaseAdmin().from("document_returns").delete().eq("id", returnId);
+      return { ok: false, reason: flagErr.message };
+    }
   }
 
   revalidatePath("/[locale]/panel/achizitii", "page");

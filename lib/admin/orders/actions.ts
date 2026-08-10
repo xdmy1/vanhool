@@ -11,6 +11,7 @@ import {
   unreverseOrderStock,
   type StockDb,
 } from "@/lib/stock-ledger";
+import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import { ORDER_STATUSES, type OrderStatus } from "./constants";
 
 /**
@@ -85,6 +86,7 @@ export async function updateOrderStatus(
     );
     // Refuse the status change if stock couldn't follow it — retry heals.
     if (!restored.ok) return { ok: false, code: "server", message: restored.reason };
+    await releaseOrderCredits(id);
   } else if (cur && parsed.data !== "cancelled" && curStatus === "cancelled") {
     const retaken = await unreverseOrderStock(db, id, auth.user.id);
     if (!retaken.ok) return { ok: false, code: "server", message: retaken.reason };
@@ -149,6 +151,7 @@ export async function deleteOrderWithPin(
     // The order must not vanish while its stock stays out — abort the delete.
     if (!restored.ok) return { ok: false, reason: restored.reason };
   }
+  await releaseOrderCredits(id);
 
   // Before cascading the delete, reverse any cash drawer inflows
   // recorded against this order (conta2 + cash sales / payments).

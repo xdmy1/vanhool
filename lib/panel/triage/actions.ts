@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { reverseOrderStock, type StockDb } from "@/lib/stock-ledger";
+import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import type { Json } from "@/lib/supabase/database.types";
 
 const triageSchema = z.object({
@@ -226,6 +227,7 @@ export async function cancelStorefrontOrder(
     );
     // Don't mark it dead while the goods are still charged out — retry heals.
     if (!restored.ok) return { ok: false, reason: restored.reason };
+    await releaseOrderCredits(orderId);
   }
 
   const { error } = await supabase

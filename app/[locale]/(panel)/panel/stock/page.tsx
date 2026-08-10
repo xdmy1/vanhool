@@ -40,7 +40,7 @@ export default async function PanelStockPage({
     .order("stock_quantity", { ascending: true })
     .limit(PAGE_LIMIT);
 
-  if (filter === "out") query = query.eq("stock_quantity", 0);
+  if (filter === "out") query = query.lte("stock_quantity", 0);
   else if (filter === "low") query = query.lte("stock_quantity", LOW_STOCK_THRESHOLD);
 
   const { data, count } = await query;
@@ -115,7 +115,7 @@ export default async function PanelStockPage({
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs tabular-nums",
-                            qty === 0
+                            qty <= 0
                               ? "bg-destructive/10 text-destructive"
                               : qty <= LOW_STOCK_THRESHOLD
                                 ? "bg-warning/10 text-warning"

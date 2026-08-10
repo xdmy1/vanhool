@@ -21,7 +21,9 @@ const productSchema = z.object({
   price: z.number().nonnegative(),
   cost_price: z.number().nonnegative().nullable().optional(),
   // Stock is numeric(12,3) — divisible units (litru/metru/kg) keep decimals.
-  stock_quantity: z.number().min(0).default(0),
+  // Negative is LEGAL: it's the honest oversell signal; the form must not
+  // brick edits of an oversold product or force wiping the evidence to 0.
+  stock_quantity: z.number().default(0),
   /** Unit of measure the product is stocked + sold in. Vocabulary lives in the
    *  app (PRODUCT_UNITS); DB accepts any text so a new unit never blocks a save. */
   unit: z.string().default("buc"),

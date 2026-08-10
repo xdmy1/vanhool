@@ -529,22 +529,28 @@ async function settleDraftPurchaseSales(
     const ordMvRes = await getOrderMovements(db, ord.id as string);
     if (!ordMvRes.ok) continue; // can't read → don't move, don't mark
     const settled = new Set<string>();
+    const appliedMoves: Array<{ productId: string; qty: number; ref: string }> = [];
     for (const [productId, qty] of takeByProduct) {
       const seq = ordMvRes.rows.filter((r) =>
         r.ref.startsWith(`draft_settle:${ord.id}:${productId}:`),
       ).length;
+      const ref = `draft_settle:${ord.id}:${productId}:${seq}`;
       const moved = await applyStockMovement(db, {
         productId,
         delta: -qty,
         reason: "sale",
-        ref: `draft_settle:${ord.id}:${productId}:${seq}`,
+        ref,
         orderId: ord.id as string,
         purchaseId,
         note: "vânzare din achiziție-draft, decontată la postare",
         createdBy: userId,
       });
-      if (moved.ok) settled.add(productId);
-      else console.error("[panel.purchases] draft settle failed:", moved.reason);
+      if (moved.ok) {
+        settled.add(productId);
+        if (moved.applied) appliedMoves.push({ productId, qty, ref });
+      } else {
+        console.error("[panel.purchases] draft settle failed:", moved.reason);
+      }
     }
     if (settled.size === 0) continue;
     for (const m of matches) {
@@ -555,10 +561,28 @@ async function settleDraftPurchaseSales(
         from_draft_purchase: false,
       };
     }
-    await supabase
+    const { error: markErr } = await supabase
       .from("orders")
       .update({ items: items as unknown as Json })
       .eq("id", ord.id as string);
+    if (markErr) {
+      // The seq-suffixed refs allow a future re-settle, so an unmarked line
+      // with a landed movement WOULD double-decrement on the next post/edit.
+      // Take our movements back — the next run redoes both halves together.
+      for (const a of appliedMoves) {
+        await applyStockMovement(db, {
+          productId: a.productId,
+          delta: a.qty,
+          reason: "sale",
+          ref: `reverse:${a.ref}`,
+          orderId: ord.id as string,
+          purchaseId,
+          note: "settle anulat: marcarea liniilor a eșuat",
+          createdBy: userId,
+        });
+      }
+      console.error("[panel.purchases] draft settle mark failed:", markErr.message);
+    }
   }
 }
 
