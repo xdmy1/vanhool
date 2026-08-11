@@ -147,6 +147,7 @@ export function ProductForm({
   labels,
   linkLineId,
   redirectAfterCreate,
+  basePath,
 }: {
   productId?: string;
   initial?: Partial<ProductFormValues>;
@@ -161,6 +162,11 @@ export function ProductForm({
   linkLineId?: string;
   /** When set, navigate here after a successful create instead of the product edit page. */
   redirectAfterCreate?: string;
+  /**
+   * Section the form lives in: list page + edit-page prefix. Defaults to the
+   * admin catalog; the panel passes its own so navigation stays in the panel.
+   */
+  basePath?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -360,7 +366,10 @@ export function ProductForm({
       if (linkLineId && "id" in res) {
         await linkPurchaseLineToProduct(linkLineId, res.id);
       }
-      router.replace(redirectAfterCreate ?? `/${locale}/admin/products/${"id" in res ? res.id : ""}`);
+      router.replace(
+        redirectAfterCreate ??
+          `${basePath ?? `/${locale}/admin/products`}/${"id" in res ? res.id : ""}`,
+      );
     });
   };
 
@@ -821,7 +830,7 @@ export function ProductForm({
               <PinDeleteButton
                 action={deleteProductWithPin}
                 entityId={productId}
-                redirectTo={`/${locale}/admin/products`}
+                redirectTo={basePath ?? `/${locale}/admin/products`}
                 label={labels.delete}
               />
             </div>

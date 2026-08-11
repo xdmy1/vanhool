@@ -208,7 +208,7 @@ export default async function PanelAchizitieDetailPage({
                   <td className="px-4 py-2">
                     {it.product_id ? (
                       <Link
-                        href={`/admin/products/${it.product_id}` as "/admin"}
+                        href={`/panel/produse/${it.product_id}` as "/panel"}
                         locale={locale}
                         className="inline-flex items-center gap-1 rounded bg-success/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-success hover:bg-success/20"
                       >
@@ -217,7 +217,7 @@ export default async function PanelAchizitieDetailPage({
                       </Link>
                     ) : (
                       <Link
-                        href={`/admin/products/new?from_line=${it.id}` as "/admin"}
+                        href={`/panel/produse/new?from_line=${it.id}` as "/panel"}
                         locale={locale}
                         className="inline-flex items-center gap-1 rounded border border-primary px-2 py-0.5 text-[10px] uppercase tracking-wide text-primary hover:bg-primary/10"
                       >

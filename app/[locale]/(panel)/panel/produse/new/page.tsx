@@ -1,11 +1,11 @@
-import { redirect } from "next/navigation";
+import { ProductCreateScreen } from "@/components/admin/products/ProductCreateScreen";
 
 /**
- * Always use the full admin form for creating a product, including from
- * a purchase line (?from_line=...). The panel keeps the list view but
- * delegates create/edit to /admin/products to avoid two divergent forms.
+ * Product creation INSIDE the panel — same shared form as /admin/products/new
+ * (one source of truth), navigation stays in the panel. ?from_line= keeps the
+ * purchase-line prefill + bounce-back-to-purchase behaviour.
  */
-export default async function PanelProduseNewRedirect({
+export default async function PanelProduseNewPage({
   params,
   searchParams,
 }: {
@@ -14,8 +14,12 @@ export default async function PanelProduseNewRedirect({
 }) {
   const [{ locale }, sp] = await Promise.all([params, searchParams]);
   const fromLine = typeof sp.from_line === "string" ? sp.from_line : null;
-  const target = fromLine
-    ? `/${locale}/admin/products/new?from_line=${encodeURIComponent(fromLine)}`
-    : `/${locale}/admin/products/new`;
-  redirect(target);
+  return (
+    <ProductCreateScreen
+      locale={locale}
+      fromLineId={fromLine}
+      back={{ href: "/panel/produse" }}
+      basePath={`/${locale}/panel/produse`}
+    />
+  );
 }

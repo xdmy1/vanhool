@@ -6,6 +6,7 @@
 - 571015010 Senzor NOx: 5 → 3 | 2001887 Furtun aer: 2 → 0 | 1900295 Lampă LED: 10 → 0 | 2005057 Senzor combustibil: 1 → 0 | LH0500080U Actuator: 1 → 0 | 7.09269.24.0 Radiator ulei: 1 → 0 | MAGNATEC 5W40 5L: 1 → 0 | C 21 014 Filtru aer: 1 → 0 | K 1388A Filtru habitaclu: 1 → 0 | W 712/95 Filtru ulei: 1 → 0 | FE12281 Șurub golire: 1 → 0
 - Criteriu: produse născute din achiziții panel al căror stoc era neatins de vânzări (semnătura bug-ului "vânzarea nu scădea stocul").
 - 14 comenzi cu linii vândute din draft marcate decontate (imun la dublă scădere după deploy).
+- **C 4312/1 Filtru aer MANN** (corectat manual, confirmat de operator): 33 → **31**. Cumpărat 40 (10 AAZ 3116115 din 01.07 — linia nu era legată de produs, deci postarea nu a incrementat stocul; legată acum + mișcare `purchase_post` +10) + 30 EBK000858256 din 04.08. Vândut 9 (IB00078 1, IB00104 1, IB00121 3, IB0120 1, IB00123 3) — toate pre-ledger, nescăzute din stoc; înregistrate acum ca mișcări `sale` pe comenzile/facturile reale. Rest −3 stoc fantomă fără document (probabil introdus la crearea produsului, 15.05) — `manual_adjust`.
 
 ## De verificat MANUAL — inventar fizic (documentele nu pot decide singure)
 
@@ -152,8 +153,9 @@
    cumpărat=5 vândut=0 retur+=0 retur-=0 → așteptat=5 | actual=11 | delta=+6 (~483 MDL) | fd69edde-5bc7-4822-a4fa-34772d665f64
 [MANUAL] 7PK2035CT  | CUREA TRANSMISIE CONTITECH
    cumpărat=1 vândut=1 retur+=0 retur-=0 → așteptat=0 | actual=1 | delta=+1 (~371 MDL) | a7b990b2-883d-4301-8aca-a3dd2ef242ee
-[MANUAL] C 4312/1 | C 4312/1 Filtru aer MANN-FILTER
+[REZOLVAT 10.08] C 4312/1 | C 4312/1 Filtru aer MANN-FILTER
    cumpărat=40 vândut=9 retur+=0 retur-=0 → așteptat=31 | actual=33 | delta=+2 (~371 MDL) | 3aa56147-c19b-478f-b5a5-cb0b60d666d9
+   → operator a confirmat 40/9; corectat 33 → 31 prin registru (vezi secțiunea "Corectate")
 [MANUAL] 10518429 | 10518429 Comutator termic ventilator rad
    cumpărat=1 vândut=0 retur+=0 retur-=0 → așteptat=1 | actual=3 | delta=+2 (~337 MDL) | 73e8fe8c-23ee-4239-8db6-be4d1318885a
 [MANUAL] 660173238 | Amortizor de gaz 600N pentru Van Hool – 
@@ -183,3 +185,173 @@
 [MANUAL] 152089599R | FILTRU ULEI-O.E.
    cumpărat=1 vândut=1 retur+=0 retur-=0 → așteptat=0 | actual=1 | delta=+1 (~82 MDL) | 884e2171-6acf-4e60-8b39-71b5b63bc8da
 ```
+
+
+## RUNDA 2 (după-amiază, pornită de la cazul C 4312/1 confirmat de operator)
+
+Audit complet re-rulat pe toate produsele (achiziții + comenzi cu chei camelCase/snake_case
+și potrivire pe cod normalizat + facturi orfane deduplicate + registru).
+
+### Corectate automat (12 produse — delta explicată 100% din documente, rezultat ≥ 0)
+
+Toate: vânzări pre-ledger care nu au scăzut stocul, înregistrate acum ca mișcări `sale`
+pe comenzile reale (refs idempotente), sau linii de achiziție nelegate de produs (+`purchase_post`):
+
+- IB-0C9A93DB Disc Frana 2→0 · IB-EC0E4958 Acumulator 1→0 · 600035300L Set ambreiaj LuK 1→0
+- IB-CFC54107 Senzor frana ATE 2→0 · IB-086EAF7E Placute ATE 1→0 · IB-E45D303E Disc frana ATE 2→0
+- IB-64C1AAAA Placute ATE 1→0 · 272772621R Filtru habitaclu 1→0 · 660173238 Amortizor gaz 2→1
+- K 019909N00 Supapă KNORR 5→4 · 11173234 Schimbător căldură 2→1
+- 11230624 Cilindru ușă Van Hool 0→1 (achiziție 2601411/19.05 nelegată — legată + aplicată)
+
+### ⚠️ DEPLOY LIPSĂ — cauza principală e încă activă în producție
+
+`main` local e cu 9 commit-uri înaintea `origin/main` (ultimul push: acum 10 zile). Tot
+overhaul-ul de stoc (ledger + fix vânzări) NU rulează în producție — vânzarea DCP17151 din
+10.08 (Calatorul Trans) tot nu a scăzut stocul. Până la push + deploy, orice vânzare nouă
+creează discrepanțe noi.
+
+### De verificat FIZIC (69 produse cu activitate în panel, sortate după valoarea deltei)
+
+`soft` = ce arată aplicația acum; `documente` = achiziții − vânzări (doar istoric panel);
+`rest_fantomă` = partea inexplicabilă din documente (stoc inițial netrecut în sistem etc.).
+Negativ la `documente` = s-a vândut peste ce s-a cumpărat în panel (marfa a existat fizic,
+dar intrarea nu e în sistem). Operatorul numără fizic → cifra reală se setează din produs
+(merge prin `set_stock_absolute`, rămâne auditabil).
+
+```
+DELBEBJ1A05002 | DELBEBJ1A05002 Pompă-duză DELPHI | soft=0 documente=-12 delta=+12 rest_fantoma=vandut peste cumparat (12>0) — stoc initial nedocumentat (~153000 MDL) unit=buc
+0 124 655 405 | Alternator SEG 0 124 655 405 28V 110A | soft=11 documente=-9 delta=+20 rest_fantoma=+3 (~125000 MDL) unit=buc
+11155287 | 11155287 Cilindru acționare ușă VAN HOOL OE E | soft=0 documente=-4 delta=+4 rest_fantoma=-1 (~123200 MDL) unit=buc
+624324690 | Arc lamelar spate Van Hool 624324690 | soft=6 documente=0 delta=+6 rest_fantoma=+4 (~61800 MDL) unit=buc
+11003917 | Intercooler Van Hool 11003917 | soft=1 documente=-2 delta=+3 rest_fantoma=+1 (~54000 MDL) unit=buc
+10951983 | 10951983 Casetă de direcție VAN HOOL OE | soft=0 documente=-1 delta=+1 rest_fantoma=vandut peste cumparat (1>0) — stoc initial nedocumentat (~45500 MDL) unit=buc
+3981 600 000 | 3.981.600.000 Cilindru de lucru ambreiajj SAC | soft=3 documente=0 delta=+3 rest_fantoma=+2 (~37500 MDL) unit=buc
+13879980064 | 13879980064 Turbocompresor BORGWARNER | soft=1 documente=0 delta=+1 rest_fantoma=+1 (~32500 MDL) unit=buc
+11508797 | 11508797 Ușă de acces OE Van Hool | soft=0 documente=1 delta=-1 rest_fantoma=-1 (~31200 MDL) unit=buc
+A9073201102 | A9073201102 Amortizor față MERCEDES-BENZ OE | soft=4 documente=-2 delta=+6 rest_fantoma=+4 (~29700 MDL) unit=buc
+RUBIA 10W40 3100 208L | Rubia 10W40 3100 208L Ulei de motor TOTAL | soft=88 documente=-119 delta=+207 rest_fantoma=+88 (~23805 MDL) unit=litru
+10981146 | Cuplaj ventilator Van Hool 10981146, 226 mm,  | soft=0 documente=-1 delta=+1 rest_fantoma=-2 (~23690 MDL) unit=buc
+11294744 | Lumina de zi LED Van Hool 11294744 | soft=4 documente=-1 delta=+5 rest_fantoma=+4 (~22250 MDL) unit=buc
+11189595 | 11189595 Amortizor punte portantă VAN HOOL OE | soft=0 documente=4 delta=-4 rest_fantoma=-14 (~16120 MDL) unit=buc
+571 0148 10 | 571 0148 10 Senzor de NOx, injecție cu uree î | soft=4 documente=2 delta=+2 rest_fantoma=-1 (~13900 MDL) unit=buc
+626 3026 19 | 626 3026 19 Kit ambreiaj LuK | soft=1 documente=-1 delta=+2 rest_fantoma=+1 (~13300 MDL) unit=buc
+660173259 | Amortizor gaz scaun Van Hool 500N 660173259 | soft=5 documente=-8 delta=+13 rest_fantoma=vandut peste cumparat (13>5) — stoc initial nedocumentat (~11700 MDL) unit=buc
+DCP17026 | DCP17026 Compresor aer condiționat DENSO | soft=1 documente=-1 delta=+2 rest_fantoma=+1 (~11300 MDL) unit=buc
+K069799 | Disc de frână KNORR-BREMSE K069799 | soft=4 documente=1 delta=+3 rest_fantoma=+3 (~11100 MDL) unit=buc
+9B3276 | Amortizor frontal Koni 99B-3276 | soft=0 documente=-2 delta=+2 rest_fantoma=-2 (~10000 MDL) unit=buc
+DCP17151 | DCP17151 Compresor aer condiționat DENSO 2z | soft=0 documente=-1 delta=+1 rest_fantoma=vandut peste cumparat (1>0) — stoc initial nedocumentat (~9600 MDL) unit=buc
+K 046771K50 | K 046771K50 Kit plăcuțe de frână cu disc KNOR | soft=4 documente=1 delta=+3 rest_fantoma=+3 (~8400 MDL) unit=buc
+532 0570 10 | 532 0570 10 ina Curea poli V pinten/rolă de a | soft=4 documente=0 delta=+4 rest_fantoma=+4 (~8040 MDL) unit=buc
+0501330120ZF | 0501330120ZF Senzor de presiune frână retarde | soft=1 documente=-1 delta=+2 rest_fantoma=vandut peste cumparat (2>1) — stoc initial nedocumentat (~8000 MDL) unit=buc
+4324100220 | 4324100220 Uscător de aer pneumatic WABCO | soft=0 documente=-1 delta=+1 rest_fantoma=vandut peste cumparat (1>0) — stoc initial nedocumentat (~8000 MDL) unit=buc
+09-0036 | 09-0036 Furtun intercooler stânga GATES | soft=2 documente=-1 delta=+3 rest_fantoma=+2 (~7500 MDL) unit=buc
+1 986 A00 021 | 1 986 A00 021 Generator BOSCH 150A | soft=0 documente=-1 delta=+1 rest_fantoma=vandut peste cumparat (1>0) — stoc initial nedocumentat (~7000 MDL) unit=buc
+C 32 1900/2 | C 32 1900/2 Filtru aer MANN-FILTER | soft=5 documente=0 delta=+5 rest_fantoma=+5 (~6500 MDL) unit=buc
+614308010 | 614308010 Bară de suspensie VAN HOOL OE | soft=2 documente=-2 delta=+4 rest_fantoma=+2 (~5200 MDL) unit=buc
+555288RIM | A4TRG891AM Alternator 24V 130A MITSUBISHI | soft=0 documente=-1 delta=+1 rest_fantoma=+1 (~4800 MDL) unit=buc
+529 0361 10 | 529 0361 10 Kit curea policlinică ina | soft=2 documente=0 delta=+2 rest_fantoma=+2 (~4800 MDL) unit=buc
+555288RI | A4TRG891AM Alternator 24V 130A MITSUBISHI | soft=0 documente=1 delta=-1 rest_fantoma=-1 (~3825 MDL) unit=buc
+WK 820/16 | WK 820/16 filtru combustibil MANN-FILTER | soft=8 documente=4 delta=+4 rest_fantoma=+8 (~3800 MDL) unit=buc
+10885330 | Articulatie sferica bara punte trailing axle  | soft=0 documente=-2 delta=+2 rest_fantoma=vandut peste cumparat (2>0) — stoc initial nedocumentat (~3700 MDL) unit=buc
+PL 420 X | PL 420 X Filtru combustibil MANN-FILTER | soft=4 documente=-2 delta=+6 rest_fantoma=+4 (~3480 MDL) unit=buc
+IB-1F17C333 | Acumulator Pornire | soft=0 documente=1 delta=-1 rest_fantoma=-1 (~3055 MDL) unit=buc
+10845098 | 10845098 Capăt bară de direcție transversală  | soft=0 documente=-1 delta=+1 rest_fantoma=-5 (~2950 MDL) unit=buc
+10845099 | 10845099 Capăt bară de direcție transversală  | soft=0 documente=-1 delta=+1 rest_fantoma=-5 (~2950 MDL) unit=buc
+10841030 | 10841030 Capăt de bară direcție stânga VAN HO | soft=2 documente=-2 delta=+4 rest_fantoma=vandut peste cumparat (4>2) — stoc initial nedocumentat (~2800 MDL) unit=buc
+10841028 | 10841028 Capăt de bară direcție dreapta VAN H | soft=2 documente=-2 delta=+4 rest_fantoma=vandut peste cumparat (4>2) — stoc initial nedocumentat (~2800 MDL) unit=buc
+0 986 487 720 | 0 986 487 720 Set de plăcuțe de frână de parc | soft=4 documente=-2 delta=+6 rest_fantoma=+4 (~2700 MDL) unit=buc
+614310980 | 614310980 Bară de suspensie VAN HOOL OE | soft=0 documente=-2 delta=+2 rest_fantoma=vandut peste cumparat (2>0) — stoc initial nedocumentat (~2600 MDL) unit=buc
+11273058 | 11273058 Conector electric cu 4 pini VAN Hool | soft=30 documente=-10 delta=+40 rest_fantoma=+30 (~2600 MDL) unit=buc
+13.0460-3837.2 | 13.0460-3837.2 Set plăcuțe frână spate ATE | soft=2 documente=0 delta=+2 rest_fantoma=+1 (~2400 MDL) unit=buc
+10963817 | 10963817 Mâner ușă compartiment bagaje fără c | soft=1 documente=-2 delta=+3 rest_fantoma=+1 (~2400 MDL) unit=buc
+HU 12 103 X | HU 12 103 X filtru ulei MANN-FILTER | soft=4 documente=-1 delta=+5 rest_fantoma=+4 (~2350 MDL) unit=buc
+WK 820/1 | WK 820/1 Filtru combustibil MANN-FILTER | soft=6 documente=0 delta=+6 rest_fantoma=+1 (~1980 MDL) unit=buc
+PU 966/1 X | PU 966/1 X Filtru combustibil MANN-FILTER | soft=4 documente=-1 delta=+5 rest_fantoma=+4 (~1700 MDL) unit=buc
+532 0672 10 | 532 0672 10 Rolă ghidare curea poli-V INA | soft=4 documente=-1 delta=+5 rest_fantoma=+4 (~1600 MDL) unit=buc
+5804ZA | Amortizor gaz STABILUS 5804ZA 50N | soft=0 documente=-2 delta=+2 rest_fantoma=vandut peste cumparat (2>0) — stoc initial nedocumentat (~1300 MDL) unit=buc
+V30-60-91315 | Set garnituri răcitor de ulei VEMO V30-60-913 | soft=2 documente=1 delta=+1 rest_fantoma=+2 (~1300 MDL) unit=buc
+660173223 | 660173223 Amortizor gaz 700N VAN Hool OE | soft=4 documente=2 delta=+2 rest_fantoma=+2 (~1200 MDL) unit=buc
+10518429 | 10518429 Comutator termic ventilator radiator | soft=3 documente=1 delta=+2 rest_fantoma=+2 (~1200 MDL) unit=buc
+10722101 | 10722101 Cilindru încuietoare cu cheie pentru | soft=1 documente=-4 delta=+5 rest_fantoma=+1 (~1000 MDL) unit=buc
+IB-8F8948A9 | Radiator ulei, ulei motor | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~944 MDL) unit=buc
+IB-9EE6F009 | Ulei de motor | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~939 MDL) unit=buc
+1305-01-0070EX12 | Spray curățare frâne PROFITOOL 500 ml | soft=10 documente=-2 delta=+12 rest_fantoma=+10 (~900 MDL) unit=buc
+HU 7010 Z | HU 7010 Z Filtru ulei MANN-FILTER | soft=8 documente=2 delta=+6 rest_fantoma=+8 (~900 MDL) unit=buc
+HU 821 X | HU 821 X Filtru de ulei MANN-FILTER | soft=4 documente=0 delta=+4 rest_fantoma=-1 (~720 MDL) unit=buc
+IB-AF2E0FCB | Colier, sistem de esapament | soft=11 documente=5 delta=+6 rest_fantoma=+6 (~628 MDL) unit=buc
+11074156 | 11074156 Siglă emblemă OE VAN HOOL | soft=0 documente=-1 delta=+1 rest_fantoma=vandut peste cumparat (1>0) — stoc initial nedocumentat (~500 MDL) unit=buc
+IB-02151B81 | Filtru aer | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~297 MDL) unit=buc
+IB-2CB10BE9 | Filtru, aer habitaclu | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~201 MDL) unit=buc
+MBZ22952530/200L | MBZ22952530/200 Ulei de motor 5W-30 MB 229,52 | soft=84 documente=83 delta=+1 rest_fantoma=-116 (~200 MDL) unit=litru
+10947861 | 10947861 Cilindru încuietoare cu cheie VAN HO | soft=0 documente=1 delta=-1 rest_fantoma=-1 (~200 MDL) unit=buc
+11355929 | 11355929 Conector electric cu 5 pini VAN Hool | soft=41 documente=38 delta=+3 rest_fantoma=+41 (~195 MDL) unit=buc
+IB-55F39190 | Filtru ulei | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~164 MDL) unit=buc
+M 1613 | M 1613 Solvent de rugină MoS2 (600 ml) | soft=4 documente=3 delta=+1 rest_fantoma=-2 (~150 MDL) unit=buc
+IB-60937A29 | Surub de golire, baia de ulei | soft=0 documente=1 delta=-1 rest_fantoma=resid=0 dar fix +0 nu inchide delta -1 (~22 MDL) unit=buc
+```
+
+### Produse fără activitate în panel (249) — stoc tastat la catalogare, nejudecabil din documente
+
+Top după valoare (⚠️ primul e aproape sigur o greșeală de tastare — 4200 bucăți articulație
+cardanică ≈ 21,4 milioane MDL în soft):
+
+```
+   11554251 | 11554251 Articulație cardanică arbore direcți | stoc tastat=4200 (~21420000 MDL)
+   11003691 | Radiator racire motor Van Hool 11003691 | stoc tastat=3 (~156300 MDL)
+   11237995 | Radiator racire motor Van Hool 11237995 | stoc tastat=3 (~154350 MDL)
+   DELBEBU5A00000 | DELBEBU5A00000 Pompă de înaltă presiune DELPH | stoc tastat=10 (~129500 MDL)
+   643 3424 33 | Kit ambreiaj LuK 643 3424 33 | stoc tastat=2 (~48600 MDL)
+   10962967 | 10962967 Casetă de direcție VAN HOOL OE | stoc tastat=1 (~44500 MDL)
+   11114323 | Pedală de accelerație Van Hool 11114323 | stoc tastat=3 (~40890 MDL)
+   DELBEBJ1D02001-12B1 | DELBEBJ1D02001-12B1 Injector combustibil DELP | stoc tastat=4 (~33400 MDL)
+   740500120 K182 | 740500120 Baterie de pornire PROMOTIVE EFB 24 | stoc tastat=4 (~26000 MDL)
+   11264394 | Încălzitor autonom VLiquid Thermo S300 24V Va | stoc tastat=1 (~24950 MDL)
+```
+
+
+## RUNDA 3-4 (aliniere la achiziții/vânzări, cu probe documentare)
+
+### Corectate cu probă din arhiva editărilor (dublare la re-postarea achizițiilor editate)
+
+Fiecare linie de achiziție editată pre-ledger putea aplica stocul de mai multe ori; versiunile
+vechi rămân în `purchase_items_archive` = proba. Aliniate la achiziții−vânzări prin registru:
+
+- **IB-AF2E0FCB Colier eșapament (DIN98874)**: 11 → **5** (arhiva are 10 buc versiuni vechi; −6 dublare)
+- **3981 600 000 Cilindru ambreiaj SACHS**: 3 → **0** (−1 vânzare Davo 09.07 + −2 dublare, arhiva 4 buc)
+- **13.0460-3837.2 Plăcuțe ATE**: 2 → **0** (−1 vânzare Davo 13.07 + −1 dublare)
+- **WK 820/1 Filtru MANN**: 6 → **0** (−5 vânzare Calatorul Trans 30.07 + −1 dublare, arhiva 15 buc)
+- **K019909N00 (rând duplicat)**: 1 → **0** — stocul real (4) e pe [K 019909N00], corectat în runda 2
+
+### ÎNTREBARE PENTRU OPERATOR — proforme „sent" netransformate în factură
+
+Produsele de mai jos apar pe proforme trimise care n-au devenit comenzi/facturi. Dacă marfa
+a plecat fizic pe ele, spune și se scade cu mișcare legată de proformă; dacă nu, cifra rămâne.
+(`documente` = achiziții−vânzări din comenzi; nu include proformele)
+
+```
+571 0148 10 | 571 0148 10 Senzor de NOx, injecție cu uree î | soft=4 documente=2 | proforme: [('M0495', 1.0)]
+IB-AF2E0FCB | Colier eșapament DIN98874 (deja aliniat la 5) | soft=5 documente=5 | proforme: [('M0478', 5.0)]
+13.0460-3837.2 | Plăcuțe ATE (deja aliniat la 0) | soft=0 documente=0 | proforme: [('M0494', 1.0)]
+A9073201102 | A9073201102 Amortizor față MERCEDES-BENZ OE | soft=4 documente=-2 | proforme: [('M0494', 2.0)]
+C 32 1900/2 | C 32 1900/2 Filtru aer MANN-FILTER | soft=5 documente=0 | proforme: [('M0453', 1.0)]
+HU 12 103 X | HU 12 103 X filtru ulei MANN-FILTER | soft=4 documente=-1 | proforme: [('M0453', 1.0), ('M0487', 1.0)]
+RUBIA 10W40 3100 208L | Rubia 10W40 3100 208L Ulei de motor TOTAL | soft=88 documente=-119 | proforme: [('M0453', 40.0), ('M0487', 40.0)]
+PU 966/1 X | PU 966/1 X Filtru combustibil MANN-FILTER | soft=4 documente=-1 | proforme: [('M0453', 1.0), ('M0487', 1.0)]
+V30-60-91315 | Set garnituri răcitor de ulei VEMO V30-60-913 | soft=2 documente=1 | proforme: [('M0454', 1.0)]
+MBZ22952530/200L | MBZ22952530/200 Ulei de motor 5W-30 MB 229,52 | soft=84 documente=83 | proforme: [('M0454', 12.0), ('M0474', 4.0)]
+10841030 | 10841030 Capăt de bară direcție stânga VAN HO | soft=2 documente=-2 | proforme: [('M0453', 2.0)]
+PL 420 X | PL 420 X Filtru combustibil MANN-FILTER | soft=4 documente=-2 | proforme: [('M0487', 1.0)]
+K069799 | Disc de frână KNORR-BREMSE K069799 | soft=4 documente=1 | proforme: [('M0453', 1.0)]
+10518429 | 10518429 Comutator termic ventilator radiator | soft=3 documente=1 | proforme: [('M0483', 1.0)]
+K 046771K50 | K 046771K50 Kit plăcuțe de frână cu disc KNOR | soft=4 documente=1 | proforme: [('M0453', 1.0)]
+10841028 | 10841028 Capăt de bară direcție dreapta VAN H | soft=2 documente=-2 | proforme: [('M0453', 2.0)]
+529 0361 10 | 529 0361 10 Kit curea policlinică ina | soft=2 documente=0 | proforme: [('M0454', 1.0)]
+```
+
+### Restul (49 produse) — rămân la numărare fizică
+
+Majoritatea: vândut peste cumpărat (stoc inițial care n-a fost introdus niciodată în sistem —
+nu există document din care să reiasă câte bucăți au rămas) sau stoc tastat peste documente
+fără urmă în arhivă. Lista completă cu cifre e în secțiunea RUNDA 2 de mai sus (cea nescoasă
+încă din listă); prioritare după valoare: alternator SEG 0 124 655 405 (soft 11, documente −9),
+pompă-duză DELBEBJ1A05002 (0 / −12), arc lamelar 624324690 (6 / 0), intercooler 11003917 (1 / −2).

@@ -414,10 +414,20 @@ async function applyPostedLines(
 
     const { data: cur } = await supabase
       .from("products")
-      .select("cross_references")
+      .select("cross_references, supplier_code, internal_only, is_active" as "cross_references")
       .eq("id", productId)
       .maybeSingle();
-    const refs = Array.isArray(cur?.cross_references) ? [...cur!.cross_references] : [];
+    const curRow = cur as
+      | {
+          cross_references?: unknown;
+          supplier_code?: string | null;
+          internal_only?: boolean | null;
+          is_active?: boolean | null;
+        }
+      | null;
+    const refs = Array.isArray(curRow?.cross_references)
+      ? [...(curRow!.cross_references as Json[])]
+      : [];
     if (it.supplier_code) {
       const has = refs.some(
         (r) =>
@@ -428,18 +438,52 @@ async function applyPostedLines(
       );
       if (!has) refs.push({ brand: supplierName, code: it.supplier_code } as Json);
     }
-    // Also sync the unit (a split turns 1 barrel → 200 litri) and refresh
-    // cost. A zero-cost restock line must NOT wipe cost_price to 0 — that
-    // would disarm the below-cost guard for the product. Cast through never:
-    // `unit` is a manually-migrated column the generated types don't know yet.
-    await supabase
-      .from("products")
-      .update({
-        ...(costMdl > 0 ? { cost_price: costMdl } : {}),
-        unit: (it.unit ?? "buc") || "buc",
-        cross_references: refs as unknown as Json,
-      } as never)
-      .eq("id", productId);
+    // Sync the LINE onto its product on every apply, not just at creation —
+    // otherwise editing the purchase is a no-op for the product (operator
+    // complaint: "degeaba schimb, nu e legat de produs"):
+    //   • cost refresh (GROSS MDL; a zero-cost line must NOT wipe cost_price
+    //     — that would disarm the below-cost guard),
+    //   • unit (a split turns 1 barrel → 200 litri),
+    //   • the CATALOG tick: ticked → product leaves internal_only (storefront
+    //     still gated by is_active, which stays with the owner); unticked →
+    //     internal-only AND off the site,
+    //   • supplier_code backfilled when the product has none (search).
+    const catalogPatch =
+      curRow && (curRow.internal_only ?? false) !== !wantsCatalog
+        ? wantsCatalog
+          ? { internal_only: false }
+          : { internal_only: true, is_active: false }
+        : {};
+    let syncErr = (
+      await supabase
+        .from("products")
+        .update({
+          ...(costMdl > 0 ? { cost_price: costMdl } : {}),
+          unit: (it.unit ?? "buc") || "buc",
+          cross_references: refs as unknown as Json,
+          ...(it.supplier_code && !curRow?.supplier_code
+            ? { supplier_code: it.supplier_code }
+            : {}),
+          ...catalogPatch,
+        } as never)
+        .eq("id", productId)
+    ).error;
+    // sql/products-internal-only.sql not applied yet — sync the rest anyway.
+    if (syncErr && /internal_only/i.test(syncErr.message)) {
+      syncErr = (
+        await supabase
+          .from("products")
+          .update({
+            ...(costMdl > 0 ? { cost_price: costMdl } : {}),
+            unit: (it.unit ?? "buc") || "buc",
+            cross_references: refs as unknown as Json,
+          } as never)
+          .eq("id", productId)
+      ).error;
+    }
+    if (syncErr) {
+      return { ok: false, reason: `product_sync_failed: ${syncErr.message}` };
+    }
 
     resolvedLines.push({
       productId,

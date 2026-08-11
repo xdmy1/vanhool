@@ -96,7 +96,7 @@ export async function ProductsTable({
               <td className="px-4 py-3 text-xs text-muted">{p.storage_location ?? "—"}</td>
               <td className="px-4 py-3 text-right">
                 <Link
-                  href={`/admin/products/${p.id}` as "/admin"}
+                  href={`/panel/produse/${p.id}` as "/panel"}
                   locale={locale}
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                 >

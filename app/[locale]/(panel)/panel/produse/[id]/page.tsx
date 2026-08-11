@@ -1,16 +1,22 @@
-import { redirect } from "next/navigation";
+import { ProductEditScreen } from "@/components/admin/products/ProductEditScreen";
 
 /**
- * The panel keeps the slimmed-down list view, but editing always happens on
- * the full /admin/products/[id] form (images, OEM codes, cross-refs, bus
- * compat, etc.). Anyone landing on the old panel edit URL is bounced over
- * so there's a single source of truth for the product form.
+ * Product editing INSIDE the panel — same shared form as /admin/products/[id]
+ * (one source of truth), but navigation stays in the panel: back goes to the
+ * panel product list, post-create/delete redirects stay under /panel/produse.
  */
-export default async function PanelProduseEditRedirect({
+export default async function PanelProduseEditPage({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  redirect(`/${locale}/admin/products/${id}`);
+  return (
+    <ProductEditScreen
+      locale={locale}
+      id={id}
+      back={{ href: "/panel/produse" }}
+      basePath={`/${locale}/panel/produse`}
+    />
+  );
 }
