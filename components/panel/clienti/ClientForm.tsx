@@ -67,6 +67,13 @@ export function ClientForm({ locale, initial }: Props) {
           account_type: initial.account_type ?? "individual",
           email: initial.email ?? "",
           full_name: initial.full_name ?? "",
+          // Hydrate EVERY field the update writes — the form state is the
+          // whole payload, so anything left at its EMPTY default gets saved
+          // as NULL/'ro' the moment the operator edits something unrelated.
+          first_name: initial.first_name ?? "",
+          last_name: initial.last_name ?? "",
+          contact_position: initial.contact_position ?? "",
+          language: initial.language ?? "ro",
           phone: initial.phone ?? "",
           company_name: initial.company_name ?? "",
           idno: initial.idno ?? "",

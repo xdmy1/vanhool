@@ -396,7 +396,16 @@ async function applyPostedLines(
         }
         productId = newP.id;
       }
-      await supabase.from("purchase_items").update({ product_id: productId }).eq("id", it.id);
+      await supabase
+        .from("purchase_items")
+        .update({
+          product_id: productId,
+          // Stamp the generated internal code back onto the line: if the UI
+          // ever unlinks it, tier-1 part_code resolution re-binds the SAME
+          // product instead of minting a duplicate.
+          ...(it.internal_code ? {} : { internal_code: code }),
+        })
+        .eq("id", it.id);
     }
 
     // Stock through the ledger — one movement per purchase line, keyed by the

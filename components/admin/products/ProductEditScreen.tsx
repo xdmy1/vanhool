@@ -82,6 +82,9 @@ export async function ProductEditScreen({
     costPrice: product.cost_price !== null ? Number(product.cost_price) : null,
     stockQuantity: Number(product.stock_quantity ?? 0),
     storageLocation: product.storage_location ?? "",
+    // `unit` is a manually-migrated column the generated types don't know yet —
+    // without loading it, every save silently reset litri/metri back to buc.
+    unit: ((product as { unit?: string | null }).unit ?? "buc") || "buc",
     condition: (product.condition ?? "new") as "new" | "refurbished" | "used",
     categoryId: product.category_id,
     subcategoryId: product.subcategory_id,

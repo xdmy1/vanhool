@@ -94,8 +94,17 @@ export function DecimalInput({
         let raw = text.replace(",", ".");
         if (raw.endsWith(".")) raw = raw.slice(0, -1);
         if (raw === "") {
-          onChange(allowEmpty ? null : 0);
-          setText("");
+          if (allowEmpty) {
+            onChange(null);
+            setText("");
+          } else {
+            // A blanked required field snaps back to the minimum — leaving it
+            // at 0 made the line silently invalid (and, on purchase edits,
+            // silently DELETED on save).
+            const fallback = min ?? 0;
+            onChange(fallback);
+            setText("");
+          }
           return;
         }
         let n = Number(raw);

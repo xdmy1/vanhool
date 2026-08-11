@@ -49,6 +49,7 @@ export default async function EditInvoicePage({
 
   const cs = invoice.customer_snapshot;
   const initial: ProformaInitial = {
+    userId: (cs as { user_id?: string | null }).user_id ?? null,
     id: invoice.id,
     walkin: {
       name: cs.name ?? "",
@@ -62,6 +63,8 @@ export default async function EditInvoicePage({
     lines:
       invoice.items_snapshot.length > 0
         ? invoice.items_snapshot.map((it) => ({
+            product_id:
+              (it as { productId?: string | null }).productId ?? null,
             part_code: it.partCode ?? "",
             name: it.name ?? "",
             description: it.description ?? "",
@@ -89,6 +92,7 @@ export default async function EditInvoicePage({
           }))
         : [
             {
+              product_id: null,
               part_code: "",
               name: "",
               description: "",

@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils/cn";
 export type ProformaPartMatch = {
   code: string;
   name: string;
+  /** Real products.id for catalog picks; null for draft-purchase matches
+   * (their id is a purchase_items id — linking it would corrupt the doc). */
+  product_id: string | null;
   unit_price: number;
   /** Catalog cost — passed through so the line can show the realised
    * markup % once the operator edits the selling price. */
@@ -85,6 +88,7 @@ export function PartCodeAutocomplete({
     onSelect({
       code: p.part_code ?? "",
       name: p.name_ro ?? "",
+      product_id: p.source === "catalog" ? p.id : null,
       unit_price: p.price,
       cost_price: p.cost_price ?? 0,
       catalog_price: p.price,

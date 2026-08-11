@@ -1183,6 +1183,7 @@
     "achizitii_save_error": "Ошибка: {reason}",
     "achizitii_supplier_missing": "Выберите поставщика",
     "achizitii_lines_missing": "Добавьте хотя бы одну строку",
+    "achizitii_line_invalid": "Строка {lines} имеет количество 0 или пустое описание — заполните или явно удалите её перед сохранением",
     "achizitii_saved": "Закупка сохранена как черновик",
     "achizitii_subtitle_detail": "{supplier} · {date} · {scope}",
     "achizitii_line_catalog": "Каталог",

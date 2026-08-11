@@ -642,7 +642,7 @@ function TodayBreakdownColumn({
             return (
               <li key={o.id}>
                 <Link
-                  href={`/panel/comenzi-site/${o.id}` as "/panel"}
+                  href={`/panel/comenzi/${o.id}` as "/panel"}
                   locale={locale}
                   className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-surface-elevated"
                 >

@@ -29,6 +29,10 @@ export type ClientSearchResult = {
   phone: string | null;
   company_name: string | null;
   idno: string | null;
+  /** Buyer VAT registration — coalesced from profiles.vat_code (panel
+   * clients) and profiles.vat_number (business signups), same rule as the
+   * invoice writers. Without it the fiscal doc printed without nr. TVA. */
+  vat_number: string | null;
   account_type: "individual" | "business" | null;
   discount_percent: number | null;
   billing_address: string | null;
@@ -41,6 +45,8 @@ function mapClientRow(p: {
   phone: string | null;
   company_name: string | null;
   idno: string | null;
+  vat_code?: string | null;
+  vat_number?: string | null;
   account_type: "individual" | "business" | null;
   discount_percent: number | null;
   billing_street: string | null;
@@ -53,6 +59,7 @@ function mapClientRow(p: {
     phone: p.phone,
     company_name: p.company_name,
     idno: p.idno,
+    vat_number: p.vat_code ?? p.vat_number ?? null,
     account_type: p.account_type,
     discount_percent: p.discount_percent,
     billing_address: [p.billing_street, p.billing_city].filter(Boolean).join(", ") || null,
@@ -68,7 +75,7 @@ export async function searchClients(q: string): Promise<ClientSearchResult[]> {
   const { data } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, phone, company_name, idno, account_type, discount_percent, billing_street, billing_city",
+      "id, email, full_name, phone, company_name, idno, vat_code, vat_number, account_type, discount_percent, billing_street, billing_city" as "id, email, full_name, phone, company_name, idno, account_type, discount_percent, billing_street, billing_city",
     )
     .or(
       `email.ilike.${term},full_name.ilike.${term},company_name.ilike.${term},idno.ilike.${term},phone.ilike.${term}`,
@@ -88,7 +95,7 @@ export async function listAllPanelClients(): Promise<ClientSearchResult[]> {
   const { data } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, phone, company_name, idno, account_type, discount_percent, billing_street, billing_city",
+      "id, email, full_name, phone, company_name, idno, vat_code, vat_number, account_type, discount_percent, billing_street, billing_city" as "id, email, full_name, phone, company_name, idno, account_type, discount_percent, billing_street, billing_city",
     )
     .order("company_name", { nullsFirst: false })
     .order("full_name", { nullsFirst: false })
@@ -1005,6 +1012,9 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   const baseNote: Record<string, unknown> = {
     order_id: orderId,
     account_scope: v.account_scope,
+    // Operator's delivery-step notes belong ON the fișă — the column and the
+    // print rendering existed all along; only this write was missing.
+    notes: v.notes ?? null,
     series: dnSeries,
     number: dnNumber,
     driver_name: v.driver_name,

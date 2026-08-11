@@ -1183,6 +1183,7 @@
     "achizitii_save_error": "Error: {reason}",
     "achizitii_supplier_missing": "Pick a supplier",
     "achizitii_lines_missing": "Add at least one line",
+    "achizitii_line_invalid": "Line {lines} has quantity 0 or an empty description — fill it in or delete it explicitly before saving",
     "achizitii_saved": "Purchase saved as draft",
     "achizitii_subtitle_detail": "{supplier} · {date} · {scope}",
     "achizitii_line_catalog": "Catalog",

@@ -36,6 +36,10 @@ import {
 } from "@/lib/panel/sales/actions";
 
 type Line = {
+  /** Catalog identity, frozen at pick time and PRESERVED across edits —
+   * without it, every edit-save stripped the link and stock diffs had to
+   * re-guess the product from codes (phantom moves on unresolvable lines). */
+  product_id: string | null;
   part_code: string;
   name: string;
   description: string;
@@ -106,6 +110,7 @@ function convertPrice(
 }
 
 const EMPTY_LINE: Line = {
+  product_id: null,
   part_code: "",
   name: "",
   description: "",
@@ -141,6 +146,9 @@ const EMPTY_WALKIN: WalkIn = {
 
 export type ProformaInitial = {
   id: string;
+  /** customer_snapshot.user_id — must survive an edit-save round-trip or the
+   * document silently drops out of the client's folder + balance. */
+  userId?: string | null;
   walkin: WalkIn;
   lines: Line[];
   scope: "conta1" | "conta2";
@@ -344,6 +352,7 @@ export function NewProformaForm({
         email: realEmail(client.email),
         phone: client.phone,
         idno: client.idno,
+        vat_number: client.vat_number,
         address: client.billing_address,
       };
     } else {
@@ -352,6 +361,9 @@ export function NewProformaForm({
         return;
       }
       customer = {
+        // Edits load the stored customer into walk-in fields — carry the
+        // original user_id through so the doc stays in the client's folder.
+        user_id: initial?.userId ?? null,
         name: walkin.company_name.trim() || walkin.name.trim(),
         email: walkin.email || null,
         phone: walkin.phone || null,
@@ -365,7 +377,7 @@ export function NewProformaForm({
       order_id: null,
       customer,
       items: validLines.map((l) => ({
-        product_id: null,
+        product_id: l.product_id,
         part_code: l.part_code || null,
         name: l.name.trim(),
         description: l.description || null,
@@ -526,10 +538,15 @@ export function NewProformaForm({
                     <td className="px-2 py-2">
                       <PartCodeAutocomplete
                         value={l.part_code}
-                        onChange={(v) => setLine(idx, { part_code: v })}
+                        onChange={(v) =>
+                          // Typing a different code breaks the frozen link —
+                          // the operator is pointing at another part now.
+                          setLine(idx, { part_code: v, product_id: null })
+                        }
                         onSelect={(m) =>
                           setLine(idx, {
                             part_code: m.code,
+                            product_id: m.product_id,
                             // Only overwrite name when the operator hasn't typed
                             // a custom one yet — keeps manual edits intact.
                             name: l.name.trim() ? l.name : m.name,

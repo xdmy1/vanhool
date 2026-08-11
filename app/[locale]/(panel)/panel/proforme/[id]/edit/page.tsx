@@ -77,6 +77,7 @@ export default async function EditProformaPage({
 
   const cs = proforma.customer_snapshot;
   const initial: ProformaInitial = {
+    userId: (cs as { user_id?: string | null }).user_id ?? null,
     id: proforma.id,
     walkin: {
       name: cs.name ?? "",
@@ -90,6 +91,8 @@ export default async function EditProformaPage({
     lines:
       proforma.items_snapshot.length > 0
         ? proforma.items_snapshot.map((it) => ({
+            product_id:
+              (it as { productId?: string | null }).productId ?? null,
             part_code: it.partCode ?? "",
             name: it.name ?? "",
             description: it.description ?? "",
@@ -120,6 +123,7 @@ export default async function EditProformaPage({
           }))
         : [
             {
+              product_id: null,
               part_code: "",
               name: "",
               description: "",

@@ -158,6 +158,16 @@ export function PurchaseForm({
       toast.error(t("achizitii_lines_missing"));
       return;
     }
+    // On EDIT the payload REPLACES the document — a filtered-out line is a
+    // silently deleted line (and, on posted docs, its stock reversed). Blank
+    // qty/description must block the save, not vanish with a green toast.
+    if (isEdit && valid.length < lines.length) {
+      const bad = lines
+        .map((l, i) => (l.description.trim().length > 0 && l.quantity > 0 ? -1 : i + 1))
+        .filter((n) => n > 0);
+      toast.error(t("achizitii_line_invalid", { lines: bad.join(", ") }));
+      return;
+    }
     startSave(async () => {
       const payload = {
         supplier_id: supplier.id,
@@ -321,7 +331,13 @@ export function PurchaseForm({
                       linkedProductId={l.product_id}
                       placeholder={t("achizitii_line_supplier_code_placeholder")}
                       onChange={(code) =>
-                        setLine(idx, { supplier_code: code, product_id: null })
+                        // Correcting a supplier-code typo must NOT sever the
+                        // product link — on a posted edit, an unlinked line
+                        // re-resolves by the NEW code, misses, and mints a
+                        // duplicate product that steals the stock. The
+                        // supplier's code never identifies OUR product; the
+                        // internal code / autocomplete pick does.
+                        setLine(idx, { supplier_code: code })
                       }
                       onPickProduct={(p) =>
                         setLine(idx, {

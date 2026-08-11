@@ -139,6 +139,10 @@ export async function listPanelClients(args: ListClientsArgs): Promise<{
 export type PanelClientDetail = PanelClientRow & {
   legal_form: string | null;
   vat_code: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  contact_position: string | null;
+  language: "ro" | "en" | "ru" | null;
   billing_country: string | null;
   billing_city: string | null;
   billing_street: string | null;
@@ -176,7 +180,7 @@ export async function getPanelClient(
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, phone, account_type, company_name, idno, discount_percent, created_at, legal_form, vat_code, billing_country, billing_city, billing_street, billing_district, billing_postal, shipping_country, shipping_city, shipping_street, shipping_district, shipping_postal, shipping_same_as_billing",
+      "id, email, full_name, phone, account_type, company_name, idno, discount_percent, created_at, legal_form, vat_code, first_name, last_name, contact_position, language, billing_country, billing_city, billing_street, billing_district, billing_postal, shipping_country, shipping_city, shipping_street, shipping_district, shipping_postal, shipping_same_as_billing",
     )
     .eq("id", id)
     .maybeSingle();
@@ -239,6 +243,16 @@ export async function getPanelClient(
     discount_percent: profile.discount_percent,
     created_at: profile.created_at,
     legal_form: profile.legal_form,
+    first_name: (profile as { first_name?: string | null }).first_name ?? null,
+    last_name: (profile as { last_name?: string | null }).last_name ?? null,
+    contact_position:
+      (profile as { contact_position?: string | null }).contact_position ?? null,
+    language:
+      ((profile as { language?: string | null }).language as
+        | "ro"
+        | "en"
+        | "ru"
+        | null) ?? null,
     vat_code: profile.vat_code,
     billing_country: profile.billing_country,
     billing_city: profile.billing_city,

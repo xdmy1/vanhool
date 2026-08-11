@@ -821,7 +821,9 @@ export function ProductForm({
             variant="ghost"
             className="w-full"
           >
-            <Link href={"/admin/products" as const} locale={locale}>
+            <Link
+              href={(basePath ?? `/${locale}/admin/products`) as "/admin/products"}
+            >
               {labels.cancel}
             </Link>
           </Button>

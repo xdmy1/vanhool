@@ -1183,6 +1183,7 @@
     "achizitii_save_error": "Eroare: {reason}",
     "achizitii_supplier_missing": "Alege un furnizor",
     "achizitii_lines_missing": "Adaugă cel puțin o linie",
+    "achizitii_line_invalid": "Linia {lines} are cantitate 0 sau descriere goală — completeaz-o sau șterge-o explicit înainte de salvare",
     "achizitii_saved": "Achiziție salvată ca draft",
     "achizitii_subtitle_detail": "{supplier} · {date} · {scope}",
     "achizitii_line_catalog": "Catalog",

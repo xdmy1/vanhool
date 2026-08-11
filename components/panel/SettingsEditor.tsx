@@ -20,6 +20,12 @@ const SAMPLE_CATEGORY = "frana";
 export function SettingsEditor({ initial }: { initial: PanelSettings }) {
   const t = useTranslations("panel");
   const [state, setState] = useState<PanelSettings>(initial);
+  // What the page LOADED (updated after each save). Saves send only fields
+  // the operator actually changed vs this baseline — live counters
+  // (invoice.next_number etc.) advance server-side while the page sits
+  // open, and re-sending their stale loaded values rolled real numbering
+  // BACK on every unrelated series/template save.
+  const [baseline, setBaseline] = useState<PanelSettings>(initial);
   const [savePending, startSave] = useTransition();
   const [genPending, startGen] = useTransition();
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
@@ -40,10 +46,19 @@ export function SettingsEditor({ initial }: { initial: PanelSettings }) {
   );
 
   function save(fields: UpdatePanelSettingsInput) {
+    const dirty: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(fields)) {
+      if ((baseline as unknown as Record<string, unknown>)[k] !== v) dirty[k] = v;
+    }
+    if (Object.keys(dirty).length === 0) {
+      toast.success(t("settings_saved"));
+      return;
+    }
     startSave(async () => {
-      const res = await updatePanelSettings(fields);
+      const res = await updatePanelSettings(dirty as UpdatePanelSettingsInput);
       if (res.ok) {
         toast.success(t("settings_saved"));
+        setBaseline((b) => ({ ...b, ...(dirty as Partial<PanelSettings>) }));
       } else {
         toast.error(t("settings_save_error", { reason: res.reason }));
       }
