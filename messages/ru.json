@@ -276,6 +276,7 @@
   "auth": {
     "login_title": "Вход",
     "login_subtitle": "Войдите, чтобы заказывать быстрее",
+    "session_expired": "Сессия истекла — войдите снова.",
     "register_title": "Регистрация",
     "register_subtitle": "Создайте аккаунт, чтобы отслеживать заказы",
     "email": "Email",

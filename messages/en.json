@@ -276,6 +276,7 @@
   "auth": {
     "login_title": "Sign in",
     "login_subtitle": "Sign in to your account to order faster",
+    "session_expired": "Your session has expired — please sign in again.",
     "register_title": "Create account",
     "register_subtitle": "Create an account to track your orders",
     "email": "Email",

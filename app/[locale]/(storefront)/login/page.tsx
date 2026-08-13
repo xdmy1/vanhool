@@ -15,7 +15,7 @@ export default async function LoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; expirat?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -36,6 +36,11 @@ export default async function LoginPage({
       title={t("login_title")}
       subtitle={t("login_subtitle")}
     >
+      {sp.expirat ? (
+        <p className="mb-4 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted-strong">
+          {t("session_expired")}
+        </p>
+      ) : null}
       <LoginForm
         labels={{
           email: t("email"),

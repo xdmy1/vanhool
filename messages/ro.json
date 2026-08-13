@@ -276,6 +276,7 @@
   "auth": {
     "login_title": "Autentificare",
     "login_subtitle": "Intră în contul tău pentru a comanda mai rapid",
+    "session_expired": "Sesiunea a expirat — intră din nou în cont.",
     "register_title": "Cont nou",
     "register_subtitle": "Creează un cont pentru a urmări comenzile",
     "email": "Email",

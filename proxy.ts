@@ -9,6 +9,17 @@ const intlMiddleware = createIntlMiddleware(routing);
 
 const ADMIN_PREFIXES = ["admin", "panel"] as const;
 
+// Admin sessions are time-boxed: past the limit the proxy signs the account
+// out and bounces it to /login. Age is measured from the account's last real
+// sign-in (`last_sign_in_at` moves only on login, not on token refreshes), so
+// staying on the page doesn't extend the clock — only re-entering the
+// password does.
+const ADMIN_SESSION_HOURS_DEFAULT = 1;
+const ADMIN_SESSION_HOURS_BY_EMAIL: Record<string, number> = {
+  // Leonid Oloi — lucrează toată ziua în panel, sesiune mai lungă.
+  "oloi.leon@gmail.com": 10,
+};
+
 // inter-bus.md is a closed B2B platform: the public sees ONLY the landing +
 // these pages. Everything else in the storefront (catalog, products, cart,
 // checkout, dashboard, …) requires a login. Allow-list, not block-list, so a
@@ -112,6 +123,33 @@ export async function proxy(request: NextRequest) {
         .maybeSingle();
       if (!profile?.is_admin) {
         return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+      }
+
+      // Time-boxed admin session. Fail-open on a missing/unparseable
+      // timestamp — a bad value must never lock the account into a
+      // login → instant-logout loop.
+      const maxHours =
+        ADMIN_SESSION_HOURS_BY_EMAIL[(user.email ?? "").toLowerCase()] ??
+        ADMIN_SESSION_HOURS_DEFAULT;
+      const signedInAt = Date.parse(user.last_sign_in_at ?? "");
+      if (
+        Number.isFinite(signedInAt) &&
+        Date.now() - signedInAt > maxHours * 3_600_000
+      ) {
+        await supabase.auth.signOut();
+        const next = encodeURIComponent(
+          request.nextUrl.pathname + request.nextUrl.search,
+        );
+        const redirectRes = NextResponse.redirect(
+          new URL(`/${locale}/login?next=${next}&expirat=1`, request.url),
+        );
+        // signOut queued its cookie clears on `response` via setAll — carry
+        // them onto the redirect or the browser keeps the dead session
+        // cookies and re-hits this branch with a broken state.
+        response.cookies.getAll().forEach((cookie) => {
+          redirectRes.cookies.set(cookie);
+        });
+        return redirectRes;
       }
     }
   }
