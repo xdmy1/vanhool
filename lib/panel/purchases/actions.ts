@@ -153,6 +153,93 @@ async function knownProductIds(
   return new Set((data ?? []).map((p) => p.id as string));
 }
 
+/** dd.MM.yyyy for operator-facing messages. */
+function formatDateEU(iso: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+}
+
+export type DuplicatePurchaseInfo = {
+  id: string;
+  document_number: string;
+  document_date: string | null;
+  status: string;
+  supplier_name: string | null;
+};
+
+/**
+ * Duplicate-invoice guard. A supplier invoice's series (document_number) is
+ * unique — the same physical invoice entered twice doubles stock, cost and
+ * input VAT. Matching is normalized (uppercase, alphanumerics only) so
+ * "AAZ 2277474" / "aaz-2277474" / "AAZ2277474" all collide. `cancelled`
+ * documents don't count: re-entering after a cancel is legitimate.
+ */
+async function findPurchaseWithSameDocNumber(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  docNumber: string | null | undefined,
+  excludeId?: string | null,
+): Promise<DuplicatePurchaseInfo | null> {
+  const norm = normalizeCode(docNumber);
+  if (!norm) return null;
+  // Loose subsequence pattern (chars in order, anything between) narrows the
+  // scan server-side; the strict normalized equality below decides the match.
+  const pattern = `%${norm.split("").join("%")}%`;
+  const { data } = await supabase
+    .from("purchases")
+    .select("id, document_number, document_date, status, suppliers(name)")
+    .neq("status", "cancelled")
+    .ilike("document_number", pattern)
+    .limit(200);
+  for (const row of (data ?? []) as unknown as Array<{
+    id: string;
+    document_number: string | null;
+    document_date: string | null;
+    status: string;
+    suppliers: { name: string } | null;
+  }>) {
+    if (excludeId && row.id === excludeId) continue;
+    if (normalizeCode(row.document_number) !== norm) continue;
+    return {
+      id: row.id,
+      document_number: row.document_number ?? "",
+      document_date: row.document_date,
+      status: row.status,
+      supplier_name: row.suppliers?.name ?? null,
+    };
+  }
+  return null;
+}
+
+function duplicateDocNumberMessage(dup: DuplicatePurchaseInfo): string {
+  const who = dup.supplier_name ? `${dup.supplier_name}, ` : "";
+  return `Factura cu seria ${dup.document_number} există deja (${who}${formatDateEU(dup.document_date)}) — aceeași serie nu poate fi introdusă de două ori.`;
+}
+
+// The DB-level backstop (sql/purchase-doc-number-unique.sql) catches the race
+// two simultaneous saves can win past the app check — translate its raw
+// constraint error into the same operator-facing message.
+const DOC_NUMBER_UNIQUE_RX = /purchases_doc_number_unique/i;
+const DOC_NUMBER_UNIQUE_MSG =
+  "Factura cu această serie există deja — aceeași serie nu poate fi introdusă de două ori.";
+
+/**
+ * Live check for the purchase form: is this document number already in the
+ * system? Returns the existing document so the operator sees WHICH invoice
+ * clashes before finishing data entry. `excludeId` skips the purchase being
+ * edited (its own number is not a duplicate of itself).
+ */
+export async function checkPurchaseDocNumber(
+  docNumber: string,
+  excludeId?: string | null,
+): Promise<{ duplicate: DuplicatePurchaseInfo | null }> {
+  const user = await getPanelUser();
+  if (!user) return { duplicate: null };
+  const supabase = await createClient();
+  const dup = await findPurchaseWithSameDocNumber(supabase, docNumber, excludeId);
+  return { duplicate: dup };
+}
+
 /**
  * Snapshot a purchase's current line items into `purchase_items_archive` before
  * they're replaced or deleted. This is the safety net behind reversible deletes
@@ -650,6 +737,12 @@ export async function createPurchase(
   const { subtotal, vat_amount, total } = computeTotals(v.items);
 
   const supabase = await createClient();
+
+  // Same invoice must never enter twice (series never repeats) — reject
+  // BEFORE inserting anything.
+  const dup = await findPurchaseWithSameDocNumber(supabase, v.document_number);
+  if (dup) return { ok: false, reason: duplicateDocNumberMessage(dup) };
+
   const { data: header, error: hErr } = await supabase
     .from("purchases")
     .insert({
@@ -669,7 +762,12 @@ export async function createPurchase(
     })
     .select("id")
     .single();
-  if (hErr || !header) return { ok: false, reason: hErr?.message ?? "insert_failed" };
+  if (hErr || !header) {
+    if (hErr && DOC_NUMBER_UNIQUE_RX.test(hErr.message)) {
+      return { ok: false, reason: DOC_NUMBER_UNIQUE_MSG };
+    }
+    return { ok: false, reason: hErr?.message ?? "insert_failed" };
+  }
 
   // Guard against stale / mistyped product links (see knownProductIds).
   const known = await knownProductIds(supabase, v.items);
@@ -1218,6 +1316,11 @@ export async function updatePurchase(
 
   const supabase = await createClient();
 
+  // Duplicate-series guard, same as createPurchase — an edit must not rename
+  // this document onto a series that already exists on ANOTHER purchase.
+  const dup = await findPurchaseWithSameDocNumber(supabase, v.document_number, id);
+  if (dup) return { ok: false, reason: duplicateDocNumberMessage(dup) };
+
   // --- Items first, header last, and DELETE only AFTER a successful insert ---
   // The data-loss incident came from the old order: delete every line, THEN try
   // to insert the new set — a rejected insert (e.g. a stale product_id) left the
@@ -1360,7 +1463,14 @@ export async function updatePurchase(
       await supabase.from("purchases").update(withoutUpdatedBy).eq("id", id)
     ).error;
   }
-  if (hErr) return { ok: false, reason: hErr.message };
+  if (hErr) {
+    return {
+      ok: false,
+      reason: DOC_NUMBER_UNIQUE_RX.test(hErr.message)
+        ? DOC_NUMBER_UNIQUE_MSG
+        : hErr.message,
+    };
+  }
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${id}`, "page");

@@ -22,7 +22,12 @@ import {
   createSupplier,
   searchSuppliers,
 } from "@/lib/panel/suppliers/actions";
-import { createPurchase, updatePurchase } from "@/lib/panel/purchases/actions";
+import {
+  checkPurchaseDocNumber,
+  createPurchase,
+  updatePurchase,
+  type DuplicatePurchaseInfo,
+} from "@/lib/panel/purchases/actions";
 import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
 import { searchProducts, type ProductSearchResult } from "@/lib/panel/sales/actions";
 import type { AccountScope } from "@/lib/panel/scope";
@@ -43,6 +48,13 @@ export type PurchaseFormInitial = {
 };
 
 type Supplier = { id: string; name: string; idno: string | null; contact_phone: string | null };
+
+/** dd.MM.yyyy for the duplicate-series warning. */
+function formatDateEUShort(iso: string | null): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+}
 
 type Line = {
   supplier_code: string;
@@ -100,6 +112,23 @@ export function PurchaseForm({
   const [documentNumber, setDocumentNumber] = useState(
     initial?.documentNumber ?? "",
   );
+  // Duplicate-series warning: the same supplier invoice must never be
+  // entered twice. Checked live on blur so the operator finds out BEFORE
+  // typing all the lines; the server rejects it again on save regardless.
+  const [docNumberDup, setDocNumberDup] = useState<DuplicatePurchaseInfo | null>(
+    null,
+  );
+  async function checkDocNumber(value: string) {
+    if (!value.trim()) {
+      setDocNumberDup(null);
+      return;
+    }
+    const { duplicate } = await checkPurchaseDocNumber(
+      value,
+      initial?.id ?? null,
+    );
+    setDocNumberDup(duplicate);
+  }
   const [documentDate, setDocumentDate] = useState(
     initial?.documentDate ?? todayISO(),
   );
@@ -254,9 +283,27 @@ export function PurchaseForm({
           <Field label={t("achizitii_doc_number")}>
             <Input
               value={documentNumber}
-              onChange={(e) => setDocumentNumber(e.target.value)}
+              onChange={(e) => {
+                setDocumentNumber(e.target.value);
+                setDocNumberDup(null);
+              }}
+              onBlur={(e) => void checkDocNumber(e.target.value)}
               placeholder={t("achizitii_doc_number_placeholder")}
+              className={docNumberDup ? "border-destructive" : undefined}
             />
+            {docNumberDup ? (
+              <p className="mt-1 text-xs font-medium text-destructive">
+                {t("achizitii_doc_number_duplicate", {
+                  number: docNumberDup.document_number,
+                  details: [
+                    docNumberDup.supplier_name,
+                    formatDateEUShort(docNumberDup.document_date),
+                  ]
+                    .filter(Boolean)
+                    .join(", "),
+                })}
+              </p>
+            ) : null}
           </Field>
           <Field label={t("achizitii_doc_date")} required>
             <DateInputEU

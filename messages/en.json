@@ -1158,6 +1158,7 @@
     "achizitii_doc_book_conta2": "Book 2 (cash)",
     "achizitii_doc_number": "Supplier doc. no.",
     "achizitii_doc_number_placeholder": "e.g. 2504655",
+    "achizitii_doc_number_duplicate": "Series {number} already exists ({details}) — the same invoice cannot be entered twice.",
     "achizitii_doc_date": "Document date",
     "achizitii_doc_currency": "Currency",
     "achizitii_doc_fx_rate": "MDL rate on document date",

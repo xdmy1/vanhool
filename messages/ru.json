@@ -1158,6 +1158,7 @@
     "achizitii_doc_book_conta2": "Книга 2 (наличные)",
     "achizitii_doc_number": "Номер док. поставщика",
     "achizitii_doc_number_placeholder": "напр. 2504655",
+    "achizitii_doc_number_duplicate": "Серия {number} уже существует ({details}) — одну и ту же накладную нельзя ввести дважды.",
     "achizitii_doc_date": "Дата документа",
     "achizitii_doc_currency": "Валюта",
     "achizitii_doc_fx_rate": "Курс MDL на дату документа",

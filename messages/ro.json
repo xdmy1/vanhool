@@ -1158,6 +1158,7 @@
     "achizitii_doc_book_conta2": "Conta 2 (cash)",
     "achizitii_doc_number": "Nr. document furnizor",
     "achizitii_doc_number_placeholder": "ex. 2504655",
+    "achizitii_doc_number_duplicate": "Seria {number} există deja ({details}) — aceeași factură nu poate fi introdusă de două ori.",
     "achizitii_doc_date": "Data documentului",
     "achizitii_doc_currency": "Monedă",
     "achizitii_doc_fx_rate": "Curs MDL la data documentului",
