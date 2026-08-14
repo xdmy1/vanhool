@@ -27,6 +27,7 @@ import {
   ledgerReady,
   resolveLineProductId,
   reverseOrderStock,
+  unreverseOrderStock,
   type StockDb,
 } from "@/lib/stock-ledger";
 
@@ -694,7 +695,39 @@ export async function convertProformaToInvoice(
         reason: `${ordMv.reason} — factura ${series}${number} a fost creată dar stocul nu s-a verificat; anuleaz-o (Void) și emite din nou`,
       };
     }
-    if (!ordMv.rows.some((r) => r.reason === "sale")) {
+    // Outstanding cancel-restores (order_cancel not yet matched by an
+    // order_uncancel) mean this is a RE-conversion: the first invoice was
+    // voided, the void restored the goods and cancelled the order, and
+    // converting again is handing the goods over a second time. A fresh
+    // `sale:` ref would collide with the original movement and no-op, so
+    // re-take through unreverseOrderStock — the exact reversal of what the
+    // void restored — and resurrect the order the void cancelled.
+    const cancelNet = new Map<string, number>();
+    for (const r of ordMv.rows) {
+      if (r.reason !== "order_cancel" && r.reason !== "order_uncancel") continue;
+      cancelNet.set(
+        r.product_id,
+        roundStock((cancelNet.get(r.product_id) ?? 0) + Number(r.delta)),
+      );
+    }
+    const hasOutstandingCancel = [...cancelNet.values()].some((n) => n > 0);
+    if (hasOutstandingCancel) {
+      const retaken = await unreverseOrderStock(cdb, orderId, user.id);
+      if (!retaken.ok) {
+        return {
+          ok: false,
+          reason: `${retaken.reason} — factura ${series}${number} a fost creată dar stocul nu s-a mișcat complet; anuleaz-o (Void) și emite din nou`,
+        };
+      }
+      await supabase
+        .from("orders")
+        .update({
+          status: paymentStatus === "paid" ? "confirmed" : "pending",
+          updated_at: now.toISOString(),
+        })
+        .eq("id", orderId)
+        .eq("status", "cancelled");
+    } else if (!ordMv.rows.some((r) => r.reason === "sale")) {
       const linkCols = "id, created_at, payment_method";
       let linkRes = await supabase
         .from("orders")
@@ -1518,6 +1551,24 @@ export async function voidInvoice(
     .eq("id", id);
   if (error) return { ok: false, reason: error.message };
 
+  // A voided conversion RELEASES its proforma: back to «emisă» (sent) with
+  // the cross-link cleared, so the operator can edit it and convert again —
+  // that's the whole reason one voids a bad conversion. Conditional on
+  // status='converted': a proforma the operator voided separately stays void.
+  // The void invoice keeps its own proforma_id, so the paper trail survives.
+  if (inv.type === "invoice") {
+    await supabase
+      .from("invoices")
+      .update({
+        status: "sent",
+        converted_to_invoice_id: null,
+        updated_at: nowIso,
+      })
+      .eq("type", "proforma")
+      .eq("status", "converted")
+      .eq("converted_to_invoice_id", id);
+  }
+
   revalidatePath("/[locale]/panel/proforme", "page");
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath("/[locale]/panel/fisa-de-livrare", "page");
@@ -1726,6 +1777,15 @@ export async function deleteInvoiceWithPin(
     .from("invoices")
     .update({ proforma_id: null })
     .eq("proforma_id", invoiceId);
+  // Deleting a converted invoice releases its proforma back to «emisă»
+  // (same as voidInvoice) — otherwise the proforma stays "convertită" forever
+  // with a dangling link and can never be edited or converted again.
+  await supabase
+    .from("invoices")
+    .update({ status: "sent", converted_to_invoice_id: null, updated_at: nowIso })
+    .eq("converted_to_invoice_id", invoiceId)
+    .eq("type", "proforma")
+    .eq("status", "converted");
   await supabase
     .from("invoices")
     .update({ converted_to_invoice_id: null })
