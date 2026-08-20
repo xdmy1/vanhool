@@ -81,9 +81,20 @@ export default async function PanelProformaDetailPage({
             >
               {statusLabel}
             </span>
-            {proforma.status !== "void" && !proforma.converted_to_invoice_id ? (
+            {/* Converted proformas stay editable — the edit page asks for the
+                admin PIN and cascades the change into the fiscal invoice.
+                Only a voided proforma has nothing left to edit. */}
+            {proforma.status !== "void" ? (
               <Button asChild variant="outline" className="gap-1.5">
-                <Link href={`/panel/proforme/${proforma.id}/edit` as "/panel"} locale={locale}>
+                <Link
+                  href={`/panel/proforme/${proforma.id}/edit` as "/panel"}
+                  locale={locale}
+                  title={
+                    proforma.converted_to_invoice_id
+                      ? "Editare cu PIN — se aplică și pe factură"
+                      : undefined
+                  }
+                >
                   <Pencil className="size-4" />
                   {t("action_edit")}
                 </Link>

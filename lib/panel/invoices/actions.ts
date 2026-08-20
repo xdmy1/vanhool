@@ -97,6 +97,10 @@ const proformaInputSchema = z.object({
   discount_percent: z.number().min(0).max(100).optional(),
   /** Admin PIN authorising line(s) at/below cost ("FORCE SELL"). */
   force_sell_pin: z.string().optional(),
+  /** Admin PIN authorising the edit of a proforma that is ALREADY converted
+   *  into a fiscal invoice. Required only in that case — the edit then
+   *  cascades into the invoice, mandatorily. */
+  edit_pin: z.string().optional(),
   /** conta2 documents are 0% TVA by default; set true to bill a conta2
    *  document WITH 20% TVA (conta1 is always 20% regardless of this). */
   conta2_with_vat: z.boolean().optional().default(false),
@@ -905,10 +909,101 @@ export async function convertProformaToInvoice(
 }
 
 /**
+ * Push an edited proforma into the fiscal invoice it was converted into.
+ *
+ * Content only — customer, lines, totals, notes, language, currency. The
+ * invoice keeps its own `account_scope` (it may have been reclassified into the
+ * other book on purpose after the conversion) and its own due date (a deferred
+ * payment term is the invoice's, not the quote's). TVA is recomputed off the
+ * INVOICE's book exactly the way convertProformaToInvoice computes it, so a
+ * conta1 factură can never end up with 0% because its proforma sat in conta2.
+ */
+async function cascadeProformaEditToInvoice(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  invoiceId: string,
+  v: ProformaInput,
+  proformaItems: Array<Record<string, unknown>>,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const { data: inv } = await supabase
+    .from("invoices")
+    .select(
+      "id, type, status, issued_date, order_id, items_snapshot, updated_at, currency, series, number, account_scope",
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!inv) return { ok: false, reason: "linked_invoice_not_found" };
+  if (inv.type !== "invoice") return { ok: false, reason: "linked_not_an_invoice" };
+  const label = `${inv.series ?? ""}${inv.number ?? ""}`;
+  // A voided invoice releases its proforma (see voidInvoice), so reaching here
+  // means the link is stale — refuse rather than resurrect a cancelled doc.
+  if (inv.status === "void") {
+    return {
+      ok: false,
+      reason: `linked_invoice_void — factura ${label} e anulată; reîncarcă pagina, proforma e liberă`,
+    };
+  }
+
+  // Return annexes reference invoice lines BY INDEX and cap against them.
+  // Reordering or dropping a line would let the same goods be credited twice.
+  const invReturns = await getReturnsFor("invoice", invoiceId);
+  if (invReturns.length > 0) {
+    return {
+      ok: false,
+      reason: `linked_invoice_has_returns — factura ${label} are anexe de retur; anulează returul înainte de a edita proforma`,
+    };
+  }
+
+  const invScope =
+    (inv as { account_scope?: "conta1" | "conta2" | null }).account_scope ??
+    "conta1";
+  const pfHadVat = proformaItems.some(
+    (it) => Number((it as { vat_rate?: number }).vat_rate ?? 0) > 0,
+  );
+  const lineVat = invScope === "conta1" || pfHadVat ? 20 : 0;
+  const invItems = proformaItems.map((it) => ({ ...it, vat_rate: lineVat }));
+  const invTotals = totals(
+    invItems.map((it) => ({
+      quantity: Number((it as { quantity?: number }).quantity ?? 0),
+      unit_price: Number((it as { unit_price?: number }).unit_price ?? 0),
+      discounted_unit_price:
+        (it as { discounted_unit_price?: number | null })
+          .discounted_unit_price ?? null,
+      vat_rate: lineVat,
+    })),
+  );
+
+  return applyInvoiceEdit(
+    supabase,
+    userId,
+    inv,
+    {
+      currency: v.currency,
+      customer_snapshot: v.customer as unknown as Json,
+      items_snapshot: invItems as unknown as Json,
+      subtotal: invTotals.subtotal,
+      vat_amount: invTotals.vat_amount,
+      total: invTotals.total,
+      notes: v.notes ?? null,
+      output_locale: v.output_locale,
+      ...(invTotals.discount_percent > 0
+        ? { discount_percent: invTotals.discount_percent }
+        : {}),
+    },
+    invItems,
+  );
+}
+
+/**
  * Update an existing proforma — customer details, line items, currency,
- * output language, due days, notes. Series + number stay fixed. Once the
- * proforma is converted into a fiscal invoice or voided it can no longer
- * be edited.
+ * output language, due days, notes. Series + number stay fixed.
+ *
+ * A proforma ALREADY converted into a fiscal invoice stays editable: the
+ * operator types the admin PIN and the same change is pushed into the invoice
+ * as well. That cascade is mandatory and runs FIRST — the two documents must
+ * never say different things, so if the invoice can't take the edit (return
+ * annexes on it, a stock move that fails, a concurrent save) the proforma
+ * doesn't change either. Only a voided proforma is truly frozen.
  */
 export async function updateProforma(
   id: string,
@@ -941,8 +1036,14 @@ export async function updateProforma(
     .maybeSingle();
   if (!existing) return { ok: false, reason: "proforma_not_found" };
   if (existing.type !== "proforma") return { ok: false, reason: "not_a_proforma" };
-  if (existing.converted_to_invoice_id) return { ok: false, reason: "already_converted" };
   if (existing.status === "void") return { ok: false, reason: "voided" };
+  // Converted → editable, but only behind the admin PIN: this rewrites a
+  // fiscal invoice that has already gone out and moved stock.
+  const linkedInvoiceId = (existing as { converted_to_invoice_id?: string | null })
+    .converted_to_invoice_id ?? null;
+  if (linkedInvoiceId && !verifyAdminPin(v.edit_pin)) {
+    return { ok: false, reason: "bad_pin" };
+  }
 
   const updProformaBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
   if (updProformaBlocked.length > 0) {
@@ -991,6 +1092,20 @@ export async function updateProforma(
   const issued = new Date(existing.issued_date);
   const due = new Date(issued.getTime() + (v.due_days ?? 7) * 86_400_000);
 
+  // MANDATORY CASCADE, and it goes first: the invoice carries the stock and
+  // the money, so it is the half allowed to refuse. Only once it has taken the
+  // edit does the proforma row get rewritten below.
+  if (linkedInvoiceId) {
+    const cascaded = await cascadeProformaEditToInvoice(
+      supabase,
+      user.id,
+      linkedInvoiceId,
+      v,
+      itemsSnapshot as unknown as Array<Record<string, unknown>>,
+    );
+    if (!cascaded.ok) return cascaded;
+  }
+
   const { error } = await supabase
     .from("invoices")
     .update({
@@ -1010,10 +1125,332 @@ export async function updateProforma(
       } as object),
     })
     .eq("id", id);
-  if (error) return { ok: false, reason: error.message };
+  if (error) {
+    // The invoice already took the edit. A retry is safe: the cascade diffs
+    // from the invoice's now-current snapshot (zero delta, no stock moves) and
+    // only this write repeats.
+    return {
+      ok: false,
+      reason: `${error.message} — factura a fost actualizată, proforma nu; apasă din nou Salvează`,
+    };
+  }
 
   revalidatePath("/[locale]/panel/proforme", "page");
   revalidatePath(`/[locale]/panel/proforme/${id}`, "page");
+  if (linkedInvoiceId) {
+    revalidatePath("/[locale]/panel/facturi", "page");
+    revalidatePath(`/[locale]/panel/facturi/${linkedInvoiceId}`, "page");
+    revalidatePath("/[locale]/admin/orders", "page");
+  }
+  return { ok: true };
+}
+
+/** Columns an invoice edit may rewrite. `output_locale` / `discount_percent`
+ *  are real columns the generated types don't know about yet — spread through
+ *  an `object` cast at the write, like every other writer here does. */
+type InvoiceEditFields = {
+  account_scope?: "conta1" | "conta2";
+  currency?: string;
+  customer_snapshot?: Json;
+  items_snapshot?: Json;
+  subtotal?: number;
+  vat_amount?: number;
+  total?: number;
+  due_date?: string;
+  notes?: string | null;
+  output_locale?: string;
+  discount_percent?: number;
+};
+
+/**
+ * Keep a sale's satellites in step with an edited invoice.
+ *
+ * `orders.total` is what the reports, the client balance and the void
+ * reversal read; the cash drawer holds what was actually collected. Neither is
+ * derived from the invoice at read time, so an edit that moves the total has
+ * to push the difference into both — otherwise the books quietly disagree with
+ * the document the customer is holding.
+ */
+async function syncOrderAfterInvoiceEdit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  meta: {
+    orderId: string | null;
+    currency: string;
+    total: number;
+    label: string;
+  },
+  itemsSnapshot: Array<Record<string, unknown>>,
+): Promise<void> {
+  // No order, or a caller that didn't rewrite the total — nothing to sync.
+  if (!meta.orderId || !Number.isFinite(meta.total)) return;
+  const nowIso = new Date().toISOString();
+
+  const { data: ord } = await supabase
+    .from("orders")
+    .select("id, items, subtotal, total, discount_amount, shipping_cost")
+    .eq("id", meta.orderId)
+    .maybeSingle();
+  if (!ord) return;
+
+  // Match each new line back to the order line it replaces and MERGE onto it.
+  // The old row carries flags the invoice snapshot never had — above all
+  // `from_draft_purchase`, which is what makes settleDraftPurchaseSales
+  // decrement the part once its purchase is posted. Rewriting items from
+  // scratch would drop that marker and leave the stock overstated forever.
+  const oldItems = Array.isArray(ord.items)
+    ? [...(ord.items as Array<Record<string, unknown>>)]
+    : [];
+  // Identity, most reliable first: the catalog id, then the part code, then
+  // the name. A renamed line still finds its old row through the first two.
+  const keysOf = (it: Record<string, unknown>) =>
+    [
+      (it as { productId?: string | null }).productId ??
+        (it as { product_id?: string | null }).product_id,
+      (it as { partCode?: string | null }).partCode ??
+        (it as { part_code?: string | null }).part_code,
+      (it as { name?: string | null }).name,
+    ].map((x) => (x == null ? "" : String(x).trim().toLowerCase()));
+  const taken = new Set<number>();
+  const matchOld = (it: Record<string, unknown>) => {
+    const want = keysOf(it);
+    for (let level = 0; level < want.length; level++) {
+      if (!want[level]) continue;
+      for (let i = 0; i < oldItems.length; i++) {
+        if (taken.has(i)) continue;
+        if (keysOf(oldItems[i])[level] === want[level]) {
+          taken.add(i);
+          return oldItems[i];
+        }
+      }
+    }
+    return null;
+  };
+
+  const ordItems = itemsSnapshot.map((it) => {
+    const list = Number((it as { unit_price?: number }).unit_price ?? 0);
+    const dp = (it as { discounted_unit_price?: number | null })
+      .discounted_unit_price;
+    return {
+      ...(matchOld(it) ?? {}),
+      productId: (it as { productId?: string | null }).productId ?? null,
+      partCode: (it as { partCode?: string | null }).partCode ?? null,
+      name: (it as { name?: string }).name ?? "",
+      quantity: Number((it as { quantity?: number }).quantity ?? 0),
+      price: dp != null && dp >= 0 && dp < list ? Number(dp) : list,
+      original_unit_price: list,
+      cost_price: Number((it as { cost_price?: number | null }).cost_price ?? 0),
+      total: Number((it as { total?: number }).total ?? 0),
+    };
+  });
+
+  // orders.subtotal is GROSS by storefront convention and the row keeps the
+  // identity total = subtotal − discount + shipping. Only rewrite subtotal
+  // when there is no shipping/discount leg to preserve — which is every
+  // panel-raised sale, including the synthetic order behind a converted
+  // proforma. Storefront orders keep their own breakdown.
+  const shipping = Number(
+    (ord as { shipping_cost?: number | null }).shipping_cost ?? 0,
+  );
+  const discount = Number(
+    (ord as { discount_amount?: number | null }).discount_amount ?? 0,
+  );
+  await supabase
+    .from("orders")
+    .update({
+      items: ordItems as unknown as Json,
+      total: meta.total,
+      ...(shipping === 0 && discount === 0 ? { subtotal: meta.total } : {}),
+      updated_at: nowIso,
+    })
+    .eq("id", meta.orderId);
+
+  // Cash drawer: only sales that actually took cash have rows here (conta2 +
+  // cash). Compare what the drawer holds for this order against the edited
+  // total and post the difference; nothing recorded → nothing to correct.
+  const cashCols = "id, direction, amount";
+  let cashRes = await supabase
+    .from("cash_register_movements")
+    .select(`${cashCols}, currency` as typeof cashCols)
+    .eq("order_id", meta.orderId);
+  if (cashRes.error && /currency/i.test(cashRes.error.message)) {
+    cashRes = await supabase
+      .from("cash_register_movements")
+      .select(cashCols)
+      .eq("order_id", meta.orderId);
+  }
+  const rows = (cashRes.data ?? []) as Array<{
+    direction: string;
+    amount: number;
+    currency?: string | null;
+  }>;
+  if (rows.length === 0) return;
+  const recorded = rows.reduce((sum, r) => {
+    // Rows are per-currency; only the ones in the document's currency net off
+    // against its total (an FX mix would need a rate we don't store per row).
+    if ((r.currency ?? meta.currency) !== meta.currency) return sum;
+    const amt = Number(r.amount ?? 0);
+    return sum + (r.direction === "out" ? -amt : amt);
+  }, 0);
+  const delta = Number((meta.total - recorded).toFixed(2));
+  if (Math.abs(delta) < 0.01) return;
+  const fxRate = meta.currency === "EUR" ? 20 : meta.currency === "USD" ? 17 : 1;
+  await supabase.from("cash_register_movements").insert({
+    direction: delta > 0 ? "in" : "out",
+    amount: Math.abs(delta),
+    reason: "adjustment",
+    order_id: meta.orderId,
+    created_by: userId,
+    notes: `Corecție factură ${meta.label}`.trim(),
+    ...({
+      currency: meta.currency,
+      fx_rate: fxRate,
+      amount_mdl: Number((Math.abs(delta) * fxRate).toFixed(2)),
+    } as object),
+  });
+}
+
+/**
+ * Shared write path for an edited fiscal invoice.
+ *
+ * Diffs the new line snapshot against what the ledger already took, moves the
+ * difference, CAS-writes the invoice row on its `updated_at`, then re-syncs the
+ * order + cash drawer. Used by BOTH the direct invoice editor and the mandatory
+ * cascade from a converted proforma's edit — one implementation, so the
+ * money-critical half can never drift between the two entry points.
+ */
+async function applyInvoiceEdit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  existing: {
+    id: string;
+    order_id: string | null;
+    items_snapshot: unknown;
+    issued_date: string;
+    updated_at?: string | null;
+    currency?: string | null;
+    series?: string | null;
+    number?: string | null;
+  },
+  fields: InvoiceEditFields,
+  itemsSnapshot: Array<Record<string, unknown>>,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const id = existing.id;
+  const db = supabase as unknown as StockDb;
+
+  // Read the ledger BEFORE writing anything: if the read fails we refuse the
+  // edit rather than saving new quantities whose stock diff can't be applied.
+  let saleMovements: Awaited<ReturnType<typeof getOrderMovements>> | null = null;
+  if (existing.order_id) {
+    saleMovements = await getOrderMovements(db, existing.order_id);
+    if (!saleMovements.ok) {
+      return { ok: false, reason: saleMovements.reason };
+    }
+  }
+
+  // STOCK FIRST, snapshot second. Refs are stamped with the BASE snapshot's
+  // updated_at, which makes the whole edit idempotent: a retry after a lost
+  // response diffs the same base → same refs → no-ops, then the snapshot
+  // write lands. The snapshot write below is a CAS on that same updated_at,
+  // so a concurrent edit can't silently overwrite — the loser compensates
+  // its own movements and reports a conflict.
+  const baseStamp = Date.parse(
+    existing.updated_at ?? existing.issued_date ?? "1970-01-01",
+  );
+  const appliedDeltas: Array<{ pid: string; delta: number }> = [];
+  if (existing.order_id && saleMovements?.ok) {
+    const movements = saleMovements.rows;
+    if (movements.some((m) => m.reason === "sale")) {
+      const aggregate = async (snap: Array<Record<string, unknown>>) => {
+        const m = new Map<string, number>();
+        for (const it of snap) {
+          const qty = Number((it as { quantity?: number }).quantity ?? 0);
+          if (qty <= 0) continue;
+          const pid = await resolveLineProductId(db, it);
+          if (!pid) continue;
+          m.set(pid, roundStock((m.get(pid) ?? 0) + qty));
+        }
+        return m;
+      };
+      const before = await aggregate(
+        Array.isArray(existing.items_snapshot)
+          ? (existing.items_snapshot as Array<Record<string, unknown>>)
+          : [],
+      );
+      const after = await aggregate(itemsSnapshot);
+      for (const pid of new Set([...before.keys(), ...after.keys()])) {
+        const delta = roundStock((before.get(pid) ?? 0) - (after.get(pid) ?? 0));
+        if (delta === 0) continue;
+        const moved = await applyStockMovement(db, {
+          productId: pid,
+          delta,
+          reason: "invoice_edit",
+          ref: `invoice_edit:${id}:${pid}:${baseStamp}`,
+          orderId: existing.order_id,
+          invoiceId: id,
+          createdBy: userId,
+        });
+        // Nothing has been written to the invoice yet — a hard failure just
+        // aborts the edit cleanly.
+        if (!moved.ok) return moved;
+        // applied=false → this exact base→target transition already moved
+        // stock (an earlier attempt whose snapshot write was lost) — carry on
+        // to the snapshot write, which is exactly the missing half.
+        if (moved.applied) appliedDeltas.push({ pid, delta });
+      }
+    }
+  }
+
+  const existingUpdatedAt = existing.updated_at ?? null;
+  let write = supabase
+    .from("invoices")
+    .update({
+      ...(fields as object),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  write = existingUpdatedAt
+    ? write.eq("updated_at", existingUpdatedAt)
+    : write.is("updated_at", null);
+  const { data: written, error } = await write.select("id");
+  if (error) {
+    // Transient write failure: movements are in but base-stamped — the retry
+    // re-runs them as no-ops and only the snapshot write repeats.
+    return { ok: false, reason: `${error.message} — apasă din nou Salvează` };
+  }
+  if (!written || written.length === 0) {
+    // CAS lost: someone else saved this invoice meanwhile. Take back exactly
+    // what we moved and report the conflict — stock and snapshot stay theirs.
+    for (const a of appliedDeltas) {
+      await applyStockMovement(db, {
+        productId: a.pid,
+        delta: -a.delta,
+        reason: "invoice_edit",
+        ref: `reverse:invoice_edit:${id}:${a.pid}:${baseStamp}`,
+        orderId: existing.order_id,
+        invoiceId: id,
+        createdBy: userId,
+      });
+    }
+    return {
+      ok: false,
+      reason:
+        "edit_conflict — altă editare a salvat între timp; redeschide factura și reia modificarea",
+    };
+  }
+
+  await syncOrderAfterInvoiceEdit(
+    supabase,
+    userId,
+    {
+      orderId: existing.order_id,
+      currency: fields.currency ?? existing.currency ?? "MDL",
+      total: fields.total ?? Number.NaN,
+      label: `${existing.series ?? ""}${existing.number ?? ""}`,
+    },
+    itemsSnapshot,
+  );
+
   return { ok: true };
 }
 
@@ -1050,7 +1487,9 @@ export async function updateInvoice(
 
   const { data: existing } = await supabase
     .from("invoices")
-    .select("id, type, status, issued_date, order_id, items_snapshot, updated_at")
+    .select(
+      "id, type, status, issued_date, order_id, items_snapshot, updated_at, currency, series, number",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!existing) return { ok: false, reason: "invoice_not_found" };
@@ -1067,17 +1506,6 @@ export async function updateInvoice(
   const invReturns = await getReturnsFor("invoice", id);
   if (invReturns.length > 0) {
     return { ok: false, reason: "has_returns" };
-  }
-
-  // Read the ledger BEFORE writing anything: if the read fails we refuse the
-  // edit rather than saving new quantities whose stock diff can't be applied.
-  const updDb = supabase as unknown as StockDb;
-  let saleMovements: Awaited<ReturnType<typeof getOrderMovements>> | null = null;
-  if (existing.order_id) {
-    saleMovements = await getOrderMovements(updDb, existing.order_id);
-    if (!saleMovements.ok) {
-      return { ok: false, reason: saleMovements.reason };
-    }
   }
 
   const updInvoiceBlocked = await collectBelowCost(supabase, v.items, v.currency, v.force_sell_pin);
@@ -1125,69 +1553,11 @@ export async function updateInvoice(
   const issued = new Date(existing.issued_date);
   const due = new Date(issued.getTime() + (v.due_days ?? 7) * 86_400_000);
 
-  // STOCK FIRST, snapshot second. Refs are stamped with the BASE snapshot's
-  // updated_at, which makes the whole edit idempotent: a retry after a lost
-  // response diffs the same base → same refs → no-ops, then the snapshot
-  // write lands. The snapshot write below is a CAS on that same updated_at,
-  // so a concurrent edit can't silently overwrite — the loser compensates
-  // its own movements and reports a conflict.
-  const baseStamp = Date.parse(
-    (existing as { updated_at?: string | null }).updated_at ??
-      existing.issued_date ??
-      "1970-01-01",
-  );
-  const appliedDeltas: Array<{ pid: string; delta: number }> = [];
-  if (existing.order_id && saleMovements?.ok) {
-    const db = updDb;
-    const movements = saleMovements.rows;
-    if (movements.some((m) => m.reason === "sale")) {
-      const aggregate = async (snap: Array<Record<string, unknown>>) => {
-        const m = new Map<string, number>();
-        for (const it of snap) {
-          const qty = Number((it as { quantity?: number }).quantity ?? 0);
-          if (qty <= 0) continue;
-          const pid = await resolveLineProductId(db, it);
-          if (!pid) continue;
-          m.set(pid, roundStock((m.get(pid) ?? 0) + qty));
-        }
-        return m;
-      };
-      const before = await aggregate(
-        Array.isArray(existing.items_snapshot)
-          ? (existing.items_snapshot as Array<Record<string, unknown>>)
-          : [],
-      );
-      const after = await aggregate(
-        itemsSnapshot as unknown as Array<Record<string, unknown>>,
-      );
-      for (const pid of new Set([...before.keys(), ...after.keys()])) {
-        const delta = roundStock((before.get(pid) ?? 0) - (after.get(pid) ?? 0));
-        if (delta === 0) continue;
-        const moved = await applyStockMovement(db, {
-          productId: pid,
-          delta,
-          reason: "invoice_edit",
-          ref: `invoice_edit:${id}:${pid}:${baseStamp}`,
-          orderId: existing.order_id,
-          invoiceId: id,
-          createdBy: user.id,
-        });
-        // Nothing has been written to the invoice yet — a hard failure just
-        // aborts the edit cleanly.
-        if (!moved.ok) return moved;
-        // applied=false → this exact base→target transition already moved
-        // stock (an earlier attempt whose snapshot write was lost) — carry on
-        // to the snapshot write, which is exactly the missing half.
-        if (moved.applied) appliedDeltas.push({ pid, delta });
-      }
-    }
-  }
-
-  const existingUpdatedAt =
-    (existing as { updated_at?: string | null }).updated_at ?? null;
-  let write = supabase
-    .from("invoices")
-    .update({
+  const applied = await applyInvoiceEdit(
+    supabase,
+    user.id,
+    existing,
+    {
       account_scope: v.account_scope,
       currency: v.currency,
       customer_snapshot: v.customer as unknown as Json,
@@ -1197,42 +1567,12 @@ export async function updateInvoice(
       total,
       due_date: due.toISOString().slice(0, 10),
       notes: v.notes ?? null,
-      updated_at: new Date().toISOString(),
-      ...({
-        output_locale: v.output_locale,
-        ...(discount_percent > 0 ? { discount_percent } : {}),
-      } as object),
-    })
-    .eq("id", id);
-  write = existingUpdatedAt
-    ? write.eq("updated_at", existingUpdatedAt)
-    : write.is("updated_at", null);
-  const { data: written, error } = await write.select("id");
-  if (error) {
-    // Transient write failure: movements are in but base-stamped — the retry
-    // re-runs them as no-ops and only the snapshot write repeats.
-    return { ok: false, reason: `${error.message} — apasă din nou Salvează` };
-  }
-  if (!written || written.length === 0) {
-    // CAS lost: someone else saved this invoice meanwhile. Take back exactly
-    // what we moved and report the conflict — stock and snapshot stay theirs.
-    for (const a of appliedDeltas) {
-      await applyStockMovement(updDb, {
-        productId: a.pid,
-        delta: -a.delta,
-        reason: "invoice_edit",
-        ref: `reverse:invoice_edit:${id}:${a.pid}:${baseStamp}`,
-        orderId: existing.order_id,
-        invoiceId: id,
-        createdBy: user.id,
-      });
-    }
-    return {
-      ok: false,
-      reason:
-        "edit_conflict — altă editare a salvat între timp; redeschide factura și reia modificarea",
-    };
-  }
+      output_locale: v.output_locale,
+      ...(discount_percent > 0 ? { discount_percent } : {}),
+    },
+    itemsSnapshot as unknown as Array<Record<string, unknown>>,
+  );
+  if (!applied.ok) return applied;
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath(`/[locale]/panel/facturi/${id}`, "page");

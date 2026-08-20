@@ -16,6 +16,7 @@ import {
   ForceSellModal,
   type BelowCostLine,
 } from "@/components/panel/ForceSellModal";
+import { EditPinModal } from "@/components/panel/documents/EditPinModal";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,9 @@ export type ProformaInitial = {
   dueDays: number;
   notes: string;
   discountPercent?: number;
+  /** Set when this proforma is ALREADY converted into a fiscal invoice.
+   * Saving then asks for the admin PIN and rewrites that invoice too. */
+  convertedInvoice?: { id: string; label: string } | null;
 };
 
 export function NewProformaForm({
@@ -198,6 +202,12 @@ export function NewProformaForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [pending, startSubmit] = useTransition();
   const [forceSell, setForceSell] = useState<BelowCostLine[] | null>(null);
+  // Admin PIN authorising the edit of an already-converted proforma. Held for
+  // the whole save attempt so a follow-up FORCE SELL confirmation doesn't lose
+  // it and re-prompt.
+  const [editPin, setEditPin] = useState<string | null>(null);
+  const [askEditPin, setAskEditPin] = useState(false);
+  const convertedInvoice = initial?.convertedInvoice ?? null;
   // conta2 is 0% TVA by default; this opt-in bills a conta2 document WITH 20%.
   const [conta2WithVat, setConta2WithVat] = useState<boolean>(
     () =>
@@ -321,7 +331,15 @@ export function NewProformaForm({
     setLines(lines.filter((_, i) => i !== idx));
   }
 
-  function submit(forceSellPin?: string) {
+  function submit(forceSellPin?: string, editPinOverride?: string) {
+    // Converted proforma → PIN first, everything else after. Ask before doing
+    // any work so the operator can back out of a cascade they didn't intend.
+    const pin = editPinOverride ?? editPin;
+    if (convertedInvoice && !pin) {
+      setAskEditPin(true);
+      return;
+    }
+
     const validLines = lines.filter(
       (l) => l.name.trim().length > 0 && l.quantity > 0,
     );
@@ -404,6 +422,7 @@ export function NewProformaForm({
       output_locale: outputLocale,
       notes: notes || null,
       force_sell_pin: forceSellPin,
+      edit_pin: pin ?? undefined,
     };
 
     startSubmit(async () => {
@@ -422,6 +441,11 @@ export function NewProformaForm({
           router.push(`${base}/${initial.id}`);
         } else if (res.reason === "below_cost") {
           setForceSell(res.belowCost ?? []);
+        } else if (res.reason === "bad_pin") {
+          // Drop the bad PIN so the next save re-prompts instead of
+          // silently retrying with it.
+          setEditPin(null);
+          toast.error("PIN greșit");
         } else {
           toast.error(t("sale_error", { reason: res.reason }));
         }
@@ -866,6 +890,19 @@ export function NewProformaForm({
           pending={pending}
           onCancel={() => setForceSell(null)}
           onConfirm={(pin) => submit(pin)}
+        />
+      )}
+
+      {askEditPin && convertedInvoice && (
+        <EditPinModal
+          invoiceLabel={convertedInvoice.label}
+          pending={pending}
+          onCancel={() => setAskEditPin(false)}
+          onConfirm={(pin) => {
+            setEditPin(pin);
+            setAskEditPin(false);
+            submit(undefined, pin);
+          }}
         />
       )}
     </div>

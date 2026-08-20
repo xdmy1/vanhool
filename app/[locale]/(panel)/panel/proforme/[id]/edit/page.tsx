@@ -70,10 +70,18 @@ export default async function EditProformaPage({
 
   const proforma = await getInvoice(id);
   if (!proforma || proforma.type !== "proforma") notFound();
-  // Lock once the document is no longer mutable.
-  if (proforma.converted_to_invoice_id || proforma.status === "void") {
+  // Only a VOIDED proforma is frozen. An already-converted one stays editable
+  // behind the admin PIN — the save then rewrites the fiscal invoice too.
+  if (proforma.status === "void") {
     redirect(`/${locale}/panel/proforme/${id}`);
   }
+  const convertedInvoice = proforma.converted_to_invoice_id
+    ? {
+        id: proforma.converted_to_invoice_id,
+        label:
+          `${proforma.linked_invoice?.series ?? ""}${proforma.linked_invoice?.number ?? ""}`.trim(),
+      }
+    : null;
 
   const cs = proforma.customer_snapshot;
   const initial: ProformaInitial = {
@@ -142,6 +150,7 @@ export default async function EditProformaPage({
     outputLocale: proforma.output_locale,
     dueDays: diffDays(proforma.issued_date, proforma.due_date),
     notes: proforma.notes ?? "",
+    convertedInvoice,
   };
   initial.lines = await backfillLineCosts(initial.lines);
 
@@ -153,6 +162,13 @@ export default async function EditProformaPage({
         title={`${t("proforma_edit_title")} ${number}`}
         subtitle={t("proforma_edit_subtitle")}
       />
+      {convertedInvoice ? (
+        <div className="mt-6 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <strong className="font-semibold">Proformă deja convertită</strong> în
+          factura {convertedInvoice.label || "—"}. Salvarea cere PIN-ul admin și
+          aplică AUTOMAT aceleași modificări și pe factură (stoc, total, casă).
+        </div>
+      ) : null}
       <div className="mt-8">
         <NewProformaForm locale={locale} initial={initial} />
       </div>
