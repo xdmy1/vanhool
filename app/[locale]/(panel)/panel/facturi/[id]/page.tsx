@@ -15,6 +15,7 @@ import { ReturnsAnnexSection } from "@/components/panel/returns/ReturnsAnnexSect
 import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
+import { encodeBackHref, resolveBackHref } from "@/lib/panel/nav";
 import {
   applyCostFallback,
   buildCostFallbackByCode,
@@ -41,11 +42,22 @@ function isOverdue(invoice: {
 
 export default async function PanelInvoiceDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ locale, id }, t] = await Promise.all([params, getTranslations("panel")]);
+  const [{ locale, id }, sp, t] = await Promise.all([
+    params,
+    searchParams,
+    getTranslations("panel"),
+  ]);
   setRequestLocale(locale);
+
+  // Where the back arrow goes: the list URL the operator came from (filters
+  // and row anchor intact), or the plain list when we were opened cold.
+  const backHref = resolveBackHref(sp.back, "/panel/facturi");
+  const backParam = `?back=${encodeBackHref(backHref)}`;
 
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
@@ -76,7 +88,7 @@ export default async function PanelInvoiceDetailPage({
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <AdminPageHeader
-        back={{ href: "/panel/facturi", label: t("clienti_detail_back"), locale }}
+        back={{ href: backHref, label: t("clienti_detail_back"), locale }}
         title={`${t("facturi_title").replace(/i$/, "")} ${invoice.series ?? ""}${invoice.number ?? ""}`}
         subtitle={`${invoice.customer_snapshot.name ?? "—"} · ${new Date(invoice.issued_date).toLocaleDateString(dateLocale, { timeZone: TIMEZONE })}`}
         actions={
@@ -104,7 +116,7 @@ export default async function PanelInvoiceDetailPage({
             invoice.status !== "converted" ? (
               <Button asChild variant="outline" className="gap-1.5">
                 <Link
-                  href={`/panel/facturi/${invoice.id}/edit` as "/panel"}
+                  href={`/panel/facturi/${invoice.id}/edit${backParam}` as "/panel"}
                   locale={locale}
                 >
                   <Pencil className="size-4" />

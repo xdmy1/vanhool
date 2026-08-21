@@ -14,6 +14,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
+import { encodeBackHref } from "@/lib/panel/nav";
 import { Price } from "@/components/common/Price";
 import { SalesBarChart } from "@/components/panel/statistici/StatsCharts";
 import { getCashBalance } from "@/lib/panel/cash/actions";
@@ -418,7 +419,9 @@ export default async function PanelDashboardPage({
               {recentInvoices.map((i) => (
                 <li key={i.id}>
                   <Link
-                    href={`/panel/facturi/${i.id}` as "/panel"}
+                    href={
+                      `/panel/facturi/${i.id}?back=${encodeBackHref("/panel")}` as "/panel"
+                    }
                     locale={locale}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-surface-elevated"
                   >

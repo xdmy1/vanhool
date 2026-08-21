@@ -5,6 +5,7 @@ import { Building2, Edit3, FileText, Receipt, User } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/lib/i18n/routing";
+import { encodeBackHref } from "@/lib/panel/nav";
 import { Price } from "@/components/common/Price";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
 import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
@@ -373,7 +374,14 @@ export default async function PanelClientDetailPage({
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {documents.map((d) => (
-              <DocumentRow key={d.id} doc={d} locale={locale} t={t} fmtDate={fmtDate} />
+              <DocumentRow
+                key={d.id}
+                doc={d}
+                locale={locale}
+                t={t}
+                fmtDate={fmtDate}
+                backHref={`/panel/clienti/${id}?docs=${docTab}`}
+              />
             ))}
           </ul>
         )}
@@ -387,15 +395,19 @@ function DocumentRow({
   locale,
   fmtDate,
   t,
+  backHref,
 }: {
   doc: ClientDocument;
   locale: string;
   fmtDate: (d: string | null) => string;
   t: (key: string, values?: Record<string, string | number>) => string;
+  backHref: string;
 }) {
   const isInvoice = doc.type === "invoice";
+  // Opening a document from the client page must come back to the client
+  // page, not to the global list.
   const href = (isInvoice
-    ? `/panel/facturi/${doc.id}`
+    ? `/panel/facturi/${doc.id}?back=${encodeBackHref(backHref)}`
     : `/panel/proforme/${doc.id}`) as "/panel";
 
   const statusTone: Record<string, string> = {

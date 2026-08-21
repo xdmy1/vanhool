@@ -12,6 +12,7 @@ import {
   type ProformaInitial,
 } from "@/components/panel/proforma/NewProformaForm";
 import { getInvoice } from "@/lib/panel/invoices/queries";
+import { encodeBackHref, resolveBackHref } from "@/lib/panel/nav";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -25,14 +26,22 @@ function diffDays(issued: string, due: string | null): number {
 
 export default async function EditInvoicePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ locale, id }, t] = await Promise.all([
+  const [{ locale, id }, sp, t] = await Promise.all([
     params,
+    searchParams,
     getTranslations("panel"),
   ]);
   setRequestLocale(locale);
+
+  // Carry the list URL the operator came from through the edit page, so the
+  // back arrow walks edit → factură → the same filtered row.
+  const listBack = resolveBackHref(sp.back, "/panel/facturi");
+  const invoiceHref = `/panel/facturi/${id}?back=${encodeBackHref(listBack)}`;
 
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
@@ -44,7 +53,7 @@ export default async function EditInvoicePage({
     invoice.status === "void" ||
     invoice.status === "converted"
   ) {
-    redirect(`/${locale}/panel/facturi/${id}`);
+    redirect(`/${locale}${invoiceHref}`);
   }
 
   const cs = invoice.customer_snapshot;
@@ -118,7 +127,7 @@ export default async function EditInvoicePage({
     <div className="px-4 py-8 md:px-8 md:py-10">
       <AdminPageHeader
         back={{
-          href: `/panel/facturi/${id}`,
+          href: invoiceHref,
           label: t("clienti_detail_back"),
           locale,
         }}

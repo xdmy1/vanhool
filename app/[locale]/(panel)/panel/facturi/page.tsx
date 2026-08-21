@@ -16,6 +16,7 @@ import {
 } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
+import { encodeBackHref, rowAnchor } from "@/lib/panel/nav";
 import { cn } from "@/lib/utils/cn";
 import { TIMEZONE } from "@/lib/datetime";
 
@@ -130,6 +131,21 @@ export default async function PanelFacturiPage({
       | undefined,
   });
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
+
+  // This exact list URL — filters included — so opening an invoice can carry
+  // it along and the invoice's back arrow returns to the same filtered page
+  // (and scrolls to the row the operator clicked).
+  const selfParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v === undefined) continue;
+    selfParams.set(k, Array.isArray(v) ? v.join(",") : v);
+  }
+  const selfHref = selfParams.toString()
+    ? `/panel/facturi?${selfParams}`
+    : "/panel/facturi";
+  const invoiceHref = (id: string) =>
+    `/panel/facturi/${id}?back=${encodeBackHref(`${selfHref}#${rowAnchor(id)}`)}`;
+
   const statusLabel = (s: string) =>
     t(`facturi_status_${s}` as "facturi_status_draft");
 
@@ -500,9 +516,19 @@ export default async function PanelFacturiPage({
               </thead>
               <tbody className="divide-y divide-border bg-surface">
                 {rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-surface-elevated">
+                  <tr
+                    key={r.id}
+                    id={rowAnchor(r.id)}
+                    className="scroll-mt-24 hover:bg-surface-elevated target:bg-primary/5"
+                  >
                     <td className="px-4 py-3 font-mono text-xs">
-                      {r.series ?? ""}-{r.number ?? "—"}
+                      <Link
+                        href={invoiceHref(r.id) as "/panel"}
+                        locale={locale}
+                        className="text-primary hover:underline"
+                      >
+                        {r.series ?? ""}-{r.number ?? "—"}
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <InvoiceNoteCell invoiceId={r.id} initial={r.notes} />
@@ -600,15 +626,16 @@ export default async function PanelFacturiPage({
                             variant="compact"
                           />
                         ) : null}
-                        {r.order_id ? (
-                          <Link
-                            href={`/panel/comenzi/${r.order_id}` as "/admin"}
-                            locale={locale}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            {t("facturi_col_order")}
-                          </Link>
-                        ) : null}
+                        {/* Opens the invoice, same as the number cell. The
+                            link to the source order lives on the invoice
+                            page — from the list, a click means "the invoice". */}
+                        <Link
+                          href={invoiceHref(r.id) as "/panel"}
+                          locale={locale}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          {t("action_open")}
+                        </Link>
                       </div>
                     </td>
                   </tr>
