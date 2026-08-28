@@ -451,11 +451,19 @@ async function applyPostedLines(
       // existing product instead of creating a duplicate that silently steals
       // the stock. Only mint a new product when nothing matches.
       const matchId = await resolvePurchaseProductId(supabase, it);
-      const code = it.internal_code ?? `IB-${it.id.slice(0, 8).toUpperCase()}`;
+      // An internal code is used ONLY when the operator set one (typed or via
+      // the Gen button) — otherwise the product keeps the part code exactly
+      // as entered on the line (the supplier's code). Nothing is generated
+      // behind the operator's back; the IB- fallback covers only a line with
+      // no code at all, where resolution would otherwise be impossible.
+      const internalCode = (it.internal_code ?? "").trim();
+      const supplierCode = (it.supplier_code ?? "").trim();
+      const code =
+        internalCode || supplierCode || `IB-${it.id.slice(0, 8).toUpperCase()}`;
       if (matchId) {
         productId = matchId;
       } else {
-        const slug = `${code.toLowerCase()}-${it.id.slice(0, 6)}`;
+        const slug = `${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${it.id.slice(0, 6)}`;
         const base = {
           part_code: code,
           name_ro: it.description.slice(0, 200),
@@ -487,10 +495,12 @@ async function applyPostedLines(
         .from("purchase_items")
         .update({
           product_id: productId,
-          // Stamp the generated internal code back onto the line: if the UI
-          // ever unlinks it, tier-1 part_code resolution re-binds the SAME
-          // product instead of minting a duplicate.
-          ...(it.internal_code ? {} : { internal_code: code }),
+          // Stamp the code back onto the line ONLY when it had no code at all
+          // (the IB- fallback): if the UI ever unlinks it, tier-1 part_code
+          // resolution re-binds the SAME product instead of minting a
+          // duplicate. A line with a supplier code needs no stamp — its
+          // product's part_code IS that code, so resolution already re-binds.
+          ...(internalCode || supplierCode ? {} : { internal_code: code }),
         })
         .eq("id", it.id);
     }
@@ -813,7 +823,8 @@ export async function createPurchase(
 /**
  * Post a purchase: status draft → posted, stock += qty per line, cost_price
  * = last unit_cost. For lines without product_id, auto-creates a minimal
- * product using internal_code (or generates) and description.
+ * product using internal_code (or, when none was set, the supplier's code
+ * as entered) and description.
  * Appends supplier_code to the product's cross_references jsonb for future
  * matching on next invoice from the same supplier.
  */

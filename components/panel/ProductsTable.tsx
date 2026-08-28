@@ -25,6 +25,21 @@ export async function ProductsTable({
     );
   }
 
+  // The query sorts actives before inactives, so each group is contiguous —
+  // render a section divider above each group present on the page.
+  const groups = [
+    {
+      key: "active",
+      label: t("produse_divider_active"),
+      rows: rows.filter((p) => !!p.is_active),
+    },
+    {
+      key: "inactive",
+      label: t("produse_divider_inactive"),
+      rows: rows.filter((p) => !p.is_active),
+    },
+  ].filter((g) => g.rows.length > 0);
+
   return (
     <div className="overflow-x-auto rounded-md border border-border">
       <table className="min-w-full divide-y divide-border text-sm">
@@ -42,7 +57,16 @@ export async function ProductsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border bg-surface">
-          {rows.map((p) => (
+          {groups.flatMap((g) => [
+            <tr key={`divider-${g.key}`} className="bg-surface-elevated">
+              <td
+                colSpan={9}
+                className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted"
+              >
+                {g.label}
+              </td>
+            </tr>,
+            ...g.rows.map((p) => (
             <tr key={p.id} className="transition-colors hover:bg-surface-elevated">
               <td className="px-4 py-3 font-mono text-xs">{p.part_code ?? "—"}</td>
               <td className="px-4 py-3">
@@ -105,7 +129,8 @@ export async function ProductsTable({
                 </Link>
               </td>
             </tr>
-          ))}
+            )),
+          ])}
         </tbody>
       </table>
     </div>

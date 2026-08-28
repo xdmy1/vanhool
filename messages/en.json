@@ -967,6 +967,8 @@
     "produse_filter_active": "Active",
     "produse_filter_inactive": "Inactive",
     "produse_filter_low_stock": "Low stock",
+    "produse_divider_active": "Active products",
+    "produse_divider_inactive": "Inactive products",
     "produse_search_placeholder": "Search internal code, name, brand, supplier code...",
     "produse_col_code": "Internal code",
     "produse_col_name": "Name",

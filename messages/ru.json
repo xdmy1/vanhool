@@ -967,6 +967,8 @@
     "produse_filter_active": "Активные",
     "produse_filter_inactive": "Неактивные",
     "produse_filter_low_stock": "Мало на складе",
+    "produse_divider_active": "Активные товары",
+    "produse_divider_inactive": "Неактивные товары",
     "produse_search_placeholder": "Поиск внутр. код, имя, бренд, код поставщика...",
     "produse_col_code": "Внутр. код",
     "produse_col_name": "Имя",

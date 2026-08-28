@@ -44,6 +44,10 @@ export async function listPanelProducts(args: ListPanelProductsArgs): Promise<{
       "id, part_code, name_ro, name_en, brand, category_id, price, cost_price, stock_quantity, storage_location, is_active, supplier_code, supplier_id, created_at, oem_codes, cross_references",
       { count: "exact" },
     )
+    // Actives first, inactives after — the table renders a section divider
+    // between the two groups, so the sort must keep each group contiguous
+    // (a null is_active counts as inactive, hence nullsFirst: false).
+    .order("is_active", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .range(from, to);
 
