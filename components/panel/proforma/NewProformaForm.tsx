@@ -186,6 +186,13 @@ export function NewProformaForm({
 
   const [scope, setScopeState] = useState<"conta1" | "conta2">(initial?.scope ?? "conta1");
   const [client, setClient] = useState<ClientSearchResult | null>(null);
+  // EDIT: the document already has a customer (the stored snapshot, loaded
+  // into the walk-in fields). Show it as-is with a "Schimbă" button instead of
+  // opening the full client list on top of the form — the operator came to
+  // tweak lines, not to re-pick the customer.
+  const [storedCustomer, setStoredCustomer] = useState<boolean>(
+    isEdit && (initial?.walkin.name ?? "").trim().length > 0,
+  );
   // Default to the existing-clients picker (matches the new-sale wizard).
   // Walk-in mode is one tab click away — but the common case is selling to
   // a registered customer, so don't make the operator switch every time.
@@ -479,6 +486,13 @@ export function NewProformaForm({
         }}
         walkin={walkin}
         setWalkin={setWalkin}
+        stored={storedCustomer}
+        onChangeStored={() => {
+          // Reveal the editable fields prefilled with the stored customer;
+          // "Client existent" is one click away if they want another one.
+          setStoredCustomer(false);
+          setWalkinMode(true);
+        }}
       />
 
       <section className="rounded-md border border-border bg-surface p-5">
@@ -916,6 +930,8 @@ function CustomerSection({
   setWalkinMode,
   walkin,
   setWalkin,
+  stored = false,
+  onChangeStored,
 }: {
   client: ClientSearchResult | null;
   setClient: (c: ClientSearchResult | null) => void;
@@ -923,6 +939,10 @@ function CustomerSection({
   setWalkinMode: (v: boolean) => void;
   walkin: WalkIn;
   setWalkin: (w: WalkIn) => void;
+  /** Edit mode: the document's stored customer is shown read-only until the
+   * operator asks to change it. */
+  stored?: boolean;
+  onChangeStored?: () => void;
 }) {
   const t = useTranslations("panel");
   const [allClients, setAllClients] = useState<ClientSearchResult[]>([]);
@@ -930,12 +950,12 @@ function CustomerSection({
   const [loadingList, startLoad] = useTransition();
 
   useEffect(() => {
-    if (client || walkinMode || allClients.length > 0) return;
+    if (client || walkinMode || stored || allClients.length > 0) return;
     startLoad(async () => {
       const r = await listAllPanelClients();
       setAllClients(r);
     });
-  }, [client, walkinMode, allClients.length]);
+  }, [client, walkinMode, stored, allClients.length]);
 
   const visibleClients = useMemo(() => {
     const term = filter.trim().toLowerCase();
@@ -979,6 +999,52 @@ function CustomerSection({
               {client.email} {client.phone ? `· ${client.phone}` : ""}
               {client.idno ? ` · IDNO ${client.idno}` : ""}
             </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (stored) {
+    const details = [
+      walkin.email,
+      walkin.phone,
+      walkin.idno ? `IDNO ${walkin.idno}` : "",
+      walkin.vat_number ? `TVA ${walkin.vat_number}` : "",
+    ].filter((x) => x && x.trim().length > 0);
+    return (
+      <section className="rounded-md border border-primary/30 bg-primary/5 p-5">
+        <header className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {t("sale_client_selected")}
+          </h3>
+          <button
+            type="button"
+            onClick={onChangeStored}
+            className="text-xs text-primary hover:underline"
+          >
+            {t("sale_client_change")}
+          </button>
+        </header>
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-full bg-primary/15 text-primary">
+            {walkin.company_name || walkin.idno ? (
+              <Building2 className="size-5" />
+            ) : (
+              <User className="size-5" />
+            )}
+          </span>
+          <div className="min-w-0">
+            <div className="font-semibold">
+              {walkin.name}
+              {walkin.company_name ? ` · ${walkin.company_name}` : ""}
+            </div>
+            {details.length ? (
+              <div className="text-xs text-muted-strong">{details.join(" · ")}</div>
+            ) : null}
+            {walkin.address ? (
+              <div className="text-xs text-muted">{walkin.address}</div>
+            ) : null}
           </div>
         </div>
       </section>
