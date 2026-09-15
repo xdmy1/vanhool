@@ -41,11 +41,55 @@ export default async function PanelClientDetailPage({
   if (!client) notFound();
 
   // The document folder spans BOTH books. A tab filters by type; default shows
-  // invoices (the operator's usual "did they pay" question).
+  // invoices (the operator's usual "did they pay" question). Two more
+  // selectors narrow the list: open/closed and the book. They live in their
+  // own URL params (dstate / dbook) so they never collide with the page's
+  // `?book=` switcher, and the back-link from a document restores them.
   const docTab: "invoice" | "proforma" =
     sp.docs === "proforma" ? "proforma" : "invoice";
+  type DocState = "all" | "open" | "closed";
+  type DocBook = "all" | "conta1" | "conta2";
+  const docState: DocState =
+    sp.dstate === "open" ? "open" : sp.dstate === "closed" ? "closed" : "all";
+  const docBook: DocBook =
+    sp.dbook === "conta1" ? "conta1" : sp.dbook === "conta2" ? "conta2" : "all";
+  // Open = still waiting on something: an invoice not yet paid (draft /
+  // issued / sent / partial without paid_at), a proforma not yet converted
+  // (draft / sent). Everything else — paid, converted, void — is closed.
+  const isOpenDoc = (d: ClientDocument): boolean =>
+    d.type === "invoice"
+      ? !d.paid_at && ["draft", "issued", "sent", "partial"].includes(d.status)
+      : ["draft", "sent"].includes(d.status);
   const allDocuments = await getClientDocuments(id, client.idno);
-  const documents = allDocuments.filter((d) => d.type === docTab);
+  const tabDocuments = allDocuments.filter(
+    (d) => d.type === docTab && (docBook === "all" || d.account_scope === docBook),
+  );
+  const documents = tabDocuments.filter(
+    (d) => docState === "all" || (docState === "open") === isOpenDoc(d),
+  );
+  const openCount = tabDocuments.filter(isOpenDoc).length;
+  const closedCount = tabDocuments.length - openCount;
+  // Totals of what is on screen, per currency (never summed across lei/eur).
+  const visibleTotals = documents.reduce<Record<string, number>>((acc, d) => {
+    acc[d.currency] = Number(((acc[d.currency] ?? 0) + d.total).toFixed(2));
+    return acc;
+  }, {});
+  const folderHref = (o: { docs?: "invoice" | "proforma"; dstate?: DocState; dbook?: DocBook }) => {
+    const q = new URLSearchParams();
+    q.set("docs", o.docs ?? docTab);
+    const st = o.dstate ?? docState;
+    const bk = o.dbook ?? docBook;
+    if (st !== "all") q.set("dstate", st);
+    if (bk !== "all") q.set("dbook", bk);
+    return `/panel/clienti/${id}?${q.toString()}`;
+  };
+  const chipClass = (active: boolean) =>
+    cn(
+      "inline-flex h-7 items-center rounded-md border px-2.5 text-[11px] font-medium transition-colors",
+      active
+        ? "border-primary bg-primary/10 text-primary"
+        : "border-border bg-surface text-muted-strong hover:border-primary/40 hover:text-primary",
+    );
 
   // Balance with us — kept strictly per-currency (never mix lei/eur):
   //   owed   = open invoices (issued/sent/partial) this client hasn't paid,
@@ -341,7 +385,7 @@ export default async function PanelClientDetailPage({
           <h2 className="text-sm font-semibold">{t("clienti_detail_documents_all")}</h2>
           <div className="inline-flex overflow-hidden rounded-md border border-border text-xs">
             <Link
-              href={`/panel/clienti/${id}?docs=invoice` as "/panel"}
+              href={folderHref({ docs: "invoice" }) as "/panel"}
               locale={locale}
               className={cn(
                 "px-3 py-1.5 transition-colors",
@@ -353,7 +397,7 @@ export default async function PanelClientDetailPage({
               {t("clienti_detail_tab_invoices", { count: invoiceCount })}
             </Link>
             <Link
-              href={`/panel/clienti/${id}?docs=proforma` as "/panel"}
+              href={folderHref({ docs: "proforma" }) as "/panel"}
               locale={locale}
               className={cn(
                 "px-3 py-1.5 transition-colors",
@@ -366,6 +410,42 @@ export default async function PanelClientDetailPage({
             </Link>
           </div>
         </header>
+
+        {/* Selectors: open / closed, then book. Counts follow the current tab. */}
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link href={folderHref({ dstate: "all" }) as "/panel"} locale={locale} className={chipClass(docState === "all")}>
+              {t("facturi_filter_all")} · {tabDocuments.length}
+            </Link>
+            <Link href={folderHref({ dstate: "open" }) as "/panel"} locale={locale} className={chipClass(docState === "open")}>
+              {t("clienti_detail_filter_open")} · {openCount}
+            </Link>
+            <Link href={folderHref({ dstate: "closed" }) as "/panel"} locale={locale} className={chipClass(docState === "closed")}>
+              {t("clienti_detail_filter_closed")} · {closedCount}
+            </Link>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link href={folderHref({ dbook: "all" }) as "/panel"} locale={locale} className={chipClass(docBook === "all")}>
+              {t("conta1")} + {t("conta2")}
+            </Link>
+            <Link href={folderHref({ dbook: "conta1" }) as "/panel"} locale={locale} className={chipClass(docBook === "conta1")}>
+              {t("conta1")}
+            </Link>
+            <Link href={folderHref({ dbook: "conta2" }) as "/panel"} locale={locale} className={chipClass(docBook === "conta2")}>
+              {t("conta2")}
+            </Link>
+          </div>
+          {documents.length > 0 ? (
+            <div className="ml-auto text-xs text-muted-strong">
+              {t("clienti_detail_docs_summary", {
+                count: documents.length,
+                total: Object.entries(visibleTotals)
+                  .map(([cur, n]) => `${n.toFixed(2)} ${cur}`)
+                  .join(" · "),
+              })}
+            </div>
+          ) : null}
+        </div>
 
         {documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
@@ -380,7 +460,7 @@ export default async function PanelClientDetailPage({
                 locale={locale}
                 t={t}
                 fmtDate={fmtDate}
-                backHref={`/panel/clienti/${id}?docs=${docTab}`}
+                backHref={folderHref({})}
               />
             ))}
           </ul>
