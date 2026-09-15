@@ -55,6 +55,15 @@ export default async function PanelAchizitieDetailPage({
   const unlinkedCount = purchase.items.filter((it) => !it.product_id).length;
   const canCatalogManually = purchase.status === "draft" && unlinkedCount > 0;
 
+  const fmtStamp = (iso: string | null) =>
+    iso
+      ? new Date(iso).toLocaleString(dateLocale, {
+          timeZone: TIMEZONE,
+          dateStyle: "short",
+          timeStyle: "short",
+        })
+      : null;
+
   return (
     <div className="px-4 py-8 md:px-8 md:py-10">
       <AdminPageHeader
@@ -122,6 +131,23 @@ export default async function PanelAchizitieDetailPage({
             {purchase.fx_rate ? (
               <Stat label="FX">
                 <span className="tabular-nums">{purchase.fx_rate}</span>
+              </Stat>
+            ) : null}
+          </div>
+          {/* Audit trail — which panel account entered / last edited the document. */}
+          <div className="mt-4 grid gap-3 border-t border-border/70 pt-4 sm:grid-cols-4">
+            <Stat label={t("achizitii_col_created_by")}>
+              <span className="font-medium">{purchase.created_by_name ?? "—"}</span>
+              {fmtStamp(purchase.created_at) ? (
+                <div className="text-[11px] text-muted">{fmtStamp(purchase.created_at)}</div>
+              ) : null}
+            </Stat>
+            {purchase.updated_by_name ? (
+              <Stat label={t("achizitii_updated_by")}>
+                <span className="font-medium">{purchase.updated_by_name}</span>
+                {fmtStamp(purchase.updated_at) ? (
+                  <div className="text-[11px] text-muted">{fmtStamp(purchase.updated_at)}</div>
+                ) : null}
               </Stat>
             ) : null}
           </div>

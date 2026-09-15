@@ -11,7 +11,13 @@ import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { accountantMonthlyPurchasesEmail } from "@/lib/email/accountant-monthly-purchases";
 import { getConta1PurchasesForRange } from "@/lib/panel/purchases/queries";
-import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
+import {
+  costMismatchFactor,
+  purchaseFxToMdl,
+  purchaseLine,
+  purchaseTotals,
+  purchaseUnitCostMdl,
+} from "@/lib/panel/purchases/line-math";
 import { normalizeCode } from "@/lib/utils/normalize-code";
 import { roundStock } from "@/lib/stock";
 import {
@@ -126,9 +132,94 @@ const purchaseSchema = z.object({
    */
   file_url: z.string().nullable().optional(),
   items: z.array(lineInputSchema).min(1),
+  /**
+   * Set by the form after the operator has SEEN the wrong-currency warning
+   * (see findCostMismatches) and chose to save anyway. Without it a save whose
+   * lines are ≥4× off the known cost is refused with reason "cost_mismatch".
+   */
+  confirm_cost_mismatch: z.boolean().optional().default(false),
 });
 
 export type PurchaseInput = z.infer<typeof purchaseSchema>;
+
+/** One purchase line whose cost is wildly off the catalog cost of its product. */
+export type CostMismatch = {
+  /** 1-based position in the submitted lines. */
+  line: number;
+  code: string;
+  description: string;
+  /** What the catalog knows — GROSS MDL, and the same in the document's currency. */
+  knownCostMdl: number;
+  knownCostDoc: number;
+  /** What was typed — GROSS in the document's currency, and in MDL. */
+  enteredCostDoc: number;
+  enteredCostMdl: number;
+  /** ≥ 4; how many times the entered cost is off (either direction). */
+  factor: number;
+};
+
+export type PurchaseSaveError = {
+  ok: false;
+  reason: string;
+  /** Present when reason === "cost_mismatch". */
+  mismatches?: CostMismatch[];
+};
+
+/**
+ * The wrong-currency guard. A 305 EUR side window typed on an MDL document
+ * lands as 305 MDL (15 EUR); the catalog knows it at 6 100 MDL. Compare every
+ * line's GROSS MDL cost with the cost of the product it resolves to — by link
+ * or by NORMALISED code, exactly like postPurchase will — and report the ones
+ * ≥ COST_MISMATCH_FACTOR apart. Lines that resolve to nothing, or to a product
+ * with no cost yet, have nothing to compare against and pass.
+ */
+async function findCostMismatches(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  v: PurchaseInput,
+): Promise<CostMismatch[]> {
+  const fx = purchaseFxToMdl(v.currency, v.fx_rate);
+  const resolved: Array<{ idx: number; productId: string }> = [];
+  for (let i = 0; i < v.items.length; i++) {
+    const it = v.items[i];
+    if (!(Number(it.unit_cost) > 0)) continue;
+    const productId = it.product_id ?? (await resolvePurchaseProductId(supabase, it));
+    if (productId) resolved.push({ idx: i, productId });
+  }
+  if (resolved.length === 0) return [];
+  const { data: products } = await supabase
+    .from("products")
+    .select("id, part_code, name_ro, cost_price")
+    .in("id", Array.from(new Set(resolved.map((r) => r.productId))));
+  const byId = new Map(
+    ((products ?? []) as Array<{
+      id: string;
+      part_code: string | null;
+      name_ro: string | null;
+      cost_price: number | string | null;
+    }>).map((p) => [p.id, p]),
+  );
+  const out: CostMismatch[] = [];
+  for (const r of resolved) {
+    const p = byId.get(r.productId);
+    if (!p) continue;
+    const it = v.items[r.idx];
+    const knownCostMdl = Number(p.cost_price ?? 0);
+    const enteredCostMdl = purchaseUnitCostMdl(it.unit_cost, it.vat_rate, v.currency, v.fx_rate);
+    const factor = costMismatchFactor(enteredCostMdl, knownCostMdl);
+    if (factor == null) continue;
+    out.push({
+      line: r.idx + 1,
+      code: (it.internal_code || it.supplier_code || p.part_code || "").toString().trim() || "—",
+      description: it.description,
+      knownCostMdl,
+      knownCostDoc: Number((knownCostMdl / fx).toFixed(2)),
+      enteredCostDoc: purchaseLine(1, it.unit_cost, Number(it.vat_rate ?? 0)).grossUnit,
+      enteredCostMdl,
+      factor,
+    });
+  }
+  return out;
+}
 
 /**
  * Return the subset of line `product_id`s that actually exist in `products`.
@@ -738,7 +829,7 @@ async function settleDraftPurchaseSales(
 
 export async function createPurchase(
   raw: unknown,
-): Promise<{ ok: true; id: string } | { ok: false; reason: string }> {
+): Promise<{ ok: true; id: string } | PurchaseSaveError> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   const parsed = purchaseSchema.safeParse(raw);
@@ -752,6 +843,14 @@ export async function createPurchase(
   // BEFORE inserting anything.
   const dup = await findPurchaseWithSameDocNumber(supabase, v.document_number);
   if (dup) return { ok: false, reason: duplicateDocNumberMessage(dup) };
+
+  // Wrong-currency guard: a cost ≥4× off what the catalog knows is almost
+  // always EUR typed on an MDL document (or the reverse). Stop here and let
+  // the operator look; the form re-submits with confirm_cost_mismatch.
+  if (!v.confirm_cost_mismatch) {
+    const mismatches = await findCostMismatches(supabase, v);
+    if (mismatches.length > 0) return { ok: false, reason: "cost_mismatch", mismatches };
+  }
 
   const { data: header, error: hErr } = await supabase
     .from("purchases")
@@ -1317,7 +1416,7 @@ export async function sendPurchaseToAccountant(
 export async function updatePurchase(
   id: string,
   raw: unknown,
-): Promise<{ ok: true } | { ok: false; reason: string }> {
+): Promise<{ ok: true } | PurchaseSaveError> {
   const user = await getPanelUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   const parsed = purchaseSchema.safeParse(raw);
@@ -1331,6 +1430,14 @@ export async function updatePurchase(
   // this document onto a series that already exists on ANOTHER purchase.
   const dup = await findPurchaseWithSameDocNumber(supabase, v.document_number, id);
   if (dup) return { ok: false, reason: duplicateDocNumberMessage(dup) };
+
+  // Wrong-currency guard, same as createPurchase. Note: when the operator is
+  // FIXING a document that already poisoned the catalog cost, the corrected
+  // value trips this too (it is 20× the wrong cost) — one confirm clears it.
+  if (!v.confirm_cost_mismatch) {
+    const mismatches = await findCostMismatches(supabase, v);
+    if (mismatches.length > 0) return { ok: false, reason: "cost_mismatch", mismatches };
+  }
 
   // --- Items first, header last, and DELETE only AFTER a successful insert ---
   // The data-loss incident came from the old order: delete every line, THEN try

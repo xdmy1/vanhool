@@ -14,7 +14,34 @@ export type PurchaseListRow = {
   created_at: string;
   accountant_sent_at: string | null;
   accountant_entered_at: string | null;
+  /** Panel account that entered the purchase (profiles.full_name, else email). */
+  created_by_name: string | null;
 };
+
+type Db = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Map auth user ids → a display name for "who did this" columns. Purchases
+ * only store `created_by` / `updated_by` uuids (unlike invoices, which
+ * snapshot `created_by_name`), so resolve through profiles at read time —
+ * that also covers every historical row.
+ */
+async function resolveUserNames(
+  supabase: Db,
+  ids: Array<string | null | undefined>,
+): Promise<Map<string, string>> {
+  const uniq = [...new Set(ids.filter((x): x is string => typeof x === "string" && x.length > 0))];
+  if (uniq.length === 0) return new Map();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", uniq);
+  return new Map(
+    ((data ?? []) as Array<{ id: string; full_name: string | null; email: string | null }>).map(
+      (r) => [r.id, r.full_name?.trim() || r.email || r.id.slice(0, 8)],
+    ),
+  );
+}
 
 export async function listPurchases(args: {
   scope: AccountScope;
@@ -65,8 +92,8 @@ export async function listPurchases(args: {
       .from("purchases")
       .select(
         includeSent
-          ? "id, document_number, document_date, account_scope, status, total, currency, created_at, accountant_sent_at, accountant_entered_at, suppliers(name)"
-          : "id, document_number, document_date, account_scope, status, total, currency, created_at, suppliers(name)",
+          ? "id, document_number, document_date, account_scope, status, total, currency, created_at, created_by, accountant_sent_at, accountant_entered_at, suppliers(name)"
+          : "id, document_number, document_date, account_scope, status, total, currency, created_at, created_by, suppliers(name)",
       )
       .eq("account_scope", args.scope)
       .order("document_date", { ascending: false })
@@ -86,7 +113,12 @@ export async function listPurchases(args: {
     data = retry.data;
     error = retry.error;
   }
-  return (((data ?? []) as unknown) as Array<Record<string, unknown>>).map((r) => {
+  const list = ((data ?? []) as unknown) as Array<Record<string, unknown>>;
+  const names = await resolveUserNames(
+    supabase,
+    list.map((r) => r.created_by as string | null),
+  );
+  return list.map((r) => {
     const supplier = r.suppliers as { name: string } | null;
     return {
       id: r.id as string,
@@ -100,6 +132,7 @@ export async function listPurchases(args: {
       created_at: r.created_at as string,
       accountant_sent_at: (r.accountant_sent_at as string | null) ?? null,
       accountant_entered_at: (r.accountant_entered_at as string | null) ?? null,
+      created_by_name: names.get(r.created_by as string) ?? null,
     };
   });
 }
@@ -283,6 +316,12 @@ export type PurchaseDetail = {
   /** Storage path or URL of the supplier's original invoice (PDF / image).
    * Null = no attachment uploaded. */
   file_url: string | null;
+  /** Who entered the purchase + when (panel account). */
+  created_by_name: string | null;
+  created_at: string | null;
+  /** Who last edited it + when; null until the first edit. */
+  updated_by_name: string | null;
+  updated_at: string | null;
   items: Array<{
     id: string;
     product_id: string | null;
@@ -296,6 +335,9 @@ export type PurchaseDetail = {
     vat_rate: number;
     line_total: number;
     add_to_catalog: boolean;
+    /** Catalog cost (GROSS MDL) of the linked product — feeds the edit form's
+     * wrong-currency warning. Null when unlinked or the product has no cost. */
+    known_cost_mdl: number | null;
   }>;
 };
 
@@ -366,22 +408,31 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   let headerRes = await supabase
     .from("purchases")
     .select(
-      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, accountant_entered_at, suppliers(name)" as
+      "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, accountant_sent_at, accountant_entered_at, created_by, created_at, updated_by, updated_at, suppliers(name)" as
         "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
     )
     .eq("id", id)
     .maybeSingle();
-  if (headerRes.error && /accountant_(sent|entered)_at/i.test(headerRes.error.message)) {
+  // Fall back if the accountant / updated_by migrations aren't applied yet.
+  if (headerRes.error && /accountant_(sent|entered)_at|updated_by/i.test(headerRes.error.message)) {
     headerRes = await supabase
       .from("purchases")
       .select(
-        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
+        "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, file_url, po_number, po_issued_at, expected_delivery_date, created_by, created_at, suppliers(name)" as
+          "id, supplier_id, account_scope, document_number, document_date, currency, fx_rate, subtotal, vat_amount, total, status, notes, po_number, po_issued_at, expected_delivery_date, suppliers(name)",
       )
       .eq("id", id)
       .maybeSingle();
   }
   const header = headerRes.data;
   if (!header) return null;
+  const audit = header as {
+    created_by?: string | null;
+    created_at?: string | null;
+    updated_by?: string | null;
+    updated_at?: string | null;
+  };
+  const names = await resolveUserNames(supabase, [audit.created_by, audit.updated_by]);
   // Try with the catalog flag; fall back if the column migration hasn't
   // run yet so detail / edit pages keep loading either way.
   let itemsRes = await supabase
@@ -403,6 +454,15 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
   }
   const items = itemsRes.data;
   const supplier = (header as unknown as { suppliers: { name: string } | null }).suppliers;
+  const linkedIds = Array.from(
+    new Set((items ?? []).map((it) => it.product_id).filter((x): x is string => !!x)),
+  );
+  const { data: costRows } = linkedIds.length
+    ? await supabase.from("products").select("id, cost_price").in("id", linkedIds)
+    : { data: [] as Array<{ id: string; cost_price: number | string | null }> };
+  const knownCost = new Map(
+    (costRows ?? []).map((r) => [r.id, Number(r.cost_price ?? 0) > 0 ? Number(r.cost_price) : null]),
+  );
   return {
     id: header.id,
     supplier_id: header.supplier_id,
@@ -428,6 +488,10 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
         .accountant_entered_at ?? null,
     file_url:
       (header as { file_url?: string | null }).file_url ?? null,
+    created_by_name: audit.created_by ? names.get(audit.created_by) ?? null : null,
+    created_at: audit.created_at ?? null,
+    updated_by_name: audit.updated_by ? names.get(audit.updated_by) ?? null : null,
+    updated_at: audit.updated_by ? audit.updated_at ?? null : null,
     items: (items ?? []).map((it) => ({
       id: it.id,
       product_id: it.product_id,
@@ -443,6 +507,7 @@ export async function getPurchase(id: string): Promise<PurchaseDetail | null> {
       add_to_catalog: Boolean(
         (it as { add_to_catalog?: boolean }).add_to_catalog,
       ),
+      known_cost_mdl: it.product_id ? knownCost.get(it.product_id) ?? null : null,
     })),
   };
 }

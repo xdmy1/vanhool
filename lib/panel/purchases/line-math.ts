@@ -51,3 +51,58 @@ export function purchaseTotals(
   vat_amount = Number(vat_amount.toFixed(2));
   return { subtotal, vat_amount, total: Number((subtotal + vat_amount).toFixed(2)) };
 }
+
+/**
+ * Wrong-currency guard for purchase costs.
+ *
+ * The recurring mistake: a supplier invoice in EUR entered as MDL (or the
+ * reverse), so a part the catalog knows at 6 100 MDL (305 EUR) comes in at
+ * 305 MDL (≈15 EUR). Nothing else in the flow notices — the cost gets
+ * overwritten, every later sale reads as 96% margin and the below-cost guard
+ * lets anything through. A real cost never moves 4× between two purchases;
+ * EUR↔MDL is 20×, USD↔MDL 17×, so the band catches every currency slip and
+ * lets ordinary price changes pass. Shared by the form (inline warning) and
+ * the server action (hard stop until confirmed) so both agree.
+ */
+export const COST_MISMATCH_FACTOR = 4;
+
+export const DEFAULT_FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
+
+/** MDL per 1 unit of `currency`, honouring an explicit document fx_rate. */
+export function purchaseFxToMdl(currency: string | null | undefined, fxRate: number | null | undefined): number {
+  const cur = (currency ?? "MDL").toUpperCase();
+  if (cur === "MDL") return 1;
+  const explicit = Number(fxRate);
+  return explicit > 0 ? explicit : DEFAULT_FX_TO_MDL[cur] ?? 1;
+}
+
+/**
+ * GROSS MDL cost of one unit as typed on a purchase line — the same figure
+ * postPurchase writes into products.cost_price.
+ */
+export function purchaseUnitCostMdl(
+  unitCostNet: number,
+  vatRate: number | null | undefined,
+  currency: string | null | undefined,
+  fxRate: number | null | undefined,
+): number {
+  return Number(
+    (Number(unitCostNet) * (1 + Number(vatRate ?? 0) / 100) * purchaseFxToMdl(currency, fxRate)).toFixed(2),
+  );
+}
+
+/**
+ * How many times the new cost is off from the known one when it falls outside
+ * the accepted band; null when the pair is fine (or either side is unknown).
+ * Always ≥ COST_MISMATCH_FACTOR when returned, regardless of direction.
+ */
+export function costMismatchFactor(
+  newCostMdl: number,
+  knownCostMdl: number | null | undefined,
+): number | null {
+  const known = Number(knownCostMdl ?? 0);
+  const next = Number(newCostMdl);
+  if (!(known > 0) || !(next > 0)) return null;
+  const factor = next >= known ? next / known : known / next;
+  return factor >= COST_MISMATCH_FACTOR ? Number(factor.toFixed(1)) : null;
+}

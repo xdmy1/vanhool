@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { todayISO } from "@/lib/datetime";
-import { Plus, Save, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Save, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { DateInputEU } from "@/components/common/DateInputEU";
 import { CodeGeneratorButton } from "@/components/panel/CodeGeneratorButton";
 import { PriceWithVatHelper } from "@/components/common/PriceWithVatHelper";
+import { CostMismatchModal } from "@/components/panel/purchases/CostMismatchModal";
 import { PurchaseFileUpload } from "@/components/panel/purchases/PurchaseFileUpload";
 import { SplitLineControl } from "@/components/panel/purchases/SplitLineControl";
 import { DecimalInput } from "@/components/common/DecimalInput";
@@ -26,9 +27,16 @@ import {
   checkPurchaseDocNumber,
   createPurchase,
   updatePurchase,
+  type CostMismatch,
   type DuplicatePurchaseInfo,
 } from "@/lib/panel/purchases/actions";
-import { purchaseLine, purchaseTotals } from "@/lib/panel/purchases/line-math";
+import {
+  costMismatchFactor,
+  purchaseFxToMdl,
+  purchaseLine,
+  purchaseTotals,
+  purchaseUnitCostMdl,
+} from "@/lib/panel/purchases/line-math";
 import { searchProducts, type ProductSearchResult } from "@/lib/panel/sales/actions";
 import type { AccountScope } from "@/lib/panel/scope";
 
@@ -75,6 +83,10 @@ type Line = {
    * the internal-code autocomplete. postPurchase increments that product's
    * stock instead of creating a duplicate. */
   product_id: string | null;
+  /** Catalog cost (GROSS MDL) of the linked product, captured when the line
+   * was linked. Drives the inline wrong-currency warning; the server re-checks
+   * by code on save regardless (so a typed-but-not-picked code is covered). */
+  known_cost_mdl?: number | null;
 };
 
 const EMPTY_LINE: Line = {
@@ -90,7 +102,13 @@ const EMPTY_LINE: Line = {
   vat_rate: 0,
   add_to_catalog: false,
   product_id: null,
+  known_cost_mdl: null,
 };
+
+/** Catalog cost as carried by a search suggestion (products.cost_price, GROSS MDL). */
+function knownCostOf(p: ProductSearchResult): number | null {
+  return p.source === "catalog" && Number(p.cost_price) > 0 ? Number(p.cost_price) : null;
+}
 
 export function PurchaseForm({
   locale,
@@ -157,6 +175,9 @@ export function PurchaseForm({
     setLines((prev) => prev.map((l) => ({ ...l, vat_rate: rate })));
   }
   const [pending, startSave] = useTransition();
+  // Lines the server flagged as ≥4× off the catalog cost (wrong currency).
+  const [mismatches, setMismatches] = useState<CostMismatch[] | null>(null);
+  const fxToMdl = purchaseFxToMdl(currency, fxRate);
 
   // GROSS-anchored: each line total = qty × the with-VAT unit price the operator
   // sees, so 30 × 175 = 5250 (not 5249.88 from a rounded net). Shared with the
@@ -177,7 +198,7 @@ export function PurchaseForm({
     setLines(lines.filter((_, i) => i !== idx));
   }
 
-  function submit() {
+  function submit(confirmCostMismatch = false) {
     if (!supplier) {
       toast.error(t("achizitii_supplier_missing"));
       return;
@@ -219,6 +240,7 @@ export function PurchaseForm({
           add_to_catalog: !!l.add_to_catalog,
           product_id: l.product_id ?? null,
         })),
+        confirm_cost_mismatch: confirmCostMismatch,
       };
       const res = isEdit
         ? await updatePurchase(initial!.id, payload)
@@ -227,6 +249,9 @@ export function PurchaseForm({
         toast.success(t("achizitii_saved"));
         const targetId = "id" in res ? res.id : initial!.id;
         router.push(`/${locale}/panel/achizitii/${targetId}`);
+      } else if (res.reason === "cost_mismatch" && res.mismatches?.length) {
+        // Wrong-currency stop: show the lines, let the operator fix or confirm.
+        setMismatches(res.mismatches);
       } else {
         toast.error(t("achizitii_save_error", { reason: res.reason }));
       }
@@ -401,6 +426,7 @@ export function PurchaseForm({
                           // unlinked; postPurchase re-creates/links by code.
                           product_id: p.source === "catalog" ? p.id : null,
                           add_to_catalog: true,
+                          known_cost_mdl: knownCostOf(p),
                         })
                       }
                     />
@@ -415,6 +441,7 @@ export function PurchaseForm({
                             internal_code: code.toUpperCase(),
                             // Typing manually breaks any prior link.
                             product_id: null,
+                            known_cost_mdl: null,
                           })
                         }
                         onPickProduct={(p) =>
@@ -432,6 +459,7 @@ export function PurchaseForm({
                             // implicitly means the catalog already knows
                             // about it — keep the checkbox in sync.
                             add_to_catalog: true,
+                            known_cost_mdl: knownCostOf(p),
                           })
                         }
                       />
@@ -439,7 +467,7 @@ export function PurchaseForm({
                         size="sm"
                         label={t("achizitii_gen_short")}
                         onGenerated={(code) =>
-                          setLine(idx, { internal_code: code, product_id: null })
+                          setLine(idx, { internal_code: code, product_id: null, known_cost_mdl: null })
                         }
                       />
                     </div>
@@ -530,6 +558,26 @@ export function PurchaseForm({
                       placeholder="0.00"
                       className="ml-auto h-9 w-24 text-right"
                     />
+                    {(() => {
+                      // Wrong-currency warning: the typed cost vs what the
+                      // catalog knows for the linked part, both in MDL.
+                      const factor = costMismatchFactor(
+                        purchaseUnitCostMdl(l.unit_cost, l.vat_rate, currency, fxRate),
+                        l.known_cost_mdl,
+                      );
+                      if (factor == null) return null;
+                      const known = Number(l.known_cost_mdl);
+                      const knownDoc =
+                        currency === "MDL"
+                          ? `${known.toFixed(2)} MDL`
+                          : `${(known / fxToMdl).toFixed(2)} ${currency} (${known.toFixed(2)} MDL)`;
+                      return (
+                        <div className="mt-1 flex max-w-[11rem] items-start gap-1 text-left text-[10px] font-medium leading-tight text-destructive">
+                          <AlertTriangle className="mt-0.5 size-3 shrink-0" />
+                          <span>{t("achizitii_cost_warn_inline", { known: knownDoc, factor })}</span>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums">
                     {purchaseLine(l.quantity, l.unit_cost, l.vat_rate).gross.toFixed(2)}
@@ -602,11 +650,24 @@ export function PurchaseForm({
       </section>
 
       <div className="flex justify-end">
-        <Button type="button" onClick={submit} disabled={pending} className="gap-1.5">
+        <Button type="button" onClick={() => submit(false)} disabled={pending} className="gap-1.5">
           <Save className="size-4" />
           {pending ? t("action_saving") : t("achizitii_save_draft")}
         </Button>
       </div>
+
+      {mismatches ? (
+        <CostMismatchModal
+          mismatches={mismatches}
+          currency={currency}
+          pending={pending}
+          onCancel={() => setMismatches(null)}
+          onConfirm={() => {
+            setMismatches(null);
+            submit(true);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

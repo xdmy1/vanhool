@@ -48,6 +48,7 @@ export default async function PanelAchizitiiEditPage({
       vat_rate: it.vat_rate,
       add_to_catalog: it.add_to_catalog,
       product_id: it.product_id ?? null,
+      known_cost_mdl: it.known_cost_mdl,
     })),
   };
 

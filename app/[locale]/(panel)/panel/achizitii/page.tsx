@@ -140,6 +140,7 @@ export default async function PanelAchizitiiPage({
                   <th className="px-4 py-3">{t("achizitii_col_supplier")}</th>
                   <th className="px-4 py-3">{t("achizitii_col_status")}</th>
                   <th className="px-4 py-3 text-right">{t("achizitii_col_total")}</th>
+                  <th className="px-4 py-3">{t("achizitii_col_created_by")}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -163,6 +164,9 @@ export default async function PanelAchizitiiPage({
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {r.total.toFixed(2)} {r.currency}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-strong">
+                      {r.created_by_name ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-2">
