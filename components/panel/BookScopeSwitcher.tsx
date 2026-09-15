@@ -11,7 +11,6 @@ const SCOPE_LOCKED_CONTA1: readonly string[] = [
   "/panel/facturi",
   "/panel/cheltuieli",
   "/panel/export-documente",
-  "/panel/statistici",
 ];
 const SCOPE_LOCKED_CONTA2: readonly string[] = ["/panel/cheltuieli-cash"];
 

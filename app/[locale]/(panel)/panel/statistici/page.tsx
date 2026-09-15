@@ -22,6 +22,7 @@ import {
 } from "@/components/panel/statistici/StatsCharts";
 import { Link } from "@/lib/i18n/routing";
 import { getCashBalance } from "@/lib/panel/cash/actions";
+import { getActiveBook } from "@/lib/panel/scope";
 import {
   reportCashTrend,
   reportConversion,
@@ -79,6 +80,11 @@ export default async function PanelStatisticiPage({
   const rangeKey =
     typeof sp.range === "string" && RANGE_DAYS[sp.range] ? sp.range : "30";
   const days = RANGE_DAYS[rangeKey];
+  // The page follows the topbar book switcher like every other book-aware
+  // panel page. It used to aggregate BOTH books while the switcher sat locked
+  // on "Conta 1" — so the conta2 EUR trade (×20 when normalised to MDL) showed
+  // up under a Conta 1 heading and the totals looked wildly inflated.
+  const scope = await getActiveBook(sp);
 
   const today = todayISO();
   // eslint-disable-next-line react-hooks/purity
@@ -96,6 +102,7 @@ export default async function PanelStatisticiPage({
 
   const [
     salesByDay,
+    curTotals,
     prevTotals,
     profit,
     prevProfit,
@@ -107,16 +114,17 @@ export default async function PanelStatisticiPage({
     openProformaValue,
     cash,
   ] = await Promise.all([
-    reportSalesByDay({ from, to: today }),
-    reportPeriodTotals({ from: prevFrom, to: prevTo }),
-    reportProfitSummary({ from, to: today }, undefined, 8),
-    reportProfitSummary({ from: prevFrom, to: prevTo }, undefined, 1),
-    reportTopProducts({ from, to: today }, undefined, 8),
-    reportTopClients({ from, to: today }, undefined, 6),
+    reportSalesByDay({ from, to: today }, scope),
+    reportPeriodTotals({ from, to: today }, scope),
+    reportPeriodTotals({ from: prevFrom, to: prevTo }, scope),
+    reportProfitSummary({ from, to: today }, scope, 8),
+    reportProfitSummary({ from: prevFrom, to: prevTo }, scope, 1),
+    reportTopProducts({ from, to: today }, scope, 8),
+    reportTopClients({ from, to: today }, scope, 6),
     reportCashTrend({ from, to: today }),
-    reportReceivablesAging(),
-    reportConversion({ from, to: today }),
-    reportOpenProformaValue(),
+    reportReceivablesAging(scope),
+    reportConversion({ from, to: today }, scope),
+    reportOpenProformaValue(scope),
     getCashBalance("main"),
   ]);
 
@@ -124,6 +132,12 @@ export default async function PanelStatisticiPage({
   const orders = salesByDay.reduce((s, r) => s + r.orders, 0);
   const aov = orders > 0 ? revenue / orders : 0;
   const prevAov = prevTotals.orders > 0 ? prevTotals.revenue / prevTotals.orders : 0;
+  // Foreign-currency documents are normalised to MDL (EUR=20, USD=17) so the
+  // charts have one unit. Spell out the raw composition next to the headline
+  // so "220.800 MDL" is readable as "10.980 EUR + 1.200 MDL".
+  const revenueMix = Object.entries(curTotals.byCurrency).filter(
+    ([cur, n]) => cur !== "MDL" && Math.abs(n) > 0.005,
+  );
 
   const chartData = days > 45 ? toWeekly(salesByDay) : salesByDay;
   const revSpark = salesByDay.map((r) => ({ v: r.gross }));
@@ -158,7 +172,7 @@ export default async function PanelStatisticiPage({
             {rangeChips.map((c) => (
               <a
                 key={c.id}
-                href={`?range=${c.id}`}
+                href={`?range=${c.id}&book=${scope}`}
                 className={cn(
                   "inline-flex h-9 items-center rounded-md border px-3 text-xs font-medium transition-colors",
                   rangeKey === c.id
@@ -181,6 +195,11 @@ export default async function PanelStatisticiPage({
           value={fmtMoney(revenue)}
           delta={deltaPct(revenue, prevTotals.revenue)}
           spark={revSpark}
+          note={
+            revenueMix.length
+              ? `= ${fmtByCurrency(curTotals.byCurrency)}`
+              : undefined
+          }
           accent
         />
         <KpiCard

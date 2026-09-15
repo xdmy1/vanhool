@@ -60,21 +60,34 @@ export async function getCashBalance(
   // movements don't inflate the till balance by ~20x. Older rows that
   // somehow miss amount_mdl fall back to amount — only happens before the
   // migration ran. The currency column lets us double-check.
-  const { data } = await supabase
-    .from("cash_register_movements")
-    .select("direction, amount, amount_mdl, currency")
-    .eq("drawer", drawer);
-  let balance = 0;
-  for (const m of (data ?? []) as Array<{
+  type Row = {
     direction: string;
     amount: number | null;
     amount_mdl?: number | null;
     currency?: string | null;
-  }>) {
+  };
+  const primary = await supabase
+    .from("cash_register_movements")
+    .select("direction, amount, amount_mdl, currency")
+    .eq("drawer", drawer);
+  let rows: Row[] = (primary.data ?? []) as unknown as Row[];
+  // Until sql/supabase-cash-currency-migration.sql is applied those columns
+  // don't exist, the select errors and the balance silently read 0 while the
+  // movement list on /panel/cheltuieli-cash still showed rows. Fall back to
+  // the legacy columns so the two never disagree.
+  if (primary.error && /amount_mdl|currency|does not exist/i.test(primary.error.message)) {
+    const legacy = await supabase
+      .from("cash_register_movements")
+      .select("direction, amount")
+      .eq("drawer", drawer);
+    rows = (legacy.data ?? []) as Row[];
+  }
+  let balance = 0;
+  for (const m of rows) {
     const v = m.amount_mdl != null ? Number(m.amount_mdl) : Number(m.amount ?? 0);
     balance += m.direction === "in" ? v : -v;
   }
-  return { balance: Number(balance.toFixed(2)), movements_count: (data ?? []).length };
+  return { balance: Number(balance.toFixed(2)), movements_count: rows.length };
 }
 
 export type CashMovementRow = {

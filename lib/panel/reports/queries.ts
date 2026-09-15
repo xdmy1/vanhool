@@ -225,14 +225,23 @@ export type CashTrendRow = { day: string; net: number; balance: number };
 
 export async function reportCashTrend(range: DateRange): Promise<CashTrendRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("cash_register_movements")
-    .select("occurred_at, direction, amount, amount_mdl")
-    .gte("occurred_at", `${range.from}T00:00:00`)
-    .lt("occurred_at", `${range.to}T23:59:59.999`)
-    .order("occurred_at");
+  const query = (cols: string) =>
+    supabase
+      .from("cash_register_movements")
+      .select(cols)
+      .gte("occurred_at", `${range.from}T00:00:00`)
+      .lt("occurred_at", `${range.to}T23:59:59.999`)
+      .order("occurred_at");
+  let { data, error } = await query("occurred_at, direction, amount, amount_mdl");
+  // Until sql/supabase-cash-currency-migration.sql is applied the amount_mdl
+  // column doesn't exist and the select above errors → the chart silently
+  // rendered "no data" even though the drawer has movements. Fall back to the
+  // legacy columns so the trend still shows what IS recorded.
+  if (error && /amount_mdl|does not exist/i.test(error.message)) {
+    ({ data, error } = await query("occurred_at, direction, amount"));
+  }
   const byDay = new Map<string, number>();
-  for (const m of (data ?? []) as Array<{
+  for (const m of ((data ?? []) as unknown) as Array<{
     occurred_at: string | null;
     direction: string;
     amount: number | null;
@@ -329,7 +338,13 @@ export type InvoiceExportRow = {
 };
 
 // ---------- Period totals (headline KPI + period-over-period delta) ----------
-export type PeriodTotals = { revenue: number; orders: number; aov: number };
+export type PeriodTotals = {
+  revenue: number;
+  orders: number;
+  aov: number;
+  /** Raw document totals per currency (NOT normalised) — what `revenue` is made of. */
+  byCurrency: Record<string, number>;
+};
 
 /** Revenue (MDL-normalised), order count and average order value for a range. */
 export async function reportPeriodTotals(
@@ -338,14 +353,19 @@ export async function reportPeriodTotals(
 ): Promise<PeriodTotals> {
   const rows = await fetchOrdersInRange({ range, scope });
   let revenue = 0;
+  const byCurrency: Record<string, number> = {};
   for (const o of rows) {
-    revenue += toMdl(Number(o.total ?? 0), (o as { currency?: string | null }).currency);
+    const cur = ((o as { currency?: string | null }).currency ?? "MDL").toUpperCase();
+    const t = Number(o.total ?? 0);
+    revenue += toMdl(t, cur);
+    byCurrency[cur] = Number(((byCurrency[cur] ?? 0) + t).toFixed(2));
   }
   const orders = rows.length;
   return {
     revenue: Number(revenue.toFixed(2)),
     orders,
     aov: orders > 0 ? Number((revenue / orders).toFixed(2)) : 0,
+    byCurrency,
   };
 }
 
@@ -463,16 +483,17 @@ export type AgingBucket = {
   byCurrency: Record<string, number>;
   count: number;
 };
-export async function reportReceivablesAging(): Promise<{
+export async function reportReceivablesAging(scope?: AccountScope): Promise<{
   buckets: AgingBucket[];
   totalByCurrency: Record<string, number>;
 }> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let q = supabase
     .from("invoices")
     .select("issued_date, currency, total, paid_amount, status, paid_at")
-    .eq("type", "invoice")
-    .limit(1000);
+    .eq("type", "invoice");
+  if (scope) q = q.eq("account_scope", scope);
+  const { data } = await q.limit(1000);
   const defs: Array<{ key: string; minDays: number; maxDays: number | null }> = [
     { key: "0-30", minDays: 0, maxDays: 30 },
     { key: "31-60", minDays: 31, maxDays: 60 },
@@ -519,23 +540,30 @@ export type ConversionStats = {
   invoicesPaid: number;
   paidRate: number;
 };
-export async function reportConversion(range: DateRange): Promise<ConversionStats> {
+export async function reportConversion(
+  range: DateRange,
+  scope?: AccountScope,
+): Promise<ConversionStats> {
   const supabase = await createClient();
+  let pfQ = supabase
+    .from("invoices")
+    .select("status, converted_to_invoice_id")
+    .eq("type", "proforma")
+    .gte("issued_date", range.from)
+    .lte("issued_date", range.to);
+  let invQ = supabase
+    .from("invoices")
+    .select("status, paid_at")
+    .eq("type", "invoice")
+    .gte("issued_date", range.from)
+    .lte("issued_date", range.to);
+  if (scope) {
+    pfQ = pfQ.eq("account_scope", scope);
+    invQ = invQ.eq("account_scope", scope);
+  }
   const [{ data: pf }, { data: inv }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select("status, converted_to_invoice_id")
-      .eq("type", "proforma")
-      .gte("issued_date", range.from)
-      .lte("issued_date", range.to)
-      .limit(2000),
-    supabase
-      .from("invoices")
-      .select("status, paid_at")
-      .eq("type", "invoice")
-      .gte("issued_date", range.from)
-      .lte("issued_date", range.to)
-      .limit(2000),
+    pfQ.limit(2000),
+    invQ.limit(2000),
   ]);
   const proformasIssued = (pf ?? []).length;
   const proformasConverted = (pf ?? []).filter(
@@ -561,14 +589,17 @@ export async function reportConversion(range: DateRange): Promise<ConversionStat
 }
 
 // ---------- Open proforma value (per currency) ----------
-export async function reportOpenProformaValue(): Promise<Record<string, number>> {
+export async function reportOpenProformaValue(
+  scope?: AccountScope,
+): Promise<Record<string, number>> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let q = supabase
     .from("invoices")
     .select("currency, total, status")
     .eq("type", "proforma")
-    .eq("status", "sent")
-    .limit(1000);
+    .eq("status", "sent");
+  if (scope) q = q.eq("account_scope", scope);
+  const { data } = await q.limit(1000);
   const out: Record<string, number> = {};
   for (const r of (data ?? []) as Array<{ currency: string | null; total: number | null }>) {
     const cur = (r.currency ?? "MDL").toUpperCase();
