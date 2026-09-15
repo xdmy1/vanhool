@@ -62,13 +62,18 @@ export default async function PanelInvoiceDetailPage({
   const invoice = await getInvoice(id);
   if (!invoice || invoice.type !== "invoice") notFound();
 
-  // Legacy snapshots predate the cost_price field. Fall back to the
-  // most recent unit_cost on a matching purchase_item (normalized
-  // part_code match) so the admin-only margin columns still light up.
-  const costFallback = await buildCostFallbackByCode(invoice.items_snapshot);
+  // A line's stored cost_price is the cost of the product / purchase line the
+  // operator actually picked (or typed) and stays as-is on recent documents.
+  // The by-code lookup only fills lines WITHOUT a trusted cost: legacy
+  // snapshots (pre-gross convention) and hand-typed lines with no cost.
+  const costFallback = await buildCostFallbackByCode(
+    invoice.items_snapshot,
+    invoice.issued_date,
+  );
   invoice.items_snapshot = applyCostFallback(
     invoice.items_snapshot,
     costFallback,
+    invoice.issued_date,
   );
   // Snapshot cost_price is GROSS MDL; convert to the doc currency so the admin
   // Cost/Marjă columns match the doc-currency prices (an MDL cost on an EUR

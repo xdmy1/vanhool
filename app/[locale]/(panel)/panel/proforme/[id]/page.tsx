@@ -37,14 +37,18 @@ export default async function PanelProformaDetailPage({
   const proforma = await getInvoice(id);
   if (!proforma || proforma.type !== "proforma") notFound();
 
-  // Fill in cost_price for legacy snapshot lines by looking up part
-  // codes in historical purchase_items. Lines that already carry a
-  // cost on the snapshot keep theirs; this only covers the older
-  // proformas that pre-date the field.
-  const costFallback = await buildCostFallbackByCode(proforma.items_snapshot);
+  // A line's stored cost_price is the cost of the product / purchase line the
+  // operator actually picked (or typed) and stays as-is on recent documents.
+  // The by-code lookup only fills lines WITHOUT a trusted cost: legacy
+  // snapshots (pre-gross convention) and hand-typed lines with no cost.
+  const costFallback = await buildCostFallbackByCode(
+    proforma.items_snapshot,
+    proforma.issued_date,
+  );
   proforma.items_snapshot = applyCostFallback(
     proforma.items_snapshot,
     costFallback,
+    proforma.issued_date,
   );
   // Snapshot cost_price is GROSS MDL (both the form and the fallback store MDL).
   // Convert to the document currency so the admin Cost/Marjă columns sit on the

@@ -8,8 +8,40 @@ import type { InvoiceItemSnapshot } from "./queries";
 const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
 
 /**
+ * Documents issued on/after this date carry a snapshot `cost_price` that is
+ * GROSS MDL, captured from the exact source the operator picked on the line
+ * (a catalog product, or ONE specific purchase line from "Din achiziții"),
+ * possibly hand-edited on the form. That stored cost is the truth for the
+ * line and must never be replaced by a catalog lookup: the same code can be
+ * bought at 252.30 on one purchase and 264.00 on another (or even sit on two
+ * catalog products), and the operator chose which one they are selling.
+ *
+ * Before this date snapshots could still hold the legacy NET cost, so the
+ * code-based lookup keeps overriding them there (the historical behaviour).
+ */
+const SNAPSHOT_COST_TRUSTED_SINCE = "2026-07-08";
+
+/**
+ * True when the stored snapshot cost on this line is authoritative and the
+ * by-code lookup must leave it alone. `issuedDate` is the document's
+ * issued_date (YYYY-MM-DD); undefined/null = unknown = treat as legacy.
+ */
+export function snapshotCostIsAuthoritative(
+  item: Pick<InvoiceItemSnapshot, "cost_price">,
+  issuedDate: string | null | undefined,
+): boolean {
+  if (!issuedDate) return false;
+  if (String(issuedDate).slice(0, 10) < SNAPSHOT_COST_TRUSTED_SINCE) return false;
+  const cost = Number(item.cost_price ?? 0);
+  return Number.isFinite(cost) && cost > 0;
+}
+
+/**
  * Look up the REAL (gross, cash-out) cost per part_code so the admin-only
- * "Cost / Marjă" columns reflect what the operator actually paid.
+ * "Cost / Marjă" columns reflect what the operator actually paid — for the
+ * lines that DON'T already carry a trusted cost on the snapshot (see
+ * `snapshotCostIsAuthoritative`): legacy documents, and lines typed by hand
+ * without any cost.
  *
  * ALWAYS returns GROSS **MDL** (the app's canonical cost currency). The detail
  * views convert MDL → the document's currency for display; returning MDL here
@@ -24,14 +56,16 @@ const FX_TO_MDL: Record<string, number> = { MDL: 1, EUR: 20, USD: 17 };
  *     to MDL via the purchase's OWN currency/fx (newest row wins).
  *
  * Lookup is normalized — "317 330" matches "317330" / "317-330".
- * Runs against EVERY snapshot item so the digital admin view never leaks a
- * stale NET / wrong-currency number.
  */
 export async function buildCostFallbackByCode(
   items: InvoiceItemSnapshot[],
+  issuedDate?: string | null,
 ): Promise<Map<string, number>> {
   const wantedRaw: string[] = [];
   for (const it of items) {
+    // A trusted stored cost is never looked up — the lookup is by CODE and
+    // would happily return another purchase's (or another product's) cost.
+    if (snapshotCostIsAuthoritative(it, issuedDate)) continue;
     const norm = normalizeCode(it.partCode ?? "");
     if (norm) wantedRaw.push(norm);
   }
@@ -119,18 +153,22 @@ export async function buildCostFallbackByCode(
 }
 
 /**
- * Apply the gross-cost fallback to a snapshot array. Fallback ALWAYS
- * wins when a matching part_code is found, because the snapshot's
- * stored cost_price may be from the older NET convention. Items
- * without a part_code or without a purchase match keep their
- * snapshot value (could be 0 / null).
+ * Apply the gross-cost fallback to a snapshot array.
+ *
+ * A line whose stored cost is trusted (`snapshotCostIsAuthoritative`) keeps
+ * it untouched — that is the cost of the purchase / product the operator
+ * actually picked. Every other line takes the by-code fallback when one was
+ * found (legacy NET snapshots, lines without a cost); lines with no match
+ * keep their snapshot value (could be 0 / null).
  */
 export function applyCostFallback(
   items: InvoiceItemSnapshot[],
   fallback: Map<string, number>,
+  issuedDate?: string | null,
 ): InvoiceItemSnapshot[] {
   if (fallback.size === 0) return items;
   return items.map((it) => {
+    if (snapshotCostIsAuthoritative(it, issuedDate)) return it;
     const norm = normalizeCode(it.partCode ?? "");
     const found = fallback.get(norm);
     if (found == null) return it;
