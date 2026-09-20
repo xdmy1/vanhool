@@ -23,23 +23,34 @@ export async function GET(req: NextRequest): Promise<Response> {
   const id = searchParams.get("id");
   const token = searchParams.get("t");
 
-  if ((kind !== "invoice" && kind !== "purchase") || !id || !token) {
+  if (
+    (kind !== "invoice" && kind !== "purchase" && kind !== "return") ||
+    !id ||
+    !token
+  ) {
     return page("Link invalid", "Linkul nu este complet sau corect.", false);
   }
   if (!verifyAccountantEnteredToken(kind as AccountantDocKind, id, token)) {
     return page("Link invalid", "Semnătura linkului nu este validă.", false);
   }
 
-  const table = kind === "invoice" ? "invoices" : "purchases";
+  // A factură de retur is several document_returns lines under one number —
+  // the stamp goes on all of them; invoices / purchases are one row by id.
+  const table =
+    kind === "invoice" ? "invoices" : kind === "purchase" ? "purchases" : "document_returns";
+  const idCol = kind === "return" ? "return_number" : "id";
   // The accountant_entered_at column isn't in the generated types — use the
   // untyped client so the dynamic table + column don't fight the compiler.
   const admin = getSupabaseAdmin() as unknown as SupabaseClient;
 
-  const { data: existing, error: readErr } = await admin
+  const { data: rows, error: readErr } = await admin
     .from(table)
     .select("accountant_entered_at")
-    .eq("id", id)
-    .maybeSingle();
+    .eq(idCol, id)
+    .order("accountant_entered_at", { ascending: true, nullsFirst: true })
+    .limit(1);
+  // Nulls first: `existing` is an un-entered line if the document has any.
+  const existing = rows?.[0];
 
   if (readErr) {
     return page(
@@ -65,7 +76,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const { error: updErr } = await admin
     .from(table)
     .update({ accountant_entered_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq(idCol, id);
   if (updErr) {
     return page("Eroare", "Nu am putut salva starea. Anunță Inter Bus.", false);
   }

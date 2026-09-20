@@ -488,6 +488,7 @@ export default async function PanelInvoiceDetailPage({
             originalTotal={invoice.total}
             currency={invoice.currency}
             kind="invoice"
+            locale={locale}
           />
         </div>
       </div>

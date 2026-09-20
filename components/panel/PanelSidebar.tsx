@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   Tags,
   Truck,
+  Undo2,
   Users,
   Wallet,
 } from "lucide-react";
@@ -51,6 +52,7 @@ type SidebarLabels = {
   achizitii: string;
   proforme: string;
   facturi: string;
+  retururi: string;
   reconciliere: string;
   fiseLivrare: string;
   cheltuieli: string;
@@ -100,6 +102,7 @@ export function PanelSidebar({
     { href: "/panel/achizitii", icon: ClipboardList, label: labels.achizitii },
     { href: "/panel/proforme", icon: FileSignature, label: labels.proforme },
     { href: "/panel/facturi", icon: Receipt, label: labels.facturi },
+    { href: "/panel/retururi", icon: Undo2, label: labels.retururi },
     { href: "/panel/facturi/reconciliere", icon: Landmark, label: labels.reconciliere },
     { href: "/panel/fisa-de-livrare", icon: Truck, label: labels.fiseLivrare },
     { href: "/panel/cheltuieli", icon: FileText, label: labels.cheltuieli },

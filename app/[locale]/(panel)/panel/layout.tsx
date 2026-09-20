@@ -70,6 +70,7 @@ export default async function PanelLayout({
     achizitii: tPanel("nav_achizitii"),
     proforme: tPanel("nav_proforme"),
     facturi: tPanel("nav_facturi"),
+    retururi: tPanel("nav_retururi"),
     reconciliere: tPanel("nav_reconciliere"),
     fiseLivrare: tPanel("nav_fise_livrare"),
     cheltuieli: tPanel("nav_cheltuieli"),

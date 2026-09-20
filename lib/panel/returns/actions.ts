@@ -5,6 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPanelUser } from "@/lib/panel/auth";
+import { verifyAdminPin } from "@/lib/panel/admin-pin";
+import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
+import { RETURN_COLS, RETURN_COLS_BASE, getReturnInvoice } from "@/lib/panel/returns/queries";
+import { accountantReturnEmail } from "@/lib/email/accountant-return";
+import { sendResendEmail } from "@/lib/email/resend";
+import { dateISO } from "@/lib/datetime";
 import { roundStock } from "@/lib/stock";
 import {
   applyStockMovement,
@@ -15,6 +21,11 @@ import {
 } from "@/lib/stock-ledger";
 
 const r2 = (n: number) => Number(n.toFixed(2));
+
+// Bookkeeper inbox — shared with lib/panel/invoices/actions.ts. Override via
+// env (ACCOUNTANT_EMAIL) if it needs rotating without a redeploy.
+const ACCOUNTANT_EMAIL =
+  process.env.ACCOUNTANT_EMAIL || "Accounting-em@mail.ru";
 
 /**
  * Total quantity already returned against one line of a parent document.
@@ -60,6 +71,10 @@ export type DocumentReturn = {
   account_scope: string | null;
   reason: string | null;
   created_at: string;
+  /** Factură de retur this line belongs to — null until sql/return-invoices.sql. */
+  return_number: number | null;
+  accountant_sent_at: string | null;
+  accountant_entered_at: string | null;
 };
 
 /**
@@ -73,19 +88,57 @@ export async function getReturnsFor(
   parentId: string,
 ): Promise<DocumentReturn[]> {
   try {
-    const { data, error } = await getSupabaseAdmin()
-      .from("document_returns")
-      .select(
-        "id, parent_type, parent_id, line_ref, product_id, part_code, name, quantity, unit_amount, vat_rate, net_amount, vat_amount, total, currency, account_scope, reason, created_at",
-      )
-      .eq("parent_type", parentType)
-      .eq("parent_id", parentId)
-      .order("created_at", { ascending: true });
-    if (error) return [];
-    return (data ?? []) as DocumentReturn[];
+    const load = (cols: string) =>
+      getSupabaseAdmin()
+        .from("document_returns")
+        .select(cols)
+        .eq("parent_type", parentType)
+        .eq("parent_id", parentId)
+        .order("created_at", { ascending: true });
+    let res = await load(RETURN_COLS);
+    // Retry without the return-invoice columns if sql/return-invoices.sql
+    // isn't applied yet — the annex keeps rendering, just without numbers.
+    if (res.error) res = await load(RETURN_COLS_BASE);
+    if (res.error) return [];
+    return ((res.data ?? []) as unknown as Array<Partial<DocumentReturn>>).map(
+      (r) =>
+        ({
+          return_number: null,
+          accountant_sent_at: null,
+          accountant_entered_at: null,
+          ...r,
+        }) as DocumentReturn,
+    );
   } catch {
     return [];
   }
+}
+
+/**
+ * The return invoice a new line should join: the one still OPEN on this parent
+ * — started today (Chișinău day) and not yet sent to the accountant. Three
+ * «Retur» clicks on one purchase = one factură de retur. Null → the DB default
+ * allocates a fresh number (also the pre-migration path: the column is missing,
+ * the select errors, the insert goes out without return_number as before).
+ */
+async function openReturnNumber(
+  parentType: "invoice" | "purchase",
+  parentId: string,
+): Promise<number | null> {
+  const { data, error } = await getSupabaseAdmin()
+    .from("document_returns")
+    .select("return_number, created_at" as "created_at")
+    .eq("parent_type", parentType)
+    .eq("parent_id", parentId)
+    .is("accountant_sent_at" as "created_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) return null;
+  const last = (data ?? [])[0] as unknown as
+    | { return_number: number | string | null; created_at: string }
+    | undefined;
+  if (!last || last.return_number == null) return null;
+  return dateISO(new Date(last.created_at)) === dateISO() ? Number(last.return_number) : null;
 }
 
 // Product resolution and stock movement are shared with the sale/void paths
@@ -169,12 +222,15 @@ export async function createInvoiceLineReturn(
     line,
   );
 
+  const joinNumber = await openReturnNumber("invoice", invoiceId);
+
   // Row first, stock second: the movement's ref is keyed by the row id, so a
   // crash between the two leaves an annex with stock_adjusted=false (visible,
   // re-creatable) instead of untracked stock.
   const { data: row, error } = await getSupabaseAdmin()
     .from("document_returns")
     .insert({
+      ...(joinNumber != null ? { return_number: joinNumber } : {}),
       parent_type: "invoice",
       parent_id: invoiceId,
       line_ref: String(lineIndex),
@@ -241,6 +297,7 @@ export async function createInvoiceLineReturn(
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
+  revalidatePath("/[locale]/panel/retururi", "page");
   return { ok: true, id: returnId };
 }
 
@@ -340,9 +397,12 @@ export async function createPurchaseLineReturn(
   const gross = r2(net + vat);
   const unitAmount = r2(qty > 0 ? gross / qty : 0);
 
+  const joinNumber = await openReturnNumber("purchase", purchaseId);
+
   const { data: row, error } = await getSupabaseAdmin()
     .from("document_returns")
     .insert({
+      ...(joinNumber != null ? { return_number: joinNumber } : {}),
       parent_type: "purchase",
       parent_id: purchaseId,
       line_ref: it.id,
@@ -402,6 +462,7 @@ export async function createPurchaseLineReturn(
 
   revalidatePath("/[locale]/panel/achizitii", "page");
   revalidatePath(`/[locale]/panel/achizitii/${purchaseId}`, "page");
+  revalidatePath("/[locale]/panel/retururi", "page");
   return { ok: true, id: returnId };
 }
 
@@ -492,8 +553,30 @@ export async function deleteReturn(
     }
   }
 
+  // Best-effort (columns exist only after sql/return-invoices.sql): which
+  // factură de retur this line sits on, and whether the accountant has it.
+  const { data: docMeta } = await admin
+    .from("document_returns")
+    .select("return_number, accountant_sent_at" as "id")
+    .eq("id", returnId)
+    .maybeSingle();
+  const meta = docMeta as unknown as {
+    return_number: number | string | null;
+    accountant_sent_at: string | null;
+  } | null;
+
   const { error } = await admin.from("document_returns").delete().eq("id", returnId);
   if (error) return { ok: false, reason: error.message };
+
+  // The accountant holds a version of this return invoice that still has the
+  // cancelled line. Flip what's left back to «netrimis» so the panel shows it
+  // must be sent again, instead of a green "Trimis / Introdus" on a changed doc.
+  if (meta?.return_number != null && meta.accountant_sent_at) {
+    await admin
+      .from("document_returns")
+      .update({ accountant_sent_at: null, accountant_entered_at: null } as never)
+      .eq("return_number" as "id", meta.return_number as never);
+  }
 
   if (r.parent_type === "invoice") {
     revalidatePath("/[locale]/panel/facturi", "page");
@@ -502,5 +585,67 @@ export async function deleteReturn(
     revalidatePath("/[locale]/panel/achizitii", "page");
     revalidatePath(`/[locale]/panel/achizitii/${r.parent_id}`, "page");
   }
+  revalidatePath("/[locale]/panel/retururi", "page");
   return { ok: true };
+}
+
+/**
+ * Forward one factură de retur to the bookkeeper — on its own, because the
+ * parent invoice / purchase has usually been sent (and entered) long before
+ * the goods came back. Same rule as the parent's own send: a purchase return
+ * goes out for conta1 only. Stamps accountant_sent_at on every line, which
+ * also CLOSES the return invoice: a later «Retur» on the same document opens
+ * a new number instead of changing one the accountant already holds.
+ */
+export async function sendReturnToAccountant(
+  returnNumber: string,
+  pin: string,
+): Promise<{ ok: true; sentAt: string } | { ok: false; reason: string }> {
+  const user = await getPanelUser();
+  if (!user) return { ok: false, reason: "unauthorized" };
+  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
+
+  const ret = await getReturnInvoice(Number(returnNumber));
+  if (!ret) return { ok: false, reason: "return_not_found" };
+  if (ret.kind === "purchase" && ret.account_scope !== "conta1") {
+    return { ok: false, reason: "conta1_only" };
+  }
+
+  // Net position of the parent counts EVERY return on it, not just this one.
+  const allReturns = await getReturnsFor(ret.kind, ret.parent_id);
+  const parentReturnsTotal = r2(allReturns.reduce((s, r) => s + Number(r.total ?? 0), 0));
+
+  const { subject, html, text } = accountantReturnEmail(ret, {
+    markEnteredUrl: accountantMarkEnteredUrl("return", String(ret.number)),
+    parentReturnsTotal,
+  });
+  const result = await sendResendEmail({
+    to: ACCOUNTANT_EMAIL,
+    subject,
+    html,
+    text,
+    replyTo: user.email ? { email: user.email } : undefined,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  const sentAt = new Date().toISOString();
+  const { error: stampErr } = await getSupabaseAdmin()
+    .from("document_returns")
+    .update({ accountant_sent_at: sentAt } as never)
+    .eq("return_number" as "id", ret.number as never);
+  // The email already went out — a failed stamp must not read as a failed send
+  // (the operator would re-send a duplicate). Log and report success.
+  if (stampErr) {
+    console.warn("[panel.returns] accountant_sent_at stamp failed:", stampErr.message);
+  }
+
+  revalidatePath("/[locale]/panel/retururi", "page");
+  revalidatePath(`/[locale]/panel/retururi/${ret.number}`, "page");
+  revalidatePath(
+    ret.kind === "invoice"
+      ? `/[locale]/panel/facturi/${ret.parent_id}`
+      : `/[locale]/panel/achizitii/${ret.parent_id}`,
+    "page",
+  );
+  return { ok: true, sentAt };
 }

@@ -264,6 +264,8 @@ export default async function PanelAchizitieDetailPage({
           originalTotal={purchase.total}
           currency={purchase.currency}
           kind="purchase"
+          locale={locale}
+          canSend={purchase.account_scope === "conta1"}
         />
 
         {purchase.notes ? (

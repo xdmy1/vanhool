@@ -8,7 +8,8 @@ import crypto from "node:crypto";
  * `${kind}:${id}` — only a link we generated can flip the state. No expiry
  * (the accountant may act days later); the action is idempotent + harmless.
  */
-export type AccountantDocKind = "invoice" | "purchase";
+/** `return` ids are the factură de retur NUMBER (its lines share the stamp). */
+export type AccountantDocKind = "invoice" | "purchase" | "return";
 
 const SECRET =
   process.env.ACCOUNTANT_LINK_SECRET ||

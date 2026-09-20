@@ -12,17 +12,33 @@ import { TIMEZONE } from "@/lib/datetime";
 
 const STORAGE_PREFIX = "panel.accountant_sent.";
 
+type SendAction = (
+  id: string,
+  pin: string,
+) => Promise<{ ok: true; sentAt: string } | { ok: false; reason: string }>;
+
 export function SendToAccountantButton({
   invoiceId,
   initialSentAt,
   enteredAt = null,
   compact = false,
+  action = sendInvoiceToAccountant,
+  localFallback = true,
 }: {
+  /** Invoice id — or whatever id `action` takes (a factură de retur number). */
   invoiceId: string;
   initialSentAt: string | null;
   /** Set once the accountant clicks "Marchează ca INTRODUS" in the email. */
   enteredAt?: string | null;
   compact?: boolean;
+  /** Server action doing the send. Defaults to the invoice send. */
+  action?: SendAction;
+  /**
+   * Remember "sent" in localStorage for when accountant_sent_at isn't migrated.
+   * Off for return invoices: their sent state can be RESET server-side (a line
+   * cancelled after sending), and a cached "sent" would mask that.
+   */
+  localFallback?: boolean;
 }) {
   const t = useTranslations("panel");
   const router = useRouter();
@@ -34,11 +50,11 @@ export function SendToAccountantButton({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (initialSentAt) return;
+    if (initialSentAt || !localFallback) return;
     if (typeof window === "undefined") return;
     const cached = window.localStorage.getItem(STORAGE_PREFIX + invoiceId);
     if (cached) setSentAt(cached);
-  }, [initialSentAt, invoiceId]);
+  }, [initialSentAt, invoiceId, localFallback]);
 
   useEffect(() => {
     if (open) {
@@ -68,10 +84,10 @@ export function SendToAccountantButton({
       return;
     }
     startTransition(async () => {
-      const res = await sendInvoiceToAccountant(invoiceId, pin.trim());
+      const res = await action(invoiceId, pin.trim());
       if (res.ok) {
         setSentAt(res.sentAt);
-        if (typeof window !== "undefined") {
+        if (localFallback && typeof window !== "undefined") {
           window.localStorage.setItem(STORAGE_PREFIX + invoiceId, res.sentAt);
         }
         toast.success(t("accountant_send_success"));
