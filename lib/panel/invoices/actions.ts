@@ -1963,47 +1963,6 @@ export async function sendConta1InvoicesMonthly(
 }
 
 /**
- * Bulk-forward proformas in a date range. By design includes both
- * books — proformas aren't fiscal so the conta split is less load-
- * bearing here.
- */
-export async function sendProformasMonthly(
-  from: string,
-  to: string,
-  pin: string,
-): Promise<
-  | { ok: true; count: number; sentAt: string }
-  | { ok: false; reason: string }
-> {
-  const user = await getPanelUser();
-  if (!user) return { ok: false, reason: "unauthorized" };
-  if (!verifyAdminPin(pin)) return { ok: false, reason: "bad_pin" };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-    return { ok: false, reason: "bad_range" };
-  }
-  const { getDocumentsForRange } = await import("@/lib/panel/invoices/queries");
-  const { accountantMonthlyDocumentsEmail } = await import(
-    "@/lib/email/accountant-monthly-documents"
-  );
-  const data = await getDocumentsForRange({ type: "proforma", from, to });
-  if (data.count === 0) return { ok: false, reason: "empty_range" };
-
-  const { subject, html, text } = accountantMonthlyDocumentsEmail({
-    type: "proforma",
-    ...data,
-  });
-  const result = await sendResendEmail({
-    to: ACCOUNTANT_EMAIL,
-    subject,
-    html,
-    text,
-    replyTo: user.email ? { email: user.email } : undefined,
-  });
-  if (!result.ok) return { ok: false, reason: result.reason };
-  return { ok: true, count: data.count, sentAt: new Date().toISOString() };
-}
-
-/**
  * Hard-delete an invoice or proforma row. Used by the admin "Șterge"
  * action on /panel/facturi and /panel/proforme — gated by the admin PIN.
  * Unlinks references first so FK constraints don't block the delete.
@@ -2142,10 +2101,11 @@ export async function deleteInvoiceWithPin(
 }
 
 /**
- * Forward an invoice / proforma to the bookkeeper's inbox. Records the
- * timestamp on the row so the button can flip from "trimite" (green) to
- * "trimis · re-trimite" (yellow). Re-sends are allowed — every click
- * pushes a new email and bumps the timestamp.
+ * Forward an invoice to the bookkeeper's inbox. Records the timestamp on the
+ * row so the button can flip from "trimite" (green) to "trimis · re-trimite"
+ * (yellow). Re-sends are allowed — every click pushes a new email and bumps
+ * the timestamp. Invoices only: proformas never go to the accountant (only
+ * facturi and achiziții do), so there is no send / Introdus state on them.
  */
 export async function sendInvoiceToAccountant(
   invoiceId: string,
@@ -2161,6 +2121,7 @@ export async function sendInvoiceToAccountant(
   const { getInvoice } = await import("@/lib/panel/invoices/queries");
   const invoice = await getInvoice(invoiceId);
   if (!invoice) return { ok: false, reason: "invoice_not_found" };
+  if (invoice.type !== "invoice") return { ok: false, reason: "not_an_invoice" };
 
   // Enrich each line with the supplier's own part code (from the purchase) so
   // the bookkeeper sees BOTH the internal code and the supplier code.
@@ -2204,7 +2165,6 @@ export async function sendInvoiceToAccountant(
   }
 
   revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
-  revalidatePath(`/[locale]/panel/proforme/${invoiceId}`, "page");
   return { ok: true, sentAt };
 }
 

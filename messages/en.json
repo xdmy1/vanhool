@@ -1692,8 +1692,6 @@
     "accountant_send_confirm": "Send",
     "monthly_invoices_label": "Send month invoices",
     "monthly_invoices_title": "Send month invoices to accountant",
-    "monthly_proformas_label": "Send month proformas",
-    "monthly_proformas_title": "Send month proformas to accountant",
     "nav_precomenzi": "Pre-orders",
     "preorder_title": "Pre-orders",
     "preorder_subtitle": "Parts customers asked for but we didn't have in stock — ordered from the supplier.",
