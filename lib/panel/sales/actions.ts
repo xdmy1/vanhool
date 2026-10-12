@@ -14,6 +14,12 @@ import { normalizeCode } from "@/lib/utils/normalize-code";
 import { roundStock } from "@/lib/stock";
 import { applyStockMovement, ledgerReady, type StockDb } from "@/lib/stock-ledger";
 import {
+  newResolverCache,
+  resolveSaleLine,
+  type ResolvedSaleLine,
+} from "@/lib/panel/invoices/sale-line-resolver";
+import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
+import {
   isBelowCost,
   blockedBelowCost,
   type BelowCostLine,
@@ -667,17 +673,52 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     for (const p of products) byId.set(p.id, p);
   }
 
+  // Lines without a catalog product ("Din achiziții" / freeform): the owner's
+  // rule is that the LAST PURCHASE of the code decides where the goods come
+  // from. A posted purchase → its product; a still-draft one → its product is
+  // minted + linked now so the sale decrements it immediately (stock −qty
+  // until the post adds the receipt back). Only a line with no purchase and
+  // no catalog product at all stays `from_draft_purchase` for the post-time
+  // settle.
+  const resolvedNoProduct = new Map<number, ResolvedSaleLine>();
+  {
+    const cache = newResolverCache();
+    let markupFactor: number | null = null;
+    for (let i = 0; i < v.items.length; i++) {
+      const line = v.items[i];
+      if (line.product_id) continue;
+      if (markupFactor == null) {
+        markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
+      }
+      const r = await resolveSaleLine(
+        supabase as unknown as StockDb,
+        { part_code: line.part_code ?? null, name: line.name ?? null, unit: line.unit },
+        { createFromDraft: true, markupFactor, cache },
+      );
+      if (r.productId) resolvedNoProduct.set(i, r);
+    }
+  }
+
   // Validate stock AGGREGATED per product (the same product on two lines must
   // be checked as one sum — stock 4 must reject 3+3), then build the snapshot.
+  // The check covers CATALOG lines only: a part resolved through its purchase
+  // is physically here but not fiscally received, so its stock is not checked
+  // (it may sit negative until the purchase is posted).
   const wantByProduct = new Map<string, number>();
-  for (const line of v.items) {
-    if (!line.product_id) continue;
-    wantByProduct.set(
-      line.product_id,
-      roundStock((wantByProduct.get(line.product_id) ?? 0) + line.qty),
-    );
+  const checkByProduct = new Map<string, number>();
+  for (let i = 0; i < v.items.length; i++) {
+    const line = v.items[i];
+    const pid = line.product_id ?? resolvedNoProduct.get(i)?.productId ?? null;
+    if (!pid) continue;
+    wantByProduct.set(pid, roundStock((wantByProduct.get(pid) ?? 0) + line.qty));
+    if (line.product_id) {
+      checkByProduct.set(
+        line.product_id,
+        roundStock((checkByProduct.get(line.product_id) ?? 0) + line.qty),
+      );
+    }
   }
-  for (const [pid, want] of wantByProduct) {
+  for (const [pid, want] of checkByProduct) {
     const p = byId.get(pid);
     if (!p) return { ok: false, reason: `product_missing:${pid}` };
     if ((p.stock_quantity ?? 0) < want) {
@@ -696,15 +737,20 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   const saleRate = saleFx[v.currency] ?? 1;
   let subtotal = 0;
   let subtotalBeforeDiscount = 0;
-  for (const line of v.items) {
+  for (let i = 0; i < v.items.length; i++) {
+    const line = v.items[i];
     const p = line.product_id ? byId.get(line.product_id) ?? null : null;
     if (line.product_id && !p) {
       return { ok: false, reason: `product_missing:${line.product_id}` };
     }
+    const resolved = resolvedNoProduct.get(i) ?? null;
     const dp = line.discounted_unit_price;
     const effective =
       dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
-    const lineCost = Number(p?.cost_price ?? line.cost_price ?? 0);
+    // A line sold without a stored cost takes the GROSS MDL cost of the
+    // purchase it was resolved from, so the margin guard still sees it.
+    const storedCost = Number(p?.cost_price ?? line.cost_price ?? 0);
+    const lineCost = storedCost > 0 ? storedCost : Number(resolved?.costMdl ?? 0);
     const lineCostInCur =
       saleRate === 1 ? lineCost : Number((lineCost / saleRate).toFixed(2));
     if (isBelowCost(effective, lineCostInCur)) {
@@ -718,8 +764,9 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     const lineTotalGross = Number((line.qty * line.unit_price).toFixed(2));
     subtotal += lineTotalEff;
     subtotalBeforeDiscount += lineTotalGross;
+    const lineProductId = p?.id ?? resolved?.productId ?? null;
     items.push({
-      productId: p?.id ?? null,
+      productId: lineProductId,
       partCode: p?.part_code ?? line.part_code ?? null,
       name: p?.name_ro ?? line.name ?? "",
       brand: p?.brand ?? null,
@@ -733,7 +780,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
       total: lineTotalEff,
       /** Marker so postPurchase / reports can tell which order lines
        *  weren't backed by a real catalog product at sale time. */
-      from_draft_purchase: !line.product_id,
+      from_draft_purchase: !lineProductId,
     });
   }
   subtotal = Number(subtotal.toFixed(2));
@@ -876,13 +923,15 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
     // `unit_price` (list) + `discounted_unit_price` (effective). Without
     // this the printable factură rendered an empty table because
     // items_snapshot stayed null.
-    const invoiceItemsSnapshot = v.items.map((line) => {
+    const invoiceItemsSnapshot = v.items.map((line, i) => {
       const p = line.product_id ? byId.get(line.product_id) ?? null : null;
+      const resolved = resolvedNoProduct.get(i) ?? null;
+      const storedCost = Number(p?.cost_price ?? line.cost_price ?? 0);
       const dp = line.discounted_unit_price;
       const eff =
         dp != null && dp >= 0 && dp < line.unit_price ? dp : line.unit_price;
       return {
-        productId: p?.id ?? null,
+        productId: p?.id ?? resolved?.productId ?? null,
         partCode: p?.part_code ?? line.part_code ?? null,
         name: p?.name_ro ?? line.name ?? "",
         description: null,
@@ -896,7 +945,7 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
         // e-Factura export.
         vat_rate: invoiceVatRate,
         total: Number((line.qty * eff).toFixed(2)),
-        cost_price: Number(p?.cost_price ?? line.cost_price ?? 0),
+        cost_price: storedCost > 0 ? storedCost : Number(resolved?.costMdl ?? 0),
       };
     });
 

@@ -512,12 +512,30 @@ export async function resolveLineProductId(
     null;
   if (direct) return direct;
 
-  // Collect every code the line carries. A proforma for an uncatalogued part
-  // freezes the SUPPLIER code as `partCode`; once the purchase is posted the
-  // new product's `part_code` becomes the auto-generated INTERNAL code and the
-  // quoted code lives on `supplier_code` + the normalized `search_codes` index.
-  // So we must RE-RESOLVE at move time across all of these.
-  const codes = Array.from(
+  const codes = collectLineCodes(line);
+  if (codes.length === 0) return null;
+
+  const ranked = await rankLineProductCandidates(db, codes);
+  if (ranked.length === 0) return null;
+  if (ranked.length > 1) {
+    // Deterministic PICK, not skip: goods physically left the shelf, so under-
+    // decrementing (oversell) is the worse failure. Log for review.
+    console.warn(
+      `[stock-ledger] resolveLineProductId ambiguous for code(s) ${codes.join("/")}: ${ranked.length} products, picked ${ranked[0].id.slice(0, 8)}`,
+    );
+  }
+  return ranked[0].id;
+}
+
+/**
+ * Every part code a document line carries, trimmed and deduped. A proforma
+ * for an uncatalogued part freezes the SUPPLIER code as `partCode`; once the
+ * purchase is posted the new product's `part_code` becomes the INTERNAL code
+ * and the quoted code lives on `supplier_code` + the normalized
+ * `search_codes` index. Resolvers must RE-RESOLVE across all of these.
+ */
+export function collectLineCodes(line: Record<string, unknown>): string[] {
+  return Array.from(
     new Set(
       [
         (line as { partCode?: string | null }).partCode,
@@ -529,14 +547,23 @@ export async function resolveLineProductId(
         .filter((c) => c.length > 0),
     ),
   );
-  if (codes.length === 0) return null;
+}
 
-  // Tiered candidate pool. Tier 1 exact part_code, tier 2 exact supplier_code,
-  // tier 3 normalized search_codes (survives space/dash/case differences AND
-  // matches a product that was cataloged AFTER the document was raised — the
-  // whole point). Lower tier wins; ties broken by most-recent product (the one
-  // the just-entered purchase created). Ranking is stock-INDEPENDENT so the
-  // decrement and the later restore resolve to the SAME product.
+export type LineProductCandidate = { id: string; tier: number; created: string };
+
+/**
+ * Catalog products matching any of `codes`, best first. Tier 1 exact
+ * part_code, tier 2 exact supplier_code, tier 3 normalized search_codes
+ * (survives space/dot/dash/case differences AND matches a product that was
+ * cataloged AFTER the document was raised — the whole point). Lower tier wins;
+ * ties broken by most-recent product (the one the just-entered purchase
+ * created). Ranking is stock-INDEPENDENT so the decrement and the later
+ * restore resolve to the SAME product.
+ */
+export async function rankLineProductCandidates(
+  db: StockDb,
+  codes: string[],
+): Promise<LineProductCandidate[]> {
   const best = new Map<string, { tier: number; created: string }>();
   const consider = (
     rows: Array<{ id: string; created_at?: string | null }> | null,
@@ -569,17 +596,10 @@ export async function resolveLineProductId(
     consider(byCodes.data as Array<{ id: string; created_at?: string | null }>, 3);
   }
 
-  if (best.size === 0) return null;
-  const ranked = Array.from(best.entries()).sort((a, b) => {
-    if (a[1].tier !== b[1].tier) return a[1].tier - b[1].tier;
-    return b[1].created.localeCompare(a[1].created); // most recent first
-  });
-  if (best.size > 1) {
-    // Deterministic PICK, not skip: goods physically left the shelf, so under-
-    // decrementing (oversell) is the worse failure. Log for review.
-    console.warn(
-      `[stock-ledger] resolveLineProductId ambiguous for code(s) ${codes.join("/")}: ${best.size} products, picked ${ranked[0][0].slice(0, 8)}`,
-    );
-  }
-  return ranked[0][0];
+  return Array.from(best.entries())
+    .map(([id, c]) => ({ id, tier: c.tier, created: c.created }))
+    .sort((a, b) => {
+      if (a.tier !== b.tier) return a.tier - b.tier;
+      return b.created.localeCompare(a.created); // most recent first
+    });
 }

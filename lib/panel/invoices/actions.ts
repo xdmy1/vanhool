@@ -19,6 +19,11 @@ import type { Json } from "@/lib/supabase/database.types";
 import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
 import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
+import {
+  newResolverCache,
+  resolveSaleLine,
+} from "@/lib/panel/invoices/sale-line-resolver";
+import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
 import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import { roundStock } from "@/lib/stock";
 import {
@@ -607,10 +612,12 @@ export async function convertProformaToInvoice(
     (it) => Number((it as { vat_rate?: number }).vat_rate ?? 0) > 0,
   );
   const convLineVat = invoiceScope === "conta1" || pfHadVat ? 20 : 0;
-  const convItemsSnapshot = pfSnapshot.map((it) => ({
-    ...it,
-    vat_rate: convLineVat,
-  }));
+  const convItemsSnapshot: Array<Record<string, unknown>> = pfSnapshot.map(
+    (it) => ({
+      ...it,
+      vat_rate: convLineVat,
+    }),
+  );
   const convTotals = totals(
     pfSnapshot.map((it) => ({
       quantity: Number((it as { quantity?: number }).quantity ?? 0),
@@ -806,20 +813,35 @@ export async function convertProformaToInvoice(
   if (wasAdHoc && orderId) {
     const take = new Map<string, number>();
     const unresolvedIdx: number[] = [];
+    // Lines resolved by CODE (no frozen productId) get the product written
+    // back onto the invoice + order lines below, so returns, edits and the
+    // void restore all see the product the goods actually left.
+    const resolvedByCode = new Map<number, { productId: string; costMdl: number | null }>();
+    const resolverCache = newResolverCache();
+    const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
     for (let i = 0; i < pfSnapshot.length; i++) {
       const it = pfSnapshot[i];
       const qty = Number((it as { quantity?: number }).quantity ?? 0);
       if (qty <= 0) continue;
-      const productId = await resolveLineProductId(
-        supabase as unknown as StockDb,
-        it,
-      );
+      // Owner's rule: the LAST PURCHASE of the code decides where the goods
+      // come from — a still-draft achiziție gets its product minted + linked
+      // right here so the decrement lands now, not "when someone posts it".
+      const resolved = await resolveSaleLine(supabase as unknown as StockDb, it, {
+        createFromDraft: true,
+        markupFactor,
+        cache: resolverCache,
+      });
+      const productId = resolved.productId;
       if (!productId) {
-        // Part not cataloged yet (purchase not entered). Mark the order line
-        // like a draft-purchase sale: the void/cancel restore skips it, and
-        // settleDraftPurchaseSales decrements it when the purchase posts.
+        // No purchase and no catalog product for this code at all. Mark the
+        // order line like a draft-purchase sale: the void/cancel restore
+        // skips it, and settleDraftPurchaseSales decrements it if a purchase
+        // with this code is posted later.
         unresolvedIdx.push(i);
         continue;
+      }
+      if (resolved.via !== "frozen") {
+        resolvedByCode.set(i, { productId, costMdl: resolved.costMdl });
       }
       take.set(productId, roundStock((take.get(productId) ?? 0) + qty));
     }
@@ -840,7 +862,7 @@ export async function convertProformaToInvoice(
         };
       }
     }
-    if (unresolvedIdx.length > 0) {
+    if (unresolvedIdx.length > 0 || resolvedByCode.size > 0) {
       const { data: ordRow } = await supabase
         .from("orders")
         .select("items")
@@ -854,10 +876,37 @@ export async function convertProformaToInvoice(
           ordItems[i] = { ...ordItems[i], from_draft_purchase: true };
         }
       }
+      // A line quoted without a cost (uncataloged part) takes the GROSS MDL
+      // cost of the purchase it was resolved from; a stored cost is kept.
+      const costPatch = (cur: unknown, costMdl: number | null) =>
+        Number(cur ?? 0) > 0 || costMdl == null ? {} : { cost_price: costMdl };
+      for (const [i, r] of resolvedByCode) {
+        if (ordItems[i]) {
+          ordItems[i] = {
+            ...ordItems[i],
+            productId: r.productId,
+            from_draft_purchase: false,
+            ...costPatch(ordItems[i].cost_price, r.costMdl),
+          };
+        }
+        if (convItemsSnapshot[i]) {
+          convItemsSnapshot[i] = {
+            ...convItemsSnapshot[i],
+            productId: r.productId,
+            ...costPatch(convItemsSnapshot[i].cost_price, r.costMdl),
+          };
+        }
+      }
       await supabase
         .from("orders")
         .update({ items: ordItems as unknown as Json })
         .eq("id", orderId);
+      if (resolvedByCode.size > 0) {
+        await supabase
+          .from("invoices")
+          .update({ items_snapshot: convItemsSnapshot as unknown as Json })
+          .eq("id", inv.id);
+      }
     }
   }
 
