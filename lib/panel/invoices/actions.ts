@@ -18,6 +18,7 @@ import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import type { Json } from "@/lib/supabase/database.types";
 import type { InvoiceItemSnapshot } from "@/lib/panel/invoices/queries";
 import { getReturnsFor } from "@/lib/panel/returns/actions";
+import { returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { releaseOrderCredits } from "@/lib/orders/release-credits";
 import { roundStock } from "@/lib/stock";
 import {
@@ -1705,7 +1706,10 @@ export async function markInvoicePaid(
       : Number(((v.amount * rateOf(v.currency)) / rateOf(invCurrency)).toFixed(2));
   const alreadyPaid = Number(inv.paid_amount ?? 0);
   const runningPaid = Number((alreadyPaid + paymentInInvCur).toFixed(2));
-  const isFullyPaid = runningPaid >= Number(inv.total ?? 0) - 0.01;
+  // Returns (credit-note annexes) settle part of the receivable exactly like
+  // money does: the invoice is paid once payments cover total − returned.
+  const returned = (await returnedTotalsByInvoice([invoiceId])).get(invoiceId) ?? 0;
+  const isFullyPaid = runningPaid >= Number(inv.total ?? 0) - returned - 0.01;
 
   // The invoice STAYS in the book it was issued in. Marking it paid records
   // the payment; it does NOT move the document between conta1 and conta2.

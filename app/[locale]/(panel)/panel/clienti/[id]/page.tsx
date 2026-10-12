@@ -8,6 +8,7 @@ import { Link } from "@/lib/i18n/routing";
 import { encodeBackHref } from "@/lib/panel/nav";
 import { Price } from "@/components/common/Price";
 import { PinDeleteButton } from "@/components/panel/documents/PinDeleteButton";
+import { returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { deleteClientWithPin } from "@/lib/panel/clienti/actions";
 import { getClientDocuments, getPanelClient } from "@/lib/panel/clienti/queries";
 import type { ClientDocument } from "@/lib/panel/clienti/queries";
@@ -92,11 +93,14 @@ export default async function PanelClientDetailPage({
     );
 
   // Balance with us — kept strictly per-currency (never mix lei/eur):
-  //   owed   = open invoices (issued/sent/partial) this client hasn't paid,
+  //   owed   = open invoices (issued/sent/partial), net of payments + returns,
   //   credit = available store credit,
   //   net    = owed − credit  (positive = they owe, negative = we owe them).
   const credits = await getClientCredits(id);
-  const owed = owedByCurrency(allDocuments);
+  const returnedByInvoice = await returnedTotalsByInvoice(
+    allDocuments.filter((d) => d.type === "invoice" && !d.paid_at).map((d) => d.id),
+  );
+  const owed = owedByCurrency(allDocuments, returnedByInvoice);
   const creditBal = creditBalanceByCurrency(credits);
   const balanceCurrencies = Array.from(
     new Set([...Object.keys(owed), ...Object.keys(creditBal)]),

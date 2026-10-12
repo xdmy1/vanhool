@@ -8,6 +8,7 @@ import { getPanelUser } from "@/lib/panel/auth";
 import { verifyAdminPin } from "@/lib/panel/admin-pin";
 import { accountantMarkEnteredUrl } from "@/lib/panel/accountant-entered";
 import { RETURN_COLS, RETURN_COLS_BASE, getReturnInvoice } from "@/lib/panel/returns/queries";
+import { returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { accountantReturnEmail } from "@/lib/email/accountant-return";
 import { sendResendEmail } from "@/lib/email/resend";
 import { dateISO } from "@/lib/datetime";
@@ -139,6 +140,46 @@ async function openReturnNumber(
     | undefined;
   if (!last || last.return_number == null) return null;
   return dateISO(new Date(last.created_at)) === dateISO() ? Number(last.return_number) : null;
+}
+
+/**
+ * Re-derive paid / partial on an invoice after its returns changed. A return
+ * is a credit note: what's owed is total − returned − paid. So a «Retur» on a
+ * partially paid invoice can close it (the customer paid for what they kept),
+ * and cancelling that return re-opens it. Only invoices with a recorded
+ * paid_amount take part — rows settled in full at sale time (paid_amount
+ * null) are left alone.
+ */
+async function syncInvoiceSettlement(invoiceId: string): Promise<void> {
+  const admin = getSupabaseAdmin();
+  const { data } = await admin
+    .from("invoices")
+    .select("status, total, paid_amount, paid_at")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  const inv = data as unknown as {
+    status: string | null;
+    total: number | string | null;
+    paid_amount: number | string | null;
+    paid_at: string | null;
+  } | null;
+  if (!inv || inv.paid_amount == null) return;
+  const paid = Number(inv.paid_amount);
+  if (paid <= 0) return;
+  const returned = (await returnedTotalsByInvoice([invoiceId])).get(invoiceId) ?? 0;
+  const settled = paid >= Number(inv.total ?? 0) - returned - 0.01;
+  const nowIso = new Date().toISOString();
+  if (settled && (inv.status === "issued" || inv.status === "sent" || inv.status === "partial")) {
+    await admin
+      .from("invoices")
+      .update({ status: "paid", paid_at: inv.paid_at ?? nowIso, updated_at: nowIso } as never)
+      .eq("id", invoiceId);
+  } else if (!settled && inv.status === "paid") {
+    await admin
+      .from("invoices")
+      .update({ status: "partial", paid_at: null, updated_at: nowIso } as never)
+      .eq("id", invoiceId);
+  }
 }
 
 // Product resolution and stock movement are shared with the sale/void paths
@@ -294,6 +335,9 @@ export async function createInvoiceLineReturn(
       return { ok: false, reason: flagErr.message };
     }
   }
+
+  // The credit may have covered what was still owed — close the invoice.
+  await syncInvoiceSettlement(invoiceId);
 
   revalidatePath("/[locale]/panel/facturi", "page");
   revalidatePath(`/[locale]/panel/facturi/${invoiceId}`, "page");
@@ -579,6 +623,8 @@ export async function deleteReturn(
   }
 
   if (r.parent_type === "invoice") {
+    // Without this credit the customer may owe again — re-open the invoice.
+    await syncInvoiceSettlement(r.parent_id);
     revalidatePath("/[locale]/panel/facturi", "page");
     revalidatePath(`/[locale]/panel/facturi/${r.parent_id}`, "page");
   } else {

@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { ClientDocument } from "@/lib/panel/clienti/queries";
+import { invoiceBalanceDue } from "@/lib/panel/invoices/balance";
 
 export type StoreCredit = {
   id: string;
@@ -86,11 +87,13 @@ export function creditBalanceByCurrency(
 
 /**
  * What the client still OWES us, per currency: open invoices (issued / sent /
- * partial — not paid / void / converted). Proformas are excluded (not a
+ * partial — not paid / void / converted), each net of what was already paid
+ * and of its return annexes (credit notes). Proformas are excluded (not a
  * receivable). Never sums across currencies.
  */
 export function owedByCurrency(
   documents: ClientDocument[],
+  returnedByInvoice?: Map<string, number>,
 ): Record<string, number> {
   const open = new Set(["issued", "sent", "partial"]);
   const out: Record<string, number> = {};
@@ -98,8 +101,10 @@ export function owedByCurrency(
     if (d.type !== "invoice") continue;
     if (d.paid_at) continue;
     if (!open.has(d.status)) continue;
+    const owed = invoiceBalanceDue(d, returnedByInvoice?.get(d.id));
+    if (owed <= 0) continue;
     const cur = d.currency || "MDL";
-    out[cur] = Number(((out[cur] ?? 0) + Number(d.total ?? 0)).toFixed(2));
+    out[cur] = Number(((out[cur] ?? 0) + owed).toFixed(2));
   }
   return out;
 }

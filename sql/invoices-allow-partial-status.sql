@@ -17,9 +17,15 @@ alter table public.invoices
 -- Optional one-off: re-classify invoices that were marked fully paid but only
 -- received a partial amount (recorded before this feature existed). Safe to run
 -- once; afterwards there should be no paid rows with paid_amount < total.
-update public.invoices
+-- Net of return annexes (credit notes) — a return settles part of the invoice
+-- like a payment does (see sql/invoice-returns-balance.sql). Needs
+-- sql/document-returns.sql applied first.
+update public.invoices i
 set status = 'partial', paid_at = null
-where type = 'invoice'
-  and status = 'paid'
-  and paid_amount is not null
-  and paid_amount < total - 0.01;
+where i.type = 'invoice'
+  and i.status = 'paid'
+  and i.paid_amount is not null
+  and i.paid_amount < i.total
+      - coalesce((select sum(r.total) from public.document_returns r
+                  where r.parent_type = 'invoice' and r.parent_id = i.id), 0)
+      - 0.01;

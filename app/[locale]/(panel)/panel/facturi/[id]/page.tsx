@@ -15,6 +15,7 @@ import { ReturnsAnnexSection } from "@/components/panel/returns/ReturnsAnnexSect
 import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { Link } from "@/lib/i18n/routing";
 import { getInvoice } from "@/lib/panel/invoices/queries";
+import { invoiceBalanceDue } from "@/lib/panel/invoices/balance";
 import { encodeBackHref, resolveBackHref } from "@/lib/panel/nav";
 import {
   applyCostFallback,
@@ -83,6 +84,12 @@ export default async function PanelInvoiceDetailPage({
 
   // Return annexes attached to this invoice (customer brought lines back).
   const returns = await getReturnsFor("invoice", invoice.id);
+  // Still owed = total − returns − paid. A return on a partially paid invoice
+  // can bring this to 0: the customer paid for what they kept.
+  const balanceDue = invoiceBalanceDue(
+    invoice,
+    returns.reduce((s, r) => s + Number(r.total ?? 0), 0),
+  );
 
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
   const overdue = isOverdue(invoice);
@@ -209,7 +216,7 @@ export default async function PanelInvoiceDetailPage({
               <>
                 <dt className="text-muted">{t("invoice_balance_due")}</dt>
                 <dd className="font-semibold text-warning">
-                  {(Number(invoice.total) - Number(invoice.paid_amount ?? 0)).toFixed(2)}{" "}
+                  {balanceDue.toFixed(2)}{" "}
                   {invoice.currency}
                 </dd>
               </>
@@ -253,13 +260,11 @@ export default async function PanelInvoiceDetailPage({
           {invoice.status === "issued" || (invoice.status as string) === "partial" ? (
             <div className="mt-5 border-t border-border pt-5">
               {/* Prefill with the REMAINING balance so recording the next
-                  installment is one click — on a partial that's total minus
-                  what's already in. */}
+                  installment is one click — total minus returns minus what's
+                  already in. */}
               <MarkInvoicePaidButton
                 invoiceId={invoice.id}
-                defaultAmount={Number(
-                  (Number(invoice.total) - Number(invoice.paid_amount ?? 0)).toFixed(2),
-                )}
+                defaultAmount={balanceDue}
                 defaultCurrency={invoice.currency}
               />
             </div>

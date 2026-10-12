@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getPanelUser } from "@/lib/panel/auth";
 import { markInvoicePaid } from "@/lib/panel/invoices/actions";
+import { invoiceBalanceDue, returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { parseBankStatement, type BankTxn } from "./parse";
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
@@ -57,6 +58,8 @@ type OpenInvoice = {
   issued_date: string;
   total: number | null;
   paid_amount: number | null;
+  /** Σ credit-note annexes (returns) — reduces what's owed like a payment. */
+  returned: number;
   currency: string | null;
   account_scope: "conta1" | "conta2" | null;
   customer_snapshot: { idno?: string | null; name?: string | null } | null;
@@ -77,7 +80,7 @@ function suggestFifo(
     .sort((a, b) => a.issued_date.localeCompare(b.issued_date))
     .map((inv) => {
       const total = Number(inv.total ?? 0);
-      const outstanding = Number((total - Number(inv.paid_amount ?? 0)).toFixed(2));
+      const outstanding = invoiceBalanceDue(inv, inv.returned);
       let suggested = 0;
       if (remaining > 0.01 && outstanding > 0) {
         suggested = Math.min(remaining, outstanding);
@@ -140,9 +143,11 @@ export async function previewBankStatement(
     .in("status", ["issued", "partial"] as unknown as ["issued"])
     .eq("currency", parsed.currency)
     .order("issued_date", { ascending: true });
-  const open = ((openRows ?? []) as unknown as OpenInvoice[]).filter(
-    (r) => Number(r.total ?? 0) - Number(r.paid_amount ?? 0) > 0.01,
-  );
+  const openAll = (openRows ?? []) as unknown as OpenInvoice[];
+  const returnedByInvoice = await returnedTotalsByInvoice(openAll.map((r) => r.id));
+  const open = openAll
+    .map((r) => ({ ...r, returned: returnedByInvoice.get(r.id) ?? 0 }))
+    .filter((r) => invoiceBalanceDue(r, r.returned) > 0.01);
 
   // Which bank references were already applied (double-import guard).
   const refs = incomingTxns.map((t) => t.reference);

@@ -19,6 +19,7 @@ import { Price } from "@/components/common/Price";
 import { SalesBarChart } from "@/components/panel/statistici/StatsCharts";
 import { getCashBalance } from "@/lib/panel/cash/actions";
 import { listInvoices } from "@/lib/panel/invoices/queries";
+import { invoiceBalanceDue, returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { reportSalesByDay } from "@/lib/panel/reports/queries";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
@@ -143,7 +144,7 @@ export default async function PanelDashboardPage({
   // "Neplătite" = the canonical receivable set (issued / sent / partial and not
   // yet paid) — identical to owedByCurrency and the facturi ?unpaid=1 list.
   //   • draft   is NOT owed (never issued to the customer),
-  //   • partial IS owed (they still owe total − paid_amount),
+  //   • partial IS owed (they still owe total − returns − paid_amount),
   //   • paid / void / converted are closed.
   const OPEN_INVOICE_STATUS = new Set(["issued", "sent", "partial"]);
   const openInvoices = invoices.filter(
@@ -151,11 +152,12 @@ export default async function PanelDashboardPage({
   );
   const unpaidInvoices = openInvoices.length;
   // How much customers still owe us, per currency — never collapse EUR into
-  // MDL. Subtract any partial payment so a half-settled invoice contributes
-  // only its remaining balance.
+  // MDL. Subtract partial payments AND return annexes (credit notes) so an
+  // invoice contributes only its remaining balance.
+  const returnedByInvoice = await returnedTotalsByInvoice(openInvoices.map((i) => i.id));
   const invoiceOwedByCurrency = bucketBy(
     openInvoices,
-    (i) => Number(i.total ?? 0) - Number(i.paid_amount ?? 0),
+    (i) => invoiceBalanceDue(i, returnedByInvoice.get(i.id)),
     (i) => i.currency,
   );
 

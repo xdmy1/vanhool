@@ -16,6 +16,7 @@ import {
 } from "@/lib/panel/invoices/actions";
 import { Link } from "@/lib/i18n/routing";
 import { listInvoices } from "@/lib/panel/invoices/queries";
+import { invoiceBalanceDue, returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { encodeBackHref, rowAnchor } from "@/lib/panel/nav";
 import { cn } from "@/lib/utils/cn";
 import { TIMEZONE } from "@/lib/datetime";
@@ -130,6 +131,9 @@ export default async function PanelFacturiPage({
       | "converted"
       | undefined,
   });
+  // Credit-note annexes per invoice — the «Marchează plătită» prefill is
+  // what is still owed: total − returns − paid.
+  const returnedByInvoice = await returnedTotalsByInvoice(rows.map((r) => r.id));
   const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "ro-RO";
 
   // This exact list URL — filters included — so opening an invoice can carry
@@ -616,12 +620,7 @@ export default async function PanelFacturiPage({
                         {r.status === "issued" || (r.status as string) === "partial" ? (
                           <MarkInvoicePaidButton
                             invoiceId={r.id}
-                            defaultAmount={Number(
-                              (
-                                Number(r.total) -
-                                Number((r as { paid_amount?: number | null }).paid_amount ?? 0)
-                              ).toFixed(2),
-                            )}
+                            defaultAmount={invoiceBalanceDue(r, returnedByInvoice.get(r.id))}
                             defaultCurrency={r.currency}
                             variant="compact"
                           />

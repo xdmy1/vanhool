@@ -292,6 +292,8 @@ export type ClientDocument = {
   status: string;
   currency: string;
   total: number;
+  /** Running amount already settled (partial payments); null when never paid. */
+  paid_amount: number | null;
 };
 
 /**
@@ -321,7 +323,7 @@ export async function getClientDocuments(
   const supabase = await createClient();
 
   const cols =
-    "id, type, series, number, issued_date, due_date, paid_at, status, currency, total, order_id, customer_snapshot, account_scope";
+    "id, type, series, number, issued_date, due_date, paid_at, status, currency, total, paid_amount, order_id, customer_snapshot, account_scope";
 
   const orderRows = await supabase
     .from("orders")
@@ -346,7 +348,7 @@ export async function getClientDocuments(
   const results = await Promise.all(queries);
   const byId = new Map<string, ClientDocument>();
   for (const res of results) {
-    for (const r of (res.data ?? []) as Array<Record<string, unknown>>) {
+    for (const r of ((res.data ?? []) as unknown) as Array<Record<string, unknown>>) {
       const id = r.id as string;
       if (byId.has(id)) continue;
       byId.set(id, {
@@ -361,6 +363,7 @@ export async function getClientDocuments(
         status: r.status as string,
         currency: ((r.currency as string | null) ?? "MDL").toUpperCase(),
         total: Number(r.total ?? 0),
+        paid_amount: r.paid_amount == null ? null : Number(r.paid_amount),
       });
     }
   }

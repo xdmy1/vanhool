@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { invoiceBalanceDue, returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import { dateISO, todayISO } from "@/lib/datetime";
 import type { AccountScope } from "@/lib/panel/scope";
 
@@ -474,7 +475,7 @@ export async function reportProfitSummary(
 
 // ---------- Receivables aging (open invoices bucketed by age) ----------
 // Same open-receivable definition as the dashboard / owedByCurrency:
-// issued|sent|partial, not paid, owed = total − paid_amount. Per-currency,
+// issued|sent|partial, not paid, owed = total − returns − paid_amount. Per-currency,
 // never mixed. Aged by days since issued_date (always present).
 export type AgingBucket = {
   key: string;
@@ -490,7 +491,7 @@ export async function reportReceivablesAging(scope?: AccountScope): Promise<{
   const supabase = await createClient();
   let q = supabase
     .from("invoices")
-    .select("issued_date, currency, total, paid_amount, status, paid_at")
+    .select("id, issued_date, currency, total, paid_amount, status, paid_at")
     .eq("type", "invoice");
   if (scope) q = q.eq("account_scope", scope);
   const { data } = await q.limit(1000);
@@ -504,16 +505,19 @@ export async function reportReceivablesAging(scope?: AccountScope): Promise<{
   const totalByCurrency: Record<string, number> = {};
   const open = new Set(["issued", "sent", "partial"]);
   const todayMs = Date.parse(`${todayISO()}T00:00:00Z`);
-  for (const r of ((data ?? []) as unknown) as Array<{
+  const openRows = (((data ?? []) as unknown) as Array<{
+    id: string;
     issued_date: string | null;
     currency: string | null;
     total: number | null;
     paid_amount: number | null;
     status: string;
     paid_at: string | null;
-  }>) {
-    if (!open.has(r.status) || r.paid_at) continue;
-    const owed = Number(r.total ?? 0) - Number(r.paid_amount ?? 0);
+  }>).filter((r) => open.has(r.status) && !r.paid_at);
+  // Credit-note annexes reduce the receivable like a payment does.
+  const returnedByInvoice = await returnedTotalsByInvoice(openRows.map((r) => r.id));
+  for (const r of openRows) {
+    const owed = invoiceBalanceDue(r, returnedByInvoice.get(r.id));
     if (owed <= 0.005) continue;
     const cur = (r.currency ?? "MDL").toUpperCase();
     const issuedMs = Date.parse(`${String(r.issued_date)}T00:00:00Z`);
