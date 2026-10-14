@@ -23,7 +23,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { roundStock } from "@/lib/stock";
-import { normalizeCode } from "@/lib/utils/normalize-code";
+import { normalizeCode, supplierPrefixDigits } from "@/lib/utils/normalize-code";
 
 /** Accepts both the RLS server client and the service-role admin client. */
 export type StockDb = SupabaseClient<any, any, any>;
@@ -639,6 +639,17 @@ export async function rankLineProductCandidates(
     consider(byPart.data as Array<{ id: string; created_at?: string | null }>, 1);
     consider(bySupplier.data as Array<{ id: string; created_at?: string | null }>, 2);
     consider(byCodes.data as Array<{ id: string; created_at?: string | null }>, 3);
+    // Tier 4: "AS 0723003108" (supplier tag + maker's number) is the product
+    // whose codes carry the bare number — never a second product.
+    const digits = supplierPrefixDigits(code);
+    if (digits) {
+      const byDigits = await db
+        .from("products")
+        .select("id, created_at")
+        .contains("search_codes", [digits])
+        .limit(5);
+      consider(byDigits.data as Array<{ id: string; created_at?: string | null }>, 4);
+    }
   }
 
   return Array.from(best.entries())

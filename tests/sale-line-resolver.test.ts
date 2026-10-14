@@ -533,3 +533,31 @@ test("two racing mints of the SAME open line converge on one product; two differ
   assert.ok(c.ok && c.code === "NI-ES-14848");
   assert.equal(db.rows("products").length, 2);
 });
+
+test("supplier tag in front of the maker's number ('AS 0723003108') resolves to the catalog product '0723003108' — no twin product, the draft line is linked to it", async () => {
+  const db = new FakeDb();
+  db.rows("products").push({ id: "prodF", part_code: "0723003108", supplier_code: null, search_codes: ["0723003108", "CU3569"], stock_quantity: 3, created_at: "2026-06-01T00:00:00Z" });
+  // No purchase at all → catalog tier 4.
+  const bare = await resolveSaleLine(asDb(db), { partCode: "AS 0723003108", quantity: 1 }, { createFromDraft: true });
+  assert.equal(bare.via, "catalog");
+  assert.equal(bare.productId, "prodF");
+  // Draft purchase line under the supplier's tagged code → linked to the catalog product, nothing minted.
+  seedPurchase(
+    db,
+    { id: "P-draft", status: "draft", created_at: "2026-10-14T00:00:00Z", supplier_id: "OLMOSDON", currency: "MDL" },
+    [{ id: "L-1", supplier_code: "AS 0723003108", description: "Фильтр салона", quantity: 5, unit_cost: 77.5 }],
+  );
+  const r = await resolveSaleLine(asDb(db), { partCode: "AS 0723003108", quantity: 1 }, { createFromDraft: true });
+  assert.equal(r.via, "catalog");
+  assert.equal(r.productId, "prodF");
+  assert.equal(db.rows("products").length, 1);
+  assert.equal(db.rows("purchase_items").find((l) => l.id === "L-1")!.product_id, "prodF");
+  assert.deepEqual(r.openLine, { lineId: "L-1", purchaseId: "P-draft", productId: "prodF", quantity: 5 });
+  // Short tags only: "HU 7010 Z" style codes are untouched.
+  const { supplierPrefixDigits } = await import("@/lib/utils/normalize-code");
+  assert.equal(supplierPrefixDigits("AS 0723003108"), "0723003108");
+  assert.equal(supplierPrefixDigits("AS-0723003108"), "0723003108");
+  assert.equal(supplierPrefixDigits("HU 7010 Z"), null);
+  assert.equal(supplierPrefixDigits("AS 12345"), null);
+  assert.equal(supplierPrefixDigits("0723003108"), null);
+});

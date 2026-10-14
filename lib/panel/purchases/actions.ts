@@ -18,7 +18,7 @@ import {
   purchaseTotals,
   purchaseUnitCostMdl,
 } from "@/lib/panel/purchases/line-math";
-import { normalizeCode } from "@/lib/utils/normalize-code";
+import { normalizeCode, supplierPrefixDigits } from "@/lib/utils/normalize-code";
 import { roundStock } from "@/lib/stock";
 import { insertMintedProduct } from "@/lib/panel/purchases/mint-product";
 import {
@@ -481,6 +481,18 @@ async function resolvePurchaseProductId(
     consider(byPart.data as never, 1);
     consider(bySupplier.data as never, 2);
     consider(byCodes.data as never, 3);
+    // Tier 4: a supplier tag in front of the maker's number ("AS 0723003108")
+    // still lands on the product carrying the bare number — the 20.08 post
+    // minted a twin for exactly this and the filter was counted twice.
+    const digits = supplierPrefixDigits(code);
+    if (digits) {
+      const byDigits = await client
+        .from("products")
+        .select(cols)
+        .contains("search_codes", [digits])
+        .limit(5);
+      consider(byDigits.data as never, 4);
+    }
   }
   if (best.size === 0) return null;
   const ranked = Array.from(best.entries()).sort((a, b) => {
