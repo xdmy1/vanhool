@@ -444,9 +444,16 @@ export default async function PanelInvoiceDetailPage({
                     const dp = it.discounted_unit_price != null
                       ? Number(it.discounted_unit_price) : null;
                     const eff = dp != null && dp >= 0 && dp < list ? dp : list;
+                    // Profit is only known where the cost is: a line without a
+                    // cost must not count its whole sale as profit (M0574 showed
+                    // +1900 on 2800 because four uncosted lines were taken at
+                    // cost 0). Both sides of the margin cover the SAME lines.
+                    if (it.cost_price == null) {
+                      anyMissing = true;
+                      continue;
+                    }
                     totalSell += qty * eff;
-                    if (it.cost_price == null) anyMissing = true;
-                    else totalCost += qty * (Number(it.cost_price) / docRate);
+                    totalCost += qty * (Number(it.cost_price) / docRate);
                   }
                   if (anyMissing && totalCost === 0) {
                     return (
@@ -476,7 +483,7 @@ export default async function PanelInvoiceDetailPage({
                           {profit >= 0 ? "+" : ""}{profit.toFixed(2)} {invoice.currency}
                         </div>
                         <div className="text-[10px] text-muted">
-                          {marginPct.toFixed(1)}%
+                          {marginPct.toFixed(1)}%{anyMissing ? " (parțial)" : ""}
                         </div>
                       </td>
                     </>
