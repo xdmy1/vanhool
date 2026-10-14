@@ -20,11 +20,13 @@ import {
 } from "@/lib/panel/purchases/line-math";
 import { normalizeCode } from "@/lib/utils/normalize-code";
 import { roundStock } from "@/lib/stock";
+import { insertMintedProduct } from "@/lib/panel/purchases/mint-product";
 import {
   applyStockMovement,
   getOrderMovements,
   getPurchaseMovements,
   ledgerReady,
+  netDraftReceives,
   reversePurchaseLines,
   settlePurchaseCancelNet,
   type StockDb,
@@ -549,38 +551,27 @@ async function applyPostedLines(
       // no code at all, where resolution would otherwise be impossible.
       const internalCode = (it.internal_code ?? "").trim();
       const supplierCode = (it.supplier_code ?? "").trim();
-      const code =
+      let code =
         internalCode || supplierCode || `IB-${it.id.slice(0, 8).toUpperCase()}`;
       if (matchId) {
         productId = matchId;
       } else {
-        const slug = `${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${it.id.slice(0, 6)}`;
-        const base = {
-          part_code: code,
-          name_ro: it.description.slice(0, 200),
-          slug,
-          price: Number((costMdl * markupFactor).toFixed(2)),
-          cost_price: costMdl,
-          stock_quantity: 0,
-          unit: (it.unit ?? "buc") || "buc",
-          is_active: false,
-          supplier_id: header.supplier_id,
-          supplier_code: it.supplier_code ?? null,
-        };
-        let { data: newP, error: newErr } = await supabase
-          .from("products")
-          .insert({ ...base, internal_only: !wantsCatalog } as never)
-          .select("id")
-          .single();
-        if (newErr && /internal_only/i.test(newErr.message)) {
-          const retry = await supabase.from("products").insert(base as never).select("id").single();
-          newP = retry.data;
-          newErr = retry.error;
+        // Shared with the sale-time resolver. part_code is unique: when the
+        // operator typed the same internal code on two lines, the second
+        // product takes the supplier code instead of failing the whole post.
+        const minted = await insertMintedProduct(db, {
+          line: it,
+          name: it.description,
+          costMdl,
+          markupFactor,
+          supplierId: header.supplier_id,
+          internalOnly: !wantsCatalog,
+        });
+        if (!minted.ok) {
+          return { ok: false, reason: `product_create_failed: ${minted.reason}` };
         }
-        if (newErr || !newP) {
-          return { ok: false, reason: `product_create_failed: ${newErr?.message ?? "?"}` };
-        }
-        productId = newP.id;
+        productId = minted.id;
+        code = minted.code;
       }
       await supabase
         .from("purchase_items")
@@ -695,6 +686,13 @@ async function applyPostedLines(
   // purchased quantity is in, take those already-sold units back out and link
   // the order lines — otherwise stock overstates by everything sold pre-post.
   await settleDraftPurchaseSales(supabase, purchaseId, resolvedLines, userId);
+
+  // Goods sold from this purchase while it was still open may have been
+  // counted into stock at sale time (`draft_receive:`). The post carries that
+  // stock itself from now on (`purchase_post:` above) — withdraw the
+  // provisional receipt or the quantity would be in twice.
+  const netted = await netDraftReceives(db, purchaseId, userId);
+  if (!netted.ok) return netted;
 
   return { ok: true };
 }
@@ -1199,6 +1197,16 @@ export async function cancelPurchase(
       user.id,
     );
     if (!netted.ok) return netted;
+  } else {
+    // An open purchase never posted, but goods sold from it may already sit
+    // in stock through `draft_receive:` — that stock is not coming, take it
+    // back out (the sales themselves stand).
+    const netted = await netDraftReceives(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    if (!netted.ok) return netted;
   }
 
   const { error } = await supabase
@@ -1643,6 +1651,15 @@ export async function deletePurchaseWithPin(
     // would vanish while the phantom quantity stays forever.
     if (!reversed.ok) return reversed;
     const netted = await settlePurchaseCancelNet(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    if (!netted.ok) return netted;
+  } else {
+    // Same as cancel: goods counted in at sale time from this open purchase
+    // leave with the document. A delete that cannot net them must not proceed.
+    const netted = await netDraftReceives(
       supabase as unknown as StockDb,
       purchaseId,
       user.id,

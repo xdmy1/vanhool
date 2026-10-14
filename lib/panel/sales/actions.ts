@@ -15,7 +15,9 @@ import { roundStock } from "@/lib/stock";
 import { applyStockMovement, ledgerReady, type StockDb } from "@/lib/stock-ledger";
 import {
   newResolverCache,
+  receiveFromOpenPurchase,
   resolveSaleLine,
+  type OpenPurchaseLine,
   type ResolvedSaleLine,
 } from "@/lib/panel/invoices/sale-line-resolver";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
@@ -681,21 +683,30 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   // no catalog product at all stays `from_draft_purchase` for the post-time
   // settle.
   const resolvedNoProduct = new Map<number, ResolvedSaleLine>();
+  // Per product: the last purchase line when that purchase is still OPEN —
+  // goods physically here, not yet posted. Catalog lines are looked up too:
+  // a product at 0 whose draft achiziție holds 2 must sell, not be refused.
+  const openByProduct = new Map<string, OpenPurchaseLine>();
   {
     const cache = newResolverCache();
     let markupFactor: number | null = null;
     for (let i = 0; i < v.items.length; i++) {
       const line = v.items[i];
-      if (line.product_id) continue;
       if (markupFactor == null) {
         markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
       }
       const r = await resolveSaleLine(
         supabase as unknown as StockDb,
-        { part_code: line.part_code ?? null, name: line.name ?? null, unit: line.unit },
+        {
+          productId: line.product_id ?? null,
+          part_code: line.part_code ?? null,
+          name: line.name ?? null,
+          unit: line.unit,
+        },
         { createFromDraft: true, markupFactor, cache },
       );
-      if (r.productId) resolvedNoProduct.set(i, r);
+      if (!line.product_id && r.productId) resolvedNoProduct.set(i, r);
+      if (r.productId && r.openLine) openByProduct.set(r.productId, r.openLine);
     }
   }
 
@@ -721,7 +732,13 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   for (const [pid, want] of checkByProduct) {
     const p = byId.get(pid);
     if (!p) return { ok: false, reason: `product_missing:${pid}` };
-    if ((p.stock_quantity ?? 0) < want) {
+    // What the shelf holds plus what the still-open achiziție brought in
+    // (received into stock right before the decrement below, not here — a
+    // sale refused further down must leave no trace).
+    const coverable = roundStock(
+      Number(p.stock_quantity ?? 0) + (openByProduct.get(pid)?.quantity ?? 0),
+    );
+    if (coverable < want) {
       return {
         ok: false,
         reason: `stock_insufficient:${p.part_code ?? p.id.slice(0, 8)} (disponibil ${p.stock_quantity ?? 0}, cerut ${want})`,
@@ -865,6 +882,20 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   // Lines without product_id (draft-purchase sales) skip the decrement here —
   // postPurchase settles them (ref `draft_settle:…`) when the parent purchase
   // is posted and the catalog product finally exists.
+  // Goods of a still-open achiziție enter stock BEFORE the sale takes them
+  // (bought 2, sold 2 → 0, not −2); a product that already covers the sale
+  // receives nothing. The post later nets this receipt.
+  for (const [pid, want] of wantByProduct) {
+    const received = await receiveFromOpenPurchase(
+      supabase as unknown as StockDb,
+      openByProduct.get(pid) ?? null,
+      want,
+      user.id,
+    );
+    if (!received.ok) {
+      console.error("[panel.sales] draft receive failed:", received.reason);
+    }
+  }
   for (const [pid, want] of wantByProduct) {
     const moved = await applyStockMovement(supabase as unknown as StockDb, {
       productId: pid,

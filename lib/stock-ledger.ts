@@ -489,6 +489,47 @@ export async function settlePurchaseCancelNet(
 }
 
 /**
+ * Goods of a NOT-yet-posted purchase (draft / ordered / received) that were
+ * already counted into stock at SALE time (`draft_receive:<purchase>:<product>
+ * :<seq>`, see receiveFromOpenPurchase) must be withdrawn the moment the
+ * purchase itself lands its stock (post → `purchase_post:` carries it from now
+ * on) or will never land it (cancel / delete of the draft). Brings the
+ * purchase's draft_receive total per product back to ZERO under
+ * `draft_receive_net:` refs — idempotent and convergent: a re-run finds the
+ * sum already at zero and does nothing.
+ */
+export async function netDraftReceives(
+  db: StockDb,
+  purchaseId: string,
+  createdBy?: string | null,
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const res = await getPurchaseMovements(db, purchaseId);
+  if (!res.ok) return res;
+  const open = new Map<string, number>();
+  for (const r of res.rows) {
+    if (r.reason !== "draft_receive" && r.reason !== "draft_receive_net") continue;
+    open.set(r.product_id, roundStock((open.get(r.product_id) ?? 0) + Number(r.delta)));
+  }
+  for (const [productId, n] of open) {
+    if (n === 0) continue;
+    const seq = res.rows.filter((r) =>
+      r.ref.startsWith(`draft_receive_net:${purchaseId}:${productId}:`),
+    ).length;
+    const moved = await applyStockMovement(db, {
+      productId,
+      delta: -n,
+      reason: "draft_receive_net",
+      ref: `draft_receive_net:${purchaseId}:${productId}:${seq}`,
+      purchaseId,
+      note: "marfa intrată la vânzare din achiziția nepostată — preluată de document",
+      createdBy,
+    });
+    if (!moved.ok) return moved;
+  }
+  return { ok: true };
+}
+
+/**
  * Resolve the catalog product behind a document line.
  *
  * A proforma/order freezes `productId` at issue time, but in the normal flow

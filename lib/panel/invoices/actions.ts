@@ -21,7 +21,9 @@ import { getReturnsFor } from "@/lib/panel/returns/actions";
 import { returnedTotalsByInvoice } from "@/lib/panel/invoices/balance";
 import {
   newResolverCache,
+  receiveFromOpenPurchase,
   resolveSaleLine,
+  type OpenPurchaseLine,
 } from "@/lib/panel/invoices/sale-line-resolver";
 import { getDefaultMarkupPercent } from "@/lib/panel/settings/actions";
 import { releaseOrderCredits } from "@/lib/orders/release-credits";
@@ -817,6 +819,9 @@ export async function convertProformaToInvoice(
     // back onto the invoice + order lines below, so returns, edits and the
     // void restore all see the product the goods actually left.
     const resolvedByCode = new Map<number, { productId: string; costMdl: number | null }>();
+    // The last purchase line of each product when that purchase is still
+    // open — the goods the sale draws on before anything was posted.
+    const openByProduct = new Map<string, OpenPurchaseLine>();
     const resolverCache = newResolverCache();
     const markupFactor = 1 + (await getDefaultMarkupPercent()) / 100;
     for (let i = 0; i < pfSnapshot.length; i++) {
@@ -843,7 +848,23 @@ export async function convertProformaToInvoice(
       if (resolved.via !== "frozen") {
         resolvedByCode.set(i, { productId, costMdl: resolved.costMdl });
       }
+      if (resolved.openLine) openByProduct.set(productId, resolved.openLine);
       take.set(productId, roundStock((take.get(productId) ?? 0) + qty));
+    }
+    // Goods of a still-open achiziție enter stock BEFORE the sale takes them
+    // (bought 2, sold 2 → 0, not −2); a product that already covers the sale
+    // receives nothing. The post later nets this receipt. A failure here is
+    // logged, not fatal — the sale movement below surfaces a dead ledger.
+    for (const [productId, qty] of take) {
+      const received = await receiveFromOpenPurchase(
+        supabase as unknown as StockDb,
+        openByProduct.get(productId) ?? null,
+        qty,
+        user.id,
+      );
+      if (!received.ok) {
+        console.error("[panel.invoices] draft receive failed:", received.reason);
+      }
     }
     for (const [productId, qty] of take) {
       const moved = await applyStockMovement(supabase as unknown as StockDb, {

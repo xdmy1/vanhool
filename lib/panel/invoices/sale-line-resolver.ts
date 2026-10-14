@@ -2,11 +2,11 @@
  * Sale-line → product resolution that looks at the LAST PURCHASE first.
  *
  * The operator's real flow: quote a part on a proforma while it is NOT in
- * stock, order it from the supplier (an achiziție that stays a DRAFT, often
- * for weeks), hand it over when it arrives, convert the proforma. The catalog
- * resolver alone knew nothing about that draft line, so the invoice took
- * nothing out of stock and the draft line kept advertising its full quantity
- * as "stock" in the search dropdown.
+ * stock, order it from the supplier (an achiziție that stays a DRAFT until the
+ * supplier's invoice arrives, often for weeks), hand it over when it arrives,
+ * convert the proforma. The catalog resolver alone knew nothing about that
+ * draft line, so the invoice took nothing out of stock and the draft line
+ * kept advertising its full quantity as "stock" in the search dropdown.
  *
  * Owner's rule (2026-10-12): at sale time the system MUST look at the last
  * purchase of that part code — matched normalized (dots, commas, spaces,
@@ -19,18 +19,29 @@
  *        • already linked to a product → that product;
  *        • an open (draft/ordered/received) line without one → link it to the
  *          catalog match if any, else MINT the internal product the posting
- *          would create and link the line. The decrement then lands NOW
- *          (stock −qty) and the post brings it back to its true level;
+ *          would create and link the line;
  *   3. else the catalog by code (same tiers as resolveLineProductId);
  *   4. else null — the caller keeps its draft-settle marker.
+ *
+ * Owner's rule (2026-10-13, IB0293 "am vândut 2, stocul e −2"): the goods of a
+ * not-yet-posted purchase are physically in the shop the moment they're sold,
+ * so when the last purchase is OPEN and the product can't cover the sale, the
+ * open line's quantity ENTERS stock first (`receiveFromOpenPurchase`, ledger
+ * ref `draft_receive:…`) and the sale then takes from it: bought 2, sold 2 →
+ * 0, not −2. The later post withdraws that provisional receipt
+ * (netDraftReceives) and carries the stock itself, so nothing doubles.
  *
  * Cancelled purchases are ignored. `costMdl` is the GROSS MDL unit cost of
  * that last purchase line, so a line quoted without a cost gets one.
  */
 import { normalizeCode } from "@/lib/utils/normalize-code";
 import { purchaseUnitCostMdl } from "@/lib/panel/purchases/line-math";
+import { insertMintedProduct } from "@/lib/panel/purchases/mint-product";
+import { roundStock } from "@/lib/stock";
 import {
+  applyStockMovement,
   collectLineCodes,
+  getPurchaseMovements,
   rankLineProductCandidates,
   type StockDb,
 } from "@/lib/stock-ledger";
@@ -75,6 +86,15 @@ export function newResolverCache(): ResolverCache {
   return { headers: new Map() };
 }
 
+/** The last purchase line of the part when its purchase is still OPEN and the
+ *  line is linked to the resolved product — the goods the sale may draw on. */
+export type OpenPurchaseLine = {
+  lineId: string;
+  purchaseId: string;
+  productId: string;
+  quantity: number;
+};
+
 export type ResolvedSaleLine = {
   productId: string | null;
   via: "frozen" | "purchase" | "purchase_new_product" | "catalog" | "none";
@@ -87,6 +107,8 @@ export type ResolvedSaleLine = {
     documentNumber: string | null;
     productId: string | null;
   } | null;
+  /** Set when that last purchase is open and carries THIS product. */
+  openLine: OpenPurchaseLine | null;
 };
 
 export type ResolveSaleLineOptions = {
@@ -180,51 +202,129 @@ export async function resolveSaleLine(
         productId: last.row.product_id,
       }
     : null;
-  const lastIsOpenUnlinked =
-    !!last && !last.row.product_id && OPEN_STATUSES.has(last.head.status ?? "");
+  const lastIsOpen = !!last && OPEN_STATUSES.has(last.head.status ?? "");
+  const lastIsOpenUnlinked = lastIsOpen && !last!.row.product_id;
+  // Evaluated AFTER any linking below, so a line linked right now counts.
+  const done = (
+    productId: string | null,
+    via: ResolvedSaleLine["via"],
+  ): ResolvedSaleLine => ({
+    productId,
+    via,
+    costMdl,
+    purchase,
+    openLine:
+      productId && last && lastIsOpen && last.row.product_id === productId
+        ? {
+            lineId: last.row.id,
+            purchaseId: last.row.purchase_id,
+            productId,
+            quantity: roundStock(Number(last.row.quantity ?? 0)),
+          }
+        : null,
+  });
 
   if (frozen) {
     if (lastIsOpenUnlinked && opts.createFromDraft) {
-      await linkLine(db, cache, last.row, frozen);
+      await linkLine(db, cache, last!.row, frozen);
     }
-    return { productId: frozen, via: "frozen", costMdl, purchase };
+    return done(frozen, "frozen");
   }
 
   if (last?.row.product_id) {
-    return { productId: last.row.product_id, via: "purchase", costMdl, purchase };
+    return done(last.row.product_id, "purchase");
   }
 
   if (lastIsOpenUnlinked) {
     if (candidateIds.length > 0) {
-      if (opts.createFromDraft) await linkLine(db, cache, last.row, candidateIds[0]);
-      return { productId: candidateIds[0], via: "catalog", costMdl, purchase };
+      if (opts.createFromDraft) await linkLine(db, cache, last!.row, candidateIds[0]);
+      return done(candidateIds[0], "catalog");
     }
     if (opts.createFromDraft) {
       const minted = await mintProduct(
         db,
-        last.row,
-        last.head,
+        last!.row,
+        last!.head,
         rawCost,
         opts.markupFactor ?? 1.3,
         line,
       );
       if (minted) {
-        await linkLine(db, cache, last.row, minted);
-        return {
-          productId: minted,
-          via: "purchase_new_product",
-          costMdl,
-          purchase,
-        };
+        await linkLine(db, cache, last!.row, minted);
+        return done(minted, "purchase_new_product");
       }
     }
-    return { productId: null, via: "none", costMdl, purchase };
+    return done(null, "none");
   }
 
   if (candidateIds.length > 0) {
-    return { productId: candidateIds[0], via: "catalog", costMdl, purchase };
+    return done(candidateIds[0], "catalog");
   }
-  return { productId: null, via: "none", costMdl, purchase };
+  return done(null, "none");
+}
+
+/**
+ * The goods of an OPEN (not yet posted) purchase line enter stock the moment
+ * they are sold and the product cannot cover the sale on its own: the
+ * operator is handing over what arrived with that achiziție, posted or not.
+ * Receives the line's quantity (minus what was already received for this
+ * purchase+product — a draft edited from 2 to 5 tops up by 3) under
+ * `draft_receive:<purchase>:<product>:<seq>`; netDraftReceives withdraws it
+ * when the purchase is posted / cancelled / deleted.
+ *
+ * A product that already covers the sale receives NOTHING — a pending order
+ * of 10 must not show as stock while the 5 on the shelf serve the sale.
+ *
+ * `stockOffset` is for replaying a sale that already landed (backfill): the
+ * stock read now already has the sale subtracted, so the caller adds it back.
+ */
+export async function receiveFromOpenPurchase(
+  db: StockDb,
+  openLine: OpenPurchaseLine | null,
+  needQty: number,
+  createdBy?: string | null,
+  stockOffset = 0,
+): Promise<{ ok: true; received: number } | { ok: false; reason: string }> {
+  if (!openLine || needQty <= 0 || openLine.quantity <= 0) {
+    return { ok: true, received: 0 };
+  }
+  const { data: prod, error: pErr } = await db
+    .from("products")
+    .select("stock_quantity")
+    .eq("id", openLine.productId)
+    .maybeSingle();
+  if (pErr) return { ok: false, reason: `stock_read: ${pErr.message}` };
+  const stock = roundStock(
+    Number((prod as { stock_quantity?: number | string | null } | null)?.stock_quantity ?? 0) +
+      stockOffset,
+  );
+  if (stock >= needQty) return { ok: true, received: 0 };
+
+  const mv = await getPurchaseMovements(db, openLine.purchaseId);
+  if (!mv.ok) return mv;
+  let already = 0;
+  let seq = 0;
+  for (const r of mv.rows) {
+    if (r.product_id !== openLine.productId) continue;
+    if (r.reason === "draft_receive" || r.reason === "draft_receive_net") {
+      already = roundStock(already + Number(r.delta));
+    }
+    if (r.ref.startsWith(`draft_receive:${openLine.purchaseId}:${openLine.productId}:`)) seq++;
+  }
+  const toReceive = roundStock(openLine.quantity - already);
+  if (toReceive <= 0) return { ok: true, received: 0 };
+
+  const moved = await applyStockMovement(db, {
+    productId: openLine.productId,
+    delta: toReceive,
+    reason: "draft_receive",
+    ref: `draft_receive:${openLine.purchaseId}:${openLine.productId}:${seq}`,
+    purchaseId: openLine.purchaseId,
+    note: "marfă din achiziția nepostată, intrată în stoc la vânzare",
+    createdBy,
+  });
+  if (!moved.ok) return moved;
+  return { ok: true, received: moved.applied ? toReceive : 0 };
 }
 
 // ---- lookups ---------------------------------------------------------------
@@ -290,9 +390,11 @@ async function headersFor(
 // ---- writes ----------------------------------------------------------------
 
 /**
- * Mirror of what applyPostedLines creates for a line without a product:
- * internal-only, inactive, stock 0, part_code = the line's code, cost = GROSS
- * MDL. The posting later sees `product_id` set on the line and applies +qty.
+ * Same product the posting would create for a line without one (shared
+ * insertMintedProduct): internal-only, inactive, stock 0, part_code = the
+ * line's code (falling back to the supplier code when the internal code is
+ * already taken), cost = GROSS MDL. The posting later sees `product_id` set
+ * on the line and applies +qty.
  */
 async function mintProduct(
   db: StockDb,
@@ -302,46 +404,22 @@ async function mintProduct(
   markupFactor: number,
   line: Record<string, unknown>,
 ): Promise<string | null> {
-  const internalCode = (row.internal_code ?? "").trim();
-  const supplierCode = (row.supplier_code ?? "").trim();
-  const code =
-    internalCode || supplierCode || `IB-${row.id.slice(0, 8).toUpperCase()}`;
-  const slug = `${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${row.id.slice(0, 6)}`;
-  const name = (
-    (row.description ?? "").trim() ||
-    String((line as { name?: string | null }).name ?? "").trim() ||
-    code
-  ).slice(0, 200);
-  const unit = String((line as { unit?: string | null }).unit ?? "").trim() || "buc";
-  const base = {
-    part_code: code,
-    name_ro: name,
-    slug,
-    price: Number((costMdl * markupFactor).toFixed(2)),
-    cost_price: costMdl,
-    stock_quantity: 0,
-    unit,
-    is_active: false,
-    supplier_id: head.supplier_id,
-    supplier_code: supplierCode || null,
-  };
-  let res = await db
-    .from("products")
-    .insert({ ...base, internal_only: true })
-    .select("id")
-    .single();
-  // sql/products-internal-only.sql not applied yet — create it anyway.
-  if (res.error && /internal_only/i.test(res.error.message)) {
-    res = await db.from("products").insert(base).select("id").single();
-  }
-  if (res.error || !res.data) {
-    console.error(
-      "[sale-line-resolver] product mint failed:",
-      res.error?.message ?? "no row",
-    );
+  const res = await insertMintedProduct(db, {
+    line: row,
+    name:
+      (row.description ?? "").trim() ||
+      String((line as { name?: string | null }).name ?? "").trim() ||
+      null,
+    costMdl,
+    markupFactor,
+    supplierId: head.supplier_id,
+    internalOnly: true,
+  });
+  if (!res.ok) {
+    console.error("[sale-line-resolver] product mint failed:", res.reason);
     return null;
   }
-  return (res.data as { id: string }).id;
+  return res.id;
 }
 
 async function linkLine(

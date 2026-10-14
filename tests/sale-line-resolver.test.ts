@@ -8,15 +8,22 @@ import assert from "node:assert/strict";
 
 import {
   newResolverCache,
+  receiveFromOpenPurchase,
   resolveSaleLine,
 } from "@/lib/panel/invoices/sale-line-resolver";
-import type { StockDb } from "@/lib/stock-ledger";
+import {
+  applyStockMovement,
+  netDraftReceives,
+  type StockDb,
+} from "@/lib/stock-ledger";
 
 type Row = Record<string, unknown>;
 
 // ---- tiny in-memory stand-in for the Supabase query builder ---------------
 // Only the surface the resolver uses: select/insert/update, eq/is/in/ilike/
-// contains, order/limit, single/maybeSingle, and the thenable result.
+// contains, order/limit, single/maybeSingle, the thenable result, the
+// `apply_stock_movement` RPC (ledger row + stock update, unique ref) and the
+// case-insensitive unique part_code of products (error code 23505).
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -44,9 +51,35 @@ class FakeDb {
   rows(table: string): Row[] {
     return this.tables[table] ?? (this.tables[table] = []);
   }
+  /** Mirror of sql/stock-accuracy.sql apply_stock_movement. */
+  rpc(name: string, params: Record<string, unknown>): Promise<Result> {
+    if (name !== "apply_stock_movement") {
+      return Promise.resolve({ data: null, error: { message: `unknown rpc ${name}` } });
+    }
+    const product = this.rows("products").find((r) => r.id === params.p_product_id);
+    if (!product) return Promise.resolve({ data: false, error: null });
+    const movements = this.rows("stock_movements");
+    if (movements.some((m) => m.ref === params.p_ref)) {
+      return Promise.resolve({ data: false, error: null });
+    }
+    const delta = Math.round(Number(params.p_delta) * 1000) / 1000;
+    movements.push({
+      id: `mv-${++this.seq}`,
+      product_id: params.p_product_id,
+      delta,
+      reason: params.p_reason,
+      ref: params.p_ref,
+      order_id: params.p_order_id ?? null,
+      purchase_id: params.p_purchase_id ?? null,
+      created_at: new Date().toISOString(),
+    });
+    product.stock_quantity =
+      Math.round((Number(product.stock_quantity ?? 0) + delta) * 1000) / 1000;
+    return Promise.resolve({ data: true, error: null });
+  }
 }
 
-type Result = { data: unknown; error: { message: string } | null };
+type Result = { data: unknown; error: { message: string; code?: string } | null };
 
 class FakeQuery {
   private db: FakeDb;
@@ -118,6 +151,25 @@ class FakeQuery {
   private run(): Result {
     const rows = this.db.rows(this.table);
     if (this.op === "insert") {
+      if (this.table === "products") {
+        const code = String(this.payload?.part_code ?? "").toLowerCase();
+        const slug = this.payload?.slug;
+        const taken = rows.some(
+          (r) =>
+            String(r.part_code ?? "").toLowerCase() === code ||
+            (slug != null && r.slug === slug),
+        );
+        if (taken) {
+          return {
+            data: null,
+            error: {
+              code: "23505",
+              message:
+                'duplicate key value violates unique constraint "products_part_code_unique_idx"',
+            },
+          };
+        }
+      }
       const row: Row = {
         id: `gen-${++this.db.seq}`,
         created_at: new Date().toISOString(),
@@ -294,4 +346,118 @@ test("no purchase and no catalog product → null, nothing minted (no phantom pr
   assert.equal(r.purchase, null);
   assert.equal(db.rows("products").length, 0);
   assert.equal(db.rows("purchase_items")[0].product_id, null);
+});
+
+test("same internal code typed on two draft lines (different supplier codes) → two products, the second takes the supplier code; both lines linked", async () => {
+  // IB0293: "CAP DE BARA" on NI-ES-14847 AND on NI-ES-14848 — the second
+  // mint hit the unique part_code and the line stayed unresolved (no stock).
+  const db = new FakeDb();
+  seedPurchase(
+    db,
+    { id: "P-draft", status: "draft", created_at: "2026-10-13T15:01:38Z", supplier_id: "SUP", currency: "MDL" },
+    [
+      { id: "L-47", supplier_code: "NI-ES-14847", internal_code: "CAP DE BARA", description: "Cap de bara", quantity: 1, unit_cost: 172.9 },
+      { id: "L-48", supplier_code: "NI-ES-14848", internal_code: "CAP DE BARA", description: "Cap de bara", quantity: 1, unit_cost: 172.9 },
+    ],
+  );
+  const cache = newResolverCache();
+  const a = await resolveSaleLine(asDb(db), { partCode: "NI-ES-14847", quantity: 1 }, { createFromDraft: true, markupFactor: 1.3, cache });
+  const b = await resolveSaleLine(asDb(db), { partCode: "NI-ES-14848", quantity: 1 }, { createFromDraft: true, markupFactor: 1.3, cache });
+  assert.equal(a.via, "purchase_new_product");
+  assert.equal(b.via, "purchase_new_product");
+  assert.ok(a.productId && b.productId && a.productId !== b.productId);
+  const products = db.rows("products");
+  assert.equal(products.length, 2);
+  const pa = products.find((p) => p.id === a.productId)!;
+  const pb = products.find((p) => p.id === b.productId)!;
+  assert.equal(pa.part_code, "CAP DE BARA");
+  assert.equal(pb.part_code, "NI-ES-14848");
+  assert.equal(pb.supplier_code, "NI-ES-14848");
+  assert.equal(pb.cost_price, 207.48); // 172.9 × 1.2, MDL
+  assert.equal(pb.slug, "ni-es-14848-L-48"); // code slug + line id prefix (uuid hex in prod)
+  const lines = db.rows("purchase_items");
+  assert.equal(lines.find((l) => l.id === "L-47")!.product_id, a.productId);
+  assert.equal(lines.find((l) => l.id === "L-48")!.product_id, b.productId);
+  assert.deepEqual(a.openLine, { lineId: "L-47", purchaseId: "P-draft", productId: a.productId, quantity: 1 });
+  assert.deepEqual(b.openLine, { lineId: "L-48", purchaseId: "P-draft", productId: b.productId, quantity: 1 });
+});
+
+test("sold from a draft achiziție: its quantity enters stock at sale time (bought 2, sold 2 → 0, not −2); the post nets the receipt (0, not 2)", async () => {
+  const db = new FakeDb();
+  seedPurchase(
+    db,
+    { id: "P-draft", status: "draft", created_at: "2026-10-13T15:01:38Z", supplier_id: "SUP", currency: "MDL" },
+    [{ id: "L-1", supplier_code: "CTRCB0332", description: "Pivot axa fata", quantity: 2, unit_cost: 158.31 }],
+  );
+  const r = await resolveSaleLine(asDb(db), { partCode: "CTRCB0332", quantity: 2 }, { createFromDraft: true, markupFactor: 1.3 });
+  assert.equal(r.via, "purchase_new_product");
+  const pid = r.productId!;
+  assert.deepEqual(r.openLine, { lineId: "L-1", purchaseId: "P-draft", productId: pid, quantity: 2 });
+  const stock = () => db.rows("products").find((p) => p.id === pid)!.stock_quantity;
+
+  // Conversion: receive from the open line, then the sale takes 2.
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), r.openLine, 2, "u1"), { ok: true, received: 2 });
+  await applyStockMovement(asDb(db), { productId: pid, delta: -2, reason: "sale", ref: `sale:O1:${pid}`, orderId: "O1" });
+  assert.equal(stock(), 0);
+
+  // A second sale before the post: the line was already received in full →
+  // nothing more comes in, stock goes negative honestly.
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), r.openLine, 1, "u1"), { ok: true, received: 0 });
+
+  // The post: +2 lands through purchase_post, the provisional receipt leaves.
+  await applyStockMovement(asDb(db), { productId: pid, delta: 2, reason: "purchase_post", ref: "purchase_post:L-1", purchaseId: "P-draft" });
+  assert.equal(stock(), 2);
+  assert.deepEqual(await netDraftReceives(asDb(db), "P-draft", "u1"), { ok: true });
+  assert.equal(stock(), 0);
+  assert.deepEqual(await netDraftReceives(asDb(db), "P-draft", "u1"), { ok: true }); // idempotent
+  assert.equal(stock(), 0);
+  assert.deepEqual(
+    db.rows("stock_movements").map((m) => m.ref),
+    [`draft_receive:P-draft:${pid}:0`, `sale:O1:${pid}`, "purchase_post:L-1", `draft_receive_net:P-draft:${pid}:0`],
+  );
+});
+
+test("a product that covers the sale receives nothing from a pending purchase (no phantom stock); once the shelf is empty the open line comes in, and a raised line tops up only the difference; a posted purchase is never an open line", async () => {
+  const db = new FakeDb();
+  db.rows("products").push({ id: "prodA", part_code: "HU 7010 Z", supplier_code: null, search_codes: ["HU7010Z"], stock_quantity: 5, created_at: "2026-01-01T00:00:00Z" });
+  db.rows("products").push({ id: "prodB", part_code: "VAL715820", supplier_code: null, search_codes: ["VAL715820"], stock_quantity: 0, created_at: "2026-01-01T00:00:00Z" });
+  seedPurchase(
+    db,
+    { id: "P-open", status: "ordered", created_at: "2026-10-10T00:00:00Z", supplier_id: "SUP", currency: "MDL" },
+    [{ id: "L-1", supplier_code: "HU 7010 Z", description: "Filtru", quantity: 10, unit_cost: 100, product_id: "prodA" }],
+  );
+  seedPurchase(
+    db,
+    { id: "P-posted", status: "posted", created_at: "2026-10-01T00:00:00Z", supplier_id: "SUP", currency: "MDL" },
+    [{ id: "L-9", supplier_code: "VAL715820", description: "Filtru habitaclu", quantity: 1, unit_cost: 100, product_id: "prodB" }],
+  );
+  const stockA = () => db.rows("products").find((p) => p.id === "prodA")!.stock_quantity;
+
+  const r = await resolveSaleLine(asDb(db), { partCode: "hu7010z", quantity: 1 }, { createFromDraft: true });
+  assert.equal(r.via, "purchase");
+  assert.equal(r.productId, "prodA");
+  assert.deepEqual(r.openLine, { lineId: "L-1", purchaseId: "P-open", productId: "prodA", quantity: 10 });
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), r.openLine, 1), { ok: true, received: 0 });
+  assert.equal(stockA(), 5);
+  assert.equal(db.rows("stock_movements").length, 0);
+
+  // Shelf runs out: the next sale is served by the open purchase → its 10 come in.
+  db.rows("products").find((p) => p.id === "prodA")!.stock_quantity = 0;
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), r.openLine, 1), { ok: true, received: 10 });
+  assert.equal(stockA(), 10);
+
+  // Draft re-saved with 12 (new line id, same product) and a sale of 11 → only the 2 missing come in.
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), { ...r.openLine!, lineId: "L-1b", quantity: 12 }, 11), { ok: true, received: 2 });
+  assert.equal(stockA(), 12);
+
+  // Frozen productId on the line (operator picked the catalog product): same open line found through the product.
+  const frozen = await resolveSaleLine(asDb(db), { productId: "prodA", partCode: "", quantity: 1 }, { createFromDraft: true });
+  assert.equal(frozen.via, "frozen");
+  assert.deepEqual(frozen.openLine, { lineId: "L-1", purchaseId: "P-open", productId: "prodA", quantity: 10 });
+
+  // Posted purchase → no open line, nothing to receive.
+  const posted = await resolveSaleLine(asDb(db), { partCode: "VAL715820", quantity: 1 }, { createFromDraft: true });
+  assert.equal(posted.via, "purchase");
+  assert.equal(posted.productId, "prodB");
+  assert.equal(posted.openLine, null);
 });
