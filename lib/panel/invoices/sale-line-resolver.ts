@@ -42,6 +42,7 @@ import {
   applyStockMovement,
   collectLineCodes,
   getPurchaseMovements,
+  netDraftReceives,
   rankLineProductCandidates,
   type StockDb,
 } from "@/lib/stock-ledger";
@@ -300,6 +301,53 @@ export async function receiveFromOpenPurchase(
   );
   if (stock >= needQty) return { ok: true, received: 0 };
 
+  const rem = await openLineRemaining(db, openLine);
+  if (!rem.ok) return rem;
+  if (rem.remaining <= 0) return { ok: true, received: 0 };
+
+  const moved = await applyStockMovement(db, {
+    productId: openLine.productId,
+    delta: rem.remaining,
+    reason: "draft_receive",
+    ref: `draft_receive:${openLine.purchaseId}:${openLine.productId}:${rem.seq}`,
+    purchaseId: openLine.purchaseId,
+    note: "marfă din achiziția nepostată, intrată în stoc la vânzare",
+    createdBy,
+  });
+  if (!moved.ok) return moved;
+
+  // The purchase may have been posted / cancelled / deleted between the
+  // status read in resolveSaleLine and this write; its own netDraftReceives
+  // could not see a receipt that had not landed yet. Re-check AFTER the write
+  // and withdraw our receipt ourselves — the netter is sum-based, so a
+  // concurrent net converges to exactly one withdrawal.
+  const { data: head } = await db
+    .from("purchases")
+    .select("status")
+    .eq("id", openLine.purchaseId)
+    .maybeSingle();
+  const stillOpen = OPEN_STATUSES.has(
+    String((head as { status?: string | null } | null)?.status ?? ""),
+  );
+  if (!stillOpen) {
+    const netted = await netDraftReceives(db, openLine.purchaseId, createdBy);
+    if (!netted.ok) return netted;
+    return { ok: true, received: 0 };
+  }
+  return { ok: true, received: moved.applied ? rem.remaining : 0 };
+}
+
+/**
+ * What an open line can STILL bring into stock: its quantity minus the
+ * draft_receive (net of draft_receive_net) already on the ledger for this
+ * purchase + product. 0 once the line was received in full. Shared by the
+ * receive above and by the sale wizard's stock check, so the check never
+ * counts goods that are already in `stock_quantity`.
+ */
+export async function openLineRemaining(
+  db: StockDb,
+  openLine: OpenPurchaseLine,
+): Promise<{ ok: true; remaining: number; seq: number } | { ok: false; reason: string }> {
   const mv = await getPurchaseMovements(db, openLine.purchaseId);
   if (!mv.ok) return mv;
   let already = 0;
@@ -311,20 +359,11 @@ export async function receiveFromOpenPurchase(
     }
     if (r.ref.startsWith(`draft_receive:${openLine.purchaseId}:${openLine.productId}:`)) seq++;
   }
-  const toReceive = roundStock(openLine.quantity - already);
-  if (toReceive <= 0) return { ok: true, received: 0 };
-
-  const moved = await applyStockMovement(db, {
-    productId: openLine.productId,
-    delta: toReceive,
-    reason: "draft_receive",
-    ref: `draft_receive:${openLine.purchaseId}:${openLine.productId}:${seq}`,
-    purchaseId: openLine.purchaseId,
-    note: "marfă din achiziția nepostată, intrată în stoc la vânzare",
-    createdBy,
-  });
-  if (!moved.ok) return moved;
-  return { ok: true, received: moved.applied ? toReceive : 0 };
+  return {
+    ok: true,
+    remaining: Math.max(0, roundStock(openLine.quantity - already)),
+    seq,
+  };
 }
 
 // ---- lookups ---------------------------------------------------------------
@@ -405,7 +444,8 @@ async function mintProduct(
   line: Record<string, unknown>,
 ): Promise<string | null> {
   const res = await insertMintedProduct(db, {
-    line: row,
+    // purchase_items.unit may not exist (prod) — the sale line's unit stands in.
+    line: { ...row, unit: String((line as { unit?: string | null }).unit ?? "") || null },
     name:
       (row.description ?? "").trim() ||
       String((line as { name?: string | null }).name ?? "").trim() ||

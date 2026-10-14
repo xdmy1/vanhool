@@ -12,6 +12,7 @@
  * violation moves to the next candidate, any other error stops.
  */
 import type { StockDb } from "@/lib/stock-ledger";
+import { normalizeCode } from "@/lib/utils/normalize-code";
 
 export type MintableLine = {
   id: string;
@@ -100,7 +101,33 @@ export async function insertMintedProduct(
     }
     lastError = res.error?.message ?? "no row";
     if (!isUniqueViolation(res.error)) break;
-    // part_code / slug already taken → try the next candidate.
+    // part_code already taken. If the product holding it carries THIS line's
+    // supplier code it is this very part — minted a moment ago by a racing
+    // sale of the same open line — so reuse it; a second row would split the
+    // part's stock. A different supplier code is the IB0293 case (two parts
+    // typed under one internal code) → the next candidate.
+    const twin = await productHoldingCode(db, code);
+    if (
+      twin &&
+      supplierCode &&
+      normalizeCode(twin.supplier_code) === normalizeCode(supplierCode)
+    ) {
+      return { ok: true, id: twin.id, code };
+    }
   }
   return { ok: false, reason: lastError };
+}
+
+async function productHoldingCode(
+  db: StockDb,
+  code: string,
+): Promise<{ id: string; supplier_code: string | null } | null> {
+  const escaped = code.replace(/[\\%_]/g, "\\$&");
+  const { data } = await db
+    .from("products")
+    .select("id, supplier_code")
+    .ilike("part_code", escaped)
+    .limit(1);
+  const row = ((data ?? []) as Array<{ id: string; supplier_code: string | null }>)[0];
+  return row ?? null;
 }

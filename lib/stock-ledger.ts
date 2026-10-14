@@ -464,6 +464,10 @@ export async function settlePurchaseCancelNet(
     // take (pre-epoch history) — zeroing them would re-add stock that was
     // never in the ledger's books. Exclude them from the net target.
     if (hasLedgerPost && r.ref.startsWith("purchase_unpost:")) continue;
+    // Customer-side rows that merely CITE the purchase (`draft_settle:` and
+    // its `reverse:`, reason "sale") belong to the ORDER's story: zeroing
+    // them would put goods the customer already took back on the shelf.
+    if (r.reason === "sale") continue;
     target.set(
       r.product_id,
       roundStock((target.get(r.product_id) ?? 0) + Number(r.delta)),

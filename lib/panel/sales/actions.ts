@@ -15,6 +15,7 @@ import { roundStock } from "@/lib/stock";
 import { applyStockMovement, ledgerReady, type StockDb } from "@/lib/stock-ledger";
 import {
   newResolverCache,
+  openLineRemaining,
   receiveFromOpenPurchase,
   resolveSaleLine,
   type OpenPurchaseLine,
@@ -732,12 +733,18 @@ export async function createManualSale(raw: unknown): Promise<ManualSaleResult> 
   for (const [pid, want] of checkByProduct) {
     const p = byId.get(pid);
     if (!p) return { ok: false, reason: `product_missing:${pid}` };
-    // What the shelf holds plus what the still-open achiziție brought in
-    // (received into stock right before the decrement below, not here — a
-    // sale refused further down must leave no trace).
-    const coverable = roundStock(
-      Number(p.stock_quantity ?? 0) + (openByProduct.get(pid)?.quantity ?? 0),
-    );
+    // What the shelf holds plus what the still-open achiziție can STILL bring
+    // in — its quantity minus what earlier sales already received into
+    // stock_quantity (received right before the decrement below, not here —
+    // a sale refused further down must leave no trace).
+    const open = openByProduct.get(pid) ?? null;
+    let pending = 0;
+    if (open) {
+      const rem = await openLineRemaining(supabase as unknown as StockDb, open);
+      if (!rem.ok) return rem;
+      pending = rem.remaining;
+    }
+    const coverable = roundStock(Number(p.stock_quantity ?? 0) + pending);
     if (coverable < want) {
       return {
         ok: false,

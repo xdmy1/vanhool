@@ -8,12 +8,16 @@ import assert from "node:assert/strict";
 
 import {
   newResolverCache,
+  openLineRemaining,
   receiveFromOpenPurchase,
   resolveSaleLine,
 } from "@/lib/panel/invoices/sale-line-resolver";
+import { insertMintedProduct } from "@/lib/panel/purchases/mint-product";
 import {
   applyStockMovement,
   netDraftReceives,
+  reversePurchaseLines,
+  settlePurchaseCancelNet,
   type StockDb,
 } from "@/lib/stock-ledger";
 
@@ -460,4 +464,72 @@ test("a product that covers the sale receives nothing from a pending purchase (n
   assert.equal(posted.via, "purchase");
   assert.equal(posted.productId, "prodB");
   assert.equal(posted.openLine, null);
+});
+
+test("openLineRemaining: the wizard's stock check counts only what the open line can STILL bring in (0 once received; the raise after a re-save)", async () => {
+  const db = new FakeDb();
+  db.rows("products").push({ id: "prodA", part_code: "X1", supplier_code: null, search_codes: ["X1"], stock_quantity: 0, created_at: "2026-01-01T00:00:00Z" });
+  const open = { lineId: "L-1", purchaseId: "P-open", productId: "prodA", quantity: 2 };
+  assert.deepEqual(await openLineRemaining(asDb(db), open), { ok: true, remaining: 2, seq: 0 });
+  await applyStockMovement(asDb(db), { productId: "prodA", delta: 2, reason: "draft_receive", ref: "draft_receive:P-open:prodA:0", purchaseId: "P-open" });
+  assert.deepEqual(await openLineRemaining(asDb(db), open), { ok: true, remaining: 0, seq: 1 });
+  assert.deepEqual(await openLineRemaining(asDb(db), { ...open, quantity: 5 }), { ok: true, remaining: 3, seq: 1 });
+  await applyStockMovement(asDb(db), { productId: "prodA", delta: -2, reason: "draft_receive_net", ref: "draft_receive_net:P-open:prodA:0", purchaseId: "P-open" });
+  assert.deepEqual(await openLineRemaining(asDb(db), open), { ok: true, remaining: 2, seq: 1 });
+});
+
+test("sale racing a cancel: the receipt written after the purchase closed is withdrawn by the sale itself (no orphan +qty)", async () => {
+  const db = new FakeDb();
+  seedPurchase(
+    db,
+    { id: "P-draft", status: "draft", created_at: "2026-10-13T15:01:38Z", supplier_id: "SUP", currency: "MDL" },
+    [{ id: "L-1", supplier_code: "CTRCB0332", description: "Pivot", quantity: 2, unit_cost: 100 }],
+  );
+  const r = await resolveSaleLine(asDb(db), { partCode: "CTRCB0332", quantity: 2 }, { createFromDraft: true });
+  const pid = r.productId!;
+  // cancelPurchase lands between the resolve and the receipt (status flips first).
+  db.rows("purchases").find((p) => p.id === "P-draft")!.status = "cancelled";
+  assert.deepEqual(await receiveFromOpenPurchase(asDb(db), r.openLine, 2, "u1"), { ok: true, received: 0 });
+  const stock = db.rows("products").find((p) => p.id === pid)!.stock_quantity;
+  assert.equal(stock, 0);
+  assert.deepEqual(
+    db.rows("stock_movements").map((m) => [m.ref, m.delta]),
+    [[`draft_receive:P-draft:${pid}:0`, 2], [`draft_receive_net:P-draft:${pid}:0`, -2]],
+  );
+  // The cancel's own net afterwards finds the sum at zero — nothing more.
+  assert.deepEqual(await netDraftReceives(asDb(db), "P-draft", "u1"), { ok: true });
+  assert.equal(db.rows("stock_movements").length, 2);
+});
+
+test("cancelling a posted purchase does not put back goods the customer already took (draft_settle rows stay out of the cancel net)", async () => {
+  const db = new FakeDb();
+  db.rows("products").push({ id: "prodA", part_code: "X1", supplier_code: null, search_codes: ["X1"], stock_quantity: 0, created_at: "2026-01-01T00:00:00Z" });
+  seedPurchase(db, { id: "P", status: "posted", created_at: "2026-10-01T00:00:00Z", supplier_id: "SUP", currency: "MDL" }, [
+    { id: "L-1", supplier_code: "X1", description: "x", quantity: 2, unit_cost: 100, product_id: "prodA" },
+  ]);
+  await applyStockMovement(asDb(db), { productId: "prodA", delta: 2, reason: "purchase_post", ref: "purchase_post:L-1", purchaseId: "P" });
+  // Sold from the draft, settled at post time: cites the purchase, belongs to the order.
+  await applyStockMovement(asDb(db), { productId: "prodA", delta: -2, reason: "sale", ref: "draft_settle:O1:prodA:0", orderId: "O1", purchaseId: "P" });
+  assert.equal(db.rows("products")[0].stock_quantity, 0);
+  assert.deepEqual(await reversePurchaseLines(asDb(db), "P", [{ id: "L-1", product_id: "prodA", quantity: 2 }], "u1"), { ok: true });
+  assert.deepEqual(await settlePurchaseCancelNet(asDb(db), "P", "u1"), { ok: true });
+  assert.equal(db.rows("products")[0].stock_quantity, -2); // bought 0 (cancelled), sold 2
+  assert.ok(!db.rows("stock_movements").some((m) => String(m.ref).startsWith("purchase_cancel_net:")));
+  // A supplier return is still netted (the documented case): +10 post, −2 return, cancel → net 0.
+  await applyStockMovement(asDb(db), { productId: "prodA", delta: -1, reason: "return", ref: "return:R1:prodA", purchaseId: "P" });
+  assert.deepEqual(await settlePurchaseCancelNet(asDb(db), "P", "u1"), { ok: true });
+  assert.equal(db.rows("products")[0].stock_quantity, -2);
+});
+
+test("two racing mints of the SAME open line converge on one product; two different parts under one internal code still get two", async () => {
+  const db = new FakeDb();
+  const line = { id: "L-1", supplier_code: "NI-ES-14847", internal_code: "CAP DE BARA", description: "Cap de bara" };
+  const a = await insertMintedProduct(asDb(db), { line, costMdl: 207.48, markupFactor: 1.3, supplierId: "SUP", internalOnly: true });
+  const b = await insertMintedProduct(asDb(db), { line, costMdl: 207.48, markupFactor: 1.3, supplierId: "SUP", internalOnly: true });
+  assert.ok(a.ok && b.ok);
+  assert.equal(b.ok && b.id, a.ok && a.id);
+  assert.equal(db.rows("products").length, 1);
+  const c = await insertMintedProduct(asDb(db), { line: { ...line, id: "L-2", supplier_code: "NI-ES-14848" }, costMdl: 207.48, markupFactor: 1.3, supplierId: "SUP", internalOnly: true });
+  assert.ok(c.ok && c.code === "NI-ES-14848");
+  assert.equal(db.rows("products").length, 2);
 });

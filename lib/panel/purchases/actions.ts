@@ -1055,6 +1055,9 @@ export async function postPurchase(
     );
     // Net out anything the racing cancel couldn't see (its line reversal ran
     // against a partial ledger) — idempotent, converges the race to zero.
+    // Draft-time receipts go under their own refs first so the sweep below
+    // never zeroes them a second time.
+    await netDraftReceives(supabase as unknown as StockDb, purchaseId, user.id);
     await settlePurchaseCancelNet(
       supabase as unknown as StockDb,
       purchaseId,
@@ -1168,7 +1171,16 @@ export async function cancelPurchase(
     .select("status")
     .eq("id", purchaseId)
     .maybeSingle();
-  if (cur?.status === "cancelled") return { ok: true };
+  if (cur?.status === "cancelled") {
+    // Already cancelled: only make sure no draft-time receipt is left behind
+    // (a cancel whose netting failed, or a sale that raced the cancel).
+    const netted = await netDraftReceives(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    return netted.ok ? { ok: true } : netted;
+  }
   const wasPosted = cur?.status === "posted";
 
   if (wasPosted) {
@@ -1191,17 +1203,19 @@ export async function cancelPurchase(
       user.id,
     );
     if (!reversed.ok) return reversed;
-    const netted = await settlePurchaseCancelNet(
+    // Goods counted into stock at sale time (`draft_receive:`) leave with the
+    // document in EVERY state — a post that died before its first ledger
+    // movement leaves a `posted` row whose only rows are draft_receive, which
+    // the line reversal above cannot see. Netted under their OWN refs BEFORE
+    // the cancel-net sweep, so the sweep finds them at zero (a later delete
+    // would otherwise net the same quantity twice).
+    const draftNet = await netDraftReceives(
       supabase as unknown as StockDb,
       purchaseId,
       user.id,
     );
-    if (!netted.ok) return netted;
-  } else {
-    // An open purchase never posted, but goods sold from it may already sit
-    // in stock through `draft_receive:` — that stock is not coming, take it
-    // back out (the sales themselves stand).
-    const netted = await netDraftReceives(
+    if (!draftNet.ok) return draftNet;
+    const netted = await settlePurchaseCancelNet(
       supabase as unknown as StockDb,
       purchaseId,
       user.id,
@@ -1209,11 +1223,28 @@ export async function cancelPurchase(
     if (!netted.ok) return netted;
   }
 
+  // Status FIRST for an open purchase: a sale resolving against it at this
+  // very moment re-checks the status after writing its receipt and withdraws
+  // it itself when the purchase is no longer open. (A posted purchase cannot
+  // receive new draft receipts, so it keeps reverse → net → flip.)
   const { error } = await supabase
     .from("purchases")
     .update({ status: "cancelled", updated_at: new Date().toISOString() })
     .eq("id", purchaseId);
   if (error) return { ok: false, reason: error.message };
+
+  if (!wasPosted) {
+    // An open purchase never posted, but goods sold from it may already sit
+    // in stock through `draft_receive:` — that stock is not coming, take it
+    // back out (the sales themselves stand). A failure here is retried by
+    // the next cancel / delete of this (now cancelled) purchase.
+    const netted = await netDraftReceives(
+      supabase as unknown as StockDb,
+      purchaseId,
+      user.id,
+    );
+    if (!netted.ok) return netted;
+  }
   revalidatePath("/[locale]/panel/achizitii", "page");
   return { ok: true };
 }
@@ -1650,16 +1681,20 @@ export async function deletePurchaseWithPin(
     // A delete that cannot reverse its stock must NOT proceed — the document
     // would vanish while the phantom quantity stays forever.
     if (!reversed.ok) return reversed;
+  }
+  // Goods counted in at sale time from this purchase (`draft_receive:`) leave
+  // with the document in EVERY state (see cancelPurchase). Netted under their
+  // own refs BEFORE the cancel-net sweep of a posted document, so that sweep
+  // never zeroes them a second time. A delete that cannot net them must not
+  // proceed.
+  const draftNet = await netDraftReceives(
+    supabase as unknown as StockDb,
+    purchaseId,
+    user.id,
+  );
+  if (!draftNet.ok) return draftNet;
+  if (hdr?.status === "posted") {
     const netted = await settlePurchaseCancelNet(
-      supabase as unknown as StockDb,
-      purchaseId,
-      user.id,
-    );
-    if (!netted.ok) return netted;
-  } else {
-    // Same as cancel: goods counted in at sale time from this open purchase
-    // leave with the document. A delete that cannot net them must not proceed.
-    const netted = await netDraftReceives(
       supabase as unknown as StockDb,
       purchaseId,
       user.id,
@@ -1675,6 +1710,10 @@ export async function deletePurchaseWithPin(
   await supabase.from("purchase_items").delete().eq("purchase_id", purchaseId);
   const { error } = await supabase.from("purchases").delete().eq("id", purchaseId);
   if (error) return { ok: false, reason: error.message };
+  // A sale that raced this delete may have written its receipt after the net
+  // above; with the header gone its own re-check nets it too, and the netter
+  // is sum-based, so this second pass only ever converges (best effort).
+  await netDraftReceives(supabase as unknown as StockDb, purchaseId, user.id);
   revalidatePath("/[locale]/panel/achizitii", "page");
   return { ok: true };
 }
