@@ -246,7 +246,7 @@ export function PreorderForm({
                 <th className="px-2 py-2 w-32">{t("preorder_form_part_code")}</th>
                 <th className="px-2 py-2">{t("preorder_form_description")}</th>
                 <th className="px-2 py-2 w-16 text-right">{t("preorder_form_quantity")}</th>
-                <th className="px-2 py-2 w-28 text-right">{t("preorder_form_supplier_cost")}</th>
+                <th data-margin className="px-2 py-2 w-28 text-right">{t("preorder_form_supplier_cost")}</th>
                 <th className="px-2 py-2 w-28 text-right">{t("preorder_form_unit_price")}</th>
                 <th className="px-2 py-2 w-24 text-right">{t("preorder_form_line_total")}</th>
                 <th className="px-2 py-2 w-10" />
@@ -289,7 +289,7 @@ export function PreorderForm({
                         className="h-9 w-16 text-right"
                       />
                     </td>
-                    <td className="px-2 py-2 align-top text-right">
+                    <td data-margin className="px-2 py-2 align-top text-right">
                       <Input
                         type="number"
                         step="0.01"
@@ -312,6 +312,7 @@ export function PreorderForm({
                       />
                       {margin != null ? (
                         <div
+                          data-margin
                           className={cn(
                             "mt-0.5 text-[10px] font-semibold tabular-nums",
                             margin < 0

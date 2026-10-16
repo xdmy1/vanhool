@@ -49,8 +49,8 @@ export async function ProductsTable({
             <th className="px-4 py-3">{t("produse_col_name")}</th>
             <th className="px-4 py-3">{t("produse_col_brand")}</th>
             <th className="px-4 py-3 text-right">{t("produse_col_price")}</th>
-            <th className="px-4 py-3 text-right">{t("produse_col_cost")}</th>
-            <th className="px-4 py-3 text-right">{t("produse_col_margin")}</th>
+            <th data-margin className="px-4 py-3 text-right">{t("produse_col_cost")}</th>
+            <th data-margin className="px-4 py-3 text-right">{t("produse_col_margin")}</th>
             <th className="px-4 py-3 text-right">{t("produse_col_stock")}</th>
             <th className="px-4 py-3">{t("produse_col_location")}</th>
             <th className="px-4 py-3 text-right">&nbsp;</th>
@@ -83,10 +83,10 @@ export async function ProductsTable({
               <td className="px-4 py-3 text-right tabular-nums">
                 {p.price !== null ? <Price value={p.price} size="sm" accent={false} /> : "—"}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums text-muted">
+              <td data-margin className="px-4 py-3 text-right tabular-nums text-muted">
                 {p.cost_price !== null ? <Price value={p.cost_price} size="sm" accent={false} /> : "—"}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums">
+              <td data-margin className="px-4 py-3 text-right tabular-nums">
                 {p.margin_pct !== null ? (
                   <span
                     className={cn(

@@ -177,6 +177,7 @@ export default async function PanelRapoartePage({
           defaultTo={to}
           defaultScope={scope}
         />
+        <div data-margin>
         <Table
           headers={[
             t("reports_col_code"),
@@ -198,6 +199,7 @@ export default async function PanelRapoartePage({
           ])}
           emptyLabel={t("reports_empty")}
         />
+        </div>
       </section>
 
       <section className="mt-10 space-y-2">

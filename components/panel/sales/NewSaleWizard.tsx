@@ -910,7 +910,7 @@ function StepProducts({
                 <option value="USD">USD</option>
               </select>
             </label>
-            <label className="flex flex-col">
+            <label data-margin className="flex flex-col">
               <span className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
                 {t("sale_markup_label")}
               </span>
@@ -989,7 +989,10 @@ function StepProducts({
                       ? "—"
                       : t("sale_products_stock_label", { qty: p.stock_quantity })}
                   </span>
-                  <span className="w-24 text-right tabular-nums text-sm">
+                  <span
+                    data-margin={isDraft ? "" : undefined}
+                    className="w-24 text-right tabular-nums text-sm"
+                  >
                     {p.price.toFixed(2)}
                   </span>
                 </button>
@@ -1057,7 +1060,7 @@ function StepProducts({
                     <td className="px-4 py-2">
                       {l.product.name_ro}
                       {costInCurrency > 0 ? (
-                        <div className="text-[10px] font-semibold text-yellow-500">
+                        <div data-margin className="text-[10px] font-semibold text-yellow-500">
                           Sinecost: {costInCurrency.toFixed(2)} {currency}
                         </div>
                       ) : null}
@@ -1120,7 +1123,7 @@ function StepProducts({
                         size="sm"
                         inputClassName="ml-auto h-8 w-24 text-right"
                       />
-                      <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                      <div data-margin className="mt-0.5 flex items-center justify-end gap-1.5">
                         <MarkupShortcuts
                           cost={costInCurrency}
                           unitPrice={l.unit_price}

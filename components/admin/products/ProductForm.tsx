@@ -24,6 +24,7 @@ import {
 import { linkPurchaseLineToProduct } from "@/lib/panel/purchases/actions";
 
 import { cn } from "@/lib/utils/cn";
+import { MarginEye } from "@/components/panel/MarginEye";
 import {
   BusMakesMultiSelect,
   CrossRefEditor,
@@ -671,14 +672,19 @@ export function ProductForm({
               min={0}
             />
           </Field>
-          <Field label={labels.field_cost_price}>
-            <PriceWithVatHelper
-              value={costPriceValue}
-              onChange={setCostPriceValue}
-              step="0.01"
-              min={0}
-            />
-          </Field>
+          <div className="flex items-start gap-2">
+            <div data-margin className="min-w-0 flex-1">
+              <Field label={labels.field_cost_price}>
+                <PriceWithVatHelper
+                  value={costPriceValue}
+                  onChange={setCostPriceValue}
+                  step="0.01"
+                  min={0}
+                />
+              </Field>
+            </div>
+            <MarginEye size="sm" className="mt-5" />
+          </div>
           <Field label="Unitate de măsură (U.M.)">
             <select
               name="unit"

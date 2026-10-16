@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { PanelSidebar } from "@/components/panel/PanelSidebar";
 import { PanelTopbar } from "@/components/panel/PanelTopbar";
 import { PanelMobileNav } from "@/components/panel/PanelMobileNav";
+import { MARGIN_EYE_BOOT_SCRIPT } from "@/components/panel/MarginEye";
 import { requirePanelUser } from "@/lib/panel/auth";
 import { getActiveBook } from "@/lib/panel/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +85,9 @@ export default async function PanelLayout({
 
   return (
     <div className="flex min-h-dvh bg-background">
+      {/* Remembered eye state (cost / margin visibility) applied before the
+          first paint, so a reload never flashes the figures. */}
+      <script dangerouslySetInnerHTML={{ __html: MARGIN_EYE_BOOT_SCRIPT }} />
       <PanelSidebar
         locale={locale}
         labels={sidebarLabels}

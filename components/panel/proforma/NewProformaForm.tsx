@@ -671,7 +671,7 @@ export function NewProformaForm({
                         size="sm"
                         inputClassName="ml-auto h-9 w-24 text-right"
                       />
-                      <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                      <div data-margin className="mt-0.5 flex items-center justify-end gap-1.5">
                         <MarkupShortcuts
                           cost={convertPrice(l.cost_price, "MDL", currency)}
                           unitPrice={l.unit_price}

@@ -71,7 +71,7 @@ export function ForceSellModal({
           {lines.map((l, i) => (
             <li key={i} className="flex items-center justify-between gap-2">
               <span className="line-clamp-1 font-medium">{l.label}</span>
-              <span className="shrink-0 tabular-nums text-destructive">
+              <span data-margin className="shrink-0 tabular-nums text-destructive">
                 preț {l.sell} ≤ cost {l.cost}
               </span>
             </li>

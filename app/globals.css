@@ -104,3 +104,11 @@ body {
     opacity: 1;
   }
 }
+
+/* Panel: admin-only cost / margin / profit figures (marked `data-margin`)
+   stay hidden until the operator opens the eye (components/panel/MarginEye)
+   — clients often sit at the desk and read the screen. `visibility` keeps
+   every table column and form row in place while hidden. */
+html:not([data-show-margin]) [data-margin] {
+  visibility: hidden !important;
+}

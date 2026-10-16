@@ -16,6 +16,7 @@ import {
   type PanelProductInput,
 } from "@/lib/panel/produse/actions";
 import type { PanelProductDetail } from "@/lib/panel/produse/queries";
+import { MarginEye } from "@/components/panel/MarginEye";
 
 type Option = { id: string; name: string };
 type CatOption = Option & { parent_id: string | null };
@@ -282,15 +283,20 @@ export function PanelProductForm({
               onChange={(e) => set("price", Number(e.target.value || 0))}
             />
           </Field>
-          <Field label={t("product_form_cost")}>
-            <Input
-              type="number"
-              step="0.01"
-              value={state.cost_price ?? 0}
-              onChange={(e) => set("cost_price", Number(e.target.value || 0))}
-            />
-            <p className="mt-1 text-xs text-muted">{t("product_form_cost_helper")}</p>
-          </Field>
+          <div className="flex items-start gap-2">
+            <div data-margin className="min-w-0 flex-1">
+              <Field label={t("product_form_cost")}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={state.cost_price ?? 0}
+                  onChange={(e) => set("cost_price", Number(e.target.value || 0))}
+                />
+                <p className="mt-1 text-xs text-muted">{t("product_form_cost_helper")}</p>
+              </Field>
+            </div>
+            <MarginEye size="sm" className="mt-5" />
+          </div>
           <Field label="Unitate de măsură">
             <select
               value={state.unit}

@@ -15,6 +15,7 @@ import {
 } from "@/lib/panel/invoices/cost-fallback";
 import { getInvoice } from "@/lib/panel/invoices/queries";
 import { cn } from "@/lib/utils/cn";
+import { MarginEye } from "@/components/panel/MarginEye";
 import { TIMEZONE } from "@/lib/datetime";
 
 const STATUS_TONE: Record<string, string> = {
@@ -193,8 +194,9 @@ export default async function PanelProformaDetailPage({
         </section>
 
         <section className="overflow-x-auto rounded-md border border-border bg-surface lg:col-span-2">
-          <div className="border-b border-border bg-warning/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-warning">
-            Coloanele Cost / Marjă sunt vizibile DOAR aici (admin) — nu apar pe print sau pe documentul trimis clientului.
+          <div className="flex items-center gap-2 border-b border-border bg-warning/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-warning">
+            <MarginEye size="sm" />
+            <span data-margin>Coloanele Cost / Marjă sunt vizibile DOAR aici (admin) — nu apar pe print sau pe documentul trimis clientului.</span>
           </div>
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-surface-elevated text-left text-xs uppercase tracking-wide text-muted">
@@ -204,8 +206,8 @@ export default async function PanelProformaDetailPage({
                 <th className="px-4 py-3 text-right">{t("delivery_col_qty")}</th>
                 <th className="px-4 py-3 text-right">{t("delivery_col_price")}</th>
                 <th className="px-4 py-3 text-right">{t("delivery_col_total")}</th>
-                <th className="px-4 py-3 text-right text-warning">Cost unit. (admin)</th>
-                <th className="px-4 py-3 text-right text-warning">Marjă (admin)</th>
+                <th data-margin className="px-4 py-3 text-right text-warning">Cost unit. (admin)</th>
+                <th data-margin className="px-4 py-3 text-right text-warning">Marjă (admin)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -263,12 +265,12 @@ export default async function PanelProformaDetailPage({
                     <td className="px-4 py-2 text-right tabular-nums font-semibold">
                       {lineTotal.toFixed(2)} {proforma.currency}
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums text-warning">
+                    <td data-margin className="px-4 py-2 text-right tabular-nums text-warning">
                       {cost != null
                         ? `${cost.toFixed(2)} ${proforma.currency}`
                         : "—"}
                     </td>
-                    <td className="px-4 py-2 text-right tabular-nums">
+                    <td data-margin className="px-4 py-2 text-right tabular-nums">
                       {lineProfit != null && lineMarginPct != null ? (
                         <>
                           <div
@@ -368,8 +370,8 @@ export default async function PanelProformaDetailPage({
                   if (anyMissing && totalCost === 0) {
                     return (
                       <>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted">—</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted">—</td>
+                        <td data-margin className="px-4 py-3 text-right tabular-nums text-muted">—</td>
+                        <td data-margin className="px-4 py-3 text-right tabular-nums text-muted">—</td>
                       </>
                     );
                   }
@@ -379,11 +381,11 @@ export default async function PanelProformaDetailPage({
                     : 0;
                   return (
                     <>
-                      <td className="px-4 py-3 text-right tabular-nums text-warning">
+                      <td data-margin className="px-4 py-3 text-right tabular-nums text-warning">
                         {totalCost.toFixed(2)} {proforma.currency}
                         {anyMissing ? <div className="text-[9px] text-muted">(parțial)</div> : null}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td data-margin className="px-4 py-3 text-right tabular-nums">
                         <div
                           className={cn(
                             "font-bold",

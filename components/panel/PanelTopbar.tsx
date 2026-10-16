@@ -5,6 +5,7 @@ import { LocaleSwitcher } from "@/components/layout/LocaleSwitcher";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { Link } from "@/lib/i18n/routing";
 import { BookScopeSwitcher } from "@/components/panel/BookScopeSwitcher";
+import { MarginEye } from "@/components/panel/MarginEye";
 import type { AccountScope } from "@/lib/panel/scope";
 
 export function PanelTopbar({
@@ -49,6 +50,7 @@ export function PanelTopbar({
         }}
       />
       <div className="ml-auto flex items-center gap-2">
+        <MarginEye />
         <Button asChild variant="ghost" size="sm" className="hidden gap-1.5 sm:inline-flex">
           <Link href={"/admin" as const} locale={locale}>
             <ExternalLink className="size-4" />

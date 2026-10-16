@@ -107,9 +107,9 @@ export default async function PreordersPage({
                   <th className="px-4 py-3">{t("preorder_col_customer")}</th>
                   <th className="px-4 py-3">{t("preorder_col_part")}</th>
                   <th className="px-4 py-3 text-right">{t("preorder_col_qty")}</th>
-                  <th className="px-4 py-3 text-right">{t("preorder_col_cost")}</th>
+                  <th data-margin className="px-4 py-3 text-right">{t("preorder_col_cost")}</th>
                   <th className="px-4 py-3 text-right">{t("preorder_col_price")}</th>
-                  <th className="px-4 py-3 text-right">{t("preorder_col_margin")}</th>
+                  <th data-margin className="px-4 py-3 text-right">{t("preorder_col_margin")}</th>
                   <th className="px-4 py-3 text-right">{t("preorder_col_total")}</th>
                   <th className="px-4 py-3">{t("preorder_col_eta")}</th>
                   <th className="px-4 py-3">{t("preorder_col_status")}</th>
@@ -150,7 +150,7 @@ export default async function PreordersPage({
                     <td className="px-4 py-3 text-right tabular-nums align-top">
                       {r.quantity}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums align-top text-muted-strong">
+                    <td data-margin className="px-4 py-3 text-right tabular-nums align-top text-muted-strong">
                       {r.supplier_unit_cost > 0
                         ? `${r.supplier_unit_cost.toFixed(2)} ${r.currency}`
                         : "—"}
@@ -158,7 +158,7 @@ export default async function PreordersPage({
                     <td className="px-4 py-3 text-right tabular-nums align-top font-semibold">
                       {r.unit_price.toFixed(2)} {r.currency}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums align-top text-xs">
+                    <td data-margin className="px-4 py-3 text-right tabular-nums align-top text-xs">
                       {r.supplier_unit_cost > 0 ? (
                         <span className="rounded bg-success/10 px-1.5 py-0.5 text-success">
                           +{r.margin_percent}%

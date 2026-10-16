@@ -203,7 +203,10 @@ export function PartCodeAutocomplete({
                             </span>
                           ) : null}
                         </span>
-                        <span className="shrink-0 tabular-nums text-muted">
+                        <span
+                          data-margin={isDraft ? "" : undefined}
+                          className="shrink-0 tabular-nums text-muted"
+                        >
                           {p.price.toFixed(2)}
                         </span>
                       </button>

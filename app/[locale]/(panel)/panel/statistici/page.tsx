@@ -202,6 +202,8 @@ export default async function PanelStatisticiPage({
           }
           accent
         />
+        {/* `contents` keeps the card a grid item while the eye hides it. */}
+        <div data-margin className="contents">
         <KpiCard
           icon={Banknote}
           label={t("stats_kpi_profit")}
@@ -211,6 +213,7 @@ export default async function PanelStatisticiPage({
           note={t("stats_kpi_profit_coverage", { pct: profit.coveragePct })}
           tone="success"
         />
+        </div>
         <KpiCard
           icon={ShoppingCart}
           label={t("stats_kpi_orders")}
@@ -311,6 +314,7 @@ export default async function PanelStatisticiPage({
           title={t("stats_section_profit_leaders")}
           hint={t("stats_kpi_profit_coverage", { pct: profit.coveragePct })}
         >
+          <div data-margin>
           {profit.leaders.length === 0 ? (
             <EmptyChart label={t("stats_chart_empty")} />
           ) : (
@@ -326,6 +330,7 @@ export default async function PanelStatisticiPage({
               }}
             />
           )}
+          </div>
         </Panel>
         <Panel title={t("stats_section_clients")}>
           {topClients.length === 0 ? (
